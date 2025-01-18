@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>リバーシテスト</title>
+    <style>
+        .success { color: green; }
+        .failure { color: red; }
+        .test-result {
+            margin: 10px;
+            padding: 5px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>リバーシテスト</h1>
+    <div id="results"></div>
+
+    <script>
+        const EMPTY = 0;
+        const BLACK = 1;
+        const WHITE = 2;
+
+        function runTests() {
+            const results = document.getElementById('results');
+            let testsPassed = 0;
+            let totalTests = 0;
+
+            function assert(condition, message) {
+                totalTests++;
+                const div = document.createElement('div');
+                div.className = 'test-result';
+                if (condition) {
+                    div.innerHTML = `<span class="success">✓ 成功:</span> ${message}`;
+                    testsPassed++;
+                } else {
+                    div.innerHTML = `<span class="failure">✗ 失敗:</span> ${message}`;
+                }
+                results.appendChild(div);
+            }
+
+            // テスト1: 初期盤面のテスト
+            function testInitialBoard() {
+                let board = Array(8).fill().map(() => Array(8).fill(EMPTY));
+                board[3][3] = WHITE;
+                board[3][4] = BLACK;
+                board[4][3] = BLACK;
+                board[4][4] = WHITE;
+
+                assert(board[3][3] === WHITE, "初期配置: (3,3)が白である");
+                assert(board[3][4] === BLACK, "初期配置: (3,4)が黒である");
+                assert(board[4][3] === BLACK, "初期配置: (4,3)が黒である");
+                assert(board[4][4] === WHITE, "初期配置: (4,4)が白である");
+                assert(board[0][0] === EMPTY, "初期配置: (0,0)が空である");
+            }
+
+            // テスト2: 有効な手の判定テスト
+            function testValidMoves() {
+                let board = Array(8).fill().map(() => Array(8).fill(EMPTY));
+                board[3][3] = WHITE;
+                board[3][4] = BLACK;
+                board[4][3] = BLACK;
+                board[4][4] = WHITE;
+
+                let currentPlayer = BLACK;
+                
+                function isValidMove(row, col) {
+                    if (board[row][col] !== EMPTY) return false;
+                    const directions = [
+                        [-1,-1], [-1,0], [-1,1],
+                        [0,-1],          [0,1],
+                        [1,-1],  [1,0],  [1,1]
+                    ];
+                    
+                    return directions.some(([dx, dy]) => {
+                        let x = row + dx;
+                        let y = col + dy;
+                        let hasOpponent = false;
+                        
+                        while (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                            if (board[x][y] === EMPTY) return false;
+                            if (board[x][y] === currentPlayer) {
+                                return hasOpponent;
+                            }
+                            hasOpponent = true;
+                            x += dx;
+                            y += dy;
+                        }
+                        return false;
+                    });
+                }
+
+                assert(isValidMove(2, 3), "黒の有効な手: (2,3)に置ける");
+                assert(isValidMove(3, 2), "黒の有効な手: (3,2)に置ける");
+                assert(!isValidMove(0, 0), "黒の無効な手: (0,0)に置けない");
+                assert(!isValidMove(3, 3), "黒の無効な手: 既に石がある場所に置けない");
+            }
+
+            // テスト3: 石を裏返すテスト
+            function testFlipStones() {
+                let board = Array(8).fill().map(() => Array(8).fill(EMPTY));
+                board[3][3] = WHITE;
+                board[3][4] = BLACK;
+                board[4][3] = BLACK;
+                board[4][4] = WHITE;
+
+                let currentPlayer = BLACK;
+                
+                function flipStones(row, col) {
+                    const directions = [
+                        [-1,-1], [-1,0], [-1,1],
+                        [0,-1],          [0,1],
+                        [1,-1],  [1,0],  [1,1]
+                    ];
+                    
+                    directions.forEach(([dx, dy]) => {
+                        let x = row + dx;
+                        let y = col + dy;
+                        let stonesToFlip = [];
+                        
+                        while (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                            if (board[x][y] === EMPTY) break;
+                            if (board[x][y] === currentPlayer) {
+                                stonesToFlip.forEach(([r, c]) => {
+                                    board[r][c] = currentPlayer;
+                                });
+                                break;
+                            }
+                            stonesToFlip.push([x, y]);
+                            x += dx;
+                            y += dy;
+                        }
+                    });
+                }
+
+                // 黒を(2,3)に置く
+                board[2][3] = BLACK;
+                flipStones(2, 3);
+                assert(board[3][3] === BLACK, "石の裏返し: (3,3)が黒に裏返る");
+            }
+
+            // テスト4: スコアカウントのテスト
+            function testScoreCount() {
+                let board = Array(8).fill().map(() => Array(8).fill(EMPTY));
+                board[3][3] = WHITE;
+                board[3][4] = BLACK;
+                board[4][3] = BLACK;
+                board[4][4] = WHITE;
+
+                let blackCount = 0;
+                let whiteCount = 0;
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        if (board[i][j] === BLACK) blackCount++;
+                        if (board[i][j] === WHITE) whiteCount++;
+                    }
+                }
+
+                assert(blackCount === 2, "初期スコア: 黒が2個");
+                assert(whiteCount === 2, "初期スコア: 白が2個");
+            }
+
+            // すべてのテストを実行
+            testInitialBoard();
+            testValidMoves();
+            testFlipStones();
+            testScoreCount();
+
+            // テスト結果のサマリーを表示
+            const summary = document.createElement('div');
+            summary.innerHTML = `<h2>テスト結果: ${testsPassed}/${totalTests} 成功</h2>`;
+            results.insertBefore(summary, results.firstChild);
+        }
+
+        // テストを実行
+        runTests();
+    </script>
+</body>
+</html> 
