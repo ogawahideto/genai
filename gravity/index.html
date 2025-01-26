@@ -82,7 +82,7 @@
             velocityY: 0,
             initialVelocity: 5,
             direction: 0,
-            maxVelocity: 10,
+            maxVelocity: 20, // Changed from 10 to 20
             minVelocity: 1
         };
 
@@ -235,7 +235,7 @@
         }
 
         function handleSetupInput() {
-            const rotationSpeed = 0.025; // Reduced by half
+            const rotationSpeed = 0.025;
             const velocityChange = 0.2;
 
             if (keys.ArrowLeft) {
