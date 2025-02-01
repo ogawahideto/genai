@@ -588,7 +588,7 @@
         y: 0,
         width: fallingWidth,
         height: fallingHeight,
-        speed: baseSpeed + score * 0.01  // 得点が上がるほど速くなる
+        speed: baseSpeed + (score % 200) * 0.01  // レベル内で得点が上がるほど速くなる
       };
     }
 
@@ -672,6 +672,10 @@
           if (fallingWord.vocab.jap === colStack[i].vocab.jap) {
             colStack.splice(i, 1);
             score += 10;
+            // レベルアップ判定（スコアが200の倍数になった時）
+            if (score % 200 === 0) {
+              fallingWord.speed = baseSpeed; // スピードを初期値に戻す
+            }
             if (colStack.length === 0) {
               colStack.push({ vocab: getRandomVocab(), column: currentColumn });
             }
@@ -689,6 +693,10 @@
           columns[currentColumn].pop();
           columns[currentColumn].push({ vocab: getRandomVocab(), column: currentColumn });
           score += 10;
+          // レベルアップ判定（スコアが200の倍数になった時）
+          if (score % 200 === 0) {
+            fallingWord.speed = baseSpeed; // スピードを初期値に戻す
+          }
         } else {
             // 不正解の場合：同じ単語が連続して出題されないように、
             // 本来の正解（fallingWord.vocab）とは異なる語彙に置き換える
@@ -744,11 +752,30 @@
       ctx.textBaseline = "middle";
       ctx.fillText(fallingWord.vocab.jap, fallingWord.x + fallingWord.width / 2, fallingWord.y + fallingWord.height / 2);
 
-      // 得点表示
+      // 得点とレベル表示
       ctx.fillStyle = "#000";
       ctx.font = "20px sans-serif";
       ctx.textAlign = "left";
       ctx.fillText("Score: " + score, 10, 30);
+      ctx.fillText("Level: " + (Math.floor(score / 200) + 1), 10, 60);
+    }
+
+    /*******************************
+     * ゲームリセット
+     *******************************/
+    function resetGame() {
+      score = 0;
+      gameOver = false;
+      // 列のリセット
+      columns = [];
+      for (let i = 0; i < columnCount; i++) {
+        columns[i] = [];
+        columns[i].push({ vocab: getRandomVocab(), column: i });
+      }
+      // 新しい落下ブロックの生成
+      spawnFallingWord();
+      // ゲームループ再開
+      requestAnimationFrame(gameLoop);
     }
 
     /*******************************
@@ -764,7 +791,58 @@
       ctx.fillText("GAME OVER", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
       ctx.font = "24px sans-serif";
       ctx.fillText("Score: " + score, CANVAS_WIDTH/2, CANVAS_HEIGHT/2 + 40);
+
+      // リスタートボタンの描画
+      const buttonWidth = 200;
+      const buttonHeight = 50;
+      const buttonX = CANVAS_WIDTH/2 - buttonWidth/2;
+      const buttonY = CANVAS_HEIGHT/2 + 100;
+      
+      ctx.fillStyle = "#4CAF50";
+      ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+      ctx.fillStyle = "#fff";
+      ctx.font = "24px sans-serif";
+      ctx.fillText("Restart", CANVAS_WIDTH/2, buttonY + buttonHeight/2);
     }
+
+    // リスタートボタンのクリック判定
+    canvas.addEventListener("click", function(e) {
+      if (!gameOver) return;
+
+      const buttonWidth = 200;
+      const buttonHeight = 50;
+      const buttonX = CANVAS_WIDTH/2 - buttonWidth/2;
+      const buttonY = CANVAS_HEIGHT/2 + 100;
+
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      if (clickX >= buttonX && clickX <= buttonX + buttonWidth &&
+          clickY >= buttonY && clickY <= buttonY + buttonHeight) {
+        resetGame();
+      }
+    });
+
+    // タッチデバイス用のリスタートボタン処理
+    canvas.addEventListener("touchend", function(e) {
+      if (!gameOver) return;
+
+      const buttonWidth = 200;
+      const buttonHeight = 50;
+      const buttonX = CANVAS_WIDTH/2 - buttonWidth/2;
+      const buttonY = CANVAS_HEIGHT/2 + 100;
+
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.changedTouches[0];
+      const touchX = touch.clientX - rect.left;
+      const touchY = touch.clientY - rect.top;
+
+      if (touchX >= buttonX && touchX <= buttonX + buttonWidth &&
+          touchY >= buttonY && touchY <= buttonY + buttonHeight) {
+        resetGame();
+      }
+    });
 
     // ゲームループ開始
     requestAnimationFrame(gameLoop);
