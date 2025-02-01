@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>英単語学習ゲーム</title>
+  <style>
+    body { background-color: #fafafa; }
+    canvas {
+      background-color: #eee;
+      display: block;
+      margin: 20px auto;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <script>
+    /*******************************
+     * 語彙リストと語彙取得関数
+     *******************************/
+     const vocabularyList = [
+  // Level 1: 150語
+  { eng: "apple",             jap: "林檎",         level: 1 },
+  { eng: "cat",               jap: "猫",           level: 1 },
+  { eng: "dog",               jap: "犬",           level: 1 },
+  { eng: "book",              jap: "本",           level: 1 },
+  { eng: "water",             jap: "水",           level: 1 },
+  { eng: "school",            jap: "学校",         level: 1 },
+  { eng: "house",             jap: "家",           level: 1 },
+  { eng: "car",               jap: "車",           level: 1 },
+  { eng: "tree",              jap: "木",           level: 1 },
+  { eng: "flower",            jap: "花",           level: 1 },
+  { eng: "sun",               jap: "太陽",         level: 1 },
+  { eng: "moon",              jap: "月",           level: 1 },
+  { eng: "star",              jap: "星",           level: 1 },
+  { eng: "friend",            jap: "友達",         level: 1 },
+  { eng: "family",            jap: "家族",         level: 1 },
+  { eng: "love",              jap: "愛",           level: 1 },
+  { eng: "happy",             jap: "幸せ",         level: 1 },
+  { eng: "sad",               jap: "悲しい",       level: 1 },
+  { eng: "run",               jap: "走る",         level: 1 },
+  { eng: "walk",              jap: "歩く",         level: 1 },
+  { eng: "jump",              jap: "飛ぶ",         level: 1 },
+  { eng: "eat",               jap: "食べる",       level: 1 },
+  { eng: "drink",             jap: "飲む",         level: 1 },
+  { eng: "sleep",             jap: "寝る",         level: 1 },
+  { eng: "read",              jap: "読む",         level: 1 },
+  { eng: "write",             jap: "書く",         level: 1 },
+  { eng: "pen",               jap: "ペン",         level: 1 },
+  { eng: "paper",             jap: "紙",           level: 1 },
+  { eng: "chair",             jap: "椅子",         level: 1 },
+  { eng: "table",             jap: "机",           level: 1 },
+  { eng: "window",            jap: "窓",           level: 1 },
+  { eng: "door",              jap: "扉",           level: 1 },
+  { eng: "city",              jap: "町",           level: 1 },
+  { eng: "country",           jap: "国",           level: 1 },
+  { eng: "river",             jap: "川",           level: 1 },
+  { eng: "sky",               jap: "空",           level: 1 },
+  { eng: "sea",               jap: "海",           level: 1 },
+  { eng: "beach",             jap: "浜辺",         level: 1 },
+  { eng: "food",              jap: "食べ物",       level: 1 },
+  { eng: "juice",             jap: "ジュース",     level: 1 },
+  { eng: "coffee",            jap: "コーヒー",     level: 1 },
+  { eng: "tea",               jap: "お茶",         level: 1 },
+  { eng: "milk",              jap: "牛乳",         level: 1 },
+  { eng: "bread",             jap: "パン",         level: 1 },
+  { eng: "rice",              jap: "ご飯",         level: 1 },
+  { eng: "egg",               jap: "卵",           level: 1 },
+  { eng: "fish",              jap: "魚",           level: 1 },
+  { eng: "meat",              jap: "肉",           level: 1 },
+  { eng: "vegetable",         jap: "野菜",         level: 1 },
+  { eng: "fruit",             jap: "果物",         level: 1 },
+  { eng: "banana",            jap: "バナナ",       level: 1 },
+  { eng: "orange",            jap: "オレンジ",     level: 1 },
+  { eng: "grape",             jap: "葡萄",         level: 1 },
+  { eng: "strawberry",        jap: "苺",           level: 1 },
+  { eng: "lemon",             jap: "レモン",       level: 1 },
+  { eng: "sugar",             jap: "砂糖",         level: 1 },
+  { eng: "salt",              jap: "塩",           level: 1 },
+  { eng: "pepper",            jap: "胡椒",         level: 1 },
+  { eng: "oil",               jap: "油",           level: 1 },
+  { eng: "soup",              jap: "スープ",       level: 1 },
+  { eng: "salad",             jap: "サラダ",       level: 1 },
+  { eng: "cake",              jap: "ケーキ",       level: 1 },
+  { eng: "cookie",            jap: "クッキー",     level: 1 },
+  { eng: "chocolate",         jap: "チョコレート", level: 1 },
+  { eng: "candy",             jap: "キャンディ",   level: 1 },
+  { eng: "ice",               jap: "氷",           level: 1 },
+  { eng: "snow",              jap: "雪",           level: 1 },
+  { eng: "rain",              jap: "雨",           level: 1 },
+  { eng: "wind",              jap: "風",           level: 1 },
+  { eng: "cloud",             jap: "雲",           level: 1 },
+  { eng: "storm",             jap: "嵐",           level: 1 },
+  { eng: "thunder",           jap: "雷",           level: 1 },
+  { eng: "lightning",         jap: "稲妻",         level: 1 },
+  { eng: "hot",               jap: "暑い",         level: 1 },
+  { eng: "cold",              jap: "寒い",         level: 1 },
+  { eng: "warm",              jap: "暖かい",       level: 1 },
+  { eng: "cool",              jap: "涼しい",       level: 1 },
+  { eng: "big",               jap: "大きい",       level: 1 },
+  { eng: "small",             jap: "小さい",       level: 1 },
+  { eng: "long",              jap: "長い",         level: 1 },
+  { eng: "short",             jap: "短い",         level: 1 },
+  { eng: "tall",              jap: "背が高い",     level: 1 },
+  { eng: "heavy",             jap: "重い",         level: 1 },
+  { eng: "light",             jap: "軽い",         level: 1 },
+  { eng: "fast",              jap: "速い",         level: 1 },
+  { eng: "slow",              jap: "遅い",         level: 1 },
+  { eng: "new",               jap: "新しい",       level: 1 },
+  { eng: "old",               jap: "古い",         level: 1 },
+  { eng: "good",              jap: "良い",         level: 1 },
+  { eng: "bad",               jap: "悪い",         level: 1 },
+  { eng: "clean",             jap: "綺麗",         level: 1 },
+  { eng: "dirty",             jap: "汚い",         level: 1 },
+  { eng: "smile",             jap: "笑顔",         level: 1 },
+  { eng: "laugh",             jap: "笑う",         level: 1 },
+  { eng: "cry",               jap: "泣く",         level: 1 },
+  { eng: "angry",             jap: "怒る",         level: 1 },
+  { eng: "music",             jap: "音楽",         level: 1 },
+  { eng: "song",              jap: "歌",           level: 1 },
+  { eng: "dance",             jap: "踊る",         level: 1 },
+  { eng: "art",               jap: "美術",         level: 1 },
+  { eng: "picture",           jap: "写真",         level: 1 },
+  { eng: "movie",             jap: "映画",         level: 1 },
+  { eng: "game",              jap: "ゲーム",       level: 1 },
+  { eng: "sport",             jap: "スポーツ",     level: 1 },
+  { eng: "ball",              jap: "ボール",       level: 1 },
+  { eng: "phone",             jap: "電話",         level: 1 },
+  { eng: "clock",             jap: "時計",         level: 1 },
+  { eng: "watch",             jap: "腕時計",       level: 1 },
+  { eng: "bed",               jap: "ベッド",       level: 1 },
+  { eng: "pillow",            jap: "枕",           level: 1 },
+  { eng: "floor",             jap: "床",           level: 1 },
+  { eng: "ceiling",           jap: "天井",         level: 1 },
+  { eng: "wall",              jap: "壁",           level: 1 },
+  { eng: "bookcase",          jap: "本棚",         level: 1 },
+  { eng: "bag",               jap: "バッグ",       level: 1 },
+  { eng: "pencil",            jap: "鉛筆",         level: 1 },
+  { eng: "eraser",            jap: "消しゴム",     level: 1 },
+  { eng: "ruler",             jap: "定規",         level: 1 },
+  { eng: "scissors",          jap: "鋏",           level: 1 },
+  { eng: "notebook",          jap: "ノート",       level: 1 },
+  { eng: "lesson",            jap: "授業",         level: 1 },
+  { eng: "teacher",           jap: "先生",         level: 1 },
+  { eng: "student",           jap: "生徒",         level: 1 },
+  { eng: "exam",              jap: "試験",         level: 1 },
+  { eng: "test",              jap: "テスト",       level: 1 },
+  { eng: "grade",             jap: "成績",         level: 1 },
+  { eng: "class",             jap: "クラス",       level: 1 },
+  { eng: "break",             jap: "休憩",         level: 1 },
+  { eng: "neighbor",          jap: "隣の人",       level: 1 },
+  { eng: "market",            jap: "市場",         level: 1 },
+  { eng: "shop",              jap: "店",           level: 1 },
+  { eng: "store",             jap: "商店",         level: 1 },
+  { eng: "money",             jap: "お金",         level: 1 },
+  { eng: "bank",              jap: "銀行",         level: 1 },
+  { eng: "work",              jap: "仕事",         level: 1 },
+  { eng: "office",            jap: "事務所",       level: 1 },
+  { eng: "vacation",          jap: "休暇",         level: 1 },
+  { eng: "travel",            jap: "旅行",         level: 1 },
+  { eng: "ticket",            jap: "切符",         level: 1 },
+  { eng: "airport",           jap: "空港",         level: 1 },
+  { eng: "garden",            jap: "庭",           level: 1 },
+  { eng: "flowerbed",         jap: "花壇",         level: 1 },
+  { eng: "fountain",          jap: "噴水",         level: 1 },
+  { eng: "statue",            jap: "像",           level: 1 },
+  { eng: "roadway",           jap: "道路",         level: 1 },
+  { eng: "alley",             jap: "路地",         level: 1 },
+  { eng: "bazaar",            jap: "バザール",     level: 1 },
+  { eng: "village",           jap: "村",           level: 1 },
+  { eng: "farm",              jap: "農場",         level: 1 },
+  { eng: "countryside",       jap: "田舎",         level: 1 },
+
+  // Level 2: 150語
+  { eng: "mountain",          jap: "山",             level: 2 },
+  { eng: "computer",          jap: "コンピュータ",   level: 2 },
+  { eng: "electricity",       jap: "電気",           level: 2 },
+  { eng: "bicycle",           jap: "自転車",         level: 2 },
+  { eng: "bus",               jap: "バス",           level: 2 },
+  { eng: "train",             jap: "電車",           level: 2 },
+  { eng: "airplane",          jap: "飛行機",         level: 2 },
+  { eng: "ship",              jap: "船",             level: 2 },
+  { eng: "road",              jap: "道",             level: 2 },
+  { eng: "bridge",            jap: "橋",             level: 2 },
+  { eng: "park",              jap: "公園",           level: 2 },
+  { eng: "museum",            jap: "博物館",         level: 2 },
+  { eng: "library",           jap: "図書館",         level: 2 },
+  { eng: "restaurant",        jap: "レストラン",     level: 2 },
+  { eng: "hotel",             jap: "ホテル",         level: 2 },
+  { eng: "theater",           jap: "劇場",           level: 2 },
+  { eng: "station",           jap: "駅",             level: 2 },
+  { eng: "lake",              jap: "湖",             level: 2 },
+  { eng: "forest",            jap: "森",             level: 2 },
+  { eng: "desert",            jap: "砂漠",           level: 2 },
+  { eng: "island",            jap: "島",             level: 2 },
+  { eng: "valley",            jap: "谷",             level: 2 },
+  { eng: "hill",              jap: "丘",             level: 2 },
+  { eng: "plain",             jap: "平原",           level: 2 },
+  { eng: "climate",           jap: "気候",           level: 2 },
+  { eng: "weather",           jap: "天気",           level: 2 },
+  { eng: "season",            jap: "季節",           level: 2 },
+  { eng: "spring",            jap: "春",             level: 2 },
+  { eng: "summer",            jap: "夏",             level: 2 },
+  { eng: "autumn",            jap: "秋",             level: 2 },
+  { eng: "winter",            jap: "冬",             level: 2 },
+  { eng: "plant",             jap: "植物",           level: 2 },
+  { eng: "animal",            jap: "動物",           level: 2 },
+  { eng: "insect",            jap: "虫",             level: 2 },
+  { eng: "bird",              jap: "鳥",             level: 2 },
+  { eng: "reptile",           jap: "爬虫類",         level: 2 },
+  { eng: "mammal",            jap: "哺乳動物",       level: 2 },
+  { eng: "space",             jap: "宇宙",           level: 2 },
+  { eng: "planet",            jap: "惑星",           level: 2 },
+  { eng: "comet",             jap: "彗星",           level: 2 },
+  { eng: "galaxy",            jap: "銀河",           level: 2 },
+  { eng: "energy",            jap: "エネルギー",     level: 2 },
+  { eng: "power",             jap: "力",             level: 2 },
+  { eng: "force",             jap: "力",             level: 2 },
+  { eng: "machine",           jap: "機械",           level: 2 },
+  { eng: "robot",             jap: "ロボット",       level: 2 },
+  { eng: "circuit",           jap: "回路",           level: 2 },
+  { eng: "software",          jap: "ソフトウェア",   level: 2 },
+  { eng: "hardware",          jap: "ハードウェア",   level: 2 },
+  { eng: "internet",          jap: "インターネット", level: 2 },
+  { eng: "network",           jap: "ネットワーク",   level: 2 },
+  { eng: "signal",            jap: "信号",           level: 2 },
+  { eng: "data",              jap: "データ",         level: 2 },
+  { eng: "information",       jap: "情報",           level: 2 },
+  { eng: "science",           jap: "科学",           level: 2 },
+  { eng: "biology",           jap: "生物学",         level: 2 },
+  { eng: "chemistry",         jap: "化学",           level: 2 },
+  { eng: "physics",           jap: "物理",           level: 2 },
+  { eng: "geometry",          jap: "幾何学",         level: 2 },
+  { eng: "algebra",           jap: "代数学",         level: 2 },
+  { eng: "calculus",          jap: "微積分",         level: 2 },
+  { eng: "history",           jap: "歴史",           level: 2 },
+  { eng: "geography",         jap: "地理",           level: 2 },
+  { eng: "politics",          jap: "政治",           level: 2 },
+  { eng: "culture",           jap: "文化",           level: 2 },
+  { eng: "language",          jap: "言語",           level: 2 },
+  { eng: "dance",             jap: "踊り",           level: 2 },
+  { eng: "design",            jap: "デザイン",       level: 2 },
+  { eng: "engineering",       jap: "工学",           level: 2 },
+  { eng: "medicine",          jap: "医学",           level: 2 },
+  { eng: "doctor",            jap: "医者",           level: 2 },
+  { eng: "nurse",             jap: "看護師",         level: 2 },
+  { eng: "hospital",          jap: "病院",           level: 2 },
+  { eng: "pharmacy",          jap: "薬局",           level: 2 },
+  { eng: "disease",           jap: "病気",           level: 2 },
+  { eng: "virus",             jap: "ウイルス",       level: 2 },
+  { eng: "bacteria",          jap: "細菌",           level: 2 },
+  { eng: "vaccine",           jap: "ワクチン",       level: 2 },
+  { eng: "health",            jap: "健康",           level: 2 },
+  { eng: "diet",              jap: "食事",           level: 2 },
+  { eng: "exercise",          jap: "運動",           level: 2 },
+  { eng: "competition",       jap: "競争",           level: 2 },
+  { eng: "victory",           jap: "勝利",           level: 2 },
+  { eng: "defeat",            jap: "敗北",           level: 2 },
+  { eng: "record",            jap: "記録",           level: 2 },
+  { eng: "score",             jap: "点",             level: 2 },
+  { eng: "match",             jap: "試合",           level: 2 },
+  { eng: "tournament",        jap: "大会",           level: 2 },
+  { eng: "championship",      jap: "選手権",         level: 2 },
+  { eng: "career",            jap: "職業",           level: 2 },
+  { eng: "company",           jap: "会社",           level: 2 },
+  { eng: "business",          jap: "ビジネス",       level: 2 },
+  { eng: "market",            jap: "市場",           level: 2 },
+  { eng: "industry",          jap: "業界",           level: 2 },
+  { eng: "product",           jap: "製品",           level: 2 },
+  { eng: "service",           jap: "サービス",       level: 2 },
+  { eng: "customer",          jap: "客",             level: 2 },
+  { eng: "price",             jap: "値段",           level: 2 },
+  { eng: "cost",              jap: "費用",           level: 2 },
+  { eng: "trade",             jap: "貿易",           level: 2 },
+  { eng: "export",            jap: "輸出",           level: 2 },
+  { eng: "import",            jap: "輸入",           level: 2 },
+  { eng: "currency",          jap: "通貨",           level: 2 },
+  { eng: "inflation",         jap: "インフレーション", level: 2 },
+  { eng: "deflation",         jap: "デフレーション", level: 2 },
+  { eng: "investment",        jap: "投資",           level: 2 },
+  { eng: "profit",            jap: "利益",           level: 2 },
+  { eng: "loss",              jap: "損失",           level: 2 },
+  { eng: "tax",               jap: "税金",           level: 2 },
+  { eng: "government",        jap: "政府",           level: 2 },
+  { eng: "policy",            jap: "政策",           level: 2 },
+  { eng: "law",               jap: "法律",           level: 2 },
+  { eng: "justice",           jap: "正義",           level: 2 },
+  { eng: "court",             jap: "裁判所",         level: 2 },
+  { eng: "election",          jap: "選挙",           level: 2 },
+  { eng: "vote",              jap: "投票",           level: 2 },
+  { eng: "democracy",         jap: "民主主義",       level: 2 },
+  { eng: "republic",          jap: "共和国",         level: 2 },
+  { eng: "constitution",      jap: "憲法",           level: 2 },
+  { eng: "amendment",         jap: "修正",           level: 2 },
+  { eng: "independence",      jap: "独立",           level: 2 },
+  { eng: "union",             jap: "連合",           level: 2 },
+  { eng: "conflict",          jap: "衝突",           level: 2 },
+  { eng: "peace",             jap: "平和",           level: 2 },
+  { eng: "war",               jap: "戦争",           level: 2 },
+  { eng: "soldier",           jap: "兵士",           level: 2 },
+  { eng: "army",              jap: "軍隊",           level: 2 },
+  { eng: "battle",            jap: "戦闘",           level: 2 },
+  { eng: "weapon",            jap: "武器",           level: 2 },
+  { eng: "gun",               jap: "銃",             level: 2 },
+  { eng: "missile",           jap: "ミサイル",       level: 2 },
+  { eng: "bomb",              jap: "爆弾",           level: 2 },
+  { eng: "security",          jap: "安全",           level: 2 },
+  { eng: "surveillance",      jap: "監視",           level: 2 },
+  { eng: "intelligence",      jap: "諜報",           level: 2 },
+  { eng: "technology",        jap: "技術",           level: 2 },
+  { eng: "innovation",        jap: "革新",           level: 2 },
+  { eng: "research",          jap: "研究",           level: 2 },
+  { eng: "development",       jap: "開発",           level: 2 },
+  { eng: "experiment",        jap: "実験",           level: 2 },
+  { eng: "discovery",         jap: "発見",           level: 2 },
+  { eng: "theory",            jap: "理論",           level: 2 },
+  { eng: "model",             jap: "モデル",         level: 2 },
+  { eng: "analysis",          jap: "分析",           level: 2 },
+  { eng: "method",            jap: "方法",           level: 2 },
+  { eng: "process",           jap: "プロセス",       level: 2 },
+  { eng: "system",            jap: "システム",       level: 2 },
+  { eng: "structure",         jap: "構造",           level: 2 },
+  { eng: "function",          jap: "機能",           level: 2 },
+
+  // Level 3: 150語
+  { eng: "philosophy",              jap: "哲学",             level: 3 },
+  { eng: "literature",              jap: "文学",             level: 3 },
+  { eng: "economics",               jap: "経済学",           level: 3 },
+  { eng: "psychology",              jap: "心理学",           level: 3 },
+  { eng: "sociology",               jap: "社会学",           level: 3 },
+  { eng: "anthropology",            jap: "人類学",           level: 3 },
+  { eng: "archaeology",             jap: "考古学",           level: 3 },
+  { eng: "linguistics",             jap: "言語学",           level: 3 },
+  { eng: "semantics",               jap: "意味論",           level: 3 },
+  { eng: "pragmatics",              jap: "語用論",           level: 3 },
+  { eng: "neurology",               jap: "神経学",           level: 3 },
+  { eng: "biochemistry",            jap: "生化学",           level: 3 },
+  { eng: "genetics",                jap: "遺伝学",           level: 3 },
+  { eng: "microbiology",            jap: "微生物学",         level: 3 },
+  { eng: "quantum mechanics",       jap: "量子力学",         level: 3 },
+  { eng: "relativity",              jap: "相対性理論",       level: 3 },
+  { eng: "astrophysics",            jap: "天体物理学",       level: 3 },
+  { eng: "cosmology",               jap: "宇宙論",           level: 3 },
+  { eng: "topology",                jap: "位相幾何学",       level: 3 },
+  { eng: "differential equations",  jap: "微分方程式",       level: 3 },
+  { eng: "statistics",              jap: "統計学",           level: 3 },
+  { eng: "probability",             jap: "確率",             level: 3 },
+  { eng: "algorithm",               jap: "アルゴリズム",     level: 3 },
+  { eng: "computation",             jap: "計算",             level: 3 },
+  { eng: "cryptography",            jap: "暗号学",           level: 3 },
+  { eng: "phenomenology",           jap: "現象学",           level: 3 },
+  { eng: "existentialism",          jap: "実存主義",         level: 3 },
+  { eng: "postmodernism",           jap: "ポストモダニズム",   level: 3 },
+  { eng: "deconstruction",          jap: "脱構築",           level: 3 },
+  { eng: "hermeneutics",            jap: "解釈学",           level: 3 },
+  { eng: "aesthetics",              jap: "美学",             level: 3 },
+  { eng: "ethics",                  jap: "倫理学",           level: 3 },
+  { eng: "epistemology",            jap: "認識論",           level: 3 },
+  { eng: "metaphysics",             jap: "形而上学",         level: 3 },
+  { eng: "ontology",                jap: "存在論",           level: 3 },
+  { eng: "logic",                   jap: "論理",             level: 3 },
+  { eng: "rhetoric",                jap: "修辞学",           level: 3 },
+  { eng: "semiotics",               jap: "記号論",           level: 3 },
+  { eng: "poetics",                 jap: "詩学",             level: 3 },
+  { eng: "dramaturgy",              jap: "演劇論",           level: 3 },
+  { eng: "mythology",               jap: "神話",             level: 3 },
+  { eng: "folklore",                jap: "民話",             level: 3 },
+  { eng: "cyberculture",            jap: "サイバー文化",       level: 3 },
+  { eng: "virtualization",          jap: "仮想化",           level: 3 },
+  { eng: "nanotechnology",          jap: "ナノテクノロジー",   level: 3 },
+  { eng: "biotechnology",           jap: "バイオテクノロジー", level: 3 },
+  { eng: "sustainability",          jap: "持続可能性",       level: 3 },
+  { eng: "globalization",           jap: "グローバリゼーション", level: 3 },
+  { eng: "neoliberalism",           jap: "新自由主義",       level: 3 },
+  { eng: "conservatism",            jap: "保守主義",         level: 3 },
+  { eng: "liberalism",              jap: "自由主義",         level: 3 },
+  { eng: "socialism",               jap: "社会主義",         level: 3 },
+  { eng: "capitalism",              jap: "資本主義",         level: 3 },
+  { eng: "anarchism",               jap: "無政府主義",       level: 3 },
+  { eng: "stoicism",                jap: "ストイシズム",     level: 3 },
+  { eng: "epicureanism",            jap: "エピキュリアニズム", level: 3 },
+  { eng: "skepticism",              jap: "懐疑主義",         level: 3 },
+  { eng: "relativism",              jap: "相対主義",         level: 3 },
+  { eng: "constructivism",          jap: "構成主義",         level: 3 },
+  { eng: "poststructuralism",       jap: "ポスト構造主義",   level: 3 },
+  { eng: "decolonization",          jap: "脱植民地化",       level: 3 },
+  { eng: "democratization",         jap: "民主化",           level: 3 },
+  { eng: "urbanization",            jap: "都市化",           level: 3 },
+  { eng: "industrialization",       jap: "工業化",           level: 3 },
+  { eng: "modernization",           jap: "近代化",           level: 3 },
+  { eng: "electrification",         jap: "電化",             level: 3 },
+  { eng: "automation",              jap: "自動化",           level: 3 },
+  { eng: "digitalization",          jap: "デジタル化",       level: 3 },
+  { eng: "simulation",              jap: "シミュレーション", level: 3 },
+  { eng: "augmentation",           jap: "拡張",             level: 3 },
+  { eng: "integration",             jap: "統合",             level: 3 },
+  { eng: "fragmentation",           jap: "断片化",           level: 3 },
+  { eng: "convergence",             jap: "収束",             level: 3 },
+  { eng: "divergence",              jap: "発散",             level: 3 },
+  { eng: "paradigm",                jap: "パラダイム",       level: 3 },
+  { eng: "anomaly",                 jap: "異常",             level: 3 },
+  { eng: "entropy",                 jap: "エントロピー",     level: 3 },
+  { eng: "chaos",                   jap: "カオス",           level: 3 },
+  { eng: "complexity",              jap: "複雑性",           level: 3 },
+  { eng: "emergence",               jap: "出現",             level: 3 },
+  { eng: "self-organization",       jap: "自己組織化",       level: 3 },
+  { eng: "network theory",          jap: "ネットワーク理論", level: 3 },
+  { eng: "game theory",             jap: "ゲーム理論",       level: 3 },
+  { eng: "decision theory",         jap: "意思決定論",       level: 3 },
+  { eng: "probability theory",      jap: "確率論",           level: 3 },
+  { eng: "advanced statistics",     jap: "高度統計学",       level: 3 },
+  { eng: "econometrics",            jap: "計量経済学",       level: 3 },
+  { eng: "behavioral economics",    jap: "行動経済学",       level: 3 },
+  { eng: "game design",             jap: "ゲームデザイン",   level: 3 },
+  { eng: "interface",               jap: "インターフェース", level: 3 },
+  { eng: "user experience",         jap: "利用者体験",       level: 3 },
+  { eng: "algorithmic",             jap: "アルゴリズミック", level: 3 },
+  { eng: "computational",           jap: "計算的",           level: 3 },
+  { eng: "stochastic",              jap: "確率的",           level: 3 },
+  { eng: "dynamical",               jap: "動的",             level: 3 },
+  { eng: "statistical mechanics",   jap: "統計力学",         level: 3 },
+  { eng: "fluid dynamics",          jap: "流体力学",         level: 3 },
+  { eng: "thermodynamics",          jap: "熱力学",           level: 3 },
+  { eng: "advanced astrophysics",   jap: "高度天体物理学",   level: 3 },
+  { eng: "particle physics",        jap: "素粒子物理学",     level: 3 },
+  { eng: "nanoscience",             jap: "ナノサイエンス",   level: 3 },
+  { eng: "photonics",               jap: "フォトニクス",     level: 3 },
+  { eng: "optoelectronics",         jap: "オプトエレクトロニクス", level: 3 },
+  { eng: "semiconductor",           jap: "半導体",           level: 3 },
+  { eng: "superconductivity",       jap: "超伝導",           level: 3 },
+  { eng: "magnetism",               jap: "磁気",             level: 3 },
+  { eng: "crystallography",         jap: "結晶学",           level: 3 },
+  { eng: "mineralogy",              jap: "鉱物学",           level: 3 },
+  { eng: "geology",                 jap: "地質学",           level: 3 },
+  { eng: "seismology",              jap: "地震学",           level: 3 },
+  { eng: "volcanology",             jap: "火山学",           level: 3 },
+  { eng: "oceanography",            jap: "海洋学",           level: 3 },
+  { eng: "meteorology",             jap: "気象学",           level: 3 },
+  { eng: "climatology",             jap: "気候学",           level: 3 },
+  { eng: "agronomy",                jap: "農学",             level: 3 },
+  { eng: "horticulture",            jap: "園芸",             level: 3 },
+  { eng: "mycology",                jap: "菌学",             level: 3 },
+  { eng: "ornithology",             jap: "鳥類学",           level: 3 },
+  { eng: "entomology",              jap: "昆虫学",           level: 3 },
+  { eng: "advanced psychology",     jap: "高度心理学",       level: 3 },
+  { eng: "criminology",             jap: "犯罪学",           level: 3 },
+  { eng: "forensics",               jap: "鑑識学",           level: 3 },
+  { eng: "advanced linguistics",    jap: "高度言語学",       level: 3 },
+  { eng: "advanced semiotics",      jap: "高度記号論",       level: 3 },
+  { eng: "cyberpsychology",         jap: "サイバー心理学",     level: 3 },
+  { eng: "cultural studies",        jap: "文化研究",         level: 3 },
+  { eng: "media studies",           jap: "メディア研究",     level: 3 },
+  { eng: "communication theory",    jap: "コミュニケーション理論", level: 3 },
+  { eng: "international relations", jap: "国際関係",         level: 3 },
+  { eng: "security studies",        jap: "安全保障研究",     level: 3 },
+  { eng: "strategic studies",       jap: "戦略研究",         level: 3 },
+  { eng: "advanced game theory",    jap: "高度ゲーム理論",   level: 3 },
+  { eng: "behavioral science",      jap: "行動科学",         level: 3 },
+  { eng: "neuroscience",            jap: "神経科学",         level: 3 },
+  { eng: "pharmacology",            jap: "薬理学",           level: 3 },
+  { eng: "toxicology",              jap: "毒物学",           level: 3 },
+  { eng: "immunology",              jap: "免疫学",           level: 3 },
+  { eng: "virology",                jap: "ウイルス学",       level: 3 },
+  { eng: "epidemiology",            jap: "疫学",             level: 3 },
+  { eng: "geriatrics",              jap: "老年医学",         level: 3 },
+  { eng: "pediatrics",              jap: "小児科",           level: 3 },
+  { eng: "obstetrics",              jap: "産婦人科",         level: 3 },
+  { eng: "cardiology",              jap: "循環器学",         level: 3 },
+  { eng: "neurosurgery",            jap: "脳神経外科",       level: 3 },
+  { eng: "oncology",                jap: "腫瘍学",           level: 3 },
+  { eng: "hematology",              jap: "血液学",           level: 3 },
+  { eng: "nephrology",              jap: "腎臓学",           level: 3 },
+  { eng: "gastroenterology",       jap: "消化器学",         level: 3 },
+  { eng: "pulmonology",             jap: "呼吸器学",         level: 3 },
+  { eng: "endocrinology",           jap: "内分泌学",         level: 3 },
+
+  // Level 4: 50語
+  { eng: "revolution",                jap: "革命",                 level: 4 },
+  { eng: "architecture",              jap: "建築",                 level: 4 },
+  { eng: "jurisprudence",             jap: "法理学",               level: 4 },
+  { eng: "dialectics",                jap: "弁証法",               level: 4 },
+  { eng: "structuralism",             jap: "構造主義",             level: 4 },
+  { eng: "postcolonialism",           jap: "脱植民地主義",         level: 4 },
+  { eng: "hermeticism",               jap: "秘教主義",             level: 4 },
+  { eng: "solipsism",                 jap: "唯我論",               level: 4 },
+  { eng: "transcendentalism",         jap: "超越主義",             level: 4 },
+  { eng: "nihilism",                  jap: "虚無主義",             level: 4 },
+  { eng: "absurdism",                 jap: "不条理",               level: 4 },
+  { eng: "aporia",                    jap: "アポリア",             level: 4 },
+  { eng: "transcendence",             jap: "超越",                 level: 4 },
+  { eng: "infinitesimal",             jap: "無限小",               level: 4 },
+  { eng: "asymptotics",               jap: "漸近論",               level: 4 },
+  { eng: "hermeneutic circle",        jap: "解釈の循環",           level: 4 },
+  { eng: "semiotician",               jap: "記号学者",             level: 4 },
+  { eng: "epistemologist",            jap: "認識論者",             level: 4 },
+  { eng: "dialectician",              jap: "弁証家",               level: 4 },
+  { eng: "metaphysician",             jap: "形而上学者",           level: 4 },
+  { eng: "logician",                  jap: "論理学者",             level: 4 },
+  { eng: "existentialist",            jap: "実存主義者",           level: 4 },
+  { eng: "structuralist",             jap: "構造主義者",           level: 4 },
+  { eng: "poststructuralist",         jap: "ポスト構造主義者",     level: 4 },
+  { eng: "deconstructionist",         jap: "脱構築論者",           level: 4 },
+  { eng: "formalism",                 jap: "形式主義",             level: 4 },
+  { eng: "intuitionism",              jap: "直観主義",             level: 4 },
+  { eng: "advanced relativism",       jap: "高度相対主義",         level: 4 },
+  { eng: "advanced constructivism",   jap: "高度構成主義",         level: 4 },
+  { eng: "pragmatism",                jap: "実用主義",             level: 4 },
+  { eng: "empiricism",                jap: "経験主義",             level: 4 },
+  { eng: "idealism",                  jap: "観念論",               level: 4 },
+  { eng: "materialism",               jap: "唯物論",             level: 4 },
+  { eng: "dualism",                   jap: "二元論",             level: 4 },
+  { eng: "monism",                    jap: "一元論",             level: 4 },
+  { eng: "pluralism",                 jap: "多元論",             level: 4 },
+  { eng: "existential crisis",        jap: "実存的危機",         level: 4 },
+  { eng: "paradigmatic",              jap: "パラダイミック",       level: 4 },
+  { eng: "teleology",                 jap: "目的論",             level: 4 },
+  { eng: "anti-teleology",            jap: "反目的論",           level: 4 },
+  { eng: "advanced ontology",         jap: "存在論的考察",       level: 4 },
+  { eng: "phenomenological",          jap: "現象学的",           level: 4 },
+  { eng: "hermeneutical",             jap: "解釈学的",           level: 4 },
+  { eng: "meta-narrative",            jap: "メタ物語",           level: 4 },
+  { eng: "intertextuality",           jap: "相互テクスト性",       level: 4 },
+  { eng: "hyperreality",              jap: "ハイパーリアリティ",   level: 4 },
+  { eng: "simulacrum",                jap: "シミュラークル",       level: 4 },
+  { eng: "postmodern condition",      jap: "ポストモダン状態",     level: 4 },
+  { eng: "transcendental deduction",  jap: "超越的演繹",         level: 4 },
+  { eng: "deconstruction methodology", jap: "脱構築的方法論",    level: 4 }
+];
+
+
+    function getRandomVocab() {
+      // 得点に応じて最大レベルを上げる（例：100点ごとにレベルアップ）
+      let maxLevel = 1 + Math.floor(score / 200);
+      // 該当レベル以下の語彙候補を抽出
+      let candidates = vocabularyList.filter(item => item.level <= maxLevel);
+      // 候補からランダムに選ぶ
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+
+    /*******************************
+     *　基本設定・グローバル変数
+     *******************************/
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let score = 0;
+    let gameOver = false;
+
+    // キャンバスサイズ
+    const CANVAS_WIDTH = canvas.width;
+    const CANVAS_HEIGHT = canvas.height;
+
+    // 列の設定（画面下部に４列）
+    const columnCount = 4;
+    const columnWidth = CANVAS_WIDTH / columnCount;
+    const blockHeight = 40;  // 各ブロックの高さ
+
+    // 落下中ブロックのサイズ・初期速度
+    const fallingWidth = 100;
+    const fallingHeight = 30;
+    const baseSpeed = 2;  // 得点に応じて加速可
+
+    // 各列は「スタック」として扱い、各ブロックは { vocab, column } とする。
+    let columns = [];
+    for (let i = 0; i < columnCount; i++) {
+      columns[i] = [];
+      // 各列の「ベースブロック」を追加
+      columns[i].push({ vocab: getRandomVocab(), column: i });
+    }
+
+    // 落下中の日本語ブロック（現在の問題）
+    let fallingWord = null;
+
+    /*******************************
+     * 落下ブロックの生成
+     *******************************/
+    function spawnFallingWord() {
+      // 0～3のランダムな列をターゲットとする
+      const targetColumn = Math.floor(Math.random() * columnCount);
+      // ターゲット列の一番上のブロックの語彙ペアを取得
+      const targetStack = columns[targetColumn];
+      const targetVocab = targetStack[targetStack.length - 1].vocab;
+      // 落下ブロックの初期位置は画面上部中央
+      fallingWord = {
+        vocab: targetVocab, // 落下中ブロックには「日本語」を表示
+        x: CANVAS_WIDTH / 2 - fallingWidth / 2,
+        y: 0,
+        width: fallingWidth,
+        height: fallingHeight,
+        speed: baseSpeed + score * 0.01  // 得点が上がるほど速くなる
+      };
+    }
+
+    // 最初の落下ブロックを生成
+    spawnFallingWord();
+
+    /*******************************
+     * ユーザー操作：左右キーで操作
+     *******************************/
+    document.addEventListener("keydown", function(e) {
+      if (!fallingWord) return;
+      const moveAmount = 20;
+      if (e.key === "ArrowLeft") {
+        fallingWord.x -= moveAmount;
+      } else if (e.key === "ArrowRight") {
+        fallingWord.x += moveAmount;
+      }
+      // キャンバス内に収める
+      if (fallingWord.x < 0) fallingWord.x = 0;
+      if (fallingWord.x + fallingWord.width > CANVAS_WIDTH) fallingWord.x = CANVAS_WIDTH - fallingWord.width;
+    });
+    // タッチ操作用のイベントリスナー（スマートフォン向け）
+    // キャンバス上でタッチした場所の左右に応じて移動する例です
+    canvas.addEventListener('touchstart', handleTouch, { passive: false });
+    canvas.addEventListener('touchmove', handleTouch, { passive: false });
+
+    function handleTouch(e) {
+    e.preventDefault(); // スクロールやズームを防止
+    if (!fallingWord) return;
+    // 最初のタッチ位置を取得
+    const touch = e.touches[0];
+    // キャンバスの境界位置を取得し、タッチ位置をキャンバス内の座標に変換
+    const rect = canvas.getBoundingClientRect();
+    const touchX = touch.clientX - rect.left;
+    const moveAmount = 20;
+    // 画面の左半分なら左へ、右半分なら右へ移動
+    if (touchX < canvas.width / 2) {
+        fallingWord.x -= moveAmount;
+    } else {
+        fallingWord.x += moveAmount;
+    }
+    // キャンバス外に出ないよう調整
+    if (fallingWord.x < 0) fallingWord.x = 0;
+    if (fallingWord.x + fallingWord.width > CANVAS_WIDTH) fallingWord.x = CANVAS_WIDTH - fallingWord.width;
+    }
+
+    /*******************************
+     * ゲームループ
+     *******************************/
+    function gameLoop() {
+      if (gameOver) {
+        drawGameOver();
+        return;
+      }
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    /*******************************
+     * 更新処理
+     *******************************/
+    function update() {
+      // 落下ブロックを下方へ移動
+      fallingWord.y += fallingWord.speed;
+
+      // 落下ブロックがどの列にいるか計算
+      let currentColumn = Math.floor((fallingWord.x + fallingWord.width/2) / columnWidth);
+      if (currentColumn < 0) currentColumn = 0;
+      if (currentColumn >= columnCount) currentColumn = columnCount - 1;
+
+      // その列の積み上がりの高さ
+      const stackHeight = columns[currentColumn].length * blockHeight;
+      const landingY = CANVAS_HEIGHT - stackHeight - fallingWord.height;
+
+      // 衝突判定
+      const colStack = columns[currentColumn];
+      for (let i = 0; i < colStack.length; i++) {
+        const blockY = CANVAS_HEIGHT - blockHeight * (i + 1);
+        if (fallingWord.y + fallingWord.height >= blockY) {
+          if (fallingWord.vocab.jap === colStack[i].vocab.jap) {
+            colStack.splice(i, 1);
+            score += 10;
+            if (colStack.length === 0) {
+              colStack.push({ vocab: getRandomVocab(), column: currentColumn });
+            }
+            spawnFallingWord();
+            return;
+          }
+          break;
+        }
+      }
+
+      // 落下ブロックが着地した場合
+      if (fallingWord.y >= landingY) {
+        const topBlock = columns[currentColumn][columns[currentColumn].length - 1];
+        if (topBlock.vocab.jap === fallingWord.vocab.jap) {
+          columns[currentColumn].pop();
+          columns[currentColumn].push({ vocab: getRandomVocab(), column: currentColumn });
+          score += 10;
+        } else {
+            // 不正解の場合：同じ単語が連続して出題されないように、
+            // 本来の正解（fallingWord.vocab）とは異なる語彙に置き換える
+            let newVocab;
+            do {
+                newVocab = getRandomVocab();
+            } while(newVocab.jap === fallingWord.vocab.jap);
+            columns[currentColumn].push({ vocab: newVocab, column: currentColumn });        }
+        spawnFallingWord();
+      }
+
+      // ゲームオーバーチェック
+      for (let i = 0; i < columnCount; i++) {
+        if (columns[i].length * blockHeight >= CANVAS_HEIGHT) {
+          gameOver = true;
+        }
+      }
+    }
+
+    /*******************************
+     * 描画処理
+     *******************************/
+    function draw() {
+      ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+      // 各列の英単語ブロックを描画
+      for (let col = 0; col < columnCount; col++) {
+        const stack = columns[col];
+        for (let i = 0; i < stack.length; i++) {
+          const block = stack[i];
+          const x = col * columnWidth;
+          const y = CANVAS_HEIGHT - blockHeight * (i + 1);
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(x + 5, y + 5, columnWidth - 10, blockHeight - 10);
+          ctx.strokeStyle = "#333";
+          ctx.strokeRect(x + 5, y + 5, columnWidth - 10, blockHeight - 10);
+          ctx.fillStyle = "#000";
+          ctx.font = "16px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(block.vocab.eng, x + columnWidth / 2, y + blockHeight / 2);
+        }
+      }
+
+      // 落下中の日本語ブロックを描画
+      ctx.fillStyle = "#fdd";
+      ctx.fillRect(fallingWord.x, fallingWord.y, fallingWord.width, fallingWord.height);
+      ctx.strokeStyle = "#a00";
+      ctx.strokeRect(fallingWord.x, fallingWord.y, fallingWord.width, fallingWord.height);
+      ctx.fillStyle = "#000";
+      ctx.font = "18px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(fallingWord.vocab.jap, fallingWord.x + fallingWord.width / 2, fallingWord.y + fallingWord.height / 2);
+
+      // 得点表示
+      ctx.fillStyle = "#000";
+      ctx.font = "20px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("Score: " + score, 10, 30);
+    }
+
+    /*******************************
+     * ゲームオーバー時の描画
+     *******************************/
+    function drawGameOver() {
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      ctx.fillStyle = "#fff";
+      ctx.font = "36px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("GAME OVER", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+      ctx.font = "24px sans-serif";
+      ctx.fillText("Score: " + score, CANVAS_WIDTH/2, CANVAS_HEIGHT/2 + 40);
+    }
+
+    // ゲームループ開始
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
