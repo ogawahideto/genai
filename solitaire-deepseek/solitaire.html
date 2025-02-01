@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Solitaire Game</title>
+    <style>
+        canvas {
+            border: 2px solid #333;
+        }
+        .controls {
+            margin-top: 10px;
+        }
+    </select>
+</head>
+<body>
+    <canvas id="board" width="450" height="450"></canvas>
+    <div class="controls">
+        <button onclick="resetGame()">リセット</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('board');
+        const ctx = canvas.getContext('2d');
+
+        // ゲーム初期設定
+        let boardSize = 9; // 最大ビーズ数（9×9グリッドの一部使用）
+        let cellSize = Math.min(15, canvas.width / (boardSize - 1));
+        let selectedPos = null;
+
+        const beads = []; // ビーズの位置と色データ
+        const colors = ['#FF6347', '#008000', '#FFFF00']; // 3色
+
+        // 初期ビーズ配置（初期化関数内で生成）
+        function initGame() {
+            beads.length = 0;
+            // 初期配置ロジック
+        }
+
+        // キャンバス更新用関数
+        function updateCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            beads.forEach((pos, index) => {
+                if (index === selectedPos) {
+                    drawBead(ctx, pos.x, pos.y, colors[beads[index] % 3], true); // 選択中ハイライト
+                } else {
+                    drawBead(ctx, pos.x, pos.y, colors[beads[index] % 3]);
+                }
+            });
+        }
+
+        function drawBead(ctx, x, y, color, isHighlight = false) {
+            ctx.beginPath();
+            if (isHighlight) {
+                ctx.fillStyle = 'rgba(255, 184, 184, 0.8)';
+            } else {
+                ctx.fillStyle = color;
+            }
+            ctx.arc(x, y, cellSize/2 - 2, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        // マウスイベント処理
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (!checkPos(x, y)) return;
+
+            const i = findNearestBeadIndex(x, y);
+            
+            if (beads[i] !== null && beads.length > selectedPos) {
+                selectedPos = i;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            document.body.style.cursor = 'pointer';
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (!checkPos(x, y)) return;
+
+            drawBead(ctx, x, y, '#333', true); // プレースホルダ
+        });
+
+        function checkPos(x, y) {
+            return x > 0 && y > 0 && 
+                   x < canvas.width && y < canvas.height;
+        }
+
+        function findNearestBeadIndex(x, y) {
+            for (let i = 0; i < beads.length; i++) {
+                const pos = beads[i];
+                if (Math.hypot(pos.x - x, pos.y - y) < cellSize*2) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        // 主要なゲームロジック
+        function canMove(i) {
+            const directions = [
+                [-1, 0], [1, 0],
+                [0, -1], [0, 1]
+            ];
+
+            for (let d of directions) {
+                let newX = i + d[0];
+                let newY = i + d[1];
+
+                if (checkBoundary(newX, newY)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function moveBead(from, to) {
+            const temp = [...beads];
+            if (to !== from && canMove(to) && beads[to] === null) {
+                // 具体的な移動ロジックを実装
+            }
+        }
+
+        // リセット関数（初期化用）
+        function resetGame() {
+            initGame();
+            updateCanvas();
+        }
+
+        // ゲームループ
+        let gameRunning = true;
+        setInterval(() => {
+            if (gameRunning) updateCanvas();
+        }, 100);
+    </script>
+</body>
+</html>

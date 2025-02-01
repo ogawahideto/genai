@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ピンボールゲーム【動的フリッパー／衝突判定改善】</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #222; }
+    /* スコア表示用 */
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-size: 24px;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <!-- スコア表示 -->
+  <div id="score">Score: 0</div>
+  
+  <!-- Matter.js の読み込み -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script>
+    // Matter.js の各モジュールのエイリアス
+    const Engine = Matter.Engine,
+          Render = Matter.Render,
+          Runner = Matter.Runner,
+          World  = Matter.World,
+          Bodies = Matter.Bodies,
+          Body   = Matter.Body,
+          Constraint = Matter.Constraint,
+          Events = Matter.Events;
+    
+    // エンジンとワールドの作成
+    const engine = Engine.create();
+    const world  = engine.world;
+    
+    // 衝突判定精度向上のため、反復回数を増加
+    engine.positionIterations = 20;
+    engine.velocityIterations = 20;
+    
+    // キャンバスサイズの設定
+    const canvasWidth  = 800;
+    const canvasHeight = 1200;
+    
+    // レンダラーの作成
+    const render = Render.create({
+      element: document.body,
+      engine: engine,
+      options: {
+        width: canvasWidth,
+        height: canvasHeight,
+        wireframes: false,
+        background: '#222'
+      }
+    });
+    Render.run(render);
+    
+    // Runner の作成と実行
+    const runner = Runner.create();
+    Runner.run(runner, engine);
+    
+    // ---------------------------
+    // グローバル変数：得点・ミス回数・ゲームオーバーフラグ
+    // ---------------------------
+    let score = 0;
+    let missCount = 0;
+    let gameOver = false;
+    function updateScoreDisplay() {
+      document.getElementById("score").innerText = "Score: " + score;
+    }
+    
+    // ---------------------------
+    // 境界（壁）の作成
+    // ---------------------------
+    const walls = [];
+    // 上壁（天井）
+    walls.push(Bodies.rectangle(canvasWidth/2, 25, canvasWidth, 50, { isStatic: true }));
+    // 左壁
+    walls.push(Bodies.rectangle(25, canvasHeight/2, 50, canvasHeight, { isStatic: true }));
+    // 右壁
+    walls.push(Bodies.rectangle(canvasWidth-25, canvasHeight/2, 50, canvasHeight, { isStatic: true }));
+    // 下部：左右の床を斜めにして漏斗状に
+    walls.push(Bodies.rectangle(150, 1150, 300, 50, { 
+      isStatic: true, 
+      angle: 15 * Math.PI/180,
+      render: { fillStyle: '#555' }
+    }));
+    walls.push(Bodies.rectangle(650, 1150, 300, 50, { 
+      isStatic: true, 
+      angle: -15 * Math.PI/180,
+      render: { fillStyle: '#555' }
+    }));
+    World.add(world, walls);
+    
+    // ---------------------------
+    // 障害物（バンパー）の作成
+    // ---------------------------
+    const bumpers = [];
+    // 中央のスペシャルバンパー（高得点＆派手な効果）
+    bumpers.push(Bodies.circle(400, 300, 30, {
+      isStatic: true,
+      restitution: 1.2,
+      label: 'bumper',
+      special: true,
+      scoreValue: 100,
+      render: { fillStyle: 'red' }
+    }));
+    // 通常のバンパー
+    bumpers.push(Bodies.circle(250, 500, 30, {
+      isStatic: true,
+      restitution: 1.2,
+      label: 'bumper',
+      scoreValue: 10,
+      render: { fillStyle: 'red' }
+    }));
+    bumpers.push(Bodies.circle(550, 500, 30, {
+      isStatic: true,
+      restitution: 1.2,
+      label: 'bumper',
+      scoreValue: 10,
+      render: { fillStyle: 'red' }
+    }));
+    // 追加の障害物
+    bumpers.push(Bodies.circle(150, 400, 20, {
+      isStatic: true,
+      restitution: 1.2,
+      label: 'bumper',
+      scoreValue: 10,
+      render: { fillStyle: 'red' }
+    }));
+    bumpers.push(Bodies.circle(650, 400, 20, {
+      isStatic: true,
+      restitution: 1.2,
+      label: 'bumper',
+      scoreValue: 10,
+      render: { fillStyle: 'red' }
+    }));
+    bumpers.push(Bodies.circle(400, 600, 25, {
+      isStatic: true,
+      restitution: 1.2,
+      label: 'bumper',
+      scoreValue: 10,
+      render: { fillStyle: 'red' }
+    }));
+    bumpers.push(Bodies.circle(200, 700, 20, {
+      isStatic: true,
+      restitution: 1.2,
+      label: 'bumper',
+      scoreValue: 10,
+      render: { fillStyle: 'red' }
+    }));
+    bumpers.push(Bodies.circle(600, 700, 20, {
+      isStatic: true,
+      restitution: 1.2,
+      label: 'bumper',
+      scoreValue: 10,
+      render: { fillStyle: 'red' }
+    }));
+    World.add(world, bumpers);
+    
+    // ---------------------------
+    // ボールの作成
+    // ---------------------------
+    const ball = Bodies.circle(400, 50, 15, {
+      restitution: 1.0,
+      density: 0.004,
+      friction: 0,
+      frictionStatic: 0,
+      frictionAir: 0.001,
+      render: { fillStyle: 'white' }
+    });
+    World.add(world, ball);
+    
+    // ---------------------------
+    // フリッパーの作成（Constraint を用いて固定する）
+    // ※フリッパーの位置は床の端に合わせる
+    // 左フリッパーの pivot： (300,1150)（左床の右端）
+    // 右フリッパーの pivot： (500,1150)（右床の左端）
+    // 初期（rest）状態は下30度（左：30°、右：150°）とし、キー入力時はそこから90°回転
+    // （左：30°→ -60°、右：150°→ 240°）
+    // ---------------------------
+    const flipperLength = 100;
+    const flipperThickness = 30;
+    const leftPivot = { x: 300, y: 1150 };
+    const rightPivot = { x: 500, y: 1150 };
+    
+    const leftRestAngle = 30 * Math.PI/180;    // 30°
+    const leftActiveAngle = leftRestAngle - Math.PI/2; // 30° - 90° = -60°
+    const rightRestAngle = 150 * Math.PI/180;    // 150°
+    const rightActiveAngle = rightRestAngle + Math.PI/2; // 150° + 90° = 240°
+    
+    // 左フリッパー作成：flipper の中心位置は pivot から (flipperLength/2,0) 方向に配置（回転を考慮）
+    const leftFlipper = Bodies.rectangle(
+      leftPivot.x + (flipperLength/2)*Math.cos(leftRestAngle),
+      leftPivot.y + (flipperLength/2)*Math.sin(leftRestAngle),
+      flipperLength, flipperThickness,
+      { restitution: 1.0, label: 'flipper', render: { fillStyle: 'blue' } }
+    );
+    
+    // 右フリッパー作成
+    const rightFlipper = Bodies.rectangle(
+      rightPivot.x + (flipperLength/2)*Math.cos(rightRestAngle),
+      rightPivot.y + (flipperLength/2)*Math.sin(rightRestAngle),
+      flipperLength, flipperThickness,
+      { restitution: 1.0, label: 'flipper', render: { fillStyle: 'blue' } }
+    );
+    
+    World.add(world, [leftFlipper, rightFlipper]);
+    
+    // 制約（Constraint）を用いて各フリッパーを固定
+    // 左フリッパーの固定点は、flipper の左端（相対座標：{-flipperLength/2, 0}）
+    const leftFlipperConstraint = Constraint.create({
+      pointA: leftPivot,
+      bodyB: leftFlipper,
+      pointB: { x: -flipperLength/2, y: 0 },
+      stiffness: 1,
+      length: 0
+    });
+    // 右フリッパーの場合、flipper の左端（相対座標：{-flipperLength/2, 0}）を固定
+    const rightFlipperConstraint = Constraint.create({
+      pointA: rightPivot,
+      bodyB: rightFlipper,
+      pointB: { x: -flipperLength/2, y: 0 },
+      stiffness: 1,
+      length: 0
+    });
+    World.add(world, [leftFlipperConstraint, rightFlipperConstraint]);
+    
+    // ---------------------------
+    // キーボード操作によるフリッパーの駆動
+    // ・キー押下時に各フリッパーに適切な角速度（トルク）を与え、反転させる
+    // ・キーアップ時にフリッパーが元の（rest）角度に戻るように調整
+    // ---------------------------
+    document.addEventListener('keydown', function(event) {
+      if (gameOver) {
+        // ゲームオーバー状態の場合、任意のキー入力でリスタート
+        gameOver = false;
+        missCount = 0;
+        score = 0;
+        updateScoreDisplay();
+        Body.setPosition(ball, { x: 400, y: 50 });
+        Body.setVelocity(ball, { x: 0, y: 0 });
+        return;
+      }
+      if (event.code === 'ArrowLeft' || event.code === 'KeyA') {
+        // 左フリッパーを反転させるため、直接角速度を設定
+        Body.setAngularVelocity(leftFlipper, -15);
+      }
+      if (event.code === 'ArrowRight' || event.code === 'KeyD') {
+        Body.setAngularVelocity(rightFlipper, 15);
+      }
+    });
+    
+    document.addEventListener('keyup', function(event) {
+      if (gameOver) return;
+      if (event.code === 'ArrowLeft' || event.code === 'KeyA') {
+        // キーアップ時、元の角度へ戻すため逆の角速度を設定
+        Body.setAngularVelocity(leftFlipper, 15);
+      }
+      if (event.code === 'ArrowRight' || event.code === 'KeyD') {
+        Body.setAngularVelocity(rightFlipper, -15);
+      }
+    });
+    
+    // ---------------------------
+    // 毎フレームの更新処理
+    // ・フリッパーの角度を制限して、rest 状態に戻るよう補正
+    // ・ボールが画面外に落ちた場合のリセット
+    // ・ボールがほぼ静止している場合、微小な力を加えて動かす
+    // ---------------------------
+    Events.on(engine, 'beforeUpdate', function() {
+      // 左フリッパー：角度を [leftActiveAngle, leftRestAngle] に制限
+      if (leftFlipper.angle < leftActiveAngle) {
+        Body.setAngle(leftFlipper, leftActiveAngle);
+        Body.setAngularVelocity(leftFlipper, 0);
+      }
+      if (leftFlipper.angle > leftRestAngle) {
+        Body.setAngle(leftFlipper, leftRestAngle);
+        Body.setAngularVelocity(leftFlipper, 0);
+      }
+      // 右フリッパー：角度を [rightRestAngle, rightActiveAngle] に制限
+      if (rightFlipper.angle > rightActiveAngle) {
+        Body.setAngle(rightFlipper, rightActiveAngle);
+        Body.setAngularVelocity(rightFlipper, 0);
+      }
+      if (rightFlipper.angle < rightRestAngle) {
+        Body.setAngle(rightFlipper, rightRestAngle);
+        Body.setAngularVelocity(rightFlipper, 0);
+      }
+      
+      // ボールが下に落ちた場合の処理
+      if (!gameOver && ball.position.y > canvasHeight + 50) {
+        missCount++;
+        if (missCount >= 3) {
+          gameOver = true;
+          document.getElementById("score").innerText =
+            "Game Over! Final Score: " + score + " (Press any key to restart)";
+        } else {
+          Body.setPosition(ball, { x: 400, y: 50 });
+          Body.setVelocity(ball, { x: 0, y: 0 });
+        }
+      }
+      
+      // ボールがほぼ静止している場合、微小な力を加えて動かす（安定性向上）
+      if (!gameOver) {
+        const speed = Math.sqrt(ball.velocity.x ** 2 + ball.velocity.y ** 2);
+        if (speed < 0.2 && ball.position.y < canvasHeight - 100) {
+          const impulseMagnitude = 0.002 * ball.mass;
+          Body.applyForce(ball, ball.position, { 
+            x: (Math.random() - 0.5) * impulseMagnitude, 
+            y: -impulseMagnitude 
+          });
+        }
+      }
+    });
+    
+    // ---------------------------
+    // 衝突時の処理（障害物との衝突のみ）
+    // ---------------------------
+    Events.on(engine, 'collisionStart', function(event) {
+      event.pairs.forEach(function(pair) {
+        const bodies = [pair.bodyA, pair.bodyB];
+        if (bodies.includes(ball)) {
+          const other = (pair.bodyA === ball ? pair.bodyB : pair.bodyA);
+          if (other.label === 'bumper') {
+            score += other.scoreValue || 10;
+            updateScoreDisplay();
+            if (other.special) {
+              other.render.fillStyle = 'yellow';
+              setTimeout(function() {
+                other.render.fillStyle = 'red';
+              }, 200);
+            }
+          }
+        }
+      });
+    });
+    
+  </script>
+</body>
+</html>
