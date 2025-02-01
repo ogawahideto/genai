@@ -543,13 +543,10 @@
      *******************************/
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
-let score = 0;
-let gameOver = false;
 
-// エフェクト用の状態
-let effectBlock = null; // { x, y, width, height, type: 'correct'/'incorrect', startTime }
+    let score = 0;
+    let gameOver = false;
 
-// キャンバスサイズ
     // キャンバスサイズ
     const CANVAS_WIDTH = canvas.width;
     const CANVAS_HEIGHT = canvas.height;
@@ -673,29 +670,16 @@ let effectBlock = null; // { x, y, width, height, type: 'correct'/'incorrect', s
         const blockY = CANVAS_HEIGHT - blockHeight * (i + 1);
         if (fallingWord.y + fallingWord.height >= blockY) {
           if (fallingWord.vocab.jap === colStack[i].vocab.jap) {
-            // 正解エフェクトの設定
-            effectBlock = {
-              x: currentColumn * columnWidth + 5,
-              y: blockY + 5,
-              width: columnWidth - 10,
-              height: blockHeight - 10,
-              type: 'correct',
-              startTime: Date.now()
-            };
-            
-            setTimeout(() => {
-              colStack.splice(i, 1);
-              score += 10;
-              // レベルアップ判定（スコアが200の倍数になった時）
-              if (score % 200 === 0) {
-                fallingWord.speed = baseSpeed; // スピードを初期値に戻す
-              }
-              if (colStack.length === 0) {
-                colStack.push({ vocab: getRandomVocab(), column: currentColumn });
-              }
-              spawnFallingWord();
-              effectBlock = null;
-            }, 200); // 0.2秒後にブロックを消す
+            colStack.splice(i, 1);
+            score += 10;
+            // レベルアップ判定（スコアが200の倍数になった時）
+            if (score % 200 === 0) {
+              fallingWord.speed = baseSpeed; // スピードを初期値に戻す
+            }
+            if (colStack.length === 0) {
+              colStack.push({ vocab: getRandomVocab(), column: currentColumn });
+            }
+            spawnFallingWord();
             return;
           }
           break;

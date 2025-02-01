@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>シューティングゲーム</title>
+    <style>
+        #gameContainer {
+            position: relative;
+            width: 600px;
+            height: 400px;
+            background: #1a1a1a;
+            overflow: hidden;
+            margin: 20px auto;
+        }
+        .player, .enemy, .bullet, .obstacle {
+            position: absolute;
+            box-sizing: border-box;
+        }
+        .player {
+            width: 20px;
+            height: 20px;
+            background: #4a9eff;
+            border-radius: 50%;
+        }
+        .enemy {
+            width: 20px;
+            height: 20px;
+            background: #ff4a4a;
+            border-radius: 50%;
+        }
+        .bullet {
+            width: 4px;
+            height: 8px;
+            background: #ffff4a;
+        }
+        .enemy-bullet {
+            background: #ff4a4a;
+        }
+        .obstacle {
+            background: #666;
+        }
+        #gameInfo {
+            width: 600px;
+            margin: 10px auto;
+            display: flex;
+            justify-content: space-between;
+        }
+        #gameOver {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+        }
+        button {
+            padding: 8px 16px;
+            margin-top: 10px;
+            background: #4a9eff;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        #controls {
+            width: 600px;
+            margin: 10px auto;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameInfo">
+        <div>Score: <span id="score">0</span></div>
+        <div>Stage: <span id="stage">1</span></div>
+        <div>Lives: <span id="lives">❤️❤️❤️❤️❤️</span></div>
+    </div>
+    <div id="gameContainer">
+        <div id="gameOver">
+            <h2>GAME OVER</h2>
+            <div>Final Score: <span id="finalScore">0</span></div>
+            <button onclick="restartGame()">Try Again</button>
+        </div>
+    </div>
+    <div id="controls">
+        <p>Controls:</p>
+        <p>Arrow keys to move</p>
+        <p>Space to shoot</p>
+    </div>
+
+    <script>
+        const GAME_WIDTH = 600;
+        const GAME_HEIGHT = 400;
+        const PLAYER_SPEED = 5;
+        const BULLET_SPEED = 7;
+        const ENEMY_SPEED = 2;
+        const ENEMY_SHOOT_INTERVAL = 1500;
+        const OBSTACLE_COUNT = 4;
+
+        let player = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 40, el: null };
+        let playerBullets = [];
+        let enemyBullets = [];
+        let enemies = [];
+        let obstacles = [];
+        let lives = 5;
+        let score = 0;
+        let stage = 1;
+        let gameOver = false;
+        let stageStartTime = Date.now();
+        let keys = {};
+
+        function createGameElement(className) {
+            const element = document.createElement('div');
+            element.className = className;
+            document.getElementById('gameContainer').appendChild(element);
+            return element;
+        }
+
+        function initPlayer() {
+            player.el = createGameElement('player');
+            updatePlayerPosition();
+        }
+
+        function updatePlayerPosition() {
+            player.el.style.left = player.x + 'px';
+            player.el.style.top = player.y + 'px';
+        }
+
+        function initObstacles() {
+            for (let i = 0; i < OBSTACLE_COUNT; i++) {
+                const obstacle = {
+                    x: Math.random() * (GAME_WIDTH - 40),
+                    y: Math.random() * (GAME_HEIGHT - 160) + 80,
+                    width: 40,
+                    height: 40,
+                    el: createGameElement('obstacle')
+                };
+                obstacle.el.style.left = obstacle.x + 'px';
+                obstacle.el.style.top = obstacle.y + 'px';
+                obstacle.el.style.width = obstacle.width + 'px';
+                obstacle.el.style.height = obstacle.height + 'px';
+                obstacles.push(obstacle);
+            }
+        }
+
+        function initStage() {
+            // 既存の敵と弾を削除
+            enemies.forEach(enemy => enemy.el.remove());
+            playerBullets.forEach(bullet => bullet.el.remove());
+            enemyBullets.forEach(bullet => bullet.el.remove());
+            
+            enemies = [];
+            playerBullets = [];
+            enemyBullets = [];
+
+            // 新しい敵を作成
+            for (let i = 0; i < stage; i++) {
+                const enemy = {
+                    x: (GAME_WIDTH / (stage + 1)) * (i + 1),
+                    y: 50,
+                    direction: 1,
+                    el: createGameElement('enemy')
+                };
+                enemies.push(enemy);
+                updateEnemyPosition(enemy);
+            }
+            stageStartTime = Date.now();
+            document.getElementById('stage').textContent = stage;
+        }
+
+        function updateEnemyPosition(enemy) {
+            enemy.el.style.left = enemy.x + 'px';
+            enemy.el.style.top = enemy.y + 'px';
+        }
+
+        function createBullet(x, y, isEnemy = false) {
+            const bullet = {
+                x: x,
+                y: y,
+                el: createGameElement('bullet' + (isEnemy ? ' enemy-bullet' : ''))
+            };
+            bullet.el.style.left = x + 'px';
+            bullet.el.style.top = y + 'px';
+            return bullet;
+        }
+
+        function updateGame() {
+            if (gameOver) return;
+
+            // プレイヤーの移動
+            if (keys.ArrowLeft) player.x = Math.max(0, player.x - PLAYER_SPEED);
+            if (keys.ArrowRight) player.x = Math.min(GAME_WIDTH - 20, player.x + PLAYER_SPEED);
+            if (keys.ArrowUp) player.y = Math.max(0, player.y - PLAYER_SPEED);
+            if (keys.ArrowDown) player.y = Math.min(GAME_HEIGHT - 20, player.y + PLAYER_SPEED);
+            updatePlayerPosition();
+
+            // プレイヤーの弾の移動
+            for (let i = playerBullets.length - 1; i >= 0; i--) {
+                const bullet = playerBullets[i];
+                bullet.y -= BULLET_SPEED;
+                bullet.el.style.top = bullet.y + 'px';
+                
+                if (bullet.y < 0) {
+                    bullet.el.remove();
+                    playerBullets.splice(i, 1);
+                    continue;
+                }
+
+                // 敵との衝突判定
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    if (checkCollision(bullet, enemy)) {
+                        // 敵の撃破
+                        bullet.el.remove();
+                        playerBullets.splice(i, 1);
+                        enemy.el.remove();
+                        enemies.splice(j, 1);
+                        score += Math.max(1000 - Math.floor((Date.now() - stageStartTime) / 1000) * 10, 100);
+                        document.getElementById('score').textContent = score;
+                        break;
+                    }
+                }
+            }
+
+            // 敵の弾の移動
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                const bullet = enemyBullets[i];
+                bullet.y += BULLET_SPEED;
+                bullet.el.style.top = bullet.y + 'px';
+
+                if (bullet.y > GAME_HEIGHT) {
+                    bullet.el.remove();
+                    enemyBullets.splice(i, 1);
+                    continue;
+                }
+
+                // プレイヤーとの衝突判定
+                if (checkCollision(bullet, player)) {
+                    bullet.el.remove();
+                    enemyBullets.splice(i, 1);
+                    lives--;
+                    document.getElementById('lives').textContent = '❤️'.repeat(lives);
+                    if (lives <= 0) {
+                        gameOver = true;
+                        showGameOver();
+                    }
+                }
+            }
+
+            // 敵の移動
+            enemies.forEach(enemy => {
+                enemy.x += ENEMY_SPEED * enemy.direction;
+                if (enemy.x <= 0 || enemy.x >= GAME_WIDTH - 20) {
+                    enemy.direction *= -1;
+                }
+                updateEnemyPosition(enemy);
+            });
+
+            // ステージクリア判定
+            if (enemies.length === 0) {
+                stage++;
+                initStage();
+            }
+        }
+
+        function checkCollision(obj1, obj2) {
+            return obj1.x < obj2.x + 20 &&
+                   obj1.x + 4 > obj2.x &&
+                   obj1.y < obj2.y + 20 &&
+                   obj1.y + 8 > obj2.y;
+        }
+
+        function enemyShoot() {
+            if (gameOver) return;
+            enemies.forEach(enemy => {
+                const bullet = createBullet(enemy.x + 8, enemy.y + 20, true);
+                enemyBullets.push(bullet);
+            });
+        }
+
+        function showGameOver() {
+            document.getElementById('gameOver').style.display = 'flex';
+            document.getElementById('finalScore').textContent = score;
+        }
+
+        function restartGame() {
+            // ゲームの状態をリセット
+            lives = 5;
+            score = 0;
+            stage = 1;
+            gameOver = false;
+            
+            // UI更新
+            document.getElementById('lives').textContent = '❤️'.repeat(lives);
+            document.getElementById('score').textContent = score;
+            document.getElementById('gameOver').style.display = 'none';
+            
+            // ゲーム要素の初期化
+            initStage();
+        }
+
+        // キーボードイベントの処理
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (e.key === ' ' && !gameOver) {
+                const bullet = createBullet(player.x + 8, player.y);
+                playerBullets.push(bullet);
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // ゲームの初期化
+        function initGame() {
+            initPlayer();
+            initObstacles();
+            initStage();
+            
+            // メインゲームループ
+            setInterval(updateGame, 1000 / 60);
+            // 敵の攻撃
+            setInterval(enemyShoot, ENEMY_SHOOT_INTERVAL);
+        }
+
+        // ゲーム開始
+        initGame();
+    </script>
+</body>
+</html>
