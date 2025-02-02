@@ -99,6 +99,7 @@
         const PLAYER_SPEED = 5;
         const BULLET_SPEED = 7;
         const ENEMY_SPEED = 2;
+        const ENEMY_DESCENT_SPEED = 0.5;
         const ENEMY_SHOOT_INTERVAL = 1500;
         const OBSTACLE_COUNT = 4;
 
@@ -211,6 +212,21 @@
                     continue;
                 }
 
+                // 障害物との衝突判定
+                let hitObstacle = false;
+                for (const obstacle of obstacles) {
+                    if (bullet.x < obstacle.x + obstacle.width &&
+                        bullet.x + 4 > obstacle.x &&
+                        bullet.y < obstacle.y + obstacle.height &&
+                        bullet.y + 8 > obstacle.y) {
+                        bullet.el.remove();
+                        playerBullets.splice(i, 1);
+                        hitObstacle = true;
+                        break;
+                    }
+                }
+                if (hitObstacle) continue;
+
                 // 敵との衝突判定
                 for (let j = enemies.length - 1; j >= 0; j--) {
                     const enemy = enemies[j];
@@ -239,6 +255,21 @@
                     continue;
                 }
 
+                // 障害物との衝突判定
+                let hitObstacle = false;
+                for (const obstacle of obstacles) {
+                    if (bullet.x < obstacle.x + obstacle.width &&
+                        bullet.x + 4 > obstacle.x &&
+                        bullet.y < obstacle.y + obstacle.height &&
+                        bullet.y + 8 > obstacle.y) {
+                        bullet.el.remove();
+                        enemyBullets.splice(i, 1);
+                        hitObstacle = true;
+                        break;
+                    }
+                }
+                if (hitObstacle) continue;
+
                 // プレイヤーとの衝突判定
                 if (checkCollision(bullet, player)) {
                     bullet.el.remove();
@@ -258,7 +289,15 @@
                 if (enemy.x <= 0 || enemy.x >= GAME_WIDTH - 20) {
                     enemy.direction *= -1;
                 }
+                // 敵を徐々に下降させる
+                enemy.y += ENEMY_DESCENT_SPEED;
                 updateEnemyPosition(enemy);
+
+                // 敵が画面下部に到達したらゲームオーバー
+                if (enemy.y + 20 >= GAME_HEIGHT) {
+                    gameOver = true;
+                    showGameOver();
+                }
             });
 
             // ステージクリア判定
