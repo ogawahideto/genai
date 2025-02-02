@@ -236,11 +236,16 @@
           }
         }
 
-        // 敵の更新と弾発射
-        enemies.forEach(enemy => {
+        // 敵の更新、弾発射、および画面下到達のチェック
+        for (let i = enemies.length - 1; i >= 0; i--) {
+          const enemy = enemies[i];
           enemy.update();
           enemy.tryToFire();
-        });
+          // 敵キャラが画面下に到達したらゲームオーバー
+          if (enemy.y + enemy.height >= canvas.height) {
+            lives = 0;
+          }
+        }
 
         // プレイヤー弾と敵との衝突判定
         for (let i = playerBullets.length - 1; i >= 0; i--) {
