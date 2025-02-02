@@ -124,6 +124,12 @@ function gameLoop() {
         // 画面端で反転
         if(enemy.x < 0 || enemy.x > canvas.width - enemy.width) enemy.speedX *= -1;
         
+        // フィールド下部到達チェック
+        if(enemy.y + enemy.height >= canvas.height) {
+            lives = 0;
+            gameOver = true;
+        }
+        
         // 射撃
         if(--enemy.fireCooldown <= 0) {
             enemyBullets.push({x: enemy.x + enemy.width/2 -2, y: enemy.y + enemy.height, width:4, height:10});
