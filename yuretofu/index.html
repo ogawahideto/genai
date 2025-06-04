@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ゆれ豆腐</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #87CEEB, #98FB98);
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: #87CEEB;
+            border: 3px solid #4682B4;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .floor {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(to bottom, #8B4513, #654321);
+            border-top: 3px solid #A0522D;
+        }
+
+        .character {
+            position: absolute;
+            width: 60px;
+            height: 80px;
+            bottom: 100px;
+            transition: left 0.1s ease;
+        }
+
+        .character-body {
+            width: 40px;
+            height: 50px;
+            background: #FFB6C1;
+            border-radius: 20px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .character-head {
+            width: 30px;
+            height: 30px;
+            background: #FFB6C1;
+            border-radius: 50%;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .character-eyes {
+            position: absolute;
+            top: 8px;
+            left: 6px;
+            width: 4px;
+            height: 4px;
+            background: black;
+            border-radius: 50%;
+        }
+
+        .character-eyes::after {
+            content: '';
+            position: absolute;
+            left: 12px;
+            width: 4px;
+            height: 4px;
+            background: black;
+            border-radius: 50%;
+        }
+
+        .plate {
+            position: absolute;
+            width: 80px;
+            height: 8px;
+            background: #C0C0C0;
+            border-radius: 40px;
+            top: -15px;
+            left: -10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .tofu {
+            position: absolute;
+            width: 25px;
+            height: 20px;
+            background: #FFFAFA;
+            border: 2px solid #F5F5DC;
+            border-radius: 3px;
+            top: -40px;
+            left: 27px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: left 0.1s ease-out;
+        }
+
+        .tofu.falling {
+            animation: fall 1s ease-in forwards;
+        }
+
+        .tofu.thrown {
+            animation: thrown 2s ease-out forwards;
+        }
+
+        @keyframes fall {
+            to {
+                top: 600px;
+            }
+        }
+
+        @keyframes thrown {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-200px); }
+            100% { transform: translateY(0); }
+        }
+
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-size: 14px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        .bonus {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #FFD700;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            opacity: 0;
+            animation: bonusShow 2s ease-out;
+        }
+
+        @keyframes bonusShow {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            50% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+    <h1 style="color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin-bottom: 10px;">ゆれ豆腐</h1>
+    
+    <div class="game-container" id="gameContainer">
+        <div class="floor" id="floor"></div>
+        
+        <div class="character" id="character">
+            <div class="character-head">
+                <div class="character-eyes"></div>
+            </div>
+            <div class="character-body">
+                <div class="plate" id="plate">
+                    <div class="tofu" id="tofu"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ui">
+            <div>時間: <span id="time">0.0</span>秒</div>
+            <div>最高記録: <span id="bestTime">0.0</span>秒</div>
+            <div>床のスピード: <span id="floorSpeed">1</span></div>
+        </div>
+
+        <div class="controls">
+            <div>← → キー: 移動</div>
+            <div>スペースキー: 豆腐を投げる</div>
+        </div>
+
+        <div class="start-screen" id="startScreen">
+            <h2>ゆれ豆腐</h2>
+            <p>床が左右に動く中、豆腐を落とさないようにバランスを取ろう！</p>
+            <p>← → キーで移動、スペースキーで豆腐を投げてボーナスを狙おう</p>
+            <button onclick="startGame()">ゲーム開始</button>
+        </div>
+
+        <div class="game-over" id="gameOver">
+            <h2>ゲームオーバー</h2>
+            <p>記録: <span id="finalTime">0</span>秒</p>
+            <p id="newRecord" style="color: #FFD700; display: none;">新記録！</p>
+            <button onclick="restartGame()">もう一度</button>
+        </div>
+    </div>
+
+    <script>
+        class YureTofuGame {
+            constructor() {
+                this.gameContainer = document.getElementById('gameContainer');
+                this.floor = document.getElementById('floor');
+                this.character = document.getElementById('character');
+                this.plate = document.getElementById('plate');
+                this.tofu = document.getElementById('tofu');
+                this.timeDisplay = document.getElementById('time');
+                this.bestTimeDisplay = document.getElementById('bestTime');
+                this.floorSpeedDisplay = document.getElementById('floorSpeed');
+                this.startScreen = document.getElementById('startScreen');
+                this.gameOverScreen = document.getElementById('gameOver');
+                
+                this.isPlaying = false;
+                this.startTime = 0;
+                this.currentTime = 0;
+                this.characterX = 370; // Character's absolute position
+                this.floorX = 0; // Floor's position
+                this.floorSpeed = 1;
+                this.floorDirection = 1;
+                this.tofuThrown = false;
+                this.tofuFalling = false;
+                this.tofuThrowTime = 0;
+                this.bonusTime = 0;
+                this.tofuX = 0; // Reset tofu position on plate
+                this.tofuVelocityX = 0;
+                this.prevFloorVelocity = 0;
+                this.prevCharacterVelocity = 0;
+                this.bestTimeRecord = 0;
+                this.tofuX = 0; // Tofu position on plate (relative to plate center)
+                this.tofuVelocityX = 0; // Tofu velocity on plate
+                this.prevFloorVelocity = 0;
+                this.prevCharacterVelocity = 0;
+                
+                this.keys = {};
+                
+                this.loadBestTime();
+                this.setupEventListeners();
+                this.gameLoop();
+            }
+
+            setupEventListeners() {
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        this.throwTofu();
+                    }
+                });
+
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.code] = false;
+                });
+            }
+
+            startGame() {
+                this.isPlaying = true;
+                this.startTime = Date.now();
+                this.currentTime = 0;
+                this.characterX = 0; // Start at center
+                this.floorX = 0;
+                this.floorSpeed = 0.5; // Start slower
+                this.floorDirection = 1;
+                this.tofuThrown = false;
+                this.tofuFalling = false;
+                this.bonusTime = 0;
+                
+                this.startScreen.style.display = 'none';
+                this.gameOverScreen.style.display = 'none';
+                
+                // Reset tofu
+                this.tofu.className = 'tofu';
+                this.tofu.style.top = '-45px';
+                this.tofu.style.left = '15px';
+                this.tofu.style.transform = '';
+            }
+
+            restartGame() {
+                this.startGame();
+            }
+
+            gameLoop() {
+                if (this.isPlaying) {
+                    this.update();
+                    this.render();
+                }
+                requestAnimationFrame(() => this.gameLoop());
+            }
+
+            update() {
+                // Update time
+                this.currentTime = (Date.now() - this.startTime) / 1000 + this.bonusTime;
+                this.timeDisplay.textContent = this.currentTime.toFixed(1);
+                
+                // Increase floor speed over time (much slower initial increase)
+                this.floorSpeed = 0.2 + this.currentTime * 0.03; // Start even slower
+                this.floorSpeedDisplay.textContent = this.floorSpeed.toFixed(1);
+                
+                // Move floor left and right
+                this.floorX += this.floorDirection * this.floorSpeed;
+                
+                // Change direction when reaching edges (much smaller range initially)
+                const edgeLimit = Math.min(10 + this.currentTime * 1.5, 50); // Start with very small movement
+                if (this.floorX > edgeLimit) {
+                    this.floorDirection = -1;
+                } else if (this.floorX < -edgeLimit) {
+                    this.floorDirection = 1;
+                }
+                
+                // Handle character movement (relative to floor)
+                let relativeMovement = 0;
+                if (this.keys['ArrowLeft']) {
+                    relativeMovement = -4;
+                }
+                if (this.keys['ArrowRight']) {
+                    relativeMovement = 4;
+                }
+                
+                // Update character's relative position
+                this.characterX += relativeMovement;
+                
+                // Calculate velocities for tofu physics
+                const currentFloorVelocity = this.floorDirection * this.floorSpeed;
+                const floorAcceleration = currentFloorVelocity - this.prevFloorVelocity;
+                const characterAcceleration = relativeMovement - this.prevCharacterVelocity;
+                this.prevFloorVelocity = currentFloorVelocity;
+                this.prevCharacterVelocity = relativeMovement;
+                
+                // Update tofu physics
+                if (!this.tofuThrown && !this.tofuFalling) {
+                    // Apply forces to tofu due to floor and character acceleration
+                    const totalAcceleration = floorAcceleration + characterAcceleration;
+                    this.tofuVelocityX += totalAcceleration * 1.5; // Increased from 0.8 to 1.5 for more sliding
+                    
+                    // Apply friction to slow down tofu (reduced friction for more sliding)
+                    this.tofuVelocityX *= 0.75; // Reduced from 0.85 to 0.75
+                    
+                    // Update tofu position on plate
+                    this.tofuX += this.tofuVelocityX;
+                    
+                    // Check if tofu falls off the plate (plate is 80px wide, so ±35px from center)
+                    if (Math.abs(this.tofuX) > 25) {
+                        this.dropTofu();
+                        return;
+                    }
+                }
+                
+                // Keep character within bounds (relative to center)
+                this.characterX = Math.max(-200, Math.min(200, this.characterX));
+                
+                // Check if tofu should fall due to floor movement and relative position
+                if (!this.tofuThrown && !this.tofuFalling) {
+                    // Floor acceleration causes instability
+                    const floorAcceleration = Math.abs(this.floorDirection * this.floorSpeed);
+                    
+                    // Character's distance from center adds instability
+                    const relativeDistance = Math.abs(this.characterX);
+                    
+                    // Movement also adds instability
+                    const movementInstability = Math.abs(relativeMovement);
+                    
+                    const totalInstability = floorAcceleration + relativeDistance * 0.02 + movementInstability * 0.5;
+                    const threshold = Math.max(6 - this.currentTime * 0.1, 2.5);
+                    
+                    if (totalInstability > threshold) {
+                        this.dropTofu();
+                    }
+                }
+                
+                // Handle thrown tofu
+                if (this.tofuThrown) {
+                    const throwElapsed = (Date.now() - this.tofuThrowTime) / 1000;
+                    if (throwElapsed > 2) {
+                        // Check if caught successfully (relative to center position)
+                        const distance = Math.abs(this.characterX);
+                        
+                        if (distance < 50) {
+                            // Successfully caught!
+                            this.bonusTime += 3;
+                            this.showBonus('+3秒ボーナス！');
+                            this.tofuThrown = false;
+                            this.tofu.className = 'tofu';
+                            this.tofu.style.animation = '';
+                        } else {
+                            // Failed to catch
+                            this.dropTofu();
+                        }
+                    }
+                }
+            }
+
+            render() {
+                // Move floor left and right
+                this.floor.style.left = this.floorX + 'px';
+                
+                // Character moves with floor + relative position
+                const characterAbsoluteX = 370 + this.floorX + this.characterX;
+                this.character.style.left = characterAbsoluteX + 'px';
+                
+                // Visual feedback - show tofu sliding on plate
+                if (!this.tofuThrown && !this.tofuFalling) {
+                    // Position tofu based on its position on the plate (increased multiplier for more visible movement)
+                    const tofuPixelOffset = this.tofuX * 1.2; // Increased from 0.8 to 1.2 for more visible sliding
+                    this.tofu.style.left = (27 + tofuPixelOffset) + 'px';
+                    
+                    // Add slight rotation based on velocity for visual effect (increased for more dramatic effect)
+                    const rotation = this.tofuVelocityX * 8; // Increased from 5 to 8
+                    this.tofu.style.transform = `rotate(${rotation}deg)`;
+                }
+            }
+
+            throwTofu() {
+                if (this.isPlaying && !this.tofuThrown && !this.tofuFalling) {
+                    this.tofuThrown = true;
+                    this.tofuThrowTime = Date.now();
+                    this.tofu.className = 'tofu thrown';
+                }
+            }
+
+            dropTofu() {
+                if (this.tofuFalling) return;
+                
+                this.tofuFalling = true;
+                this.tofu.className = 'tofu falling';
+                
+                setTimeout(() => {
+                    this.gameOver();
+                }, 1000);
+            }
+
+            gameOver() {
+                this.isPlaying = false;
+                
+                const finalTime = this.currentTime;
+                document.getElementById('finalTime').textContent = finalTime.toFixed(1);
+                
+                // Check for new record
+                const bestTime = this.getBestTime();
+                if (finalTime > bestTime) {
+                    this.saveBestTime(finalTime);
+                    this.bestTimeDisplay.textContent = finalTime.toFixed(1);
+                    document.getElementById('newRecord').style.display = 'block';
+                } else {
+                    document.getElementById('newRecord').style.display = 'none';
+                }
+                
+                this.gameOverScreen.style.display = 'block';
+            }
+
+            showBonus(text) {
+                const bonus = document.createElement('div');
+                bonus.className = 'bonus';
+                bonus.textContent = text;
+                this.gameContainer.appendChild(bonus);
+                
+                setTimeout(() => {
+                    this.gameContainer.removeChild(bonus);
+                }, 2000);
+            }
+
+            getBestTime() {
+                return this.bestTimeRecord || 0;
+            }
+
+            saveBestTime(time) {
+                this.bestTimeRecord = time;
+                try {
+                    document.cookie = `yureTofuBestTime=${time}; max-age=31536000; path=/`;
+                } catch (e) {
+                    console.log('Cookie保存に失敗しました');
+                }
+            }
+
+            loadBestTime() {
+                try {
+                    const cookies = document.cookie.split(';');
+                    for (let cookie of cookies) {
+                        const [name, value] = cookie.trim().split('=');
+                        if (name === 'yureTofuBestTime') {
+                            this.bestTimeRecord = parseFloat(value) || 0;
+                            break;
+                        }
+                    }
+                } catch (e) {
+                    this.bestTimeRecord = 0;
+                }
+                
+                this.bestTimeDisplay.textContent = this.bestTimeRecord.toFixed(1);
+            }
+        }
+
+        // Global functions for buttons
+        function startGame() {
+            game.startGame();
+        }
+
+        function restartGame() {
+            game.restartGame();
+        }
+
+        // Initialize game
+        const game = new YureTofuGame();
+    </script>
+</body>
+</html>
