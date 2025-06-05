@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ラーメンとんかつアートバトル</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            color: white;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #fff;
+            display: block;
+            margin: 20px auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            background: #000;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            min-width: 300px;
+        }
+        
+        #score, #combo, #level {
+            font-size: 20px;
+            margin: 5px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        #combo {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        
+        #gameOver, #start {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0,0,0,0.9);
+            padding: 30px;
+            border-radius: 20px;
+            border: 3px solid #fff;
+        }
+        
+        button {
+            font-size: 24px;
+            padding: 15px 30px;
+            margin: 10px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #ff5252;
+            transform: scale(1.1);
+        }
+        
+        h1 {
+            font-size: 36px;
+            margin: 10px 0;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        }
+        
+        .instruction {
+            font-size: 16px;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="score">スコア: 0</div>
+        <div id="combo">コンボ: x1</div>
+        <div id="level">レベル: 1</div>
+    </div>
+    
+    <div id="start">
+        <h1>🍜 ラーメンとんかつアートバトル 🍖</h1>
+        <div class="instruction">
+            謎のアート生物がラーメンととんかつを<br>
+            盗もうとしています！<br><br>
+            ↑↓←→キーで青いアートを操作して<br>
+            食べ物を守りましょう！<br>
+            SPACEキーで波動を発射！
+        </div>
+        <button onclick="startGame()">ゲームスタート</button>
+    </div>
+    
+    <div id="gameOver" style="display: none;">
+        <h1>ゲームオーバー！</h1>
+        <div id="finalScore"></div>
+        <button onclick="startGame()">もう一度プレイ</button>
+    </div>
+    
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameState = 'menu';
+        let score = 0;
+        let combo = 1;
+        let level = 1;
+        let gameSpeed = 1;
+        
+        // プレイヤー（青いアート）
+        const player = {
+            x: 400,
+            y: 500,
+            size: 40,
+            speed: 5,
+            bullets: [],
+            invincible: 0
+        };
+        
+        // キー入力
+        const keys = {};
+        
+        // 食べ物
+        const foods = [];
+        
+        // 敵（赤いアート）
+        const enemies = [];
+        
+        // パーティクル
+        const particles = [];
+        
+        // 食べ物クラス
+        class Food {
+            constructor(type, x, y) {
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.size = 30;
+                this.collected = false;
+                this.bounce = 0;
+                this.fallSpeed = 2 + Math.random() * 2;
+            }
+            
+            update() {
+                // 重力で落下
+                this.y += this.fallSpeed;
+                
+                // 画面下に落ちたら削除フラグ
+                if (this.y > canvas.height + this.size) {
+                    this.collected = true;
+                    combo = 1; // コンボリセット
+                    updateUI();
+                }
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y + Math.sin(this.bounce) * 5);
+                
+                if (this.type === 'ramen') {
+                    // ラーメンボウル
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // スープ
+                    ctx.fillStyle = '#f4e4c1';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.size - 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // チャーシュー
+                    ctx.fillStyle = '#8b4513';
+                    ctx.beginPath();
+                    ctx.arc(0, -5, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // ネギ
+                    ctx.strokeStyle = '#90EE90';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(-10, 0);
+                    ctx.lineTo(-5, -10);
+                    ctx.moveTo(10, 0);
+                    ctx.lineTo(5, -10);
+                    ctx.stroke();
+                } else {
+                    // とんかつ
+                    ctx.fillStyle = '#D2691E';
+                    ctx.fillRect(-this.size, -this.size/2, this.size * 2, this.size);
+                    
+                    // 衣の線
+                    ctx.strokeStyle = '#8B4513';
+                    ctx.lineWidth = 2;
+                    for (let i = -this.size + 5; i < this.size; i += 5) {
+                        ctx.beginPath();
+                        ctx.moveTo(i, -this.size/2);
+                        ctx.lineTo(i, this.size/2);
+                        ctx.stroke();
+                    }
+                    
+                    // 肉の部分
+                    ctx.fillStyle = '#CD5C5C';
+                    ctx.fillRect(-this.size + 5, -this.size/2 + 5, 10, this.size - 10);
+                }
+                
+                ctx.restore();
+                this.bounce += 0.1;
+            }
+        }
+        
+        // 敵クラス
+        class Enemy {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = 30;
+                this.speed = 1 + level * 0.5;
+                this.hp = 2 + Math.floor(level / 2);
+                this.angle = 0;
+                this.targetFood = null;
+            }
+            
+            update() {
+                // 最も近い食べ物を狙う
+                if (!this.targetFood || this.targetFood.collected) {
+                    let minDist = Infinity;
+                    foods.forEach(food => {
+                        if (!food.collected) {
+                            const dist = Math.hypot(food.x - this.x, food.y - this.y);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                this.targetFood = food;
+                            }
+                        }
+                    });
+                }
+                
+                if (this.targetFood) {
+                    const dx = this.targetFood.x - this.x;
+                    const dy = this.targetFood.y - this.y;
+                    const dist = Math.hypot(dx, dy);
+                    
+                    if (dist > 5) {
+                        this.x += (dx / dist) * this.speed;
+                        this.y += (dy / dist) * this.speed;
+                    }
+                    
+                    // 食べ物に到達
+                    if (dist < this.size + this.targetFood.size) {
+                        this.targetFood.collected = true;
+                        combo = 1;
+                        updateUI();
+                    }
+                }
+                
+                this.angle += 0.1;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                
+                // 赤い球体（敵アート）
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI * 2 / 6) * i;
+                    const x = Math.cos(angle) * this.size * 0.7;
+                    const y = Math.sin(angle) * this.size * 0.7;
+                    
+                    ctx.fillStyle = '#ff4444';
+                    ctx.beginPath();
+                    ctx.arc(x, y, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 目
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(x - 3, y - 3, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#a0a0ff';
+                    ctx.beginPath();
+                    ctx.arc(x - 3, y - 3, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+        
+        // 弾クラス
+        class Bullet {
+            constructor(x, y, angle) {
+                this.x = x;
+                this.y = y;
+                this.speed = 10;
+                this.size = 8;
+                this.angle = angle;
+                this.vx = Math.cos(angle) * this.speed;
+                this.vy = Math.sin(angle) * this.speed;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+            
+            draw() {
+                ctx.fillStyle = '#00ffff';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size - 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // パーティクルクラス
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 10;
+                this.vy = (Math.random() - 0.5) * 10;
+                this.size = Math.random() * 5 + 3;
+                this.color = color;
+                this.life = 1;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.3;
+                this.life -= 0.02;
+                this.size *= 0.98;
+            }
+            
+            draw() {
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+        
+        function drawPlayer() {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            
+            // 無敵時間中は点滅
+            if (player.invincible > 0 && Math.floor(player.invincible / 5) % 2 === 0) {
+                ctx.globalAlpha = 0.5;
+            }
+            
+            // 青い体
+            ctx.fillStyle = '#4444ff';
+            ctx.beginPath();
+            ctx.arc(0, 0, player.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 目
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(-10, -5, 8, 0, Math.PI * 2);
+            ctx.arc(10, -5, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 瞳
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(-10, -5, 4, 0, Math.PI * 2);
+            ctx.arc(10, -5, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 口
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 5, 15, 0, Math.PI);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        function spawnFood() {
+            const type = Math.random() < 0.5 ? 'ramen' : 'tonkatsu';
+            const x = Math.random() * (canvas.width - 100) + 50;
+            const y = 50;
+            foods.push(new Food(type, x, y));
+        }
+        
+        function spawnEnemy() {
+            const side = Math.floor(Math.random() * 4);
+            let x, y;
+            
+            switch(side) {
+                case 0: x = Math.random() * canvas.width; y = -50; break;
+                case 1: x = canvas.width + 50; y = Math.random() * canvas.height; break;
+                case 2: x = Math.random() * canvas.width; y = canvas.height + 50; break;
+                case 3: x = -50; y = Math.random() * canvas.height; break;
+            }
+            
+            enemies.push(new Enemy(x, y));
+        }
+        
+        function checkCollisions() {
+            // 弾と敵の衝突
+            player.bullets.forEach((bullet, bi) => {
+                enemies.forEach((enemy, ei) => {
+                    const dist = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
+                    if (dist < bullet.size + enemy.size) {
+                        enemy.hp--;
+                        
+                        // パーティクル生成
+                        for (let i = 0; i < 10; i++) {
+                            particles.push(new Particle(enemy.x, enemy.y, '#ff4444'));
+                        }
+                        
+                        if (enemy.hp <= 0) {
+                            enemies.splice(ei, 1);
+                            score += 100 * combo;
+                            combo++;
+                            updateUI();
+                            
+                            // 追加パーティクル
+                            for (let i = 0; i < 20; i++) {
+                                particles.push(new Particle(enemy.x, enemy.y, '#ffff00'));
+                            }
+                        }
+                        
+                        player.bullets.splice(bi, 1);
+                    }
+                });
+            });
+            
+            // プレイヤーと食べ物の衝突
+            foods.forEach((food, i) => {
+                if (!food.collected) {
+                    const dist = Math.hypot(player.x - food.x, player.y - food.y);
+                    if (dist < player.size + food.size) {
+                        food.collected = true;
+                        score += food.type === 'ramen' ? 300 : 500;
+                        updateUI();
+                        
+                        // パーティクル生成
+                        for (let i = 0; i < 15; i++) {
+                            particles.push(new Particle(food.x, food.y, '#00ff00'));
+                        }
+                    }
+                }
+            });
+            
+            // プレイヤーと敵の衝突
+            if (player.invincible <= 0) {
+                enemies.forEach(enemy => {
+                    const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+                    if (dist < player.size + enemy.size) {
+                        gameOver();
+                    }
+                });
+            }
+        }
+        
+        function updateUI() {
+            document.getElementById('score').textContent = `スコア: ${score}`;
+            document.getElementById('combo').textContent = `コンボ: x${combo}`;
+            document.getElementById('level').textContent = `レベル: ${level}`;
+        }
+        
+        function gameLoop() {
+            if (gameState !== 'playing') return;
+            
+            // クリアアニメーション
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 背景の星
+            if (Math.random() < 0.1) {
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, 1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // プレイヤー移動
+            if (keys['ArrowLeft'] && player.x > player.size) player.x -= player.speed;
+            if (keys['ArrowRight'] && player.x < canvas.width - player.size) player.x += player.speed;
+            if (keys['ArrowUp'] && player.y > player.size) player.y -= player.speed;
+            if (keys['ArrowDown'] && player.y < canvas.height - player.size) player.y += player.speed;
+            
+            // 無敵時間減少
+            if (player.invincible > 0) player.invincible--;
+            
+            // 食べ物更新
+            foods.forEach(food => {
+                food.update();
+                food.draw();
+            });
+            // 収集済みまたは画面外の食べ物を削除
+            for (let i = foods.length - 1; i >= 0; i--) {
+                if (foods[i].collected) {
+                    foods.splice(i, 1);
+                }
+            }
+            
+            // 敵更新
+            enemies.forEach(enemy => {
+                enemy.update();
+                enemy.draw();
+            });
+            
+            // 弾更新
+            player.bullets.forEach((bullet, i) => {
+                bullet.update();
+                bullet.draw();
+                
+                // 画面外の弾を削除
+                if (bullet.x < 0 || bullet.x > canvas.width || 
+                    bullet.y < 0 || bullet.y > canvas.height) {
+                    player.bullets.splice(i, 1);
+                }
+            });
+            
+            // パーティクル更新
+            particles.forEach((particle, i) => {
+                particle.update();
+                particle.draw();
+                if (particle.life <= 0) particles.splice(i, 1);
+            });
+            
+            // プレイヤー描画
+            drawPlayer();
+            
+            // 衝突判定
+            checkCollisions();
+            
+            // レベルアップ
+            if (score > level * 1000) {
+                level++;
+                gameSpeed += 0.2;
+                updateUI();
+            }
+            
+            // 新しい食べ物と敵のスポーン
+            if (Math.random() < 0.01 * gameSpeed) spawnFood();
+            if (Math.random() < 0.005 * gameSpeed) spawnEnemy();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function startGame() {
+            gameState = 'playing';
+            score = 0;
+            combo = 1;
+            level = 1;
+            gameSpeed = 1;
+            player.x = 400;
+            player.y = 500;
+            player.bullets = [];
+            player.invincible = 0;
+            foods.length = 0;
+            enemies.length = 0;
+            particles.length = 0;
+            
+            document.getElementById('start').style.display = 'none';
+            document.getElementById('gameOver').style.display = 'none';
+            
+            updateUI();
+            
+            // 初期食べ物
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => spawnFood(), i * 1000);
+            }
+            
+            gameLoop();
+        }
+        
+        function gameOver() {
+            gameState = 'gameOver';
+            document.getElementById('finalScore').textContent = `最終スコア: ${score}`;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        // キーイベント
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            
+            if (e.key === ' ' && gameState === 'playing') {
+                // 8方向に弾を発射
+                for (let i = 0; i < 8; i++) {
+                    const angle = (Math.PI * 2 / 8) * i;
+                    player.bullets.push(new Bullet(player.x, player.y, angle));
+                }
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+    </script>
+</body>
+</html>
