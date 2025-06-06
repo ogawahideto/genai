@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anthropic & Claude 愛称ジェネレーター</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .nickname-display {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .nickname-display:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        .company-name {
+            font-size: 18px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        
+        .nickname {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .pronunciation {
+            font-size: 14px;
+            opacity: 0.8;
+            font-style: italic;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .history {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .history h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .history-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .history-item {
+            background: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .history-item:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: scale(1.05);
+        }
+        
+        .info {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎌 愛称ジェネレーター</h1>
+        <p class="subtitle">Anthropic & Claude の日本語愛称を作ろう！</p>
+        
+        <div class="nickname-display" id="nicknameDisplay">
+            <div class="company-name">Anthropic → Claude</div>
+            <div class="nickname" id="nickname">クリックして生成！</div>
+            <div class="pronunciation" id="pronunciation"></div>
+        </div>
+        
+        <div class="button-group">
+            <button onclick="generateForAnthropic()">Anthropic の愛称</button>
+            <button onclick="generateForClaude()">Claude の愛称</button>
+            <button onclick="generateBoth()">両方まとめて！</button>
+        </div>
+        
+        <div class="history" id="history" style="display: none;">
+            <h3>🌟 生成された愛称たち</h3>
+            <div class="history-list" id="historyList"></div>
+        </div>
+        
+        <p class="info">
+            💡 ヒント: 生成された愛称をクリックすると、その愛称を再表示できます！
+        </p>
+    </div>
+    
+    <script>
+        const anthropicNicknames = [
+            { name: "アンちゃん", pronunciation: "An-chan" },
+            { name: "アンピー", pronunciation: "An-pī" },
+            { name: "アンロボ", pronunciation: "An-robo" },
+            { name: "アンさん", pronunciation: "An-san" },
+            { name: "アンスロ", pronunciation: "An-suro" },
+            { name: "アンポン", pronunciation: "An-pon" },
+            { name: "アンソロ", pronunciation: "An-soro" },
+            { name: "アンピック", pronunciation: "An-pikku" },
+            { name: "アンたん", pronunciation: "An-tan" },
+            { name: "アンス", pronunciation: "An-su" },
+            { name: "ロピー", pronunciation: "Ro-pī" },
+            { name: "ピッくん", pronunciation: "Pi-kkun" },
+            { name: "アンスロくん", pronunciation: "An-suro-kun" },
+            { name: "アンロピ", pronunciation: "An-ropi" },
+            { name: "アンスロピ", pronunciation: "An-suropi" },
+            { name: "アンソー", pronunciation: "An-sō" },
+            { name: "アンロー", pronunciation: "An-rō" },
+            { name: "アンピコ", pronunciation: "An-piko" },
+            { name: "アンスロン", pronunciation: "An-suron" },
+            { name: "アンポロ", pronunciation: "An-poro" }
+        ];
+        
+        const claudeNicknames = [
+            { name: "クーちゃん", pronunciation: "Kū-chan" },
+            { name: "クロくん", pronunciation: "Kuro-kun" },
+            { name: "クラちゃん", pronunciation: "Kura-chan" },
+            { name: "クーさん", pronunciation: "Kū-san" },
+            { name: "クロード先生", pronunciation: "Kurōdo-sensei" },
+            { name: "クロちゃん", pronunciation: "Kuro-chan" },
+            { name: "クラウ", pronunciation: "Kurau" },
+            { name: "クーロ", pronunciation: "Kū-ro" },
+            { name: "クラさん", pronunciation: "Kura-san" },
+            { name: "クロロ", pronunciation: "Kuroro" },
+            { name: "クラウド", pronunciation: "Kuraudo" },
+            { name: "クロッピー", pronunciation: "Kuro-ppī" },
+            { name: "クラたん", pronunciation: "Kura-tan" },
+            { name: "クロリン", pronunciation: "Kuro-rin" },
+            { name: "クーロン", pronunciation: "Kū-ron" },
+            { name: "クラッピー", pronunciation: "Kura-ppī" },
+            { name: "クロポン", pronunciation: "Kuro-pon" },
+            { name: "クラウドン", pronunciation: "Kurau-don" },
+            { name: "クロミ", pronunciation: "Kuro-mi" },
+            { name: "クラリン", pronunciation: "Kura-rin" }
+        ];
+        
+        const bothNicknames = [
+            { name: "アンクロ", pronunciation: "An-kuro", description: "Anthropic + Claude" },
+            { name: "クロアン", pronunciation: "Kuro-an", description: "Claude + Anthropic" },
+            { name: "アンクラ", pronunciation: "An-kura", description: "Anthropic + Claude" },
+            { name: "アンロード", pronunciation: "An-rōdo", description: "Anthropic + Claude" },
+            { name: "クロピック", pronunciation: "Kuro-pikku", description: "Claude + Anthropic" },
+            { name: "アンクー", pronunciation: "An-kū", description: "Anthropic + Claude" },
+            { name: "クロスロ", pronunciation: "Kuro-suro", description: "Claude + Anthropic" },
+            { name: "アンクロちゃん", pronunciation: "An-kuro-chan", description: "Anthropic + Claude" },
+            { name: "クロアンさん", pronunciation: "Kuro-an-san", description: "Claude + Anthropic" },
+            { name: "アンクラくん", pronunciation: "An-kura-kun", description: "Anthropic + Claude" }
+        ];
+        
+        let history = [];
+        
+        function updateDisplay(company, nickname, pronunciation) {
+            const display = document.getElementById('nicknameDisplay');
+            display.classList.remove('fade-in');
+            void display.offsetWidth;
+            display.classList.add('fade-in');
+            
+            document.getElementById('nickname').textContent = nickname;
+            document.getElementById('pronunciation').textContent = pronunciation;
+            document.querySelector('.company-name').textContent = company;
+            
+            addToHistory(company, nickname, pronunciation);
+        }
+        
+        function generateForAnthropic() {
+            const random = anthropicNicknames[Math.floor(Math.random() * anthropicNicknames.length)];
+            updateDisplay('Anthropic', random.name, random.pronunciation);
+        }
+        
+        function generateForClaude() {
+            const random = claudeNicknames[Math.floor(Math.random() * claudeNicknames.length)];
+            updateDisplay('Claude', random.name, random.pronunciation);
+        }
+        
+        function generateBoth() {
+            const random = bothNicknames[Math.floor(Math.random() * bothNicknames.length)];
+            updateDisplay(random.description, random.name, random.pronunciation);
+        }
+        
+        function addToHistory(company, nickname, pronunciation) {
+            const historyItem = { company, nickname, pronunciation };
+            
+            if (!history.some(item => item.nickname === nickname)) {
+                history.push(historyItem);
+                updateHistoryDisplay();
+            }
+        }
+        
+        function updateHistoryDisplay() {
+            if (history.length > 0) {
+                document.getElementById('history').style.display = 'block';
+                const historyList = document.getElementById('historyList');
+                historyList.innerHTML = '';
+                
+                history.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    div.textContent = item.nickname;
+                    div.onclick = () => updateDisplay(item.company, item.nickname, item.pronunciation);
+                    historyList.appendChild(div);
+                });
+            }
+        }
+        
+        // 初期表示
+        generateBoth();
+    </script>
+</body>
+</html>
