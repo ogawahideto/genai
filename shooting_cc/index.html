@@ -1,0 +1,440 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シューティングゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            border: 2px solid #333;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(180deg, #001122 0%, #000044 100%);
+            display: block;
+        }
+
+        #gameInfo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            font-size: 18px;
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-size: 24px;
+            display: none;
+            z-index: 20;
+            background: rgba(0,0,0,0.8);
+            padding: 30px;
+            border-radius: 10px;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 14px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="gameInfo">
+            <div>得点: <span id="score">0</span></div>
+            <div>残機: <span id="lives">5</span></div>
+            <div>ステージ: <span id="stage">1</span></div>
+        </div>
+        <div id="gameOver">
+            <h2>ゲームオーバー</h2>
+            <p>最終得点: <span id="finalScore">0</span></p>
+            <p>Rキーでリスタート</p>
+        </div>
+        <div id="instructions">
+            <div>移動: WASD または 矢印キー</div>
+            <div>射撃: スペースキー</div>
+        </div>
+    </div>
+
+    <script>
+        class ShootingGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.width = this.canvas.width;
+                this.height = this.canvas.height;
+                
+                this.init();
+                this.setupEventListeners();
+                this.gameLoop();
+            }
+
+            init() {
+                this.score = 0;
+                this.lives = 5;
+                this.stage = 1;
+                this.gameState = 'playing'; // 'playing', 'gameOver', 'stageClear'
+                this.stageStartTime = Date.now();
+                
+                this.keys = {};
+                
+                this.player = {
+                    x: this.width / 2,
+                    y: this.height - 50,
+                    width: 30,
+                    height: 30,
+                    speed: 5,
+                    color: '#00ff00'
+                };
+                
+                this.bullets = [];
+                this.enemyBullets = [];
+                this.enemies = [];
+                this.obstacles = [];
+                
+                this.createObstacles();
+                this.createEnemies();
+                
+                this.lastShot = 0;
+                this.shootCooldown = 150;
+            }
+
+            createObstacles() {
+                this.obstacles = [];
+                for (let i = 0; i < 5; i++) {
+                    this.obstacles.push({
+                        x: Math.random() * (this.width - 60) + 30,
+                        y: Math.random() * (this.height - 200) + 100,
+                        width: 60,
+                        height: 40,
+                        color: '#666'
+                    });
+                }
+            }
+
+            createEnemies() {
+                this.enemies = [];
+                const enemyCount = this.stage;
+                for (let i = 0; i < enemyCount; i++) {
+                    this.enemies.push({
+                        x: Math.random() * (this.width - 40) + 20,
+                        y: Math.random() * 150 + 50,
+                        width: 30,
+                        height: 30,
+                        speed: 1 + Math.random() * 2,
+                        color: '#ff0000',
+                        direction: Math.random() * Math.PI * 2,
+                        lastShot: 0,
+                        shootCooldown: 1000 + Math.random() * 2000,
+                        hp: 1
+                    });
+                }
+            }
+
+            setupEventListeners() {
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.key.toLowerCase()] = true;
+                    if (e.key.toLowerCase() === 'r' && this.gameState === 'gameOver') {
+                        this.restart();
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+            }
+
+            update() {
+                if (this.gameState !== 'playing') return;
+                
+                this.updatePlayer();
+                this.updateBullets();
+                this.updateEnemies();
+                this.updateEnemyBullets();
+                this.checkCollisions();
+                this.checkGameState();
+            }
+
+            updatePlayer() {
+                if (this.keys['a'] || this.keys['arrowleft']) {
+                    this.player.x = Math.max(0, this.player.x - this.player.speed);
+                }
+                if (this.keys['d'] || this.keys['arrowright']) {
+                    this.player.x = Math.min(this.width - this.player.width, this.player.x + this.player.speed);
+                }
+                if (this.keys['w'] || this.keys['arrowup']) {
+                    this.player.y = Math.max(0, this.player.y - this.player.speed);
+                }
+                if (this.keys['s'] || this.keys['arrowdown']) {
+                    this.player.y = Math.min(this.height - this.player.height, this.player.y + this.player.speed);
+                }
+                
+                if (this.keys[' '] && Date.now() - this.lastShot > this.shootCooldown) {
+                    this.shoot();
+                    this.lastShot = Date.now();
+                }
+            }
+
+            shoot() {
+                this.bullets.push({
+                    x: this.player.x + this.player.width / 2 - 2,
+                    y: this.player.y,
+                    width: 4,
+                    height: 10,
+                    speed: 8,
+                    color: '#ffff00'
+                });
+            }
+
+            updateBullets() {
+                this.bullets.forEach((bullet, index) => {
+                    bullet.y -= bullet.speed;
+                    if (bullet.y < 0) {
+                        this.bullets.splice(index, 1);
+                    }
+                });
+            }
+
+            updateEnemies() {
+                this.enemies.forEach(enemy => {
+                    enemy.x += Math.cos(enemy.direction) * enemy.speed;
+                    enemy.y += Math.sin(enemy.direction) * enemy.speed;
+                    
+                    if (enemy.x <= 0 || enemy.x >= this.width - enemy.width) {
+                        enemy.direction = Math.PI - enemy.direction;
+                    }
+                    if (enemy.y <= 0 || enemy.y >= this.height / 2) {
+                        enemy.direction = -enemy.direction;
+                    }
+                    
+                    enemy.x = Math.max(0, Math.min(this.width - enemy.width, enemy.x));
+                    enemy.y = Math.max(0, Math.min(this.height / 2, enemy.y));
+                    
+                    if (Date.now() - enemy.lastShot > enemy.shootCooldown) {
+                        this.enemyShoot(enemy);
+                        enemy.lastShot = Date.now();
+                    }
+                });
+            }
+
+            enemyShoot(enemy) {
+                const dx = this.player.x + this.player.width / 2 - (enemy.x + enemy.width / 2);
+                const dy = this.player.y + this.player.height / 2 - (enemy.y + enemy.height / 2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                this.enemyBullets.push({
+                    x: enemy.x + enemy.width / 2 - 2,
+                    y: enemy.y + enemy.height,
+                    width: 4,
+                    height: 8,
+                    speedX: (dx / distance) * 3,
+                    speedY: (dy / distance) * 3,
+                    color: '#ff8800'
+                });
+            }
+
+            updateEnemyBullets() {
+                this.enemyBullets.forEach((bullet, index) => {
+                    bullet.x += bullet.speedX;
+                    bullet.y += bullet.speedY;
+                    
+                    if (bullet.x < 0 || bullet.x > this.width || bullet.y < 0 || bullet.y > this.height) {
+                        this.enemyBullets.splice(index, 1);
+                    }
+                });
+            }
+
+            checkCollisions() {
+                this.bullets.forEach((bullet, bulletIndex) => {
+                    this.enemies.forEach((enemy, enemyIndex) => {
+                        if (this.isColliding(bullet, enemy)) {
+                            this.bullets.splice(bulletIndex, 1);
+                            this.enemies.splice(enemyIndex, 1);
+                            
+                            const timeBonus = Math.max(0, 10000 - (Date.now() - this.stageStartTime));
+                            this.score += 100 + Math.floor(timeBonus / 100);
+                            this.updateScore();
+                        }
+                    });
+                    
+                    this.obstacles.forEach(obstacle => {
+                        if (this.isColliding(bullet, obstacle)) {
+                            this.bullets.splice(bulletIndex, 1);
+                        }
+                    });
+                });
+                
+                this.enemyBullets.forEach((bullet, bulletIndex) => {
+                    if (this.isColliding(bullet, this.player)) {
+                        this.enemyBullets.splice(bulletIndex, 1);
+                        this.lives--;
+                        this.updateLives();
+                        
+                        if (this.lives <= 0) {
+                            this.gameOver();
+                        }
+                    }
+                    
+                    this.obstacles.forEach(obstacle => {
+                        if (this.isColliding(bullet, obstacle)) {
+                            this.enemyBullets.splice(bulletIndex, 1);
+                        }
+                    });
+                });
+                
+                this.enemies.forEach(enemy => {
+                    if (this.isColliding(this.player, enemy)) {
+                        this.lives--;
+                        this.updateLives();
+                        
+                        if (this.lives <= 0) {
+                            this.gameOver();
+                        }
+                    }
+                });
+            }
+
+            isColliding(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+
+            checkGameState() {
+                if (this.enemies.length === 0 && this.gameState === 'playing') {
+                    this.nextStage();
+                }
+            }
+
+            nextStage() {
+                this.stage++;
+                this.stageStartTime = Date.now();
+                this.updateStage();
+                this.createEnemies();
+                this.createObstacles();
+            }
+
+            gameOver() {
+                this.gameState = 'gameOver';
+                document.getElementById('finalScore').textContent = this.score;
+                document.getElementById('gameOver').style.display = 'block';
+            }
+
+            restart() {
+                document.getElementById('gameOver').style.display = 'none';
+                this.init();
+                this.updateScore();
+                this.updateLives();
+                this.updateStage();
+            }
+
+            updateScore() {
+                document.getElementById('score').textContent = this.score;
+            }
+
+            updateLives() {
+                document.getElementById('lives').textContent = this.lives;
+            }
+
+            updateStage() {
+                document.getElementById('stage').textContent = this.stage;
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                
+                this.drawPlayer();
+                this.drawBullets();
+                this.drawEnemies();
+                this.drawEnemyBullets();
+                this.drawObstacles();
+            }
+
+            drawPlayer() {
+                this.ctx.fillStyle = this.player.color;
+                this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
+                
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillRect(this.player.x + 5, this.player.y + 5, 20, 10);
+                this.ctx.fillRect(this.player.x + 12, this.player.y, 6, 15);
+            }
+
+            drawBullets() {
+                this.bullets.forEach(bullet => {
+                    this.ctx.fillStyle = bullet.color;
+                    this.ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                });
+            }
+
+            drawEnemies() {
+                this.enemies.forEach(enemy => {
+                    this.ctx.fillStyle = enemy.color;
+                    this.ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.fillRect(enemy.x + 5, enemy.y + 5, 20, 10);
+                    this.ctx.fillRect(enemy.x + 12, enemy.y + 15, 6, 10);
+                });
+            }
+
+            drawEnemyBullets() {
+                this.enemyBullets.forEach(bullet => {
+                    this.ctx.fillStyle = bullet.color;
+                    this.ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                });
+            }
+
+            drawObstacles() {
+                this.obstacles.forEach(obstacle => {
+                    this.ctx.fillStyle = obstacle.color;
+                    this.ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    
+                    this.ctx.strokeStyle = '#888';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                });
+            }
+
+            gameLoop() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+
+        window.addEventListener('load', () => {
+            new ShootingGame();
+        });
+    </script>
+</body>
+</html>
