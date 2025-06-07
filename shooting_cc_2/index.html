@@ -95,9 +95,129 @@
                 this.width = this.canvas.width;
                 this.height = this.canvas.height;
                 
+                this.initSoundSystem();
                 this.init();
                 this.setupEventListeners();
                 this.gameLoop();
+            }
+
+            initSoundSystem() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.soundEnabled = true;
+                } catch (e) {
+                    this.soundEnabled = false;
+                    console.warn('Web Audio API not supported');
+                }
+            }
+
+            playSound(frequency, duration, waveType = 'square', volume = 0.1) {
+                if (!this.soundEnabled) return;
+                
+                try {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                    oscillator.type = waveType;
+                    
+                    gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                    
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + duration);
+                } catch (e) {
+                    console.warn('Sound playback failed:', e);
+                }
+            }
+
+            playShootSound() {
+                this.playSound(400, 0.08, 'square', 0.02);
+            }
+
+            playExplosionSound() {
+                this.playSound(200, 0.3, 'sawtooth', 0.1);
+                setTimeout(() => this.playSound(100, 0.2, 'sawtooth', 0.08), 50);
+            }
+
+            playHitSound() {
+                this.playSound(150, 0.2, 'triangle', 0.08);
+            }
+
+            playPowerUpSound() {
+                this.playSound(600, 0.1, 'sine', 0.06);
+                setTimeout(() => this.playSound(800, 0.1, 'sine', 0.06), 100);
+                setTimeout(() => this.playSound(1000, 0.1, 'sine', 0.06), 200);
+            }
+
+            playGameOverSound() {
+                this.playSound(300, 0.5, 'triangle', 0.1);
+                setTimeout(() => this.playSound(250, 0.5, 'triangle', 0.1), 200);
+                setTimeout(() => this.playSound(200, 1, 'triangle', 0.1), 400);
+            }
+
+            createEnemyBulletSound(enemyType) {
+                if (!this.soundEnabled) return null;
+                
+                try {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    let frequency, waveType, volume;
+                    switch (enemyType) {
+                        case 'random':
+                            frequency = 220;
+                            waveType = 'sawtooth';
+                            volume = 0.008;
+                            break;
+                        case 'zigzag':
+                            frequency = 180;
+                            waveType = 'triangle';
+                            volume = 0.01;
+                            break;
+                        case 'circle':
+                            frequency = 160;
+                            waveType = 'sine';
+                            volume = 0.012;
+                            break;
+                        case 'chase':
+                            frequency = 250;
+                            waveType = 'square';
+                            volume = 0.006;
+                            break;
+                        default:
+                            frequency = 200;
+                            waveType = 'sawtooth';
+                            volume = 0.008;
+                    }
+                    
+                    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                    oscillator.type = waveType;
+                    gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+                    
+                    oscillator.start();
+                    
+                    return { oscillator, gainNode };
+                } catch (e) {
+                    console.warn('Enemy bullet sound creation failed:', e);
+                    return null;
+                }
+            }
+
+            stopEnemyBulletSound(soundNodes) {
+                if (!soundNodes) return;
+                try {
+                    soundNodes.gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.1);
+                    soundNodes.oscillator.stop(this.audioContext.currentTime + 0.1);
+                } catch (e) {
+                    console.warn('Failed to stop enemy bullet sound:', e);
+                }
             }
 
             init() {
@@ -316,18 +436,41 @@
                 }
                 
                 const currentSpeed = this.player.speed + this.player.speedBoost;
+                let newX = this.player.x;
+                let newY = this.player.y;
                 
                 if (this.keys['a'] || this.keys['arrowleft']) {
-                    this.player.x = Math.max(0, this.player.x - currentSpeed);
+                    newX = Math.max(0, this.player.x - currentSpeed);
                 }
                 if (this.keys['d'] || this.keys['arrowright']) {
-                    this.player.x = Math.min(this.width - this.player.width, this.player.x + currentSpeed);
+                    newX = Math.min(this.width - this.player.width, this.player.x + currentSpeed);
                 }
                 if (this.keys['w'] || this.keys['arrowup']) {
-                    this.player.y = Math.max(0, this.player.y - currentSpeed);
+                    newY = Math.max(0, this.player.y - currentSpeed);
                 }
                 if (this.keys['s'] || this.keys['arrowdown']) {
-                    this.player.y = Math.min(this.height - this.player.height, this.player.y + currentSpeed);
+                    newY = Math.min(this.height - this.player.height, this.player.y + currentSpeed);
+                }
+                
+                // 障害物との衝突チェック
+                const tempPlayer = {
+                    x: newX,
+                    y: newY,
+                    width: this.player.width,
+                    height: this.player.height
+                };
+                
+                let canMove = true;
+                for (let obstacle of this.obstacles) {
+                    if (this.isColliding(tempPlayer, obstacle)) {
+                        canMove = false;
+                        break;
+                    }
+                }
+                
+                if (canMove) {
+                    this.player.x = newX;
+                    this.player.y = newY;
                 }
                 
                 if (this.keys[' '] && Date.now() - this.lastShot > this.shootCooldown) {
@@ -337,6 +480,7 @@
             }
 
             shoot() {
+                this.playShootSound();
                 const centerX = this.player.x + this.player.width / 2;
                 
                 switch (this.player.weaponLevel) {
@@ -531,6 +675,7 @@
             }
 
             createBasicBullet(enemy, dx, dy, distance) {
+                const soundNodes = this.createEnemyBulletSound('random');
                 this.enemyBullets.push({
                     x: enemy.x + enemy.width / 2 - 2,
                     y: enemy.y + enemy.height,
@@ -540,13 +685,15 @@
                     speedY: (dy / distance) * 3,
                     color: '#ff8800',
                     type: 'basic',
-                    life: 0
+                    life: 0,
+                    soundNodes: soundNodes
                 });
             }
 
             createSpreadBullets(enemy, dx, dy, distance) {
                 const angles = [-0.3, 0, 0.3];
                 angles.forEach(angleOffset => {
+                    const soundNodes = this.createEnemyBulletSound('zigzag');
                     const angle = Math.atan2(dy, dx) + angleOffset;
                     this.enemyBullets.push({
                         x: enemy.x + enemy.width / 2 - 2,
@@ -557,12 +704,14 @@
                         speedY: Math.sin(angle) * 2.5,
                         color: '#00ff88',
                         type: 'spread',
-                        life: 0
+                        life: 0,
+                        soundNodes: soundNodes
                     });
                 });
             }
 
             createHomingBullet(enemy, dx, dy, distance) {
+                const soundNodes = this.createEnemyBulletSound('circle');
                 this.enemyBullets.push({
                     x: enemy.x + enemy.width / 2 - 3,
                     y: enemy.y + enemy.height,
@@ -573,13 +722,15 @@
                     color: '#8800ff',
                     type: 'homing',
                     life: 0,
-                    homingStrength: 0.05
+                    homingStrength: 0.05,
+                    soundNodes: soundNodes
                 });
             }
 
             createRapidBullets(enemy, dx, dy, distance) {
                 for (let i = 0; i < 2; i++) {
                     setTimeout(() => {
+                        const soundNodes = this.createEnemyBulletSound('chase');
                         this.enemyBullets.push({
                             x: enemy.x + enemy.width / 2 - 1.5,
                             y: enemy.y + enemy.height,
@@ -589,14 +740,16 @@
                             speedY: (dy / distance) * 4 + (Math.random() - 0.5) * 2,
                             color: '#ff4400',
                             type: 'rapid',
-                            life: 0
+                            life: 0,
+                            soundNodes: soundNodes
                         });
                     }, i * 100);
                 }
             }
 
             updateEnemyBullets() {
-                this.enemyBullets.forEach((bullet, index) => {
+                for (let index = this.enemyBullets.length - 1; index >= 0; index--) {
+                    const bullet = this.enemyBullets[index];
                     bullet.life++;
                     
                     switch (bullet.type) {
@@ -617,9 +770,12 @@
                     }
                     
                     if (bullet.x < -20 || bullet.x > this.width + 20 || bullet.y < -20 || bullet.y > this.height + 20) {
+                        if (bullet.soundNodes) {
+                            this.stopEnemyBulletSound(bullet.soundNodes);
+                        }
                         this.enemyBullets.splice(index, 1);
                     }
-                });
+                }
             }
 
             updateBasicBullet(bullet) {
@@ -687,6 +843,7 @@
             }
 
             playerHit() {
+                this.playHitSound();
                 if (this.player.shield > 0) {
                     this.player.shield--;
                     this.player.invulnerable = true;
@@ -772,6 +929,7 @@
             }
 
             applyPowerUp(powerUp) {
+                this.playPowerUpSound();
                 switch (powerUp.type) {
                     case 'weapon':
                         if (this.player.weaponLevel < 4) {
@@ -800,6 +958,7 @@
                             enemy.hp--;
                             
                             if (enemy.hp <= 0) {
+                                this.playExplosionSound();
                                 this.enemies.splice(enemyIndex, 1);
                                 
                                 const timeBonus = Math.max(0, 10000 - (Date.now() - this.stageStartTime));
@@ -830,18 +989,28 @@
                     });
                 });
                 
-                this.enemyBullets.forEach((bullet, bulletIndex) => {
+                for (let bulletIndex = this.enemyBullets.length - 1; bulletIndex >= 0; bulletIndex--) {
+                    const bullet = this.enemyBullets[bulletIndex];
                     if (this.isColliding(bullet, this.player) && !this.player.invulnerable) {
+                        if (bullet.soundNodes) {
+                            this.stopEnemyBulletSound(bullet.soundNodes);
+                        }
                         this.enemyBullets.splice(bulletIndex, 1);
                         this.playerHit();
+                        continue;
                     }
                     
-                    this.obstacles.forEach(obstacle => {
+                    for (let obstacleIndex = 0; obstacleIndex < this.obstacles.length; obstacleIndex++) {
+                        const obstacle = this.obstacles[obstacleIndex];
                         if (this.isColliding(bullet, obstacle)) {
+                            if (bullet.soundNodes) {
+                                this.stopEnemyBulletSound(bullet.soundNodes);
+                            }
                             this.enemyBullets.splice(bulletIndex, 1);
+                            break;
                         }
-                    });
-                });
+                    }
+                }
                 
                 this.enemies.forEach(enemy => {
                     if (this.isColliding(this.player, enemy) && !this.player.invulnerable) {
@@ -879,6 +1048,7 @@
             }
 
             gameOver() {
+                this.playGameOverSound();
                 this.gameState = 'gameOver';
                 document.getElementById('finalScore').textContent = this.score;
                 document.getElementById('gameOver').style.display = 'block';
