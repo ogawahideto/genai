@@ -1,0 +1,1321 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シューティングゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            border: 2px solid #333;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(180deg, #001122 0%, #000044 100%);
+            display: block;
+        }
+
+        #gameInfo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            font-size: 18px;
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-size: 24px;
+            display: none;
+            z-index: 20;
+            background: rgba(0,0,0,0.8);
+            padding: 30px;
+            border-radius: 10px;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 14px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="gameInfo">
+            <div>得点: <span id="score">0</span></div>
+            <div>残機: <span id="lives">5</span></div>
+            <div>ステージ: <span id="stage">1</span></div>
+            <div>武器: Lv<span id="weaponLevel">1</span></div>
+            <div>シールド: <span id="shield">0</span></div>
+        </div>
+        <div id="gameOver">
+            <h2>ゲームオーバー</h2>
+            <p>最終得点: <span id="finalScore">0</span></p>
+            <p>Rキーでリスタート</p>
+        </div>
+        <div id="instructions">
+            <div>移動: WASD または 矢印キー</div>
+            <div>射撃: スペースキー</div>
+        </div>
+    </div>
+
+    <script>
+        class ShootingGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.width = this.canvas.width;
+                this.height = this.canvas.height;
+                
+                this.init();
+                this.setupEventListeners();
+                this.gameLoop();
+            }
+
+            init() {
+                this.score = 0;
+                this.lives = 5;
+                this.stage = 1;
+                this.gameState = 'playing'; // 'playing', 'gameOver', 'stageClear'
+                this.stageStartTime = Date.now();
+                
+                this.keys = {};
+                
+                this.player = {
+                    x: this.width / 2,
+                    y: this.height - 50,
+                    width: 30,
+                    height: 30,
+                    speed: 5,
+                    color: '#00ff00',
+                    isHit: false,
+                    hitTime: 0,
+                    invulnerable: false,
+                    invulnerableTime: 0,
+                    weaponLevel: 1,
+                    speedBoost: 0,
+                    shield: 0
+                };
+                
+                this.bullets = [];
+                this.enemyBullets = [];
+                this.enemies = [];
+                this.obstacles = [];
+                this.explosions = [];
+                this.powerUps = [];
+                
+                this.createObstacles();
+                this.createEnemies();
+                
+                this.lastShot = 0;
+                this.shootCooldown = 150;
+            }
+
+            createObstacles() {
+                this.obstacles = [];
+                const obstacleCount = 3 + Math.floor(this.stage / 2);
+                
+                for (let i = 0; i < obstacleCount; i++) {
+                    const types = ['rectangle', 'triangle', 'circle', 'diamond', 'cross'];
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    
+                    let width, height, color;
+                    
+                    switch (type) {
+                        case 'rectangle':
+                            width = 50 + Math.random() * 30;
+                            height = 30 + Math.random() * 20;
+                            color = '#666';
+                            break;
+                        case 'triangle':
+                            width = 40 + Math.random() * 20;
+                            height = 40 + Math.random() * 20;
+                            color = '#888';
+                            break;
+                        case 'circle':
+                            width = height = 35 + Math.random() * 25;
+                            color = '#555';
+                            break;
+                        case 'diamond':
+                            width = height = 30 + Math.random() * 20;
+                            color = '#777';
+                            break;
+                        case 'cross':
+                            width = height = 40 + Math.random() * 20;
+                            color = '#999';
+                            break;
+                    }
+                    
+                    this.obstacles.push({
+                        x: Math.random() * (this.width - width) + width / 2,
+                        y: Math.random() * (this.height - 300) + 150,
+                        width: width,
+                        height: height,
+                        color: color,
+                        type: type,
+                        rotation: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+
+            createEnemies() {
+                this.enemies = [];
+                const baseEnemyCount = Math.ceil(this.stage / 2);
+                
+                // 基本的な敵機（ランダム移動）
+                for (let i = 0; i < baseEnemyCount; i++) {
+                    this.enemies.push({
+                        x: Math.random() * (this.width - 40) + 20,
+                        y: Math.random() * 150 + 50,
+                        width: 30,
+                        height: 30,
+                        speed: 1 + Math.random() * 2,
+                        color: '#ff0000',
+                        direction: Math.random() * Math.PI * 2,
+                        lastShot: 0,
+                        shootCooldown: 1000 + Math.random() * 2000,
+                        hp: 1,
+                        type: 'random',
+                        movePattern: 0
+                    });
+                }
+                
+                // ジグザグ移動の敵機
+                if (this.stage >= 2) {
+                    for (let i = 0; i < Math.ceil(this.stage / 3); i++) {
+                        this.enemies.push({
+                            x: Math.random() * (this.width - 40) + 20,
+                            y: Math.random() * 100 + 30,
+                            width: 25,
+                            height: 25,
+                            speed: 2,
+                            color: '#00ff88',
+                            direction: 0,
+                            lastShot: 0,
+                            shootCooldown: 1500 + Math.random() * 1000,
+                            hp: 1,
+                            type: 'zigzag',
+                            movePattern: 0,
+                            zigzagAmplitude: 100,
+                            zigzagFreq: 0.05
+                        });
+                    }
+                }
+                
+                // 円形移動の敵機
+                if (this.stage >= 3) {
+                    for (let i = 0; i < Math.ceil(this.stage / 4); i++) {
+                        const centerX = this.width / 2;
+                        const centerY = 150;
+                        const radius = 80 + Math.random() * 50;
+                        this.enemies.push({
+                            x: centerX + radius,
+                            y: centerY,
+                            width: 35,
+                            height: 35,
+                            speed: 0.02 + Math.random() * 0.02,
+                            color: '#8800ff',
+                            direction: 0,
+                            lastShot: 0,
+                            shootCooldown: 800 + Math.random() * 1200,
+                            hp: 2,
+                            type: 'circle',
+                            movePattern: Math.random() * Math.PI * 2,
+                            centerX: centerX,
+                            centerY: centerY,
+                            radius: radius
+                        });
+                    }
+                }
+                
+                // 追跡型の敵機
+                if (this.stage >= 4) {
+                    for (let i = 0; i < Math.ceil(this.stage / 6); i++) {
+                        this.enemies.push({
+                            x: Math.random() * (this.width - 40) + 20,
+                            y: Math.random() * 80 + 20,
+                            width: 28,
+                            height: 28,
+                            speed: 1.5,
+                            color: '#ff8800',
+                            direction: 0,
+                            lastShot: 0,
+                            shootCooldown: 2000 + Math.random() * 1000,
+                            hp: 1,
+                            type: 'chase',
+                            movePattern: 0,
+                            chaseStrength: 0.03
+                        });
+                    }
+                }
+            }
+
+            setupEventListeners() {
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.key.toLowerCase()] = true;
+                    if (e.key.toLowerCase() === 'r' && this.gameState === 'gameOver') {
+                        this.restart();
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+            }
+
+            update() {
+                if (this.gameState !== 'playing') return;
+                
+                this.updatePlayer();
+                this.updateBullets();
+                this.updateEnemies();
+                this.updateEnemyBullets();
+                this.updateExplosions();
+                this.updatePowerUps();
+                this.checkCollisions();
+                this.checkGameState();
+            }
+
+            updatePlayer() {
+                const now = Date.now();
+                
+                if (this.player.isHit && now - this.player.hitTime > 100) {
+                    this.player.isHit = false;
+                }
+                
+                if (this.player.invulnerable && now - this.player.invulnerableTime > 2000) {
+                    this.player.invulnerable = false;
+                }
+                
+                const currentSpeed = this.player.speed + this.player.speedBoost;
+                
+                if (this.keys['a'] || this.keys['arrowleft']) {
+                    this.player.x = Math.max(0, this.player.x - currentSpeed);
+                }
+                if (this.keys['d'] || this.keys['arrowright']) {
+                    this.player.x = Math.min(this.width - this.player.width, this.player.x + currentSpeed);
+                }
+                if (this.keys['w'] || this.keys['arrowup']) {
+                    this.player.y = Math.max(0, this.player.y - currentSpeed);
+                }
+                if (this.keys['s'] || this.keys['arrowdown']) {
+                    this.player.y = Math.min(this.height - this.player.height, this.player.y + currentSpeed);
+                }
+                
+                if (this.keys[' '] && Date.now() - this.lastShot > this.shootCooldown) {
+                    this.shoot();
+                    this.lastShot = Date.now();
+                }
+            }
+
+            shoot() {
+                const centerX = this.player.x + this.player.width / 2;
+                
+                switch (this.player.weaponLevel) {
+                    case 1:
+                        this.bullets.push({
+                            x: centerX - 2,
+                            y: this.player.y,
+                            width: 4,
+                            height: 10,
+                            speed: 8,
+                            color: '#ffff00'
+                        });
+                        break;
+                    case 2:
+                        this.bullets.push({
+                            x: centerX - 6,
+                            y: this.player.y,
+                            width: 4,
+                            height: 10,
+                            speed: 8,
+                            color: '#ffff00'
+                        });
+                        this.bullets.push({
+                            x: centerX + 2,
+                            y: this.player.y,
+                            width: 4,
+                            height: 10,
+                            speed: 8,
+                            color: '#ffff00'
+                        });
+                        break;
+                    case 3:
+                        this.bullets.push({
+                            x: centerX - 2,
+                            y: this.player.y,
+                            width: 4,
+                            height: 10,
+                            speed: 8,
+                            color: '#ffff00'
+                        });
+                        this.bullets.push({
+                            x: centerX - 10,
+                            y: this.player.y + 5,
+                            width: 4,
+                            height: 10,
+                            speed: 8,
+                            color: '#00ffff'
+                        });
+                        this.bullets.push({
+                            x: centerX + 6,
+                            y: this.player.y + 5,
+                            width: 4,
+                            height: 10,
+                            speed: 8,
+                            color: '#00ffff'
+                        });
+                        break;
+                    default:
+                        for (let i = -1; i <= 1; i++) {
+                            this.bullets.push({
+                                x: centerX + i * 8 - 2,
+                                y: this.player.y,
+                                width: 5,
+                                height: 12,
+                                speed: 9,
+                                color: '#ff00ff'
+                            });
+                        }
+                        this.bullets.push({
+                            x: centerX - 14,
+                            y: this.player.y + 3,
+                            width: 4,
+                            height: 8,
+                            speed: 7,
+                            color: '#00ffff'
+                        });
+                        this.bullets.push({
+                            x: centerX + 10,
+                            y: this.player.y + 3,
+                            width: 4,
+                            height: 8,
+                            speed: 7,
+                            color: '#00ffff'
+                        });
+                }
+            }
+
+            updateBullets() {
+                this.bullets.forEach((bullet, index) => {
+                    bullet.y -= bullet.speed;
+                    if (bullet.y < 0) {
+                        this.bullets.splice(index, 1);
+                    }
+                });
+            }
+
+            updateEnemies() {
+                this.enemies.forEach(enemy => {
+                    switch (enemy.type) {
+                        case 'random':
+                            this.updateRandomEnemy(enemy);
+                            break;
+                        case 'zigzag':
+                            this.updateZigzagEnemy(enemy);
+                            break;
+                        case 'circle':
+                            this.updateCircleEnemy(enemy);
+                            break;
+                        case 'chase':
+                            this.updateChaseEnemy(enemy);
+                            break;
+                        default:
+                            this.updateRandomEnemy(enemy);
+                    }
+                    
+                    if (Date.now() - enemy.lastShot > enemy.shootCooldown) {
+                        this.enemyShoot(enemy);
+                        enemy.lastShot = Date.now();
+                    }
+                });
+            }
+
+            updateRandomEnemy(enemy) {
+                enemy.x += Math.cos(enemy.direction) * enemy.speed;
+                enemy.y += Math.sin(enemy.direction) * enemy.speed;
+                
+                if (enemy.x <= 0 || enemy.x >= this.width - enemy.width) {
+                    enemy.direction = Math.PI - enemy.direction;
+                }
+                if (enemy.y <= 0 || enemy.y >= this.height / 2) {
+                    enemy.direction = -enemy.direction;
+                }
+                
+                enemy.x = Math.max(0, Math.min(this.width - enemy.width, enemy.x));
+                enemy.y = Math.max(0, Math.min(this.height / 2, enemy.y));
+            }
+
+            updateZigzagEnemy(enemy) {
+                enemy.movePattern += enemy.zigzagFreq;
+                enemy.x += enemy.speed;
+                enemy.y += Math.sin(enemy.movePattern) * 3;
+                
+                if (enemy.x <= 0 || enemy.x >= this.width - enemy.width) {
+                    enemy.speed *= -1;
+                }
+                
+                enemy.x = Math.max(0, Math.min(this.width - enemy.width, enemy.x));
+                enemy.y = Math.max(0, Math.min(this.height / 2, enemy.y));
+            }
+
+            updateCircleEnemy(enemy) {
+                enemy.movePattern += enemy.speed;
+                enemy.x = enemy.centerX + Math.cos(enemy.movePattern) * enemy.radius;
+                enemy.y = enemy.centerY + Math.sin(enemy.movePattern) * enemy.radius * 0.5;
+                
+                enemy.x = Math.max(0, Math.min(this.width - enemy.width, enemy.x));
+                enemy.y = Math.max(0, Math.min(this.height / 2, enemy.y));
+            }
+
+            updateChaseEnemy(enemy) {
+                const dx = this.player.x + this.player.width / 2 - (enemy.x + enemy.width / 2);
+                const dy = this.player.y + this.player.height / 2 - (enemy.y + enemy.height / 2);
+                
+                enemy.x += dx * enemy.chaseStrength;
+                enemy.y += dy * enemy.chaseStrength * 0.3;
+                
+                enemy.x = Math.max(0, Math.min(this.width - enemy.width, enemy.x));
+                enemy.y = Math.max(0, Math.min(this.height / 2, enemy.y));
+            }
+
+            enemyShoot(enemy) {
+                const dx = this.player.x + this.player.width / 2 - (enemy.x + enemy.width / 2);
+                const dy = this.player.y + this.player.height / 2 - (enemy.y + enemy.height / 2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                switch (enemy.type) {
+                    case 'random':
+                        this.createBasicBullet(enemy, dx, dy, distance);
+                        break;
+                    case 'zigzag':
+                        this.createSpreadBullets(enemy, dx, dy, distance);
+                        break;
+                    case 'circle':
+                        this.createHomingBullet(enemy, dx, dy, distance);
+                        break;
+                    case 'chase':
+                        this.createRapidBullets(enemy, dx, dy, distance);
+                        break;
+                    default:
+                        this.createBasicBullet(enemy, dx, dy, distance);
+                }
+            }
+
+            createBasicBullet(enemy, dx, dy, distance) {
+                this.enemyBullets.push({
+                    x: enemy.x + enemy.width / 2 - 2,
+                    y: enemy.y + enemy.height,
+                    width: 4,
+                    height: 8,
+                    speedX: (dx / distance) * 3,
+                    speedY: (dy / distance) * 3,
+                    color: '#ff8800',
+                    type: 'basic',
+                    life: 0
+                });
+            }
+
+            createSpreadBullets(enemy, dx, dy, distance) {
+                const angles = [-0.3, 0, 0.3];
+                angles.forEach(angleOffset => {
+                    const angle = Math.atan2(dy, dx) + angleOffset;
+                    this.enemyBullets.push({
+                        x: enemy.x + enemy.width / 2 - 2,
+                        y: enemy.y + enemy.height,
+                        width: 4,
+                        height: 6,
+                        speedX: Math.cos(angle) * 2.5,
+                        speedY: Math.sin(angle) * 2.5,
+                        color: '#00ff88',
+                        type: 'spread',
+                        life: 0
+                    });
+                });
+            }
+
+            createHomingBullet(enemy, dx, dy, distance) {
+                this.enemyBullets.push({
+                    x: enemy.x + enemy.width / 2 - 3,
+                    y: enemy.y + enemy.height,
+                    width: 6,
+                    height: 6,
+                    speedX: (dx / distance) * 2,
+                    speedY: (dy / distance) * 2,
+                    color: '#8800ff',
+                    type: 'homing',
+                    life: 0,
+                    homingStrength: 0.05
+                });
+            }
+
+            createRapidBullets(enemy, dx, dy, distance) {
+                for (let i = 0; i < 2; i++) {
+                    setTimeout(() => {
+                        this.enemyBullets.push({
+                            x: enemy.x + enemy.width / 2 - 1.5,
+                            y: enemy.y + enemy.height,
+                            width: 3,
+                            height: 6,
+                            speedX: (dx / distance) * 4 + (Math.random() - 0.5) * 2,
+                            speedY: (dy / distance) * 4 + (Math.random() - 0.5) * 2,
+                            color: '#ff4400',
+                            type: 'rapid',
+                            life: 0
+                        });
+                    }, i * 100);
+                }
+            }
+
+            updateEnemyBullets() {
+                this.enemyBullets.forEach((bullet, index) => {
+                    bullet.life++;
+                    
+                    switch (bullet.type) {
+                        case 'basic':
+                            this.updateBasicBullet(bullet);
+                            break;
+                        case 'spread':
+                            this.updateSpreadBullet(bullet);
+                            break;
+                        case 'homing':
+                            this.updateHomingBullet(bullet);
+                            break;
+                        case 'rapid':
+                            this.updateRapidBullet(bullet);
+                            break;
+                        default:
+                            this.updateBasicBullet(bullet);
+                    }
+                    
+                    if (bullet.x < -20 || bullet.x > this.width + 20 || bullet.y < -20 || bullet.y > this.height + 20) {
+                        this.enemyBullets.splice(index, 1);
+                    }
+                });
+            }
+
+            updateBasicBullet(bullet) {
+                bullet.x += bullet.speedX;
+                bullet.y += bullet.speedY;
+            }
+
+            updateSpreadBullet(bullet) {
+                bullet.x += bullet.speedX;
+                bullet.y += bullet.speedY;
+                
+                bullet.speedY += 0.05;
+            }
+
+            updateHomingBullet(bullet) {
+                const dx = this.player.x + this.player.width / 2 - bullet.x;
+                const dy = this.player.y + this.player.height / 2 - bullet.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 0) {
+                    bullet.speedX += (dx / distance) * bullet.homingStrength;
+                    bullet.speedY += (dy / distance) * bullet.homingStrength;
+                    
+                    const maxSpeed = 4;
+                    const currentSpeed = Math.sqrt(bullet.speedX * bullet.speedX + bullet.speedY * bullet.speedY);
+                    if (currentSpeed > maxSpeed) {
+                        bullet.speedX = (bullet.speedX / currentSpeed) * maxSpeed;
+                        bullet.speedY = (bullet.speedY / currentSpeed) * maxSpeed;
+                    }
+                }
+                
+                bullet.x += bullet.speedX;
+                bullet.y += bullet.speedY;
+            }
+
+            updateRapidBullet(bullet) {
+                bullet.x += bullet.speedX;
+                bullet.y += bullet.speedY;
+                
+                bullet.speedX *= 0.995;
+                bullet.speedY *= 0.995;
+            }
+
+            updateExplosions() {
+                this.explosions.forEach((explosion, index) => {
+                    explosion.time += 16;
+                    explosion.radius += 2;
+                    explosion.alpha -= 0.05;
+                    
+                    if (explosion.alpha <= 0) {
+                        this.explosions.splice(index, 1);
+                    }
+                });
+            }
+
+            createExplosion(x, y) {
+                this.explosions.push({
+                    x: x,
+                    y: y,
+                    radius: 10,
+                    alpha: 1,
+                    time: 0,
+                    color: '#ff4444'
+                });
+            }
+
+            playerHit() {
+                if (this.player.shield > 0) {
+                    this.player.shield--;
+                    this.player.invulnerable = true;
+                    this.player.invulnerableTime = Date.now();
+                    return;
+                }
+                
+                this.player.isHit = true;
+                this.player.hitTime = Date.now();
+                this.player.invulnerable = true;
+                this.player.invulnerableTime = Date.now();
+                
+                this.createExplosion(
+                    this.player.x + this.player.width / 2,
+                    this.player.y + this.player.height / 2
+                );
+                
+                this.lives--;
+                this.updateLives();
+                
+                if (this.lives <= 0) {
+                    this.gameOver();
+                }
+            }
+
+            createPowerUp(x, y) {
+                const types = ['weapon', 'speed', 'shield', 'life'];
+                const weights = [40, 25, 25, 10];
+                
+                let random = Math.random() * 100;
+                let type = 'weapon';
+                
+                for (let i = 0; i < types.length; i++) {
+                    if (random < weights[i]) {
+                        type = types[i];
+                        break;
+                    }
+                    random -= weights[i];
+                }
+                
+                let color, symbol;
+                switch (type) {
+                    case 'weapon':
+                        color = '#ffff00';
+                        symbol = 'W';
+                        break;
+                    case 'speed':
+                        color = '#00ff00';
+                        symbol = 'S';
+                        break;
+                    case 'shield':
+                        color = '#0080ff';
+                        symbol = 'D';
+                        break;
+                    case 'life':
+                        color = '#ff0080';
+                        symbol = 'L';
+                        break;
+                }
+                
+                this.powerUps.push({
+                    x: x - 10,
+                    y: y - 10,
+                    width: 20,
+                    height: 20,
+                    type: type,
+                    color: color,
+                    symbol: symbol,
+                    life: 0,
+                    speedY: 1
+                });
+            }
+
+            updatePowerUps() {
+                this.powerUps.forEach((powerUp, index) => {
+                    powerUp.life++;
+                    powerUp.y += powerUp.speedY;
+                    
+                    if (powerUp.y > this.height || powerUp.life > 600) {
+                        this.powerUps.splice(index, 1);
+                    }
+                });
+            }
+
+            applyPowerUp(powerUp) {
+                switch (powerUp.type) {
+                    case 'weapon':
+                        if (this.player.weaponLevel < 4) {
+                            this.player.weaponLevel++;
+                        }
+                        break;
+                    case 'speed':
+                        this.player.speedBoost = Math.min(this.player.speedBoost + 2, 6);
+                        break;
+                    case 'shield':
+                        this.player.shield = Math.min(this.player.shield + 1, 3);
+                        break;
+                    case 'life':
+                        this.lives++;
+                        this.updateLives();
+                        break;
+                }
+                this.updatePlayerStats();
+            }
+
+            checkCollisions() {
+                this.bullets.forEach((bullet, bulletIndex) => {
+                    this.enemies.forEach((enemy, enemyIndex) => {
+                        if (this.isColliding(bullet, enemy)) {
+                            this.bullets.splice(bulletIndex, 1);
+                            enemy.hp--;
+                            
+                            if (enemy.hp <= 0) {
+                                this.enemies.splice(enemyIndex, 1);
+                                
+                                const timeBonus = Math.max(0, 10000 - (Date.now() - this.stageStartTime));
+                                let baseScore = 100;
+                                
+                                switch (enemy.type) {
+                                    case 'random': baseScore = 100; break;
+                                    case 'zigzag': baseScore = 150; break;
+                                    case 'circle': baseScore = 200; break;
+                                    case 'chase': baseScore = 180; break;
+                                }
+                                
+                                this.score += baseScore + Math.floor(timeBonus / 100);
+                                this.updateScore();
+                                
+                                // パワーアップアイテムをランダムでドロップ
+                                if (Math.random() < 0.15) {
+                                    this.createPowerUp(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+                                }
+                            }
+                        }
+                    });
+                    
+                    this.obstacles.forEach(obstacle => {
+                        if (this.isColliding(bullet, obstacle)) {
+                            this.bullets.splice(bulletIndex, 1);
+                        }
+                    });
+                });
+                
+                this.enemyBullets.forEach((bullet, bulletIndex) => {
+                    if (this.isColliding(bullet, this.player) && !this.player.invulnerable) {
+                        this.enemyBullets.splice(bulletIndex, 1);
+                        this.playerHit();
+                    }
+                    
+                    this.obstacles.forEach(obstacle => {
+                        if (this.isColliding(bullet, obstacle)) {
+                            this.enemyBullets.splice(bulletIndex, 1);
+                        }
+                    });
+                });
+                
+                this.enemies.forEach(enemy => {
+                    if (this.isColliding(this.player, enemy) && !this.player.invulnerable) {
+                        this.playerHit();
+                    }
+                });
+                
+                this.powerUps.forEach((powerUp, index) => {
+                    if (this.isColliding(this.player, powerUp)) {
+                        this.powerUps.splice(index, 1);
+                        this.applyPowerUp(powerUp);
+                    }
+                });
+            }
+
+            isColliding(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+
+            checkGameState() {
+                if (this.enemies.length === 0 && this.gameState === 'playing') {
+                    this.nextStage();
+                }
+            }
+
+            nextStage() {
+                this.stage++;
+                this.stageStartTime = Date.now();
+                this.updateStage();
+                this.createEnemies();
+                this.createObstacles();
+            }
+
+            gameOver() {
+                this.gameState = 'gameOver';
+                document.getElementById('finalScore').textContent = this.score;
+                document.getElementById('gameOver').style.display = 'block';
+            }
+
+            restart() {
+                document.getElementById('gameOver').style.display = 'none';
+                this.init();
+                this.updateScore();
+                this.updateLives();
+                this.updateStage();
+                this.updatePlayerStats();
+            }
+
+            updateScore() {
+                document.getElementById('score').textContent = this.score;
+            }
+
+            updateLives() {
+                document.getElementById('lives').textContent = this.lives;
+            }
+
+            updateStage() {
+                document.getElementById('stage').textContent = this.stage;
+            }
+
+            updatePlayerStats() {
+                document.getElementById('weaponLevel').textContent = this.player.weaponLevel;
+                document.getElementById('shield').textContent = this.player.shield;
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                
+                this.drawPlayer();
+                this.drawBullets();
+                this.drawEnemies();
+                this.drawEnemyBullets();
+                this.drawObstacles();
+                this.drawPowerUps();
+                this.drawExplosions();
+            }
+
+            drawPlayer() {
+                this.ctx.save();
+                
+                if (this.player.invulnerable) {
+                    this.ctx.globalAlpha = Math.sin(Date.now() * 0.02) * 0.5 + 0.5;
+                }
+                
+                if (this.player.isHit) {
+                    this.ctx.fillStyle = '#ffaaaa';
+                } else {
+                    this.ctx.fillStyle = this.player.color;
+                }
+                this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
+                
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillRect(this.player.x + 5, this.player.y + 5, 20, 10);
+                this.ctx.fillRect(this.player.x + 12, this.player.y, 6, 15);
+                
+                // シールド表示
+                if (this.player.shield > 0) {
+                    this.ctx.strokeStyle = '#0080ff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.globalAlpha = 0.6;
+                    for (let i = 0; i < this.player.shield; i++) {
+                        this.ctx.beginPath();
+                        this.ctx.arc(
+                            this.player.x + this.player.width / 2,
+                            this.player.y + this.player.height / 2,
+                            20 + i * 4,
+                            0,
+                            Math.PI * 2
+                        );
+                        this.ctx.stroke();
+                    }
+                }
+                
+                this.ctx.restore();
+            }
+
+            drawBullets() {
+                this.bullets.forEach(bullet => {
+                    this.ctx.fillStyle = bullet.color;
+                    this.ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                });
+            }
+
+            drawEnemies() {
+                this.enemies.forEach(enemy => {
+                    this.ctx.fillStyle = enemy.color;
+                    this.ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    
+                    this.ctx.fillStyle = '#ffffff';
+                    const centerX = enemy.x + enemy.width / 2;
+                    const centerY = enemy.y + enemy.height / 2;
+                    
+                    switch (enemy.type) {
+                        case 'random':
+                            this.ctx.fillRect(enemy.x + 5, enemy.y + 5, enemy.width - 10, enemy.height - 15);
+                            this.ctx.fillRect(centerX - 3, enemy.y + enemy.height - 10, 6, 10);
+                            break;
+                        case 'zigzag':
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(centerX, enemy.y + 5);
+                            this.ctx.lineTo(enemy.x + enemy.width - 5, enemy.y + enemy.height - 5);
+                            this.ctx.lineTo(enemy.x + 5, enemy.y + enemy.height - 5);
+                            this.ctx.closePath();
+                            this.ctx.fill();
+                            break;
+                        case 'circle':
+                            this.ctx.beginPath();
+                            this.ctx.arc(centerX, centerY, enemy.width / 3, 0, Math.PI * 2);
+                            this.ctx.fill();
+                            
+                            if (enemy.hp > 1) {
+                                this.ctx.strokeStyle = '#ffffff';
+                                this.ctx.lineWidth = 2;
+                                this.ctx.stroke();
+                            }
+                            break;
+                        case 'chase':
+                            this.ctx.fillRect(enemy.x + 3, enemy.y + 3, enemy.width - 6, enemy.height - 6);
+                            this.ctx.fillStyle = enemy.color;
+                            this.ctx.fillRect(centerX - 2, centerY - 2, 4, 4);
+                            break;
+                        default:
+                            this.ctx.fillRect(enemy.x + 5, enemy.y + 5, enemy.width - 10, enemy.height - 15);
+                            this.ctx.fillRect(centerX - 3, enemy.y + enemy.height - 10, 6, 10);
+                    }
+                });
+            }
+
+            drawEnemyBullets() {
+                this.enemyBullets.forEach(bullet => {
+                    this.ctx.save();
+                    
+                    switch (bullet.type) {
+                        case 'basic':
+                            this.drawBasicBullet(bullet);
+                            break;
+                        case 'spread':
+                            this.drawSpreadBullet(bullet);
+                            break;
+                        case 'homing':
+                            this.drawHomingBullet(bullet);
+                            break;
+                        case 'rapid':
+                            this.drawRapidBullet(bullet);
+                            break;
+                        default:
+                            this.drawBasicBullet(bullet);
+                    }
+                    
+                    this.ctx.restore();
+                });
+            }
+
+            drawBasicBullet(bullet) {
+                this.ctx.fillStyle = bullet.color;
+                this.ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            }
+
+            drawSpreadBullet(bullet) {
+                this.ctx.fillStyle = bullet.color;
+                this.ctx.beginPath();
+                this.ctx.moveTo(bullet.x + bullet.width / 2, bullet.y);
+                this.ctx.lineTo(bullet.x, bullet.y + bullet.height);
+                this.ctx.lineTo(bullet.x + bullet.width, bullet.y + bullet.height);
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+
+            drawHomingBullet(bullet) {
+                const centerX = bullet.x + bullet.width / 2;
+                const centerY = bullet.y + bullet.height / 2;
+                
+                this.ctx.fillStyle = bullet.color;
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, bullet.width / 2, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, bullet.width / 3, 0, Math.PI * 2);
+                this.ctx.stroke();
+                
+                const pulseAlpha = 0.3 + Math.sin(bullet.life * 0.3) * 0.3;
+                this.ctx.globalAlpha = pulseAlpha;
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, bullet.width / 4, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+
+            drawRapidBullet(bullet) {
+                this.ctx.fillStyle = bullet.color;
+                this.ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                
+                this.ctx.globalAlpha = 0.5;
+                this.ctx.fillStyle = '#ffff00';
+                this.ctx.fillRect(bullet.x + 0.5, bullet.y + 1, bullet.width - 1, bullet.height - 2);
+            }
+
+            drawObstacles() {
+                this.obstacles.forEach(obstacle => {
+                    this.ctx.save();
+                    
+                    const centerX = obstacle.x + obstacle.width / 2;
+                    const centerY = obstacle.y + obstacle.height / 2;
+                    
+                    this.ctx.translate(centerX, centerY);
+                    if (obstacle.rotation) {
+                        this.ctx.rotate(obstacle.rotation);
+                    }
+                    this.ctx.translate(-centerX, -centerY);
+                    
+                    this.ctx.fillStyle = obstacle.color;
+                    this.ctx.strokeStyle = '#aaa';
+                    this.ctx.lineWidth = 2;
+                    
+                    switch (obstacle.type) {
+                        case 'rectangle':
+                            this.drawRectangleObstacle(obstacle);
+                            break;
+                        case 'triangle':
+                            this.drawTriangleObstacle(obstacle);
+                            break;
+                        case 'circle':
+                            this.drawCircleObstacle(obstacle);
+                            break;
+                        case 'diamond':
+                            this.drawDiamondObstacle(obstacle);
+                            break;
+                        case 'cross':
+                            this.drawCrossObstacle(obstacle);
+                            break;
+                        default:
+                            this.drawRectangleObstacle(obstacle);
+                    }
+                    
+                    this.ctx.restore();
+                });
+            }
+
+            drawRectangleObstacle(obstacle) {
+                this.ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                this.ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                
+                // 内部の装飾
+                this.ctx.strokeStyle = '#bbb';
+                this.ctx.lineWidth = 1;
+                this.ctx.strokeRect(
+                    obstacle.x + 5, 
+                    obstacle.y + 5, 
+                    obstacle.width - 10, 
+                    obstacle.height - 10
+                );
+            }
+
+            drawTriangleObstacle(obstacle) {
+                const centerX = obstacle.x + obstacle.width / 2;
+                const centerY = obstacle.y + obstacle.height / 2;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(centerX, obstacle.y);
+                this.ctx.lineTo(obstacle.x, obstacle.y + obstacle.height);
+                this.ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                // 内部の線
+                this.ctx.strokeStyle = '#bbb';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.moveTo(centerX, obstacle.y + 8);
+                this.ctx.lineTo(obstacle.x + 8, obstacle.y + obstacle.height - 8);
+                this.ctx.moveTo(centerX, obstacle.y + 8);
+                this.ctx.lineTo(obstacle.x + obstacle.width - 8, obstacle.y + obstacle.height - 8);
+                this.ctx.stroke();
+            }
+
+            drawCircleObstacle(obstacle) {
+                const centerX = obstacle.x + obstacle.width / 2;
+                const centerY = obstacle.y + obstacle.height / 2;
+                const radius = obstacle.width / 2;
+                
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                // 内部の同心円
+                this.ctx.strokeStyle = '#bbb';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, radius * 0.6, 0, Math.PI * 2);
+                this.ctx.stroke();
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, radius * 0.3, 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
+
+            drawDiamondObstacle(obstacle) {
+                const centerX = obstacle.x + obstacle.width / 2;
+                const centerY = obstacle.y + obstacle.height / 2;
+                const halfWidth = obstacle.width / 2;
+                const halfHeight = obstacle.height / 2;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(centerX, obstacle.y);
+                this.ctx.lineTo(obstacle.x + obstacle.width, centerY);
+                this.ctx.lineTo(centerX, obstacle.y + obstacle.height);
+                this.ctx.lineTo(obstacle.x, centerY);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                // 内部のダイヤモンド
+                this.ctx.strokeStyle = '#bbb';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.moveTo(centerX, obstacle.y + 8);
+                this.ctx.lineTo(obstacle.x + obstacle.width - 8, centerY);
+                this.ctx.lineTo(centerX, obstacle.y + obstacle.height - 8);
+                this.ctx.lineTo(obstacle.x + 8, centerY);
+                this.ctx.closePath();
+                this.ctx.stroke();
+            }
+
+            drawCrossObstacle(obstacle) {
+                const centerX = obstacle.x + obstacle.width / 2;
+                const centerY = obstacle.y + obstacle.height / 2;
+                const armWidth = obstacle.width * 0.3;
+                const armHeight = obstacle.height * 0.3;
+                
+                // 縦のバー
+                this.ctx.fillRect(
+                    centerX - armWidth / 2,
+                    obstacle.y,
+                    armWidth,
+                    obstacle.height
+                );
+                this.ctx.strokeRect(
+                    centerX - armWidth / 2,
+                    obstacle.y,
+                    armWidth,
+                    obstacle.height
+                );
+                
+                // 横のバー
+                this.ctx.fillRect(
+                    obstacle.x,
+                    centerY - armHeight / 2,
+                    obstacle.width,
+                    armHeight
+                );
+                this.ctx.strokeRect(
+                    obstacle.x,
+                    centerY - armHeight / 2,
+                    obstacle.width,
+                    armHeight
+                );
+                
+                // 中央の装飾
+                this.ctx.strokeStyle = '#bbb';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, armWidth / 3, 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
+
+            drawPowerUps() {
+                this.powerUps.forEach(powerUp => {
+                    this.ctx.save();
+                    
+                    const pulseScale = 1 + Math.sin(powerUp.life * 0.1) * 0.1;
+                    const centerX = powerUp.x + powerUp.width / 2;
+                    const centerY = powerUp.y + powerUp.height / 2;
+                    
+                    this.ctx.translate(centerX, centerY);
+                    this.ctx.scale(pulseScale, pulseScale);
+                    this.ctx.translate(-centerX, -centerY);
+                    
+                    this.ctx.fillStyle = powerUp.color;
+                    this.ctx.fillRect(powerUp.x, powerUp.y, powerUp.width, powerUp.height);
+                    
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(powerUp.x, powerUp.y, powerUp.width, powerUp.height);
+                    
+                    this.ctx.fillStyle = '#000000';
+                    this.ctx.font = 'bold 14px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'middle';
+                    this.ctx.fillText(powerUp.symbol, centerX, centerY);
+                    
+                    this.ctx.restore();
+                });
+            }
+
+            drawExplosions() {
+                this.explosions.forEach(explosion => {
+                    this.ctx.save();
+                    this.ctx.globalAlpha = explosion.alpha;
+                    
+                    const gradient = this.ctx.createRadialGradient(
+                        explosion.x, explosion.y, 0,
+                        explosion.x, explosion.y, explosion.radius
+                    );
+                    gradient.addColorStop(0, '#ffff00');
+                    gradient.addColorStop(0.3, '#ff8800');
+                    gradient.addColorStop(0.6, '#ff4444');
+                    gradient.addColorStop(1, 'transparent');
+                    
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.beginPath();
+                    this.ctx.arc(explosion.x, explosion.y, explosion.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    this.ctx.restore();
+                });
+            }
+
+            gameLoop() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+
+        window.addEventListener('load', () => {
+            new ShootingGame();
+        });
+    </script>
+</body>
+</html>
