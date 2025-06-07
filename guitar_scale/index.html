@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ギタースケール練習アプリ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+            margin-bottom: 30px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        select, button, input {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #333;
+            color: #fff;
+            cursor: pointer;
+        }
+        
+        button {
+            background: #4CAF50;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .fretboard {
+            margin: 30px 0;
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+        
+        .fretboard-grid {
+            display: grid;
+            grid-template-columns: 60px repeat(17, 80px);
+            grid-template-rows: repeat(6, 40px);
+            gap: 2px;
+            min-width: 1500px;
+        }
+        
+        .string-label {
+            background: #444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+        
+        .fret {
+            background: #555;
+            border: 1px solid #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .fret:hover {
+            background: #777;
+        }
+        
+        .fret.scale-note {
+            background: #2E7D32;
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        .fret.root-note {
+            background: #1565C0;
+            color: #fff;
+            font-weight: bold;
+            border: 2px solid #fff;
+        }
+        
+        .fret.playing {
+            background: #FF5722;
+            color: #fff;
+            font-weight: bold;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px #FF5722;
+        }
+        
+        .fret.position-highlight {
+            background: #333;
+            border: 2px solid #666;
+        }
+        
+        .fret.position-scale-note {
+            background: #66BB6A;
+            color: #000;
+            font-weight: bold;
+            border: 2px solid #4CAF50;
+        }
+        
+        .fret.position-root-note {
+            background: #42A5F5;
+            color: #fff;
+            font-weight: bold;
+            border: 2px solid #2196F3;
+        }
+        
+        .tablature {
+            margin: 30px 0;
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+        
+        .tab-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 800px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .tab-line {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .string-name {
+            width: 20px;
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            border-top: 1px solid #666;
+            padding-top: 5px;
+            display: flex;
+            gap: 10px;
+            position: relative;
+        }
+        
+        .tab-note {
+            width: 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .tab-note.current {
+            background: #FF5722;
+            border-radius: 3px;
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        .tempo-display {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 18px;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ギタースケール練習アプリ</h1>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>スケール:</label>
+                <select id="scaleSelect">
+                    <option value="major">メジャースケール (C)</option>
+                    <option value="minor">ナチュラルマイナースケール (Am)</option>
+                    <option value="harmonic_minor">ハーモニックマイナースケール (Am)</option>
+                    <option value="melodic_minor">メロディックマイナースケール (Am)</option>
+                    <option value="dorian">ドリアンスケール (Dm)</option>
+                    <option value="phrygian">フリジアンスケール (Em)</option>
+                    <option value="lydian">リディアンスケール (F)</option>
+                    <option value="mixolydian">ミクソリディアンスケール (G)</option>
+                    <option value="locrian">ロクリアンスケール (Bm♭5)</option>
+                    <option value="pentatonic_major">メジャーペンタトニック (C)</option>
+                    <option value="pentatonic_minor">マイナーペンタトニック (Am)</option>
+                    <option value="blues">ブルーススケール (Am)</option>
+                    <option value="major_blues">メジャーブルーススケール (C)</option>
+                    <option value="chromatic">クロマティックスケール (C)</option>
+                    <option value="whole_tone">ホールトーンスケール (C)</option>
+                    <option value="diminished">ディミニッシュスケール (C)</option>
+                    <option value="japanese_pentatonic">日本音階ペンタトニック (Am)</option>
+                    <option value="hirajoshi">平調子スケール (Am)</option>
+                    <option value="phrygian_dominant">フリジアンドミナントスケール (E)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>ポジション:</label>
+                <select id="positionSelect">
+                    <option value="open">オープンポジション (0-4フレット)</option>
+                    <option value="2nd">2ndポジション (2-6フレット)</option>
+                    <option value="3rd" selected>3rdポジション (3-7フレット)</option>
+                    <option value="5th">5thポジション (5-9フレット)</option>
+                    <option value="7th">7thポジション (7-11フレット)</option>
+                    <option value="9th">9thポジション (9-13フレット)</option>
+                    <option value="12th">12thポジション (12-16フレット)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>テンポ:</label>
+                <input type="range" id="tempoSlider" min="60" max="180" value="120">
+                <span id="tempoValue">120 BPM</span>
+            </div>
+            
+            <div class="control-group">
+                <button id="playButton">スタート</button>
+                <button id="stopButton" disabled>ストップ</button>
+            </div>
+        </div>
+        
+        <div class="fretboard">
+            <h3>フレットボード</h3>
+            <div class="fretboard-grid" id="fretboard"></div>
+        </div>
+        
+        <div class="tablature">
+            <h3>タブ譜</h3>
+            <div class="tab-container" id="tablature"></div>
+        </div>
+    </div>
+
+    <script>
+        class GuitarScaleApp {
+            constructor() {
+                this.stringTuning = ['E', 'B', 'G', 'D', 'A', 'E'];
+                this.noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                // ギターの標準チューニング: 1弦から6弦へ E-B-G-D-A-E
+                // Cを0とした半音階での値: E=4, B=11, G=7, D=2, A=9, E=4
+                this.stringNotes = [4, 11, 7, 2, 9, 4];
+                
+                this.scales = {
+                    major: [0, 2, 4, 5, 7, 9, 11],
+                    minor: [0, 2, 3, 5, 7, 8, 10],
+                    harmonic_minor: [0, 2, 3, 5, 7, 8, 11],
+                    melodic_minor: [0, 2, 3, 5, 7, 9, 11],
+                    dorian: [0, 2, 3, 5, 7, 9, 10],
+                    phrygian: [0, 1, 3, 5, 7, 8, 10],
+                    lydian: [0, 2, 4, 6, 7, 9, 11],
+                    mixolydian: [0, 2, 4, 5, 7, 9, 10],
+                    locrian: [0, 1, 3, 5, 6, 8, 10],
+                    pentatonic_major: [0, 2, 4, 7, 9],
+                    pentatonic_minor: [0, 3, 5, 7, 10],
+                    blues: [0, 3, 5, 6, 7, 10],
+                    major_blues: [0, 2, 3, 4, 7, 9],
+                    chromatic: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+                    whole_tone: [0, 2, 4, 6, 8, 10],
+                    diminished: [0, 2, 3, 5, 6, 8, 9, 11],
+                    japanese_pentatonic: [0, 1, 5, 7, 8],
+                    hirajoshi: [0, 2, 3, 7, 8],
+                    phrygian_dominant: [0, 1, 4, 5, 7, 8, 10]
+                };
+                
+                this.scaleRoots = {
+                    major: 0,
+                    minor: 9,
+                    harmonic_minor: 9,
+                    melodic_minor: 9,
+                    dorian: 2,
+                    phrygian: 4,
+                    lydian: 5,
+                    mixolydian: 7,
+                    locrian: 11,
+                    pentatonic_major: 0,
+                    pentatonic_minor: 9,
+                    blues: 9,
+                    major_blues: 0,
+                    chromatic: 0,
+                    whole_tone: 0,
+                    diminished: 0,
+                    japanese_pentatonic: 9,
+                    hirajoshi: 9,
+                    phrygian_dominant: 4
+                };
+                
+                this.currentScale = 'major';
+                this.currentPosition = '3rd';
+                this.tempo = 120;
+                this.isPlaying = false;
+                this.currentNoteIndex = 0;
+                this.playbackInterval = null;
+                
+                this.positions = {
+                    open: { start: 0, end: 4 },
+                    '2nd': { start: 2, end: 6 },
+                    '3rd': { start: 3, end: 7 },
+                    '5th': { start: 5, end: 9 },
+                    '7th': { start: 7, end: 11 },
+                    '9th': { start: 9, end: 13 },
+                    '12th': { start: 12, end: 16 }
+                };
+                
+                this.generateSequence();
+                this.initializeElements();
+                this.setupEventListeners();
+                this.renderFretboard();
+                this.renderTablature();
+                this.updateScaleDisplay();
+            }
+            
+            generateSequence() {
+                this.sequence = [];
+                const pattern = this.getScalePattern(this.currentScale);
+                
+                // 上昇パターン
+                for (let note of pattern) {
+                    this.sequence.push({
+                        note: note.noteValue,
+                        fret: { string: note.string, fret: note.fret },
+                        direction: 'up'
+                    });
+                }
+                
+                // 下降パターン（逆順）
+                for (let i = pattern.length - 2; i >= 0; i--) {
+                    const note = pattern[i];
+                    this.sequence.push({
+                        note: note.noteValue,
+                        fret: { string: note.string, fret: note.fret },
+                        direction: 'down'
+                    });
+                }
+            }
+            
+            getScalePattern(scaleType) {
+                // ポジションが3rd以外の場合は自動生成を使用
+                if (this.currentPosition !== '3rd') {
+                    return this.generateBasicPattern(scaleType);
+                }
+                
+                // 3rdポジション用の手動定義パターン
+                const patterns = {
+                    major: [
+                        { string: 5, fret: 3, noteValue: 7 },  // G (6弦3フレット)
+                        { string: 5, fret: 5, noteValue: 9 },  // A (6弦5フレット)
+                        { string: 4, fret: 2, noteValue: 11 }, // B (5弦2フレット)
+                        { string: 4, fret: 3, noteValue: 0 },  // C (5弦3フレット)
+                        { string: 4, fret: 5, noteValue: 2 },  // D (5弦5フレット)
+                        { string: 3, fret: 2, noteValue: 4 },  // E (4弦2フレット)
+                        { string: 3, fret: 3, noteValue: 5 },  // F (4弦3フレット)
+                        { string: 3, fret: 5, noteValue: 7 },  // G (4弦5フレット)
+                        { string: 2, fret: 2, noteValue: 9 },  // A (3弦2フレット)
+                        { string: 2, fret: 4, noteValue: 11 }, // B (3弦4フレット)
+                        { string: 2, fret: 5, noteValue: 0 },  // C (3弦5フレット)
+                        { string: 1, fret: 3, noteValue: 2 },  // D (2弦3フレット)
+                        { string: 1, fret: 5, noteValue: 4 },  // E (2弦5フレット)
+                        { string: 0, fret: 1, noteValue: 5 },  // F (1弦1フレット)
+                        { string: 0, fret: 3, noteValue: 7 },  // G (1弦3フレット)
+                        { string: 0, fret: 5, noteValue: 9 }   // A (1弦5フレット)
+                    ],
+                    
+                    minor: [
+                        { string: 5, fret: 5, noteValue: 9 },  // A (6弦5フレット)
+                        { string: 4, fret: 2, noteValue: 11 }, // B (5弦2フレット)
+                        { string: 4, fret: 3, noteValue: 0 },  // C (5弦3フレット)
+                        { string: 4, fret: 5, noteValue: 2 },  // D (5弦5フレット)
+                        { string: 3, fret: 2, noteValue: 4 },  // E (4弦2フレット)
+                        { string: 3, fret: 3, noteValue: 5 },  // F (4弦3フレット)
+                        { string: 3, fret: 5, noteValue: 7 },  // G (4弦5フレット)
+                        { string: 2, fret: 2, noteValue: 9 },  // A (3弦2フレット)
+                        { string: 2, fret: 4, noteValue: 11 }, // B (3弦4フレット)
+                        { string: 2, fret: 5, noteValue: 0 },  // C (3弦5フレット)
+                        { string: 1, fret: 3, noteValue: 2 },  // D (2弦3フレット)
+                        { string: 1, fret: 5, noteValue: 4 },  // E (2弦5フレット)
+                        { string: 0, fret: 1, noteValue: 5 },  // F (1弦1フレット)
+                        { string: 0, fret: 3, noteValue: 7 },  // G (1弦3フレット)
+                        { string: 0, fret: 5, noteValue: 9 }   // A (1弦5フレット)
+                    ],
+                    
+                    pentatonic_major: [
+                        { string: 5, fret: 3, noteValue: 7 },  // G (6弦3フレット)
+                        { string: 5, fret: 5, noteValue: 9 },  // A (6弦5フレット)
+                        { string: 4, fret: 3, noteValue: 0 },  // C (5弦3フレット)
+                        { string: 4, fret: 5, noteValue: 2 },  // D (5弦5フレット)
+                        { string: 3, fret: 2, noteValue: 4 },  // E (4弦2フレット)
+                        { string: 3, fret: 5, noteValue: 7 },  // G (4弦5フレット)
+                        { string: 2, fret: 2, noteValue: 9 },  // A (3弦2フレット)
+                        { string: 2, fret: 5, noteValue: 0 },  // C (3弦5フレット)
+                        { string: 1, fret: 3, noteValue: 2 },  // D (2弦3フレット)
+                        { string: 1, fret: 5, noteValue: 4 },  // E (2弦5フレット)
+                        { string: 0, fret: 0, noteValue: 4 },  // E (1弦開放)
+                        { string: 0, fret: 3, noteValue: 7 }   // G (1弦3フレット)
+                    ],
+                    
+                    pentatonic_minor: [
+                        { string: 5, fret: 5, noteValue: 9 },  // A (6弦5フレット)
+                        { string: 4, fret: 3, noteValue: 0 },  // C (5弦3フレット)
+                        { string: 4, fret: 5, noteValue: 2 },  // D (5弦5フレット)
+                        { string: 3, fret: 2, noteValue: 4 },  // E (4弦2フレット)
+                        { string: 3, fret: 5, noteValue: 7 },  // G (4弦5フレット)
+                        { string: 2, fret: 2, noteValue: 9 },  // A (3弦2フレット)
+                        { string: 2, fret: 5, noteValue: 0 },  // C (3弦5フレット)
+                        { string: 1, fret: 3, noteValue: 2 },  // D (2弦3フレット)
+                        { string: 1, fret: 5, noteValue: 4 },  // E (2弦5フレット)
+                        { string: 0, fret: 3, noteValue: 7 },  // G (1弦3フレット)
+                        { string: 0, fret: 5, noteValue: 9 }   // A (1弦5フレット)
+                    ],
+                    
+                    blues: [
+                        { string: 5, fret: 5, noteValue: 9 },  // A (6弦5フレット)
+                        { string: 4, fret: 3, noteValue: 0 },  // C (5弦3フレット)
+                        { string: 4, fret: 5, noteValue: 2 },  // D (5弦5フレット)
+                        { string: 4, fret: 6, noteValue: 3 },  // D# (5弦6フレット)
+                        { string: 3, fret: 2, noteValue: 4 },  // E (4弦2フレット)
+                        { string: 3, fret: 5, noteValue: 7 },  // G (4弦5フレット)
+                        { string: 2, fret: 2, noteValue: 9 },  // A (3弦2フレット)
+                        { string: 2, fret: 5, noteValue: 0 },  // C (3弦5フレット)
+                        { string: 1, fret: 3, noteValue: 2 },  // D (2弦3フレット)
+                        { string: 1, fret: 4, noteValue: 3 },  // D# (2弦4フレット)
+                        { string: 1, fret: 5, noteValue: 4 },  // E (2弦5フレット)
+                        { string: 0, fret: 3, noteValue: 7 },  // G (1弦3フレット)
+                        { string: 0, fret: 5, noteValue: 9 }   // A (1弦5フレット)
+                    ],
+                    
+                    harmonic_minor: [
+                        { string: 5, fret: 5, noteValue: 9 },  // A (6弦5フレット)
+                        { string: 4, fret: 2, noteValue: 11 }, // B (5弦2フレット)
+                        { string: 4, fret: 3, noteValue: 0 },  // C (5弦3フレット)
+                        { string: 4, fret: 5, noteValue: 2 },  // D (5弦5フレット)
+                        { string: 3, fret: 2, noteValue: 4 },  // E (4弦2フレット)
+                        { string: 3, fret: 3, noteValue: 5 },  // F (4弦3フレット)
+                        { string: 3, fret: 6, noteValue: 8 },  // G# (4弦6フレット)
+                        { string: 2, fret: 2, noteValue: 9 },  // A (3弦2フレット)
+                        { string: 2, fret: 4, noteValue: 11 }, // B (3弦4フレット)
+                        { string: 2, fret: 5, noteValue: 0 },  // C (3弦5フレット)
+                        { string: 1, fret: 3, noteValue: 2 },  // D (2弦3フレット)
+                        { string: 1, fret: 5, noteValue: 4 },  // E (2弦5フレット)
+                        { string: 0, fret: 1, noteValue: 5 },  // F (1弦1フレット)
+                        { string: 0, fret: 4, noteValue: 8 },  // G# (1弦4フレット)
+                        { string: 0, fret: 5, noteValue: 9 }   // A (1弦5フレット)
+                    ],
+                    
+                    dorian: [
+                        { string: 5, fret: 5, noteValue: 2 },  // D (6弦5フレット)
+                        { string: 4, fret: 2, noteValue: 4 },  // E (5弦2フレット)
+                        { string: 4, fret: 3, noteValue: 5 },  // F (5弦3フレット)
+                        { string: 4, fret: 5, noteValue: 7 },  // G (5弦5フレット)
+                        { string: 3, fret: 2, noteValue: 9 },  // A (4弦2フレット)
+                        { string: 3, fret: 4, noteValue: 11 }, // B (4弦4フレット)
+                        { string: 3, fret: 5, noteValue: 0 },  // C (4弦5フレット)
+                        { string: 2, fret: 2, noteValue: 2 },  // D (3弦2フレット)
+                        { string: 2, fret: 4, noteValue: 4 },  // E (3弦4フレット)
+                        { string: 2, fret: 5, noteValue: 5 },  // F (3弦5フレット)
+                        { string: 1, fret: 3, noteValue: 7 },  // G (2弦3フレット)
+                        { string: 1, fret: 5, noteValue: 9 },  // A (2弦5フレット)
+                        { string: 0, fret: 2, noteValue: 11 }, // B (1弦2フレット)
+                        { string: 0, fret: 3, noteValue: 0 },  // C (1弦3フレット)
+                        { string: 0, fret: 5, noteValue: 2 }   // D (1弦5フレット)
+                    ],
+                    
+                    mixolydian: [
+                        { string: 5, fret: 3, noteValue: 7 },  // G (6弦3フレット)
+                        { string: 5, fret: 5, noteValue: 9 },  // A (6弦5フレット)
+                        { string: 4, fret: 2, noteValue: 11 }, // B (5弦2フレット)
+                        { string: 4, fret: 3, noteValue: 0 },  // C (5弦3フレット)
+                        { string: 4, fret: 5, noteValue: 2 },  // D (5弦5フレット)
+                        { string: 3, fret: 2, noteValue: 4 },  // E (4弦2フレット)
+                        { string: 3, fret: 3, noteValue: 5 },  // F (4弦3フレット)
+                        { string: 3, fret: 5, noteValue: 7 },  // G (4弦5フレット)
+                        { string: 2, fret: 2, noteValue: 9 },  // A (3弦2フレット)
+                        { string: 2, fret: 4, noteValue: 11 }, // B (3弦4フレット)
+                        { string: 2, fret: 5, noteValue: 0 },  // C (3弦5フレット)
+                        { string: 1, fret: 3, noteValue: 2 },  // D (2弦3フレット)
+                        { string: 1, fret: 5, noteValue: 4 },  // E (2弦5フレット)
+                        { string: 0, fret: 1, noteValue: 5 },  // F (1弦1フレット)
+                        { string: 0, fret: 3, noteValue: 7 }   // G (1弦3フレット)
+                    ]
+                };
+                
+                // 未定義のスケールには基本パターンを生成
+                if (patterns[scaleType]) {
+                    return patterns[scaleType];
+                } else {
+                    return this.generateBasicPattern(scaleType);
+                }
+            }
+            
+            generateBasicPattern(scaleType) {
+                const scale = this.scales[scaleType];
+                const rootNote = this.scaleRoots[scaleType];
+                if (!scale) return this.getScalePattern('major');
+                
+                const position = this.positions[this.currentPosition];
+                const pattern = [];
+                
+                // 指定されたポジション内でスケール音を配置
+                for (let string = 5; string >= 0; string--) {
+                    for (let fret = position.start; fret <= position.end; fret++) {
+                        const noteValue = (this.stringNotes[string] + fret) % 12;
+                        if (scale.includes(noteValue)) {
+                            pattern.push({
+                                string: string,
+                                fret: fret,
+                                noteValue: noteValue
+                            });
+                        }
+                    }
+                }
+                
+                // 音程順にソート
+                pattern.sort((a, b) => {
+                    const aPitch = (5 - a.string) * 20 + a.fret;
+                    const bPitch = (5 - b.string) * 20 + b.fret;
+                    return aPitch - bPitch;
+                });
+                
+                return pattern;
+            }
+            
+            findBestFret(targetNote) {
+                // 2弦3フレットから始まるポジションを優先
+                for (let string = 1; string < 6; string++) {
+                    for (let fret = 0; fret <= 12; fret++) {
+                        const noteValue = (this.stringNotes[string] + fret) % 12;
+                        if (noteValue === targetNote % 12) {
+                            return { string, fret };
+                        }
+                    }
+                }
+                return { string: 1, fret: 0 };
+            }
+            
+            initializeElements() {
+                this.scaleSelect = document.getElementById('scaleSelect');
+                this.positionSelect = document.getElementById('positionSelect');
+                this.tempoSlider = document.getElementById('tempoSlider');
+                this.tempoValue = document.getElementById('tempoValue');
+                this.playButton = document.getElementById('playButton');
+                this.stopButton = document.getElementById('stopButton');
+                this.fretboard = document.getElementById('fretboard');
+                this.tablature = document.getElementById('tablature');
+            }
+            
+            setupEventListeners() {
+                this.scaleSelect.addEventListener('change', (e) => {
+                    this.currentScale = e.target.value;
+                    this.generateSequence();
+                    this.updateScaleDisplay();
+                    this.renderTablature();
+                });
+                
+                this.positionSelect.addEventListener('change', (e) => {
+                    this.currentPosition = e.target.value;
+                    this.generateSequence();
+                    this.renderFretboard();
+                    this.updateScaleDisplay();
+                    this.renderTablature();
+                });
+                
+                this.tempoSlider.addEventListener('input', (e) => {
+                    this.tempo = parseInt(e.target.value);
+                    this.tempoValue.textContent = `${this.tempo} BPM`;
+                });
+                
+                this.playButton.addEventListener('click', () => this.startPlayback());
+                this.stopButton.addEventListener('click', () => this.stopPlayback());
+            }
+            
+            renderFretboard() {
+                this.fretboard.innerHTML = '';
+                
+                // ヘッダー行
+                const headerCell = document.createElement('div');
+                headerCell.className = 'string-label';
+                headerCell.textContent = '';
+                this.fretboard.appendChild(headerCell);
+                
+                for (let fret = 0; fret <= 16; fret++) {
+                    const fretHeader = document.createElement('div');
+                    fretHeader.className = 'string-label';
+                    fretHeader.textContent = fret;
+                    this.fretboard.appendChild(fretHeader);
+                }
+                
+                // 弦とフレット（1弦から6弦の順）
+                for (let string = 0; string < 6; string++) {
+                    const stringLabel = document.createElement('div');
+                    stringLabel.className = 'string-label';
+                    stringLabel.textContent = this.stringTuning[string];
+                    this.fretboard.appendChild(stringLabel);
+                    
+                    for (let fret = 0; fret <= 16; fret++) {
+                        const fretCell = document.createElement('div');
+                        fretCell.className = 'fret';
+                        fretCell.dataset.string = string;
+                        fretCell.dataset.fret = fret;
+                        
+                        // 現在のポジション範囲をハイライト
+                        const position = this.positions[this.currentPosition];
+                        if (fret >= position.start && fret <= position.end) {
+                            fretCell.classList.add('position-highlight');
+                        }
+                        
+                        const noteValue = (this.stringNotes[string] + fret) % 12;
+                        const noteName = this.noteNames[noteValue];
+                        fretCell.textContent = noteName;
+                        
+                        this.fretboard.appendChild(fretCell);
+                    }
+                }
+            }
+            
+            updateScaleDisplay() {
+                const pattern = this.getScalePattern(this.currentScale);
+                const rootNote = this.scaleRoots[this.currentScale];
+                const frets = this.fretboard.querySelectorAll('.fret');
+                
+                // 演奏パターンから使用される音程を取得
+                const usedNotes = new Set(pattern.map(p => p.noteValue));
+                
+                frets.forEach(fret => {
+                    fret.classList.remove('scale-note', 'root-note', 'playing', 'position-highlight', 'position-scale-note', 'position-root-note');
+                    
+                    const position = this.positions[this.currentPosition];
+                    const fretNum = parseInt(fret.dataset.fret);
+                    const isInPosition = fretNum >= position.start && fretNum <= position.end;
+                    const noteValue = (this.stringNotes[fret.dataset.string] + parseInt(fret.dataset.fret)) % 12;
+                    const isScaleNote = usedNotes.has(noteValue);
+                    const isRootNote = noteValue === rootNote;
+                    
+                    // ポジション範囲内の処理
+                    if (isInPosition) {
+                        if (isScaleNote) {
+                            if (isRootNote) {
+                                fret.classList.add('position-root-note');
+                            } else {
+                                fret.classList.add('position-scale-note');
+                            }
+                        } else {
+                            fret.classList.add('position-highlight');
+                        }
+                    } else {
+                        // ポジション範囲外のスケール音は通常の色
+                        if (isScaleNote) {
+                            if (isRootNote) {
+                                fret.classList.add('root-note');
+                            } else {
+                                fret.classList.add('scale-note');
+                            }
+                        }
+                    }
+                });
+            }
+            
+            renderTablature() {
+                this.tablature.innerHTML = '<h3>タブ譜</h3>';
+                
+                const tabContainer = document.createElement('div');
+                tabContainer.className = 'tab-container';
+                
+                for (let string = 0; string < 6; string++) {
+                    const tabLine = document.createElement('div');
+                    tabLine.className = 'tab-line';
+                    
+                    const stringName = document.createElement('div');
+                    stringName.className = 'string-name';
+                    stringName.textContent = this.stringTuning[string];
+                    tabLine.appendChild(stringName);
+                    
+                    const tabContent = document.createElement('div');
+                    tabContent.className = 'tab-content';
+                    
+                    this.sequence.forEach((note, index) => {
+                        const tabNote = document.createElement('div');
+                        tabNote.className = 'tab-note';
+                        tabNote.dataset.index = index;
+                        
+                        if (note.fret.string === string) {
+                            tabNote.textContent = note.fret.fret;
+                        } else {
+                            tabNote.textContent = '-';
+                        }
+                        
+                        tabContent.appendChild(tabNote);
+                    });
+                    
+                    tabLine.appendChild(tabContent);
+                    tabContainer.appendChild(tabLine);
+                }
+                
+                this.tablature.appendChild(tabContainer);
+            }
+            
+            startPlayback() {
+                if (this.isPlaying) return;
+                
+                this.isPlaying = true;
+                this.currentNoteIndex = 0;
+                this.playButton.disabled = true;
+                this.stopButton.disabled = false;
+                
+                const interval = 60000 / this.tempo / 2; // 8分音符
+                
+                this.playbackInterval = setInterval(() => {
+                    this.playCurrentNote();
+                    this.currentNoteIndex++;
+                    
+                    if (this.currentNoteIndex >= this.sequence.length) {
+                        this.stopPlayback();
+                    }
+                }, interval);
+            }
+            
+            stopPlayback() {
+                if (!this.isPlaying) return;
+                
+                this.isPlaying = false;
+                this.playButton.disabled = false;
+                this.stopButton.disabled = true;
+                
+                if (this.playbackInterval) {
+                    clearInterval(this.playbackInterval);
+                    this.playbackInterval = null;
+                }
+                
+                // ビジュアルフィードバックをクリア
+                this.clearHighlights();
+                this.currentNoteIndex = 0;
+            }
+            
+            playCurrentNote() {
+                this.clearHighlights();
+                
+                const currentNote = this.sequence[this.currentNoteIndex];
+                if (!currentNote) return;
+                
+                // フレットボードでハイライト
+                const fret = this.fretboard.querySelector(
+                    `[data-string="${currentNote.fret.string}"][data-fret="${currentNote.fret.fret}"]`
+                );
+                if (fret) {
+                    fret.classList.add('playing');
+                }
+                
+                // タブ譜でハイライト
+                const tabNotes = this.tablature.querySelectorAll(`[data-index="${this.currentNoteIndex}"]`);
+                tabNotes.forEach(note => {
+                    if (note.textContent !== '-') {
+                        note.classList.add('current');
+                    }
+                });
+                
+                // 音を再生（Web Audio APIを使用）
+                this.playSound(currentNote.note);
+            }
+            
+            clearHighlights() {
+                this.fretboard.querySelectorAll('.playing').forEach(el => {
+                    el.classList.remove('playing');
+                });
+                
+                this.tablature.querySelectorAll('.current').forEach(el => {
+                    el.classList.remove('current');
+                });
+            }
+            
+            playSound(note) {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    // 音程を計算 (A4 = 440Hz を基準)
+                    const frequency = 440 * Math.pow(2, (note - 9) / 12);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.value = frequency;
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                } catch (error) {
+                    console.log('音声再生はユーザーの操作後に有効になります');
+                }
+            }
+        }
+        
+        // アプリケーション開始
+        document.addEventListener('DOMContentLoaded', () => {
+            new GuitarScaleApp();
+        });
+    </script>
+</body>
+</html>
