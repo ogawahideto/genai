@@ -87,6 +87,22 @@
             margin-top: 30px;
         }
         
+        @media (max-width: 768px) {
+            .chord-info {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .guitar-diagram {
+                max-width: 350px;
+            }
+            
+            .fret {
+                width: 40px;
+                height: 35px;
+            }
+        }
+        
         .guitar-chord, .piano-chord {
             background-color: #f9f9f9;
             border-radius: 10px;
@@ -99,61 +115,132 @@
             color: #555;
         }
         
-        .guitar-frets {
+        .guitar-diagram {
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fafafa;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .string-labels {
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
+            grid-template-columns: 30px repeat(6, 1fr);
             gap: 2px;
-            margin: 20px 0;
-            max-width: 300px;
-            margin-left: auto;
-            margin-right: auto;
+            margin-bottom: 5px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #666;
+        }
+        
+        .fret-row {
+            display: grid;
+            grid-template-columns: 30px repeat(6, 1fr);
+            gap: 2px;
+            margin-bottom: 3px;
+            align-items: center;
+        }
+        
+        .fret-number {
+            font-size: 12px;
+            font-weight: bold;
+            color: #666;
+            text-align: center;
+        }
+        
+        .guitar-string {
+            height: 3px;
+            background-color: #8d6e63;
+            position: relative;
+            border-radius: 2px;
         }
         
         .fret {
-            width: 40px;
-            height: 25px;
-            border: 1px solid #ccc;
+            width: 50px;
+            height: 40px;
+            border: 2px solid #8d6e63;
+            border-top: none;
+            border-bottom: 1px solid #8d6e63;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
-            background-color: white;
+            font-size: 14px;
+            background-color: #f5f5f5;
+            position: relative;
+            margin: 0 2px;
+        }
+        
+        .fret-row:first-child .fret {
+            border-top: 4px solid #654321;
         }
         
         .fret.pressed {
             background-color: #4CAF50;
             color: white;
             border-radius: 50%;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            z-index: 2;
         }
         
         .fret.open {
             background-color: #e8f5e8;
             font-weight: bold;
+            border: 2px solid #4CAF50;
+            border-radius: 50%;
+            color: #2e7d32;
         }
         
         .fret.muted {
             background-color: #ffebee;
             color: #d32f2f;
+            font-weight: bold;
+            border: 2px solid #f44336;
+            border-radius: 4px;
+        }
+        
+        .chord-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .finger-guide {
+            margin-top: 15px;
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+            line-height: 1.4;
         }
         
         .piano-keys {
-            display: flex;
-            justify-content: center;
-            margin: 20px 0;
             position: relative;
             height: 120px;
+            margin: 20px auto;
+            width: 210px;
         }
         
         .white-key {
             width: 30px;
             height: 120px;
             background-color: white;
-            border: 1px solid #ccc;
+            border: 1px solid #333;
+            border-right: none;
+            position: absolute;
             display: flex;
             align-items: flex-end;
             justify-content: center;
             padding-bottom: 10px;
             font-size: 12px;
+            box-sizing: border-box;
+        }
+        
+        .white-key:last-of-type {
+            border-right: 1px solid #333;
         }
         
         .white-key.active {
@@ -173,6 +260,7 @@
             padding-bottom: 5px;
             font-size: 10px;
             color: white;
+            border-radius: 0 0 3px 3px;
         }
         
         .black-key.active {
@@ -226,6 +314,22 @@
                     <option value="blues">ブルース (C-C7-F-C-G7-C)</option>
                     <option value="jazz">ジャズ (Dm7-G7-CM7-A7)</option>
                     <option value="pop">ポップス (C-G-Am-F)</option>
+                    <option value="folk">フォーク (G-Em-C-D)</option>
+                    <option value="rock">ロック (A-D-E-A)</option>
+                    <option value="minor">マイナー (Am-F-C-G)</option>
+                    <option value="country">カントリー (G-C-G-D7)</option>
+                    <option value="12bar_blues">12バーブルース (E-A-E)</option>
+                    <option value="ballad">バラード (C-Am-Dm-G)</option>
+                    <option value="r&b">R&B (Am-Dm-G-C)</option>
+                    <option value="jazz_circle">ジャズサークル (CM7-A7-Dm7-G7)</option>
+                    <option value="bossa_nova">ボサノバ (CM7-F#m7-FM7-Em7)</option>
+                    <option value="worship">ワーシップ (G-D-Em-C)</option>
+                    <option value="sad">サッド (Am-F-C-G-Am)</option>
+                    <option value="happy">ハッピー (C-G-F-C)</option>
+                    <option value="modal">モーダル (Dm-Gm-A-Dm)</option>
+                    <option value="reggae">レゲエ (C-G-Am-F)</option>
+                    <option value="latin">ラテン (Am-E-Am-E)</option>
+                    <option value="acoustic">アコースティック (G-C-Em-D)</option>
                 </select>
             </div>
         </div>
@@ -244,8 +348,20 @@
         <div class="chord-info">
             <div class="guitar-chord">
                 <h3>ギターコード</h3>
-                <div class="guitar-frets" id="guitarChord"></div>
-                <div id="guitarFingers"></div>
+                <div class="guitar-diagram">
+                    <div class="chord-title" id="chordTitle"></div>
+                    <div class="string-labels">
+                        <div></div>
+                        <div>6弦<br>E</div>
+                        <div>5弦<br>A</div>
+                        <div>4弦<br>D</div>
+                        <div>3弦<br>G</div>
+                        <div>2弦<br>B</div>
+                        <div>1弦<br>E</div>
+                    </div>
+                    <div id="guitarChord"></div>
+                    <div class="finger-guide" id="guitarFingers"></div>
+                </div>
             </div>
             
             <div class="piano-chord">
@@ -259,7 +375,7 @@
         // コード定義
         const chords = {
             'C': {
-                guitar: { frets: [0, 1, 0, 2, 1, 0], fingers: ['開放', '1fret-人差し指', '開放', '2fret-中指', '1fret-人差し指', '開放'] },
+                guitar: { frets: [-1, 3, 2, 0, 1, 0], fingers: ['ミュート', '3fret-薬指', '2fret-中指', '開放', '1fret-人差し指', '開放'] },
                 piano: ['C', 'E', 'G']
             },
             'Am': {
@@ -271,8 +387,32 @@
                 piano: ['F', 'A', 'C']
             },
             'G': {
-                guitar: { frets: [3, 2, 0, 0, 3, 3], fingers: ['3fret-小指', '2fret-中指', '開放', '開放', '3fret-薬指', '3fret-小指'] },
+                guitar: { frets: [3, 2, 0, 0, 0, 3], fingers: ['3fret-中指', '2fret-人差し指', '開放', '開放', '開放', '3fret-薬指'] },
                 piano: ['G', 'B', 'D']
+            },
+            'Dm': {
+                guitar: { frets: [-1, -1, 0, 2, 3, 1], fingers: ['ミュート', 'ミュート', '開放', '2fret-人差し指', '3fret-薬指', '1fret-人差し指'] },
+                piano: ['D', 'F', 'A']
+            },
+            'Em': {
+                guitar: { frets: [0, 2, 2, 0, 0, 0], fingers: ['開放', '2fret-中指', '2fret-薬指', '開放', '開放', '開放'] },
+                piano: ['E', 'G', 'B']
+            },
+            'A': {
+                guitar: { frets: [0, 0, 2, 2, 2, 0], fingers: ['開放', '開放', '2fret-人差し指', '2fret-中指', '2fret-薬指', '開放'] },
+                piano: ['A', 'C#', 'E']
+            },
+            'D': {
+                guitar: { frets: [-1, -1, 0, 2, 3, 2], fingers: ['ミュート', 'ミュート', '開放', '2fret-人差し指', '3fret-薬指', '2fret-中指'] },
+                piano: ['D', 'F#', 'A']
+            },
+            'E': {
+                guitar: { frets: [0, 2, 2, 1, 0, 0], fingers: ['開放', '2fret-中指', '2fret-薬指', '1fret-人差し指', '開放', '開放'] },
+                piano: ['E', 'G#', 'B']
+            },
+            'Bm': {
+                guitar: { frets: [2, 2, 4, 4, 3, 2], fingers: ['2fret-人差し指', '2fret-人差し指', '4fret-薬指', '4fret-小指', '3fret-中指', '2fret-人差し指'] },
+                piano: ['B', 'D', 'F#']
             },
             'C7': {
                 guitar: { frets: [0, 1, 3, 2, 1, 0], fingers: ['開放', '1fret-人差し指', '3fret-薬指', '2fret-中指', '1fret-人差し指', '開放'] },
@@ -282,17 +422,65 @@
                 guitar: { frets: [3, 2, 0, 0, 0, 1], fingers: ['3fret-薬指', '2fret-中指', '開放', '開放', '開放', '1fret-人差し指'] },
                 piano: ['G', 'B', 'D', 'F']
             },
+            'D7': {
+                guitar: { frets: [-1, -1, 0, 2, 1, 2], fingers: ['ミュート', 'ミュート', '開放', '2fret-中指', '1fret-人差し指', '2fret-薬指'] },
+                piano: ['D', 'F#', 'A', 'C']
+            },
+            'A7': {
+                guitar: { frets: [0, 0, 2, 0, 2, 0], fingers: ['開放', '開放', '2fret-中指', '開放', '2fret-薬指', '開放'] },
+                piano: ['A', 'C#', 'E', 'G']
+            },
+            'E7': {
+                guitar: { frets: [0, 2, 0, 1, 0, 0], fingers: ['開放', '2fret-中指', '開放', '1fret-人差し指', '開放', '開放'] },
+                piano: ['E', 'G#', 'B', 'D']
+            },
+            'F#': {
+                guitar: { frets: [2, 4, 4, 3, 2, 2], fingers: ['2fret-人差し指', '4fret-薬指', '4fret-小指', '3fret-中指', '2fret-人差し指', '2fret-人差し指'] },
+                piano: ['F#', 'A#', 'C#']
+            },
+            'F#m': {
+                guitar: { frets: [2, 4, 4, 2, 2, 2], fingers: ['2fret-人差し指', '4fret-薬指', '4fret-小指', '2fret-人差し指', '2fret-人差し指', '2fret-人差し指'] },
+                piano: ['F#', 'A', 'C#']
+            },
+            'Gm': {
+                guitar: { frets: [3, 5, 5, 3, 3, 3], fingers: ['3fret-人差し指', '5fret-薬指', '5fret-小指', '3fret-人差し指', '3fret-人差し指', '3fret-人差し指'] },
+                piano: ['G', 'Bb', 'D']
+            },
+            'Cm': {
+                guitar: { frets: [3, 3, 5, 5, 4, 3], fingers: ['3fret-人差し指', '3fret-人差し指', '5fret-薬指', '5fret-小指', '4fret-中指', '3fret-人差し指'] },
+                piano: ['C', 'Eb', 'G']
+            },
             'Dm7': {
                 guitar: { frets: [-1, -1, 0, 2, 1, 1], fingers: ['ミュート', 'ミュート', '開放', '2fret-中指', '1fret-人差し指', '1fret-人差し指'] },
                 piano: ['D', 'F', 'A', 'C']
+            },
+            'Em7': {
+                guitar: { frets: [0, 2, 0, 0, 0, 0], fingers: ['開放', '2fret-中指', '開放', '開放', '開放', '開放'] },
+                piano: ['E', 'G', 'B', 'D']
+            },
+            'Am7': {
+                guitar: { frets: [0, 0, 2, 0, 1, 0], fingers: ['開放', '開放', '2fret-中指', '開放', '1fret-人差し指', '開放'] },
+                piano: ['A', 'C', 'E', 'G']
             },
             'CM7': {
                 guitar: { frets: [0, 3, 2, 0, 0, 0], fingers: ['開放', '3fret-薬指', '2fret-中指', '開放', '開放', '開放'] },
                 piano: ['C', 'E', 'G', 'B']
             },
-            'A7': {
-                guitar: { frets: [0, 0, 2, 0, 2, 0], fingers: ['開放', '開放', '2fret-中指', '開放', '2fret-薬指', '開放'] },
-                piano: ['A', 'C#', 'E', 'G']
+            'FM7': {
+                guitar: { frets: [1, 3, 3, 2, 1, 0], fingers: ['1fret-人差し指', '3fret-薬指', '3fret-小指', '2fret-中指', '1fret-人差し指', '開放'] },
+                piano: ['F', 'A', 'C', 'E']
+            },
+            'GM7': {
+                guitar: { frets: [3, 2, 0, 0, 0, 2], fingers: ['3fret-薬指', '2fret-中指', '開放', '開放', '開放', '2fret-人差し指'] },
+                piano: ['G', 'B', 'D', 'F#']
+            },
+            'B': {
+                guitar: { frets: [2, 2, 4, 4, 4, 2], fingers: ['2fret-人差し指', '2fret-人差し指', '4fret-薬指', '4fret-小指', '4fret-薬指', '2fret-人差し指'] },
+                piano: ['B', 'D#', 'F#']
+            },
+            'Bb': {
+                guitar: { frets: [1, 1, 3, 3, 3, 1], fingers: ['1fret-人差し指', '1fret-人差し指', '3fret-薬指', '3fret-小指', '3fret-薬指', '1fret-人差し指'] },
+                piano: ['Bb', 'D', 'F']
             }
         };
         
@@ -301,7 +489,23 @@
             'basic': ['C', 'Am', 'F', 'G'],
             'blues': ['C', 'C7', 'F', 'C', 'G7', 'C'],
             'jazz': ['Dm7', 'G7', 'CM7', 'A7'],
-            'pop': ['C', 'G', 'Am', 'F']
+            'pop': ['C', 'G', 'Am', 'F'],
+            'folk': ['G', 'Em', 'C', 'D'],
+            'rock': ['A', 'D', 'E', 'A'],
+            'minor': ['Am', 'F', 'C', 'G'],
+            'country': ['G', 'C', 'G', 'D7'],
+            '12bar_blues': ['E', 'E', 'E', 'E', 'A', 'A', 'E', 'E', 'A', 'E', 'A', 'E'],
+            'ballad': ['C', 'Am', 'Dm', 'G'],
+            'r&b': ['Am', 'Dm', 'G', 'C'],
+            'jazz_circle': ['CM7', 'A7', 'Dm7', 'G7'],
+            'bossa_nova': ['CM7', 'F#m7', 'FM7', 'Em7'],
+            'worship': ['G', 'D', 'Em', 'C'],
+            'sad': ['Am', 'F', 'C', 'G', 'Am'],
+            'happy': ['C', 'G', 'F', 'C'],
+            'modal': ['Dm', 'Gm', 'A', 'Dm'],
+            'reggae': ['C', 'G', 'Am', 'F'],
+            'latin': ['Am', 'E', 'Am', 'E'],
+            'acoustic': ['G', 'C', 'Em', 'D']
         };
         
         // アプリの状態
@@ -329,9 +533,9 @@
         
         // 初期化
         function init() {
+            setupPianoKeys();
             updateProgressionDisplay();
             updateChordDisplay();
-            setupPianoKeys();
         }
         
         // 進行表示の更新
@@ -355,63 +559,144 @@
             const chord = chords[chordName];
             guitarChordElement.innerHTML = '';
             guitarFingersElement.innerHTML = '';
+            document.getElementById('chordTitle').textContent = chordName;
             
             if (chord && chord.guitar) {
-                // フレット表示
-                chord.guitar.frets.forEach((fret, index) => {
-                    const fretElement = document.createElement('div');
-                    fretElement.className = 'fret';
-                    
-                    if (fret === -1) {
-                        fretElement.textContent = '×';
-                        fretElement.classList.add('muted');
-                    } else if (fret === 0) {
-                        fretElement.textContent = '○';
-                        fretElement.classList.add('open');
-                    } else {
-                        fretElement.textContent = fret;
-                        fretElement.classList.add('pressed');
-                    }
-                    
-                    guitarChordElement.appendChild(fretElement);
-                });
+                // フレットボードの描画（最大5フレットまで表示）
+                const maxFret = Math.max(...chord.guitar.frets.filter(f => f > 0)) || 3;
+                const startFret = maxFret > 4 ? Math.min(...chord.guitar.frets.filter(f => f > 0)) : 0;
+                const displayFrets = Math.min(maxFret - startFret + 1, 5);
                 
-                // 指使い表示
-                guitarFingersElement.innerHTML = `<small>${chord.guitar.fingers.join(' | ')}</small>`;
+                // フレット行を作成
+                for (let fretNum = startFret; fretNum <= startFret + displayFrets; fretNum++) {
+                    const fretRow = document.createElement('div');
+                    fretRow.className = 'fret-row';
+                    
+                    // フレット番号
+                    const fretNumber = document.createElement('div');
+                    fretNumber.className = 'fret-number';
+                    fretNumber.textContent = fretNum === 0 ? '' : fretNum;
+                    fretRow.appendChild(fretNumber);
+                    
+                    // 各弦のフレット
+                    chord.guitar.frets.forEach((targetFret, stringIndex) => {
+                        const fretElement = document.createElement('div');
+                        fretElement.className = 'fret';
+                        
+                        if (fretNum === 0) {
+                            // ナット部分（0フレット）
+                            if (targetFret === -1) {
+                                fretElement.textContent = '×';
+                                fretElement.classList.add('muted');
+                            } else if (targetFret === 0) {
+                                fretElement.textContent = '○';
+                                fretElement.classList.add('open');
+                            } else {
+                                fretElement.style.background = 'transparent';
+                                fretElement.style.border = 'none';
+                            }
+                        } else {
+                            // 通常のフレット
+                            if (targetFret === fretNum) {
+                                fretElement.textContent = fretNum;
+                                fretElement.classList.add('pressed');
+                            } else {
+                                fretElement.style.background = 'transparent';
+                                fretElement.style.border = '1px solid #ddd';
+                            }
+                        }
+                        
+                        fretRow.appendChild(fretElement);
+                    });
+                    
+                    guitarChordElement.appendChild(fretRow);
+                }
+                
+                // 指使い表示（よりコンパクトに）
+                const fingerText = chord.guitar.fingers.map((finger, index) => {
+                    const stringName = ['6弦', '5弦', '4弦', '3弦', '2弦', '1弦'][index];
+                    if (finger.includes('開放')) return `${stringName}:開放`;
+                    if (finger.includes('ミュート')) return `${stringName}:×`;
+                    const simplified = finger.replace('fret-', 'f').replace('人差し指', '1').replace('中指', '2').replace('薬指', '3').replace('小指', '4');
+                    return `${stringName}:${simplified}`;
+                }).join(' | ');
+                
+                guitarFingersElement.innerHTML = fingerText;
+                
+                // ポジション表示を追加
+                if (startFret > 0) {
+                    const positionIndicator = document.createElement('div');
+                    positionIndicator.style.cssText = 'text-align: center; margin-top: 10px; font-weight: bold; color: #333;';
+                    positionIndicator.textContent = `${startFret}ポジション`;
+                    guitarFingersElement.appendChild(positionIndicator);
+                }
             }
         }
         
         // ピアノ鍵盤のセットアップ
         function setupPianoKeys() {
             const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-            const blackKeys = ['C#', 'D#', null, 'F#', 'G#', 'A#', null];
+            // 黒鍵の正確な位置（白鍵の位置を基準）
+            const blackKeyData = [
+                { note: 'C#', leftPosition: 20 },   // C(0px) と D(30px) の間
+                { note: 'D#', leftPosition: 50 },   // D(30px) と E(60px) の間
+                { note: 'F#', leftPosition: 110 },  // F(90px) と G(120px) の間
+                { note: 'G#', leftPosition: 140 },  // G(120px) と A(150px) の間
+                { note: 'A#', leftPosition: 170 }   // A(150px) と B(180px) の間
+            ];
+            
+            // エンハーモニック（異名同音）マッピング
+            const enharmonics = {
+                'Bb': 'A#',
+                'Db': 'C#', 
+                'Eb': 'D#',
+                'Gb': 'F#',
+                'Ab': 'G#'
+            };
             
             pianoKeysElement.innerHTML = '';
             
-            // 白鍵
+            // 白鍵を配置
             whiteKeys.forEach((key, index) => {
                 const keyElement = document.createElement('div');
                 keyElement.className = 'white-key';
                 keyElement.textContent = key;
+                keyElement.dataset.note = key;
                 keyElement.style.left = `${index * 30}px`;
                 pianoKeysElement.appendChild(keyElement);
             });
             
-            // 黒鍵
-            blackKeys.forEach((key, index) => {
-                if (key) {
-                    const keyElement = document.createElement('div');
-                    keyElement.className = 'black-key';
-                    keyElement.textContent = key;
-                    keyElement.style.left = `${index * 30 + 20}px`;
-                    pianoKeysElement.appendChild(keyElement);
-                }
+            // 黒鍵を配置
+            blackKeyData.forEach(blackKey => {
+                const keyElement = document.createElement('div');
+                keyElement.className = 'black-key';
+                keyElement.textContent = blackKey.note;
+                keyElement.dataset.note = blackKey.note;
+                
+                // エンハーモニック対応のため複数のdata属性を追加
+                Object.keys(enharmonics).forEach(flat => {
+                    if (enharmonics[flat] === blackKey.note) {
+                        keyElement.dataset[flat.toLowerCase()] = 'true';
+                    }
+                });
+                
+                keyElement.style.left = `${blackKey.leftPosition}px`;
+                pianoKeysElement.appendChild(keyElement);
             });
         }
         
         // ピアノコードの表示更新
         function updatePianoChord(chordName) {
             const chord = chords[chordName];
+            
+            // エンハーモニック（異名同音）マッピング
+            const enharmonics = {
+                'Bb': 'A#',
+                'Db': 'C#', 
+                'Eb': 'D#',
+                'Gb': 'F#',
+                'Ab': 'G#'
+            };
             
             // 全ての鍵盤をリセット
             document.querySelectorAll('.white-key, .black-key').forEach(key => {
@@ -420,19 +705,45 @@
             
             if (chord && chord.piano) {
                 chord.piano.forEach(note => {
-                    const keyElement = document.querySelector(`.white-key:contains('${note}'), .black-key:contains('${note}')`);
-                    if (keyElement) {
-                        keyElement.classList.add('active');
-                    } else {
-                        // テキスト内容で検索
-                        const keys = document.querySelectorAll('.white-key, .black-key');
-                        keys.forEach(key => {
-                            if (key.textContent === note) {
-                                key.classList.add('active');
+                    let keyElement = null;
+                    
+                    // 直接検索
+                    keyElement = document.querySelector(`[data-note="${note}"]`);
+                    
+                    // エンハーモニック検索（例: Bb → A#）
+                    if (!keyElement && enharmonics[note]) {
+                        keyElement = document.querySelector(`[data-note="${enharmonics[note]}"]`);
+                    }
+                    
+                    // 逆エンハーモニック検索（例: A# → Bb）
+                    if (!keyElement) {
+                        Object.keys(enharmonics).forEach(flat => {
+                            if (enharmonics[flat] === note) {
+                                if (!keyElement) {
+                                    keyElement = document.querySelector(`[data-${flat.toLowerCase()}="true"]`);
+                                }
                             }
                         });
                     }
+                    
+                    // フォールバック: テキスト内容で検索
+                    if (!keyElement) {
+                        const keys = document.querySelectorAll('.white-key, .black-key');
+                        keys.forEach(key => {
+                            if (key.textContent.trim() === note) {
+                                keyElement = key;
+                            }
+                        });
+                    }
+                    
+                    if (keyElement) {
+                        keyElement.classList.add('active');
+                    }
                 });
+                
+                // デバッグ情報をコンソールに出力
+                console.log(`${chordName} chord notes:`, chord.piano);
+                console.log('Active keys:', document.querySelectorAll('.white-key.active, .black-key.active').length);
             }
         }
         
