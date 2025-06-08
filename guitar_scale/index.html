@@ -250,6 +250,12 @@
             </div>
             
             <div class="control-group">
+                <label>音声読み上げ:</label>
+                <input type="checkbox" id="speechToggle" checked>
+                <span>音名を読み上げる</span>
+            </div>
+            
+            <div class="control-group">
                 <button id="playButton">スタート</button>
                 <button id="stopButton" disabled>ストップ</button>
             </div>
@@ -325,6 +331,7 @@
                 this.isPlaying = false;
                 this.currentNoteIndex = 0;
                 this.playbackInterval = null;
+                this.speechEnabled = true;
                 
                 this.positions = {
                     open: { start: 0, end: 4 },
@@ -571,6 +578,7 @@
                 this.positionSelect = document.getElementById('positionSelect');
                 this.tempoSlider = document.getElementById('tempoSlider');
                 this.tempoValue = document.getElementById('tempoValue');
+                this.speechToggle = document.getElementById('speechToggle');
                 this.playButton = document.getElementById('playButton');
                 this.stopButton = document.getElementById('stopButton');
                 this.fretboard = document.getElementById('fretboard');
@@ -596,6 +604,10 @@
                 this.tempoSlider.addEventListener('input', (e) => {
                     this.tempo = parseInt(e.target.value);
                     this.tempoValue.textContent = `${this.tempo} BPM`;
+                });
+                
+                this.speechToggle.addEventListener('change', (e) => {
+                    this.speechEnabled = e.target.checked;
                 });
                 
                 this.playButton.addEventListener('click', () => this.startPlayback());
@@ -735,16 +747,22 @@
                 this.playButton.disabled = true;
                 this.stopButton.disabled = false;
                 
-                const interval = 60000 / this.tempo / 2; // 8分音符
-                
-                this.playbackInterval = setInterval(() => {
+                if (this.speechEnabled) {
+                    // 音声読み上げモード：音声に合わせて進行
                     this.playCurrentNote();
-                    this.currentNoteIndex++;
+                } else {
+                    // 通常モード：テンポに合わせて進行
+                    const interval = 60000 / this.tempo / 2; // 8分音符
                     
-                    if (this.currentNoteIndex >= this.sequence.length) {
-                        this.stopPlayback();
-                    }
-                }, interval);
+                    this.playbackInterval = setInterval(() => {
+                        this.playCurrentNote();
+                        this.currentNoteIndex++;
+                        
+                        if (this.currentNoteIndex >= this.sequence.length) {
+                            this.stopPlayback();
+                        }
+                    }, interval);
+                }
             }
             
             stopPlayback() {
@@ -788,6 +806,11 @@
                 
                 // 音を再生（Web Audio APIを使用）
                 this.playSound(currentNote.note);
+                
+                // 音名を音声で読み上げ
+                if (this.speechEnabled) {
+                    this.speakNoteName(currentNote.note);
+                }
             }
             
             clearHighlights() {
@@ -823,6 +846,69 @@
                 } catch (error) {
                     console.log('音声再生はユーザーの操作後に有効になります');
                 }
+            }
+            
+            speakNoteName(note) {
+                if (!('speechSynthesis' in window)) {
+                    console.log('音声合成はサポートされていません');
+                    return;
+                }
+                
+                try {
+                    // 音名を取得
+                    const noteName = this.noteNames[note];
+                    
+                    // 音名を日本語で読みやすく変換
+                    const noteNameJapanese = this.convertNoteToJapanese(noteName);
+                    
+                    // 音声合成の設定
+                    const utterance = new SpeechSynthesisUtterance(noteNameJapanese);
+                    utterance.lang = 'ja-JP'; // 日本語設定
+                    utterance.rate = 1.8; // 早口に設定
+                    utterance.pitch = 1.0;
+                    utterance.volume = 0.7;
+                    
+                    // 音声終了時のイベントリスナー
+                    utterance.onend = () => {
+                        if (this.speechEnabled && this.isPlaying) {
+                            this.currentNoteIndex++;
+                            
+                            if (this.currentNoteIndex >= this.sequence.length) {
+                                this.stopPlayback();
+                            } else {
+                                // 次の音を再生
+                                setTimeout(() => {
+                                    this.playCurrentNote();
+                                }, 50); // 間隔を短く
+                            }
+                        }
+                    };
+                    
+                    // 読み上げ実行
+                    speechSynthesis.speak(utterance);
+                } catch (error) {
+                    console.log('音声読み上げでエラーが発生しました:', error);
+                }
+            }
+            
+            convertNoteToJapanese(noteName) {
+                // 音名をアルファベット読みに変換
+                const conversion = {
+                    'C': 'シー',
+                    'C#': 'シー シャープ',
+                    'D': 'ディー',
+                    'D#': 'ディー シャープ',
+                    'E': 'イー',
+                    'F': 'エフ',
+                    'F#': 'エフ シャープ',
+                    'G': 'ジー',
+                    'G#': 'ジー シャープ',
+                    'A': 'エー',
+                    'A#': 'エー シャープ',
+                    'B': 'ビー'
+                };
+                
+                return conversion[noteName] || noteName;
             }
         }
         
