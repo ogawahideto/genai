@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>4人打ちリバーシ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .game-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 1px;
+            background-color: #000;
+            padding: 1px;
+            width: fit-content;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: #008000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+        }
+        .cell:hover {
+            background-color: #00a000;
+        }
+        .stone {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #333;
+        }
+        .black {
+            background-color: #000;
+        }
+        .white {
+            background-color: #fff;
+        }
+        .red {
+            background-color: #ff0000;
+        }
+        .blue {
+            background-color: #0000ff;
+        }
+        .info-panel {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-width: 200px;
+        }
+        .player-info {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .player-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #333;
+        }
+        .current-player {
+            background-color: #e8f5e8;
+            border: 2px solid #4caf50;
+        }
+        .game-status {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .ai-strategy {
+            font-size: 12px;
+            color: #666;
+            margin-left: 30px;
+        }
+        .restart-btn {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .restart-btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>4人打ちリバーシ</h1>
+    
+    <div class="game-container">
+        <div id="board" class="board"></div>
+        
+        <div class="info-panel">
+            <div id="game-status" class="game-status">ゲーム開始</div>
+            
+            <div id="player-black" class="player-info">
+                <div class="player-color black"></div>
+                <div>
+                    <div>あなた: <span id="black-score">1</span></div>
+                </div>
+            </div>
+            
+            <div id="player-white" class="player-info">
+                <div class="player-color white"></div>
+                <div>
+                    <div>白AI: <span id="white-score">1</span></div>
+                    <div class="ai-strategy">攻撃的戦略</div>
+                </div>
+            </div>
+            
+            <div id="player-red" class="player-info">
+                <div class="player-color red"></div>
+                <div>
+                    <div>赤AI: <span id="red-score">1</span></div>
+                    <div class="ai-strategy">守備的戦略</div>
+                </div>
+            </div>
+            
+            <div id="player-blue" class="player-info">
+                <div class="player-color blue"></div>
+                <div>
+                    <div>青AI: <span id="blue-score">1</span></div>
+                    <div class="ai-strategy">ランダム戦略</div>
+                </div>
+            </div>
+            
+            <button id="restart-btn" class="restart-btn">ゲームを再開</button>
+        </div>
+    </div>
+
+    <script>
+        const EMPTY = 0;
+        const BLACK = 1;  // プレイヤー
+        const WHITE = 2;  // AI1 (攻撃的)
+        const RED = 3;    // AI2 (守備的)
+        const BLUE = 4;   // AI3 (ランダム)
+
+        const PLAYER_NAMES = {
+            [BLACK]: 'あなた',
+            [WHITE]: '白AI',
+            [RED]: '赤AI',
+            [BLUE]: '青AI'
+        };
+
+        const PLAYER_COLORS = {
+            [BLACK]: 'black',
+            [WHITE]: 'white',
+            [RED]: 'red',
+            [BLUE]: 'blue'
+        };
+
+        let currentPlayer = BLACK;
+        let board = Array(8).fill().map(() => Array(8).fill(EMPTY));
+        let gameEnded = false;
+
+        // 初期配置（中央4マスに4色配置）
+        function initializeBoard() {
+            board = Array(8).fill().map(() => Array(8).fill(EMPTY));
+            board[3][3] = BLACK;
+            board[3][4] = WHITE;
+            board[4][3] = RED;
+            board[4][4] = BLUE;
+            currentPlayer = BLACK;
+            gameEnded = false;
+        }
+
+        function createBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.addEventListener('click', handleClick);
+                    boardElement.appendChild(cell);
+                }
+            }
+            updateBoard();
+        }
+
+        function updateBoard() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                cell.innerHTML = '';
+                if (board[row][col] !== EMPTY) {
+                    const stone = document.createElement('div');
+                    stone.className = `stone ${PLAYER_COLORS[board[row][col]]}`;
+                    cell.appendChild(stone);
+                }
+            });
+            
+            updateScores();
+            updatePlayerDisplay();
+        }
+
+        function updateScores() {
+            const scores = {
+                [BLACK]: 0,
+                [WHITE]: 0,
+                [RED]: 0,
+                [BLUE]: 0
+            };
+
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    if (board[i][j] !== EMPTY) {
+                        scores[board[i][j]]++;
+                    }
+                }
+            }
+
+            document.getElementById('black-score').textContent = scores[BLACK];
+            document.getElementById('white-score').textContent = scores[WHITE];
+            document.getElementById('red-score').textContent = scores[RED];
+            document.getElementById('blue-score').textContent = scores[BLUE];
+        }
+
+        function updatePlayerDisplay() {
+            // 全プレイヤーの表示をリセット
+            document.querySelectorAll('.player-info').forEach(el => {
+                el.classList.remove('current-player');
+            });
+
+            if (!gameEnded) {
+                // 現在のプレイヤーをハイライト
+                const playerId = `player-${PLAYER_COLORS[currentPlayer]}`;
+                document.getElementById(playerId).classList.add('current-player');
+                document.getElementById('game-status').textContent = `${PLAYER_NAMES[currentPlayer]}の番`;
+            }
+        }
+
+        function isValidMove(row, col, player) {
+            if (board[row][col] !== EMPTY) return false;
+            
+            // プレイヤーが盤上に駒を持っているかチェック
+            const hasStones = hasPlayerStones(player);
+            
+            if (!hasStones) {
+                // 駒がない場合：他の駒と隣接する位置に配置可能
+                return isAdjacentToAnyStone(row, col);
+            } else {
+                // 通常のリバーシルール
+                const directions = [
+                    [-1,-1], [-1,0], [-1,1],
+                    [0,-1],          [0,1],
+                    [1,-1],  [1,0],  [1,1]
+                ];
+                
+                return directions.some(([dx, dy]) => {
+                    let x = row + dx;
+                    let y = col + dy;
+                    let hasOpponent = false;
+                    
+                    while (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                        if (board[x][y] === EMPTY) return false;
+                        if (board[x][y] === player) {
+                            return hasOpponent;
+                        }
+                        hasOpponent = true;
+                        x += dx;
+                        y += dy;
+                    }
+                    return false;
+                });
+            }
+        }
+
+        function hasPlayerStones(player) {
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    if (board[i][j] === player) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function isAdjacentToAnyStone(row, col) {
+            const directions = [
+                [-1,-1], [-1,0], [-1,1],
+                [0,-1],          [0,1],
+                [1,-1],  [1,0],  [1,1]
+            ];
+            
+            return directions.some(([dx, dy]) => {
+                const x = row + dx;
+                const y = col + dy;
+                return x >= 0 && x < 8 && y >= 0 && y < 8 && board[x][y] !== EMPTY;
+            });
+        }
+
+        function flipStones(row, col, player) {
+            const directions = [
+                [-1,-1], [-1,0], [-1,1],
+                [0,-1],          [0,1],
+                [1,-1],  [1,0],  [1,1]
+            ];
+            
+            directions.forEach(([dx, dy]) => {
+                let x = row + dx;
+                let y = col + dy;
+                let stonesToFlip = [];
+                
+                while (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                    if (board[x][y] === EMPTY) break;
+                    if (board[x][y] === player) {
+                        stonesToFlip.forEach(([r, c]) => {
+                            board[r][c] = player;
+                        });
+                        break;
+                    }
+                    stonesToFlip.push([x, y]);
+                    x += dx;
+                    y += dy;
+                }
+            });
+        }
+
+        function getValidMoves(player) {
+            const moves = [];
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    if (isValidMove(i, j, player)) {
+                        moves.push([i, j]);
+                    }
+                }
+            }
+            return moves;
+        }
+
+        function makeMove(row, col, player) {
+            board[row][col] = player;
+            
+            // 駒を配置後、駒数をチェック（復活ルール用）
+            const hadStones = countPlayerStones(player) > 1; // 今配置した駒以外に駒があるか
+            
+            // プレイヤーが既に駒を持っている場合のみひっくり返し処理
+            if (hadStones) {
+                flipStones(row, col, player);
+            }
+            
+            updateBoard();
+        }
+
+        function countPlayerStones(player) {
+            let count = 0;
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    if (board[i][j] === player) {
+                        count++;
+                    }
+                }
+            }
+            return count;
+        }
+
+        function nextPlayer() {
+            const players = [BLACK, WHITE, RED, BLUE];
+            const currentIndex = players.indexOf(currentPlayer);
+            currentPlayer = players[(currentIndex + 1) % 4];
+        }
+
+        function handleClick(event) {
+            if (gameEnded || currentPlayer !== BLACK) return;
+            
+            const row = parseInt(event.target.dataset.row);
+            const col = parseInt(event.target.dataset.col);
+            
+            if (isValidMove(row, col, BLACK)) {
+                makeMove(row, col, BLACK);
+                nextPlayer();
+                processNextTurn();
+            }
+        }
+
+        function processNextTurn() {
+            if (gameEnded) return;
+            
+            const validMoves = getValidMoves(currentPlayer);
+            
+            if (validMoves.length === 0) {
+                // 有効な手がない場合はスキップ
+                nextPlayer();
+                // 全プレイヤーが手を出せるかチェック
+                checkGameEnd();
+                if (!gameEnded) {
+                    setTimeout(processNextTurn, 500);
+                }
+                return;
+            }
+
+            updatePlayerDisplay();
+
+            if (currentPlayer === BLACK) {
+                // プレイヤーの番
+                return;
+            }
+
+            // AIの番
+            setTimeout(() => {
+                let move;
+                switch (currentPlayer) {
+                    case WHITE:
+                        move = getAggressiveMove(validMoves);
+                        break;
+                    case RED:
+                        move = getDefensiveMove(validMoves);
+                        break;
+                    case BLUE:
+                        move = getRandomMove(validMoves);
+                        break;
+                }
+                
+                if (move) {
+                    makeMove(move[0], move[1], currentPlayer);
+                    nextPlayer();
+                    processNextTurn();
+                }
+            }, 1000);
+        }
+
+        // 白AI: 攻撃的戦略（最も多くの石をひっくり返す）
+        function getAggressiveMove(validMoves) {
+            let bestMove = validMoves[0];
+            let maxFlips = countFlips(bestMove[0], bestMove[1], currentPlayer);
+
+            validMoves.forEach(([row, col]) => {
+                const flips = countFlips(row, col, currentPlayer);
+                if (flips > maxFlips) {
+                    maxFlips = flips;
+                    bestMove = [row, col];
+                }
+            });
+
+            return bestMove;
+        }
+
+        // 赤AI: 守備的戦略（角や辺を優先）
+        function getDefensiveMove(validMoves) {
+            // 角の座標
+            const corners = [[0,0], [0,7], [7,0], [7,7]];
+            // 辺の座標
+            const edges = [];
+            for (let i = 0; i < 8; i++) {
+                if (i !== 0 && i !== 7) {
+                    edges.push([0, i], [7, i], [i, 0], [i, 7]);
+                }
+            }
+
+            // 角があれば最優先
+            for (const move of validMoves) {
+                if (corners.some(corner => corner[0] === move[0] && corner[1] === move[1])) {
+                    return move;
+                }
+            }
+
+            // 角がなければ辺を優先
+            for (const move of validMoves) {
+                if (edges.some(edge => edge[0] === move[0] && edge[1] === move[1])) {
+                    return move;
+                }
+            }
+
+            // 角・辺がなければ最も多くひっくり返せる手
+            return getAggressiveMove(validMoves);
+        }
+
+        // 青AI: ランダム戦略
+        function getRandomMove(validMoves) {
+            return validMoves[Math.floor(Math.random() * validMoves.length)];
+        }
+
+        function countFlips(row, col, player) {
+            let count = 0;
+            const directions = [
+                [-1,-1], [-1,0], [-1,1],
+                [0,-1],          [0,1],
+                [1,-1],  [1,0],  [1,1]
+            ];
+            
+            directions.forEach(([dx, dy]) => {
+                let x = row + dx;
+                let y = col + dy;
+                let tempCount = 0;
+                
+                while (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                    if (board[x][y] === EMPTY) break;
+                    if (board[x][y] === player) {
+                        count += tempCount;
+                        break;
+                    }
+                    tempCount++;
+                    x += dx;
+                    y += dy;
+                }
+            });
+            return count;
+        }
+
+        function checkGameEnd() {
+            // 全プレイヤーが有効な手を持っているかチェック
+            const players = [BLACK, WHITE, RED, BLUE];
+            const hasValidMoves = players.some(player => getValidMoves(player).length > 0);
+            
+            if (!hasValidMoves) {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            gameEnded = true;
+            
+            const scores = {
+                [BLACK]: 0,
+                [WHITE]: 0,
+                [RED]: 0,
+                [BLUE]: 0
+            };
+
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    if (board[i][j] !== EMPTY) {
+                        scores[board[i][j]]++;
+                    }
+                }
+            }
+
+            // 勝者を決定
+            const maxScore = Math.max(...Object.values(scores));
+            const winners = Object.keys(scores).filter(player => scores[player] === maxScore);
+
+            let result;
+            if (winners.length === 1) {
+                result = `${PLAYER_NAMES[winners[0]]}の勝利！`;
+            } else {
+                const winnerNames = winners.map(p => PLAYER_NAMES[p]).join('、');
+                result = `引き分け！（${winnerNames}）`;
+            }
+
+            document.getElementById('game-status').textContent = result;
+            
+            // プレイヤー表示をリセット
+            document.querySelectorAll('.player-info').forEach(el => {
+                el.classList.remove('current-player');
+            });
+        }
+
+        // 再開ボタンのイベントリスナー
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            initializeBoard();
+            createBoard();
+        });
+
+        // ゲーム初期化
+        initializeBoard();
+        createBoard();
+        processNextTurn();
+    </script>
+</body>
+</html>
