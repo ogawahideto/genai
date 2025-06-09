@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オトノキョリ</title>
+    <style>
+        /* --- CSS: スタイルとデザイン --- */
+        :root {
+            --bg-color: #f0f8ff;
+            --main-color: #4682b4;
+            --accent-color: #ff6347;
+            --text-color: #333;
+            --char-color: #3cb371;
+            --friend-color: #ffa500;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', 'Arial', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+
+        #game-wrapper {
+            background-color: #fff;
+            padding: 2em;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 500px;
+        }
+
+        h1 {
+            color: var(--main-color);
+            margin-top: 0;
+        }
+
+        #character-area {
+            position: relative;
+            height: 100px;
+            margin: 20px 0;
+            border: 2px dashed var(--main-color);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 0 10%;
+        }
+
+        .character {
+            font-size: 3em;
+            position: absolute;
+            transition: left 0.5s ease-in-out;
+        }
+
+        #porun {
+            color: var(--char-color);
+            left: 10%;
+        }
+        
+        #friend {
+            color: var(--friend-color);
+            left: 80%;
+        }
+        
+        /* アニメーション */
+        @keyframes jump {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-20px) scale(1.2); }
+        }
+        @keyframes sad {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg); }
+            75% { transform: rotate(10deg); }
+        }
+
+        .jump-animation {
+            animation: jump 0.5s ease-in-out;
+        }
+        .sad-animation {
+            animation: sad 0.5s ease-in-out;
+        }
+
+
+        #controls, #options-area {
+            margin: 20px 0;
+        }
+
+        .btn {
+            background-color: var(--main-color);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        .btn:hover:not(:disabled) {
+            background-color: #5a9bd3;
+            transform: scale(1.05);
+        }
+        
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #options-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .option-btn {
+            background-color: var(--char-color);
+        }
+        
+        .option-btn:hover:not(:disabled) {
+            background-color: #4ed98a;
+        }
+        
+        #status-area {
+            margin-top: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            height: 50px;
+        }
+        
+        #message {
+            color: var(--accent-color);
+        }
+        
+        #score {
+            color: var(--main-color);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <h1>オトノキョリ</h1>
+        <p>「ポロンの音」と「仲間の音」の距離を当ててね！</p>
+
+        <div id="character-area">
+            <div id="porun" class="character">🏃</div>
+            <div id="friend" class="character">🧍</div>
+        </div>
+
+        <div id="controls">
+            <button id="play-btn" class="btn">ゲーム開始 (音をきく)</button>
+        </div>
+
+        <div id="options-area">
+            </div>
+
+        <div id="status-area">
+            <p id="message"></p>
+            <p id="score">スコア: 0</p>
+        </div>
+    </div>
+
+    <script>
+    // --- JavaScript: ゲームのロジック ---
+
+    // 1. DOM要素の取得
+    const playBtn = document.getElementById('play-btn');
+    const optionsArea = document.getElementById('options-area');
+    const messageEl = document.getElementById('message');
+    const scoreEl = document.getElementById('score');
+    const porunEl = document.getElementById('porun');
+    
+    // 2. 音声関連の準備
+    let audioContext;
+    
+    // Web Audio APIの初期化（ユーザー操作が必要）
+    function initAudio() {
+        if (!audioContext) {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                alert('お使いのブラウザはWeb Audio APIをサポートしていません。');
+            }
+        }
+    }
+
+    // 指定された周波数の音を再生する関数
+    function playTone(frequency, startTime, duration) {
+        if (!audioContext) return;
+        
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.type = 'sine'; // なめらかなサイン波
+        oscillator.frequency.setValueAtTime(frequency, startTime);
+        
+        // 音がブツっと切れないように音量を調整
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.5, startTime + 0.05);
+        gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+
+        oscillator.start(startTime);
+        oscillator.stop(startTime + duration);
+    }
+
+    // 3. ゲームデータの定義
+    const intervals = [
+        { id: 'unison', name: 'ぴったり', ratio: 1/1 },
+        { id: 'majorSecond', name: 'すぐとなり', ratio: 9/8 },
+        { id: 'majorThird', name: 'さんぽ', ratio: 5/4 },
+        { id: 'perfectFourth', name: 'よーいしょ', ratio: 4/3 },
+        { id: 'perfectFifth', name: '大ジャンプ！', ratio: 3/2 },
+        { id: 'majorSixth', name: 'スキップ', ratio: 5/3},
+        { id: 'octave', name: 'たかーい！', ratio: 2/1 }
+    ];
+
+    let gameState = {
+        score: 0,
+        currentProblem: null,
+        baseFrequency: 220,
+        isPlaying: false
+    };
+
+    // 4. ゲームロジックの関数
+    
+    // 問題を作成する関数
+    function createProblem() {
+        gameState.isPlaying = false;
+        messageEl.textContent = '「音をきく」ボタンを押してね';
+        
+        // ランダムに正解の音程を選ぶ
+        const correctInterval = intervals[Math.floor(Math.random() * intervals.length)];
+        gameState.currentProblem = correctInterval;
+        
+        // ダミーの選択肢を作成
+        let options = [correctInterval];
+        while (options.length < 4) {
+            const randomInterval = intervals[Math.floor(Math.random() * intervals.length)];
+            // 重複しないように追加
+            if (!options.find(opt => opt.id === randomInterval.id)) {
+                options.push(randomInterval);
+            }
+        }
+        
+        // 選択肢をシャッフル
+        options.sort(() => Math.random() - 0.5);
+        
+        // 選択肢ボタンをHTMLに描画
+        optionsArea.innerHTML = '';
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.textContent = opt.name;
+            btn.classList.add('btn', 'option-btn');
+            btn.dataset.id = opt.id;
+            btn.disabled = true; // 音を聴くまで押せない
+            btn.addEventListener('click', () => checkAnswer(opt.id));
+            optionsArea.appendChild(btn);
+        });
+        
+        // 基準音をランダムに設定 (A3-A4)
+        gameState.baseFrequency = 220 + Math.random() * 220;
+
+        playBtn.disabled = false;
+        playBtn.textContent = '音をきく';
+    }
+
+    // 2つの音を再生する関数
+    function playProblemTones() {
+        if (gameState.isPlaying || !audioContext) return;
+        gameState.isPlaying = true;
+        
+        const now = audioContext.currentTime;
+        const tone1_freq = gameState.baseFrequency;
+        const tone2_freq = gameState.baseFrequency * gameState.currentProblem.ratio;
+        
+        // 1つ目の音（ポロン）
+        playTone(tone1_freq, now, 0.4);
+        // 2つ目の音（仲間）
+        playTone(tone2_freq, now + 0.6, 0.4);
+        
+        // 音の再生が終わったら選択肢を有効化
+        setTimeout(() => {
+            gameState.isPlaying = false;
+            messageEl.textContent = '距離はどれかな？';
+            document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = false);
+        }, 1200);
+    }
+    
+    // 答えをチェックする関数
+    function checkAnswer(selectedId) {
+        document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
+        playBtn.disabled = true;
+
+        if (selectedId === gameState.currentProblem.id) {
+            // 正解
+            messageEl.textContent = '正解！すごい！';
+            gameState.score++;
+            porunEl.classList.add('jump-animation');
+        } else {
+            // 不正解
+            const correctAnswer = intervals.find(i => i.id === gameState.currentProblem.id);
+            messageEl.textContent = `ざんねん… 正解は「${correctAnswer.name}」でした`;
+            porunEl.classList.add('sad-animation');
+        }
+        scoreEl.textContent = `スコア: ${gameState.score}`;
+
+        // 1.5秒後にアニメーションをリセットして次の問題へ
+        setTimeout(() => {
+            porunEl.className = 'character'; // アニメーションクラスを削除
+            createProblem();
+        }, 1500);
+    }
+
+    // 5. イベントリスナーの設定
+    playBtn.addEventListener('click', () => {
+        initAudio(); // 最初のクリックでAudioContextを初期化
+        
+        if(playBtn.textContent.includes('ゲーム開始')) {
+            createProblem();
+        } else {
+            playBtn.disabled = true;
+            document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
+            messageEl.textContent = '音をよく聴いてね…';
+            playProblemTones();
+        }
+    });
+
+    </script>
+</body>
+</html>
