@@ -80,3 +80,22 @@ When editing applications:
 3. **Use vanilla JavaScript patterns** - avoid introducing external dependencies
 4. **Maintain Canvas-based rendering** for games
 5. **Keep responsive design** for mobile compatibility
+
+## Documentation Requirements for New Applications
+
+When creating new applications, include the following information in HTML comments at the top of the file:
+
+1. **AI Model Used** - Which AI model was used for generation
+2. **User Prompt** - The original prompt provided by the user
+3. **AI Approach** - The method/approach the AI decided to use
+4. **Implementation Intent** - The purpose and goals of the implementation
+
+**Example Comment Block**:
+```html
+<!--
+AI Model: Claude 3.5 Sonnet
+User Prompt: Create a simple snake game
+AI Approach: HTML5 Canvas with game loop, collision detection using coordinate comparison
+Implementation Intent: Educational game demonstrating basic game programming concepts
+-->
+```
