@@ -16,14 +16,14 @@ Small apps made with Generative AIs
 
 #### [シューティングゲーム](shooting/shootingclaude35sonnet.html)
 宇宙シューティングゲーム。複数のAIモデルで生成されたバリエーション：
-- [Claude版](shooting/shootingclaude35sonnet.html)
-- [DeepSeek R1版](shooting/shootingdeepseekr1.html)
-- [DeepSeek R1 Local版](shooting/shootingdeepseekr1local13B.html)
-- [GPT-4o mini版](shooting/shootingo3minihigh.html)
+- [Claude 3.5 Sonnet版](shooting/shootingclaude35sonnet.html) *by Claude 3.5 Sonnet*
+- [DeepSeek R1版](shooting/shootingdeepseekr1.html) *by DeepSeek R1*
+- [DeepSeek R1 Local版](shooting/shootingdeepseekr1local13B.html) *by DeepSeek R1 Local 13B*
+- [GPT-4o mini版](shooting/shootingo3minihigh.html) *by GPT-4o mini*
 
-#### [シューティングゲーム (Claude Code)](shooting_cc/index.html)
+#### [シューティングゲーム (Claude Code)](shooting_cc/index.html) *by Claude Code*
 Claude Codeで作成されたシューティングゲーム。
-- [Version 2](shooting_cc_2/index.html) - 改良版
+- [Version 2](shooting_cc_2/index.html) - 改良版 *by Claude Code*
 
 #### [ピンボール](pinball/pinball.html)
 物理エンジン（Matter.js）を使用したリアルなピンボールゲーム。
@@ -31,7 +31,7 @@ Claude Codeで作成されたシューティングゲーム。
 #### [重力ゲーム](gravity/index.html)
 物理シミュレーションによる重力パズルゲーム。
 
-#### [ソリティア](solitaire-deepseek/solitaire.html)
+#### [ソリティア](solitaire-deepseek/solitaire.html) *by DeepSeek*
 一人用のソリティアパズルゲーム。
 
 #### [ゆれ豆腐](yuretofu/index.html)
