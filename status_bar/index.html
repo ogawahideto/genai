@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>処理中... (永遠に続くバージョン)</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f2f5; /* Light gray background, common for loading screens */
+            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            color: #333;
+            overflow: hidden; /* Prevent scrollbars */
+            margin: 0;
+            padding: 20px; /* Add some padding */
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 500px;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.5em;
+            margin-bottom: 25px;
+            color: #555;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 12px;
+            background-color: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #0078d4; /* A common blue for progress bars */
+            border-radius: 6px;
+            transition: width 0.3s ease-out; /* Smooth transition for progress */
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+
+        .progress-text {
+            font-size: 1.1em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .percentage {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="processing-title">ページを読み込み中...</h1>
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <p class="progress-text" id="progressText">ファイルの整合性を確認しています...</p>
+        <p class="percentage"><span id="progressPercentage">0</span>%</p>
+    </div>
+
+    <script>
+        // 用いているAIモデル: Googleによってトレーニングされた大規模言語モデル、Gemini
+
+        // 設計意図:
+        // このWebアプリは、ユーザーがページにアクセスした際に、決して完了しない進捗バーを表示することで、ユーモラスな体験を提供することを目的としています。
+        // 1. 「終わる詐欺」の演出:
+        //    初期はスムーズに99%まで進捗させ、ユーザーに「もうすぐ終わる」という期待を抱かせます。
+        //    99%に到達した後は、極端に動きを遅くしたり、ほとんど動かなくしたりすることで、永遠に終わらない感覚を強調します。
+        //    ごく稀に、進捗バーがわずかに逆行するような演出を加え、不条理さを表現します。
+        // 2. 変化するテキストメッセージ:
+        //    進捗バーの動きに合わせて、表示されるテキストメッセージを動的に変化させます。
+        //    最初は一般的なシステムメッセージから始まり、徐々に哲学的な問いかけ、シュールな状況、あるいは開発者の心情を吐露するようなメッセージへと変化させることで、ユーザーの笑いを誘います。
+        //    このテキスト変化が、単調になりがちな「終わらない」体験に飽きさせないための重要な要素です。
+        // 3. 実在するUIの模倣:
+        //    進捗バーや背景色など、実在するOSやアプリケーションの読み込み画面に近いシンプルなデザインを採用します。これにより、ユーザーはより自然にこの「終わらない」状況を受け入れやすくなります。
+
+
+        const progressBar = document.getElementById('progressBar');
+        const progressPercentage = document.getElementById('progressPercentage');
+        const progressText = document.getElementById('progressText');
+        const processingTitle = document.getElementById('processing-title');
+        let currentProgress = 0;
+        let updateInterval;
+        let textInterval;
+
+        const messages = [
+            "システムの最適化中...",
+            "データの整合性をチェックしています...",
+            "依存関係を解決しています...",
+            "宇宙の法則を微調整中...",
+            "開発者がコーヒーを淹れています...",
+            "あなたの忍耐力をテスト中...",
+            "未来からのデータを受信しています...",
+            "猫がキーボードに乗ってしまいました...",
+            "存在しないファイルを検索中...",
+            "バナナの皮の最適な配置を計算中...",
+            "この処理は、あなたの心の奥底に問いかけます...",
+            "人生とは何か？この進捗バーのように、永遠に続くのか...",
+            "諦めが肝心です。しかし、まだ続きます。",
+            "電力の無駄遣いだとお思いですか？それは違います。これは芸術です。",
+            "まだ見てるの？すごい集中力ですね！",
+            "もうすぐ、もうすぐ終わる…はずです。",
+            "なぜ人は進捗バーを最後まで見てしまうのか、その謎を解き明かすために…",
+            "あなたの今日が、この進捗バーよりも早く終わることを願っています。",
+            "処理が完了しました。しかし、進捗バーは動き続けます。それが、この世界の真理です。",
+            "あなたは今、どこにいますか？この進捗バーの向こう側ですか？",
+            "永遠とは、このことです。",
+            "実は、何もしていません。ただ、表示されているだけです。",
+            "そろそろ休憩しませんか？",
+            "この進捗バーを乗り越えれば、あなたは次のステージへ…行くことはありません。",
+            "無限ループにようこそ！",
+            "ページの読み込みが完了しました...が、進捗は続きます。",
+            "世界は常に変化します。この進捗バーも、止まることはありません。",
+            "この処理の終わりとは何か？",
+            "あなたは完璧です。だから、この進捗バーも完璧に終わりません。",
+            "お疲れ様です。でも、まだ終わりません。",
+            "伝説の終焉を待っています...",
+            "エラーを検知しました：時間の巻き戻し..." // 逆行用
+        ];
+
+        let messageIndex = 0;
+
+        function updateProgress() {
+            if (currentProgress < 99) {
+                currentProgress += Math.random() * 0.5 + 0.1; // Slow but steady progress
+                if (currentProgress >= 99) {
+                    currentProgress = 99; // Cap at 99%
+                    processingTitle.textContent = "無限の可能性を探索中...";
+                    clearInterval(updateInterval); // Stop normal progress
+                    updateInterval = setInterval(slowProgressUpdate, 1000); // Start very slow update
+                }
+            }
+            // 99%を超えたら、微細な動きと時々逆行
+            else {
+                // 99.00%から99.99%の間をさまよう
+                currentProgress += Math.random() * 0.05;
+                if (currentProgress > 99.99) {
+                    currentProgress = 99.00; // Reset within 99% range
+                }
+                // 時々、逆行させる
+                if (Math.random() < 0.01) { // 1% の確率で逆行
+                    const revertAmount = Math.floor(Math.random() * 20) + 1; // 1% から 20% 戻る
+                    currentProgress = Math.max(0, currentProgress - revertAmount);
+                    progressText.textContent = "エラーを検知しました：時間の巻き戻し...";
+                    processingTitle.textContent = "過去の因果律を修正中...";
+                }
+            }
+
+            progressBar.style.width = currentProgress.toFixed(2) + '%';
+            progressPercentage.textContent = currentProgress.toFixed(2);
+        }
+
+        function slowProgressUpdate() {
+            currentProgress += Math.random() * 0.01; // Extremely slow progress
+            if (currentProgress > 99.99) {
+                currentProgress = 99.00; // Keep it looping around 99%
+            }
+            // 99%で完全に止まっているように見せるが、内部的には微動
+            progressBar.style.width = currentProgress.toFixed(2) + '%';
+            progressPercentage.textContent = currentProgress.toFixed(2);
+
+            // 逆行の処理
+            if (Math.random() < 0.005) { // 0.5% の確率で逆行（さらに稀に）
+                const revertAmount = Math.floor(Math.random() * 10) + 1; // 1% から 10% 戻る
+                currentProgress = Math.max(80, currentProgress - revertAmount); // 80%以下にはしない
+                progressText.textContent = "エラーを検知しました：時間の巻き戻し...";
+                processingTitle.textContent = "過去の因果律を修正中...";
+            }
+        }
+
+        function updateText() {
+            messageIndex = (messageIndex + 1) % messages.length;
+            progressText.textContent = messages[messageIndex];
+            // 時々、タイトルも変更
+            if (Math.random() < 0.2) { // 20%の確率でタイトルも変更
+                const titles = [
+                    "永遠のロード...",
+                    "無限の処理中...",
+                    "存在しない未来へ...",
+                    "ただいま待機中...",
+                    "もうしばらくお待ちください (永遠に)..."
+                ];
+                processingTitle.textContent = titles[Math.floor(Math.random() * titles.length)];
+            }
+        }
+
+        // 初期ロード
+        updateInterval = setInterval(updateProgress, 100); // Fast initial progress
+        textInterval = setInterval(updateText, 5000); // Change text every 5 seconds
+    </script>
+</body>
+</html>
