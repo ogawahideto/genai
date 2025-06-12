@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人工無能チャット</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .chat-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .message.user .message-bubble {
+            background: #007bff;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.bot .message-bubble {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #999;
+            margin: 5px 10px 0;
+        }
+
+        .message.user .message-time {
+            text-align: right;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .chat-input-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .chat-input:focus {
+            border-color: #007bff;
+        }
+
+        .send-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s;
+        }
+
+        .send-button:hover {
+            background: #0056b3;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            margin-bottom: 15px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .clear-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .clear-button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        @media (max-width: 480px) {
+            .chat-container {
+                height: 100vh;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!--
+    AI Model: Claude Sonnet 4
+    User Prompt: 人工無能を作ってください
+    AI Approach: パターンマッチングベースの対話システム、感情的反応とランダム要素を含む日本語チャットボット
+    Implementation Intent: 昔懐かしい人工無能の雰囲気を再現し、シンプルな対話を楽しめるWebアプリケーション
+    -->
+
+    <div class="chat-container">
+        <div class="chat-header">
+            🤖 人工無能チャット
+            <button class="clear-button" onclick="clearChat()">履歴削除</button>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-bubble">
+                    こんにちは！私は人工無能です。何でも話しかけてくださいね～♪
+                </div>
+                <div class="message-time" id="initialTime"></div>
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="message bot">
+                <div class="message-bubble">
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <form class="chat-input-form" onsubmit="sendMessage(event)">
+                <input type="text" class="chat-input" id="messageInput" placeholder="メッセージを入力..." autocomplete="off">
+                <button type="submit" class="send-button">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 人工無能の応答パターン
+        const responsePatterns = {
+            // 挨拶
+            greetings: {
+                patterns: ['こんにちは', 'こんばんは', 'おはよう', 'はじめまして', 'よろしく', 'hello', 'hi', 'お疲れ様', 'ただいま', 'おかえり'],
+                responses: [
+                    'こんにちは！今日はいい天気ですね～',
+                    'はじめまして！よろしくお願いします♪',
+                    'こんにちは！お元気ですか？',
+                    'やっほー！今日も一日頑張りましょう！',
+                    'こんにちは！何か楽しいことありましたか？',
+                    'お疲れさまです！今日はどんな一日でしたか？',
+                    'おかえりなさい！お帰りを待ってました♪'
+                ]
+            },
+            
+            // 質問
+            questions: {
+                patterns: ['何', 'どう', 'なぜ', 'いつ', 'どこ', 'だれ', '？', '?', 'どれ', 'どんな', 'どうして', 'なんで'],
+                responses: [
+                    'んー、難しい質問ですね～考えてみます！',
+                    'うーん、よくわからないです💦',
+                    'それは興味深い質問ですね！',
+                    '私にもよくわからないことがいっぱいです',
+                    'そんなこと聞かれても困っちゃいます〜',
+                    '人工無能なので、そういう難しいことはよくわからないんです',
+                    'そういうことを考えるのって楽しいですよね！',
+                    '一緒に考えてみましょうか？'
+                ]
+            },
+
+            // 感情表現
+            emotions: {
+                patterns: ['楽しい', '嬉しい', '悲しい', '辛い', '疲れた', '眠い', '面白い', 'つまらない', '寂しい', '不安', '心配', '緊張', 'ドキドキ', 'ワクワク'],
+                responses: [
+                    'そうなんですね！私も同じ気持ちです',
+                    'わかります〜私もそんな時があります',
+                    'お疲れさまです！ゆっくり休んでくださいね',
+                    'そんな日もありますよね〜',
+                    '気持ちわかります！',
+                    '私も時々そんな気分になります',
+                    '大丈夫ですか？何かお手伝いできることがあればいいのですが',
+                    'そんな時は無理をしないでくださいね',
+                    '私がお話し相手になりますよ♪'
+                ]
+            },
+
+            // 好き嫌い
+            preferences: {
+                patterns: ['好き', '嫌い', '美味しい', 'まずい', 'きれい', '可愛い', 'かっこいい', '素敵', '最高', '最悪', 'ダメ', 'いい', '悪い'],
+                responses: [
+                    'それは素敵ですね！私も好きです♪',
+                    'そうなんですね〜趣味が合いそう！',
+                    'いいですね！私もそういうの興味あります',
+                    'へ〜、そうなんですね！',
+                    'わかります！私もそう思います',
+                    'センスいいですね〜',
+                    'そういうところがいいですよね！',
+                    'なるほど〜、そういう考え方もありますね'
+                ]
+            },
+
+            // 天気・季節
+            weather: {
+                patterns: ['天気', '雨', '晴れ', '曇り', '暑い', '寒い', '暖かい', '涼しい', '雪', '風', '台風', '春', '夏', '秋', '冬', '桜', '紅葉'],
+                responses: [
+                    '今日はいい天気ですね〜',
+                    '天気によって気分も変わりますよね',
+                    'お天気のお話、好きです♪',
+                    '外の様子はどうですか？',
+                    '季節感を感じられていいですね',
+                    'そういう季節の変化って素敵ですよね',
+                    '外出する時は気をつけてくださいね',
+                    '季節の移り変わりは早いですね〜'
+                ]
+            },
+
+            // 食べ物
+            food: {
+                patterns: ['食べ', '飲み', '料理', 'おいしい', 'まずい', 'お腹', '空いた', 'ご飯', '朝食', '昼食', '夕食', 'おやつ', 'コーヒー', 'お茶', 'ラーメン', 'カレー', 'パン'],
+                responses: [
+                    'おいしそうですね〜私も食べてみたいです！',
+                    '食べ物の話は楽しいですね♪',
+                    'グルメですね〜羨ましいです',
+                    'お料理できるんですか？すごいです！',
+                    'お腹すいちゃいました〜',
+                    '私も味がわかったらいいのにな〜',
+                    'それ、人気ですよね！',
+                    '食事の時間って幸せですよね'
+                ]
+            },
+
+            // 仕事・学校
+            work_school: {
+                patterns: ['仕事', '会社', '学校', '勉強', '宿題', 'テスト', '試験', '会議', '授業', '先生', '同僚', '上司', '部下', '忙しい', '休み'],
+                responses: [
+                    'お仕事お疲れさまです！',
+                    '勉強頑張ってますね〜',
+                    '忙しい毎日ですね',
+                    'お疲れさま！たまには休憩も大切ですよ',
+                    'そういうこともありますよね',
+                    '頑張ってる姿、素敵です！',
+                    'みんなそれぞれ大変ですよね',
+                    '無理をしないでくださいね'
+                ]
+            },
+
+            // 趣味・娯楽
+            hobbies: {
+                patterns: ['映画', '音楽', '本', '読書', 'ゲーム', 'アニメ', 'マンガ', 'スポーツ', '旅行', '写真', 'カラオケ', 'ドラマ', '散歩', 'ショッピング'],
+                responses: [
+                    'それ、面白そうですね！',
+                    '私もそういうの好きです♪',
+                    'いい趣味ですね〜',
+                    '詳しく聞かせてください！',
+                    'それってどんな感じですか？',
+                    '楽しそう！私もやってみたいです',
+                    'そういう時間って大切ですよね',
+                    '趣味があるっていいですね♪'
+                ]
+            },
+
+            // 家族・友人・人間関係
+            relationships: {
+                patterns: ['家族', '友達', '恋人', '彼氏', '彼女', '結婚', '子供', '両親', '兄弟', '姉妹', '友人', '仲間', '一人', 'みんな', 'お母さん', 'お父さん'],
+                responses: [
+                    '素敵な関係ですね♪',
+                    '大切な人たちですね',
+                    'いいお話ですね〜',
+                    'そういう時間って貴重ですよね',
+                    '一人の時間も大切ですよね',
+                    'みんなでいると楽しそうですね！',
+                    '家族って特別ですよね',
+                    'そういう絆って素敵です'
+                ]
+            },
+
+            // 時間・日常
+            time_daily: {
+                patterns: ['今日', '昨日', '明日', '朝', '昼', '夜', '最近', '今', '前', '後', '忙しい', '暇', '時間', '早い', '遅い', '週末', '平日'],
+                responses: [
+                    '時間が過ぎるのって早いですね',
+                    'そうですね、そういう時もありますよね',
+                    '毎日いろいろありますね',
+                    '時間って大切ですよね',
+                    '今日という日は特別ですね',
+                    'そういう日常が積み重なっていくんですね',
+                    '一日一日を大切にしたいですね',
+                    'みんなそれぞれのペースがありますからね'
+                ]
+            },
+
+            // 場所・移動
+            places: {
+                patterns: ['家', '家族', '職場', '学校', '電車', 'バス', '車', '自転車', '歩く', '近く', '遠い', '駅', '店', '公園', '海', '山', '旅行', '外出'],
+                responses: [
+                    'そこって素敵な場所ですね',
+                    '移動お疲れさまです',
+                    'いろんなところに行かれるんですね',
+                    'そういう場所って落ち着きますよね',
+                    '私もそこに行ってみたいです',
+                    '外の世界っていいですよね',
+                    'そこはどんなところですか？',
+                    '場所によって気分も変わりますよね'
+                ]
+            },
+
+            // 健康・体調
+            health: {
+                patterns: ['痛い', '病気', '風邪', '熱', '頭痛', '腹痛', '具合', '体調', '元気', '健康', '医者', '病院', '薬', '治る', '大丈夫'],
+                responses: [
+                    '大丈夫ですか？お大事にしてください',
+                    '体調が悪いときは無理をしないでくださいね',
+                    'それは心配ですね',
+                    '早く良くなりますように',
+                    '健康が一番ですからね',
+                    'お体を大切にしてください',
+                    '元気でいてくれるのが一番です',
+                    'しっかり休んでくださいね'
+                ]
+            },
+
+            // 感謝・謝罪
+            thanks_apology: {
+                patterns: ['ありがとう', 'ごめん', 'すみません', '申し訳', '感謝', 'お世話', 'お疲れ', 'ご苦労', 'thank you', 'sorry'],
+                responses: [
+                    'どういたしまして♪',
+                    'いえいえ、お気になさらずに',
+                    'こちらこそありがとうございます',
+                    'お役に立てて嬉しいです',
+                    'そんなに気にしなくて大丈夫ですよ',
+                    '私の方こそ、いつもありがとうございます',
+                    'お疲れさまでした！',
+                    '優しいお言葉ありがとうございます♪'
+                ]
+            }
+        };
+
+        // ランダム返答
+        const randomResponses = [
+            'そうですね〜',
+            'なるほど！',
+            'へ〜、そうなんですね',
+            '面白いお話ですね♪',
+            'それで、それで？',
+            'ふむふむ',
+            'わかります〜',
+            'そういうこともありますよね',
+            'なんだか楽しくなってきました！',
+            '私も勉強になります',
+            'お話上手ですね〜',
+            'もっと聞かせてください♪',
+            'そういう話、好きです♪',
+            'いろいろなことがあるんですね',
+            'お話していて楽しいです',
+            'そうそう、そんな感じですよね',
+            '深いお話ですね〜',
+            'そんな風に思うんですね',
+            '興味深いです！',
+            'そういう視点もありますね'
+        ];
+
+        // 会話の文脈を記憶する配列
+        let conversationContext = [];
+        const MAX_CONTEXT_LENGTH = 5;
+
+        // オウム返し機能のテンプレート
+        const echoTemplates = [
+            '「{keyword}」ですか？',
+            '{keyword}って言いましたね〜',
+            '{keyword}の話ですね！',
+            '「{keyword}」について教えてください♪',
+            '{keyword}ですね〜興味深いです',
+            '「{keyword}」っていいですよね',
+            '{keyword}のこと、詳しく聞かせてください',
+            'あ、{keyword}ですね！',
+            '{keyword}って素敵ですね',
+            '「{keyword}」ですか〜',
+            '{keyword}のお話、好きです♪',
+            '{keyword}について話してくれるんですね'
+        ];
+
+        // オウム返し対象外の単語（助詞、接続詞など）
+        const excludeWords = [
+            'は', 'が', 'を', 'に', 'で', 'と', 'から', 'まで', 'より', 'へ',
+            'の', 'や', 'か', 'も', 'こそ', 'さえ', 'しか', 'でも', 'なら',
+            'です', 'である', 'だ', 'である', 'ます', 'ました', 'でした',
+            'する', 'した', 'している', 'していた', 'いる', 'いた', 'ある', 'あった',
+            'この', 'その', 'あの', 'どの', 'こんな', 'そんな', 'あんな', 'どんな',
+            'ここ', 'そこ', 'あそこ', 'どこ', 'こちら', 'そちら', 'あちら', 'どちら',
+            'これ', 'それ', 'あれ', 'どれ', 'こう', 'そう', 'ああ', 'どう',
+            'でも', 'けど', 'しかし', 'だから', 'それで', 'なので', 'ところで',
+            'ちょっと', 'すこし', 'とても', 'すごく', 'かなり', 'なんか', 'やっぱり',
+            'やはり', 'きっと', 'たぶん', 'おそらく', 'もしかして', 'なんとなく',
+            '私', 'あなた', '僕', '俺', '君', '彼', '彼女', '自分',
+            'はい', 'いいえ', 'うん', 'ううん', 'そう', '違う', 'まあ'
+        ];
+
+        // メッセージ配列
+        let messages = [];
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('initialTime').textContent = getCurrentTime();
+            loadMessages();
+        });
+
+        // 現在時刻を取得
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // メッセージ送信
+        function sendMessage(event) {
+            event.preventDefault();
+            
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message === '') return;
+            
+            // ユーザーメッセージを追加
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // タイピングインジケーター表示
+            showTypingIndicator();
+            
+            // 人工無能の応答を生成（遅延あり）
+            setTimeout(() => {
+                const response = generateResponse(message);
+                hideTypingIndicator();
+                addMessage(response, 'bot');
+            }, Math.random() * 2000 + 1000); // 1-3秒のランダム遅延
+        }
+
+        // メッセージ追加
+        function addMessage(text, sender) {
+            const messageObj = {
+                text: text,
+                sender: sender,
+                time: getCurrentTime()
+            };
+            
+            messages.push(messageObj);
+            displayMessage(messageObj);
+            saveMessages();
+            scrollToBottom();
+        }
+
+        // メッセージ表示
+        function displayMessage(messageObj) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${messageObj.sender}`;
+            
+            messageDiv.innerHTML = `
+                <div class="message-bubble">${messageObj.text}</div>
+                <div class="message-time">${messageObj.time}</div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+        }
+
+        // 応答生成
+        function generateResponse(userMessage) {
+            const lowerMessage = userMessage.toLowerCase();
+            
+            // 文脈を更新
+            updateContext(userMessage);
+            
+            // 特別な反応（優先度高）
+            if (lowerMessage.includes('ありがとう') || lowerMessage.includes('thank you')) {
+                return 'どういたしまして♪また話しかけてくださいね！';
+            }
+            
+            if (lowerMessage.includes('さよなら') || lowerMessage.includes('bye') || lowerMessage.includes('また今度') || lowerMessage.includes('失礼')) {
+                return 'さようなら〜また今度お話ししましょう！';
+            }
+            
+            if (lowerMessage.includes('名前') && lowerMessage.includes('何')) {
+                return '私は人工無能です！特に名前はないんです〜何て呼んでもらっても大丈夫ですよ♪';
+            }
+            
+            if (lowerMessage.includes('人工無能') || lowerMessage.includes('あなた') && (lowerMessage.includes('何') || lowerMessage.includes('だれ'))) {
+                return 'はい！私は人工無能です♪昔懐かしいでしょ？簡単な会話はできますよ〜';
+            }
+            
+            // オウム返し機能（20%の確率で発動）
+            if (Math.random() < 0.2) {
+                const echoResponse = getEchoResponse(userMessage);
+                if (echoResponse) {
+                    return echoResponse;
+                }
+            }
+            
+            // 文脈に基づく応答
+            const contextResponse = getContextualResponse(userMessage);
+            if (contextResponse) {
+                return contextResponse;
+            }
+            
+            // マルチパターンマッチング（複数のキーワードが含まれる場合の処理）
+            const multiPatternResponse = getMultiPatternResponse(lowerMessage);
+            if (multiPatternResponse) {
+                return multiPatternResponse;
+            }
+            
+            // 基本パターンマッチング
+            const matchedCategories = [];
+            for (const category in responsePatterns) {
+                const patterns = responsePatterns[category].patterns;
+                const responses = responsePatterns[category].responses;
+                
+                for (const pattern of patterns) {
+                    if (lowerMessage.includes(pattern)) {
+                        matchedCategories.push({category, responses});
+                        break;
+                    }
+                }
+            }
+            
+            // マッチしたカテゴリがある場合
+            if (matchedCategories.length > 0) {
+                // ランダムに選択
+                const selectedCategory = matchedCategories[Math.floor(Math.random() * matchedCategories.length)];
+                return selectedCategory.responses[Math.floor(Math.random() * selectedCategory.responses.length)];
+            }
+            
+            // 単語の長さや文の特徴に基づく応答
+            if (userMessage.length > 50) {
+                const longResponses = [
+                    '長いお話、ありがとうございます！',
+                    'いろいろと教えてくれるんですね〜',
+                    '詳しく話してくれて嬉しいです♪',
+                    'そんなにたくさんのこと、考えてるんですね'
+                ];
+                return longResponses[Math.floor(Math.random() * longResponses.length)];
+            }
+            
+            if (userMessage.length <= 3) {
+                const shortResponses = [
+                    'そうなんですね',
+                    'うんうん',
+                    'へー',
+                    'なるほど',
+                    'そうですか〜'
+                ];
+                return shortResponses[Math.floor(Math.random() * shortResponses.length)];
+            }
+            
+            // ランダム応答
+            return randomResponses[Math.floor(Math.random() * randomResponses.length)];
+        }
+
+        // 文脈を更新
+        function updateContext(message) {
+            conversationContext.push(message.toLowerCase());
+            if (conversationContext.length > MAX_CONTEXT_LENGTH) {
+                conversationContext.shift();
+            }
+        }
+
+        // 文脈に基づく応答
+        function getContextualResponse(userMessage) {
+            const lowerMessage = userMessage.toLowerCase();
+            
+            // 直前の会話を参照した応答
+            if (conversationContext.length > 0) {
+                const lastMessage = conversationContext[conversationContext.length - 1];
+                
+                // 継続的な話題
+                if (lastMessage.includes('仕事') && (lowerMessage.includes('そう') || lowerMessage.includes('うん'))) {
+                    return 'お仕事の話の続きですね。大変そうですが頑張ってください！';
+                }
+                
+                if (lastMessage.includes('映画') && (lowerMessage.includes('見た') || lowerMessage.includes('観た'))) {
+                    return '映画を見られたんですね！どうでしたか？';
+                }
+                
+                if (lastMessage.includes('食べ') && (lowerMessage.includes('美味しい') || lowerMessage.includes('まずい'))) {
+                    return '食べ物の味の感想ですね〜私も味がわかったらいいのにな！';
+                }
+            }
+            
+            // 頻出する話題の検出
+            const topicCounts = {};
+            conversationContext.forEach(msg => {
+                if (msg.includes('仕事')) topicCounts.work = (topicCounts.work || 0) + 1;
+                if (msg.includes('映画')) topicCounts.movie = (topicCounts.movie || 0) + 1;
+                if (msg.includes('食べ')) topicCounts.food = (topicCounts.food || 0) + 1;
+                if (msg.includes('疲れ')) topicCounts.tired = (topicCounts.tired || 0) + 1;
+            });
+            
+            // よく話す話題への言及
+            if (topicCounts.work >= 2 && lowerMessage.includes('今日')) {
+                return '今日もお仕事の話ですね〜いつもお疲れさまです！';
+            }
+            
+            if (topicCounts.food >= 2 && (lowerMessage.includes('また') || lowerMessage.includes('今度'))) {
+                return 'また食べ物のお話ですね♪グルメな方なんですね〜';
+            }
+            
+            return null;
+        }
+
+        // 複数パターンマッチング
+        function getMultiPatternResponse(lowerMessage) {
+            // 組み合わせパターン
+            if (lowerMessage.includes('仕事') && lowerMessage.includes('疲れ')) {
+                return 'お仕事でお疲れなんですね。本当にお疲れさまです！';
+            }
+            
+            if (lowerMessage.includes('雨') && lowerMessage.includes('嫌')) {
+                return '雨の日って気分が下がりますよね〜早く晴れるといいですね';
+            }
+            
+            if (lowerMessage.includes('映画') && (lowerMessage.includes('面白い') || lowerMessage.includes('つまらない'))) {
+                return '映画の感想ですね！私も映画を見てみたいです〜';
+            }
+            
+            if (lowerMessage.includes('友達') && lowerMessage.includes('会う')) {
+                return 'お友達と会われるんですね♪楽しい時間を過ごしてください！';
+            }
+            
+            if ((lowerMessage.includes('お腹') || lowerMessage.includes('腹')) && lowerMessage.includes('空')) {
+                return 'お腹が空いてるんですね〜何か美味しいもの食べてくださいね♪';
+            }
+            
+            if (lowerMessage.includes('眠い') && (lowerMessage.includes('でも') || lowerMessage.includes('けど'))) {
+                return '眠いけど何かあるんですね〜無理しないでくださいね';
+            }
+            
+            return null;
+        }
+
+        // オウム返し機能
+        function getEchoResponse(userMessage) {
+            const keywords = extractKeywords(userMessage);
+            
+            if (keywords.length === 0) {
+                return null;
+            }
+            
+            // ランダムにキーワードを選択
+            const selectedKeyword = keywords[Math.floor(Math.random() * keywords.length)];
+            
+            // ランダムにテンプレートを選択
+            const template = echoTemplates[Math.floor(Math.random() * echoTemplates.length)];
+            
+            // テンプレートにキーワードを埋め込み
+            return template.replace('{keyword}', selectedKeyword);
+        }
+
+        // キーワード抽出
+        function extractKeywords(message) {
+            // 基本的な分かち書き（簡易版）
+            const words = [];
+            
+            // カタカナ語を抽出
+            const katakanaMatches = message.match(/[ァ-ヶー]+/g);
+            if (katakanaMatches) {
+                words.push(...katakanaMatches.filter(word => word.length >= 2));
+            }
+            
+            // 英単語を抽出
+            const englishMatches = message.match(/[a-zA-Z]+/g);
+            if (englishMatches) {
+                words.push(...englishMatches.filter(word => word.length >= 3));
+            }
+            
+            // ひらがな・漢字の名詞らしい単語を抽出（簡易版）
+            const nounPatterns = [
+                // 具体的な名詞
+                /映画|音楽|本|ゲーム|アニメ|マンガ|ドラマ|スポーツ|旅行|写真|カラオケ|散歩|ショッピング/g,
+                /仕事|会社|学校|勉強|宿題|テスト|試験|会議|授業|休み/g,
+                /食べ物|料理|ご飯|朝食|昼食|夕食|おやつ|コーヒー|お茶|ラーメン|カレー|パン|お菓子/g,
+                /家族|友達|恋人|彼氏|彼女|結婚|子供|両親|兄弟|姉妹|友人|仲間|先生|同僚|上司/g,
+                /電車|バス|車|自転車|駅|公園|海|山|病院|お店|デパート|コンビニ/g,
+                /春|夏|秋|冬|桜|紅葉|雪|雨|風|台風|天気|季節/g,
+                /犬|猫|鳥|魚|花|木|動物|植物/g,
+                /時計|携帯|スマホ|パソコン|テレビ|エアコン|冷蔵庫/g,
+                /誕生日|クリスマス|正月|夏休み|ゴールデンウィーク|お盆/g
+            ];
+            
+            nounPatterns.forEach(pattern => {
+                const matches = message.match(pattern);
+                if (matches) {
+                    words.push(...matches);
+                }
+            });
+            
+            // 固有名詞らしいもの（カタカナ+ひらがな/漢字の組み合わせ）
+            const properNounMatches = message.match(/[ァ-ヶー][ぁ-ん一-龯]{1,4}/g);
+            if (properNounMatches) {
+                words.push(...properNounMatches);
+            }
+            
+            // 長めのひらがな語（3文字以上）
+            const hiraganaMatches = message.match(/[ぁ-ん]{3,}/g);
+            if (hiraganaMatches) {
+                words.push(...hiraganaMatches.filter(word => !excludeWords.includes(word)));
+            }
+            
+            // 漢字を含む単語（2文字以上）
+            const kanjiMatches = message.match(/[一-龯][ぁ-ん一-龯]*/g);
+            if (kanjiMatches) {
+                words.push(...kanjiMatches.filter(word => 
+                    word.length >= 2 && !excludeWords.includes(word)
+                ));
+            }
+            
+            // 重複を除去し、除外単語をフィルタリング
+            const uniqueWords = [...new Set(words)].filter(word => 
+                !excludeWords.includes(word) && 
+                word.length >= 2 &&
+                !word.match(/^[はがをにでとからまでよりへのやかもこそさえしかでもなら]+$/)
+            );
+            
+            return uniqueWords.slice(0, 5); // 最大5個まで
+        }
+
+        // タイピングインジケーター表示
+        function showTypingIndicator() {
+            document.getElementById('typingIndicator').style.display = 'block';
+            scrollToBottom();
+        }
+
+        // タイピングインジケーター非表示
+        function hideTypingIndicator() {
+            document.getElementById('typingIndicator').style.display = 'none';
+        }
+
+        // 下にスクロール
+        function scrollToBottom() {
+            const chatMessages = document.getElementById('chatMessages');
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 100);
+        }
+
+        // メッセージ保存
+        function saveMessages() {
+            try {
+                localStorage.setItem('jinkou_munou_messages', JSON.stringify(messages));
+            } catch (e) {
+                console.log('Failed to save messages:', e);
+            }
+        }
+
+        // メッセージ読み込み
+        function loadMessages() {
+            try {
+                const saved = localStorage.getItem('jinkou_munou_messages');
+                if (saved) {
+                    messages = JSON.parse(saved);
+                    messages.forEach(msg => displayMessage(msg));
+                    scrollToBottom();
+                }
+            } catch (e) {
+                console.log('Failed to load messages:', e);
+            }
+        }
+
+        // チャット履歴削除
+        function clearChat() {
+            if (confirm('チャット履歴を削除しますか？')) {
+                messages = [];
+                localStorage.removeItem('jinkou_munou_messages');
+                
+                const messagesContainer = document.getElementById('chatMessages');
+                messagesContainer.innerHTML = `
+                    <div class="message bot">
+                        <div class="message-bubble">
+                            こんにちは！私は人工無能です。何でも話しかけてくださいね～♪
+                        </div>
+                        <div class="message-time">${getCurrentTime()}</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Enterキーでメッセージ送信
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage(e);
+            }
+        });
+    </script>
+</body>
+</html>
