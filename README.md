@@ -59,6 +59,10 @@ Claude Codeで作成されたシューティングゲーム。
 楽しく英単語を覚えられるゲーム形式の学習アプリ。
 *操作: キーボード（方向キー）+ タッチ + マウスクリック*
 
+#### [化学式クイズ](chem_formula_quiz/index.html) 🧪🎮🖱️
+化学式と物質名をマッチングするミニゲーム。
+*操作: マウスクリック*
+
 ### 🎭 Interactive & Utilities
 
 #### [Anthropic & Claude 愛称ジェネレーター](claude_nickname/index.html) 🖱️
