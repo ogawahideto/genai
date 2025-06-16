@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オチナイゲー</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .game-container {
+            position: relative;
+            border: 3px solid #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255,255,255,0.3);
+        }
+
+        #gameCanvas {
+            display: block;
+            background: #000;
+            border-radius: 7px;
+        }
+
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .control-info {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .score {
+            font-size: 1.5em;
+            margin: 10px 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .start-btn {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.2s;
+        }
+
+        .start-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            #gameCanvas {
+                width: 100%;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!--
+    AI Model: Claude 3.5 Sonnet
+    User Prompt: オチゲーに対して、オチナイげーを作ってください。ブロックが落ちてくると思ったら、途中で止まったり、上がったりします。キーボード操作のほか、スマートフォンでも遊べるようにしてください。
+    AI Approach: HTML5 Canvas with unpredictable block movement physics, touch and keyboard controls
+    Implementation Intent: Create a humorous twist on falling block games where blocks defy expectations by stopping mid-air or moving upward
+    -->
+    
+    <h1>オチナイゲー</h1>
+    
+    <div class="score">スコア: <span id="score">0</span></div>
+    
+    <div class="game-container">
+        <canvas id="gameCanvas" width="300" height="600"></canvas>
+        <div class="game-over" id="gameOver">
+            <h2>ゲーム終了!</h2>
+            <p>最終スコア: <span id="finalScore">0</span></p>
+            <button class="start-btn" onclick="startGame()">もう一度遊ぶ</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <div class="control-info">
+            <p><strong>操作方法:</strong></p>
+            <p>キーボード: ←→ (移動), ↓ (高速落下), スペース (回転)</p>
+            <p>スマホ: タップして移動・回転</p>
+        </div>
+        <button class="start-btn" id="startBtn" onclick="startGame()">ゲーム開始</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const gameOverElement = document.getElementById('gameOver');
+        const finalScoreElement = document.getElementById('finalScore');
+
+        let gameState = 'stopped';
+        let score = 0;
+        let gameSpeed = 60;
+        let lastTime = 0;
+
+        const GRID_WIDTH = 10;
+        const GRID_HEIGHT = 20;
+        const BLOCK_SIZE = 30;
+
+        let grid = [];
+        let currentPiece = null;
+        let nextPiece = null;
+        let dropCounter = 0;
+        let dropInterval = 600;
+        let floatingPieces = [];
+
+        const colors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
+            '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'
+        ];
+
+        const pieces = [
+            [[1,1,1,1]],
+            [[1,1],[1,1]],
+            [[0,1,0],[1,1,1]],
+            [[1,0,0],[1,1,1]],
+            [[0,0,1],[1,1,1]],
+            [[1,1,0],[0,1,1]],
+            [[0,1,1],[1,1,0]]
+        ];
+
+        function initGrid() {
+            grid = Array(GRID_HEIGHT).fill().map(() => Array(GRID_WIDTH).fill(0));
+        }
+
+        function createPiece() {
+            const type = Math.floor(Math.random() * pieces.length);
+            return {
+                shape: pieces[type],
+                x: Math.floor(GRID_WIDTH / 2) - Math.floor(pieces[type][0].length / 2),
+                y: 0,
+                color: colors[type],
+                fallingSpeed: 1,
+                unexpectedBehavior: Math.random() < 0.9,
+                behaviorType: ['stop', 'reverse', 'jump', 'bounce', 'vanish'][Math.floor(Math.random() * 5)],
+                behaviorTriggered: false,
+                behaviorY: Math.floor(Math.random() * 8) + 3
+            };
+        }
+
+        function drawBlock(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+            
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE - 1, 3);
+            ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, 3, BLOCK_SIZE - 1);
+        }
+
+        function drawGrid() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    if (grid[y][x]) {
+                        drawBlock(x, y, grid[y][x]);
+                    }
+                }
+            }
+        }
+
+        function drawPiece(piece) {
+            piece.shape.forEach((row, dy) => {
+                row.forEach((value, dx) => {
+                    if (value) {
+                        drawBlock(piece.x + dx, piece.y + dy, piece.color);
+                    }
+                });
+            });
+        }
+
+        function drawFloatingPieces() {
+            floatingPieces.forEach(piece => {
+                drawPiece(piece);
+            });
+        }
+
+        function isValidPosition(piece, dx = 0, dy = 0) {
+            return piece.shape.every((row, y) => {
+                return row.every((value, x) => {
+                    if (!value) return true;
+                    
+                    const newX = piece.x + x + dx;
+                    const newY = piece.y + y + dy;
+                    
+                    return newX >= 0 && 
+                           newX < GRID_WIDTH && 
+                           newY < GRID_HEIGHT && 
+                           (!grid[newY] || !grid[newY][newX]);
+                });
+            });
+        }
+
+        function placePiece(piece) {
+            piece.shape.forEach((row, dy) => {
+                row.forEach((value, dx) => {
+                    if (value) {
+                        if (piece.y + dy >= 0) {
+                            grid[piece.y + dy][piece.x + dx] = piece.color;
+                        }
+                    }
+                });
+            });
+        }
+
+        function clearLines() {
+            let linesCleared = 0;
+            for (let y = GRID_HEIGHT - 1; y >= 0; y--) {
+                if (grid[y].every(cell => cell !== 0)) {
+                    grid.splice(y, 1);
+                    grid.unshift(Array(GRID_WIDTH).fill(0));
+                    linesCleared++;
+                    y++;
+                }
+            }
+            if (linesCleared > 0) {
+                score += linesCleared * 100;
+                scoreElement.textContent = score;
+            }
+        }
+
+        function updatePiece(deltaTime) {
+            if (!currentPiece) return;
+
+            dropCounter += deltaTime;
+            
+            if (currentPiece.unexpectedBehavior && !currentPiece.behaviorTriggered && 
+                currentPiece.y >= currentPiece.behaviorY) {
+                
+                currentPiece.behaviorTriggered = true;
+                
+                if (currentPiece.behaviorType === 'stop') {
+                    currentPiece.fallingSpeed = 0;
+                    floatingPieces.push({...currentPiece});
+                    setTimeout(() => {
+                        nextPiece = createPiece();
+                    }, 500);
+                    setTimeout(() => {
+                        if (currentPiece) {
+                            currentPiece.fallingSpeed = 1.2;
+                        }
+                    }, 1500 + Math.random() * 2000);
+                } else if (currentPiece.behaviorType === 'reverse') {
+                    currentPiece.fallingSpeed = -1;
+                    setTimeout(() => {
+                        if (currentPiece) {
+                            currentPiece.fallingSpeed = 2;
+                        }
+                    }, 800 + Math.random() * 1200);
+                } else if (currentPiece.behaviorType === 'jump') {
+                    currentPiece.fallingSpeed = -3;
+                    setTimeout(() => {
+                        if (currentPiece) {
+                            currentPiece.fallingSpeed = 2.5;
+                        }
+                    }, 600 + Math.random() * 800);
+                } else if (currentPiece.behaviorType === 'bounce') {
+                    currentPiece.bounceMode = true;
+                    currentPiece.fallingSpeed = 1.5;
+                } else if (currentPiece.behaviorType === 'vanish') {
+                    currentPiece.fallingSpeed = -4;
+                    currentPiece.vanishMode = true;
+                }
+            }
+
+            if (currentPiece.fallingSpeed !== 0 && dropCounter > dropInterval / Math.abs(currentPiece.fallingSpeed)) {
+                if (currentPiece.fallingSpeed > 0) {
+                    if (isValidPosition(currentPiece, 0, 1)) {
+                        currentPiece.y++;
+                    } else {
+                        if (currentPiece.bounceMode && currentPiece.y >= GRID_HEIGHT - 4) {
+                            currentPiece.fallingSpeed = -2.5;
+                            currentPiece.bounceMode = false;
+                            setTimeout(() => {
+                                if (currentPiece) {
+                                    currentPiece.fallingSpeed = 1.8;
+                                }
+                            }, 1000);
+                        } else {
+                            placePiece(currentPiece);
+                            clearLines();
+                            currentPiece = nextPiece || createPiece();
+                            nextPiece = null;
+                            
+                            if (!isValidPosition(currentPiece)) {
+                                gameOver();
+                            }
+                        }
+                    }
+                } else if (currentPiece.fallingSpeed < 0) {
+                    if (isValidPosition(currentPiece, 0, -1) && currentPiece.y > 0) {
+                        currentPiece.y--;
+                    }
+                    
+                    if (currentPiece.y < -3 || (currentPiece.vanishMode && currentPiece.y <= 0)) {
+                        if (currentPiece.vanishMode) {
+                            score += 50;
+                            scoreElement.textContent = score;
+                        }
+                        
+                        currentPiece = nextPiece || createPiece();
+                        nextPiece = null;
+                        
+                        if (!isValidPosition(currentPiece)) {
+                            gameOver();
+                        }
+                    }
+                }
+                dropCounter = 0;
+            }
+
+            floatingPieces = floatingPieces.filter(piece => {
+                piece.floatTime = (piece.floatTime || 0) + deltaTime;
+                if (piece.floatTime > 3000) {
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        function gameOver() {
+            gameState = 'gameOver';
+            finalScoreElement.textContent = score;
+            gameOverElement.style.display = 'block';
+        }
+
+        function startGame() {
+            gameState = 'playing';
+            score = 0;
+            scoreElement.textContent = score;
+            gameOverElement.style.display = 'none';
+            initGrid();
+            currentPiece = createPiece();
+            nextPiece = null;
+            floatingPieces = [];
+            dropCounter = 0;
+        }
+
+        let keys = {};
+        let lastKeyTime = {};
+
+        document.addEventListener('keydown', (e) => {
+            if (gameState !== 'playing') return;
+            
+            const now = Date.now();
+            
+            if (now - (lastKeyTime[e.code] || 0) < 100) return;
+            lastKeyTime[e.code] = now;
+
+            switch(e.code) {
+                case 'ArrowLeft':
+                    if (isValidPosition(currentPiece, -1, 0)) {
+                        currentPiece.x--;
+                    }
+                    break;
+                case 'ArrowRight':
+                    if (isValidPosition(currentPiece, 1, 0)) {
+                        currentPiece.x++;
+                    }
+                    break;
+                case 'ArrowDown':
+                    if (isValidPosition(currentPiece, 0, 1)) {
+                        currentPiece.y++;
+                        score += 1;
+                        scoreElement.textContent = score;
+                    }
+                    break;
+                case 'Space':
+                    e.preventDefault();
+                    rotatePiece();
+                    break;
+            }
+        });
+
+        function rotatePiece() {
+            const rotated = currentPiece.shape[0].map((_, i) =>
+                currentPiece.shape.map(row => row[i]).reverse()
+            );
+            
+            const originalShape = currentPiece.shape;
+            currentPiece.shape = rotated;
+            
+            if (!isValidPosition(currentPiece)) {
+                currentPiece.shape = originalShape;
+            }
+        }
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (gameState !== 'playing') return;
+
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            
+            const dx = touchEndX - touchStartX;
+            const dy = touchEndY - touchStartY;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 30 && isValidPosition(currentPiece, 1, 0)) {
+                    currentPiece.x++;
+                } else if (dx < -30 && isValidPosition(currentPiece, -1, 0)) {
+                    currentPiece.x--;
+                }
+            } else {
+                if (dy > 30 && isValidPosition(currentPiece, 0, 1)) {
+                    currentPiece.y++;
+                    score += 1;
+                    scoreElement.textContent = score;
+                } else if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
+                    rotatePiece();
+                }
+            }
+        });
+
+        function gameLoop(currentTime) {
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            if (gameState === 'playing') {
+                updatePiece(deltaTime);
+                drawGrid();
+                drawFloatingPieces();
+                if (currentPiece) {
+                    drawPiece(currentPiece);
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        initGrid();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
