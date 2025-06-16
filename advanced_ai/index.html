@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高性能人工無能AI - Claude Code Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            animation: backgroundShift 20s ease-in-out infinite;
+        }
+
+        @keyframes backgroundShift {
+            0%, 100% { background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); }
+            50% { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%); }
+        }
+
+        .ai-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            width: 100%;
+            max-width: 600px;
+            height: 700px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .ai-header {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            color: white;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ai-title {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .ai-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .ai-status {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        .ai-personality {
+            position: absolute;
+            bottom: 15px;
+            left: 20px;
+            font-size: 12px;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .personality-icon {
+            font-size: 16px;
+            animation: bounce 3s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 25px;
+            overflow-y: auto;
+            background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
+            position: relative;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin: 0 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            order: 2;
+        }
+
+        .message.ai .message-avatar {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            animation: avatarGlow 3s infinite;
+        }
+
+        @keyframes avatarGlow {
+            0%, 100% { box-shadow: 0 3px 10px rgba(0,0,0,0.2); }
+            50% { box-shadow: 0 3px 20px rgba(255, 107, 107, 0.4); }
+        }
+
+        .message-content {
+            max-width: 70%;
+            position: relative;
+        }
+
+        .message-bubble {
+            padding: 15px 20px;
+            border-radius: 20px;
+            font-size: 15px;
+            line-height: 1.5;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-bottom-right-radius: 5px;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .message.ai .message-bubble {
+            background: linear-gradient(45deg, #ffffff, #f8f9fa);
+            color: #333;
+            border: 2px solid rgba(255, 107, 107, 0.2);
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .message-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .message-time {
+            color: #666;
+        }
+
+        .message-emotion {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+        }
+
+        .typing-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .typing-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            animation: avatarGlow 1.5s infinite;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 6px;
+            padding: 12px 18px;
+            background: white;
+            border-radius: 20px;
+            border: 2px solid rgba(255, 107, 107, 0.2);
+        }
+
+        .typing-dot {
+            width: 10px;
+            height: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border-radius: 50%;
+            animation: typingDot 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingDot {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-12px); }
+        }
+
+        .thinking-indicator {
+            font-style: italic;
+            color: #ff6b6b;
+            opacity: 0.8;
+        }
+
+        .chat-input-container {
+            padding: 25px;
+            background: white;
+            border-top: 2px solid rgba(255, 107, 107, 0.1);
+        }
+
+        .chat-input-form {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 30px;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        .chat-input:focus {
+            border-color: #ff6b6b;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+        }
+
+        .send-button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+        }
+
+        .send-button:active {
+            transform: translateY(0);
+        }
+
+        .controls-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .control-button {
+            padding: 8px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 20px;
+            background: white;
+            color: #666;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .control-button:hover {
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+        }
+
+        .control-button.active {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border-color: transparent;
+        }
+
+        .ai-stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .ai-stats.show {
+            opacity: 1;
+        }
+
+        .emotion-display {
+            font-size: 24px;
+            margin-right: 10px;
+            animation: emotionPulse 2s infinite;
+        }
+
+        @keyframes emotionPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @media (max-width: 480px) {
+            .ai-container {
+                height: 100vh;
+                border-radius: 0;
+                max-width: 100%;
+            }
+            
+            .message-bubble {
+                font-size: 14px;
+                padding: 12px 16px;
+            }
+        }
+
+        .response-quality-indicator {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+        }
+
+        .response-quality-indicator.high { background: #4ade80; }
+        .response-quality-indicator.medium { background: #fbbf24; }
+        .response-quality-indicator.low { background: #f87171; }
+    </style>
+</head>
+<body>
+    <!--
+    AI Model: Claude Sonnet 4
+    User Prompt: Claude Codeの全力で性能のよい人工無能を作ってください
+    AI Approach: 高度な自然言語処理、感情分析、パーソナリティシステム、長期記憶、多層対話生成を備えた次世代人工無能
+    Implementation Intent: Claude Codeの技術力を結集した最高性能の人工無能として、人間らしい自然な対話体験を提供
+    -->
+
+    <div class="ai-container">
+        <div class="ai-header">
+            <div class="ai-title">🧠 高性能人工無能AI</div>
+            <div class="ai-subtitle">Claude Code Edition - Next Generation</div>
+            <div class="ai-status">
+                <div class="status-indicator"></div>
+                <span>オンライン</span>
+            </div>
+            <div class="ai-personality">
+                <span class="personality-icon">😊</span>
+                <span id="personalityDisplay">友好的モード</span>
+            </div>
+        </div>
+
+        <div class="ai-stats" id="aiStats">
+            <div>学習データ: <span id="learnedCount">0</span>件</div>
+            <div>対話品質: <span id="qualityScore">85%</span></div>
+            <div>感情状態: <span id="emotionState">穏やか</span></div>
+            <div>記憶容量: <span id="memoryUsage">12%</span></div>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message ai">
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <div class="message-bubble">
+                        こんにちは！私は高性能人工無能AIです。Claude Codeの技術を結集して作られました。🚀
+                        <br><br>
+                        私は以下の機能を持っています：<br>
+                        • 🧠 高度な自然言語理解<br>
+                        • 💭 感情分析と共感的応答<br>
+                        • 📚 学習・記憶機能<br>
+                        • 🎭 動的パーソナリティ<br>
+                        • 🔄 文脈理解と継続対話
+                        <div class="response-quality-indicator high"></div>
+                    </div>
+                    <div class="message-meta">
+                        <div class="message-time" id="initialTime"></div>
+                        <div class="message-emotion">😊 友好的</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="typing-content">
+                <div class="typing-avatar">🤖</div>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+                <div class="thinking-indicator" id="thinkingText">思考中...</div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="controls-container">
+                <button class="control-button" onclick="toggleStats()">📊 統計</button>
+                <button class="control-button" onclick="togglePersonality()">🎭 性格</button>
+                <button class="control-button" onclick="clearMemory()">🧹 記憶削除</button>
+                <button class="control-button" onclick="exportData()">💾 データ出力</button>
+            </div>
+            <form class="chat-input-form" onsubmit="sendMessage(event)">
+                <input type="text" class="chat-input" id="messageInput" 
+                       placeholder="何でもお話しください... (高性能AIが理解します)" 
+                       autocomplete="off">
+                <button type="submit" class="send-button">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ===== 高性能人工無能AIシステム =====
+        
+        // システム設定
+        const CONFIG = {
+            MAX_MEMORY_SIZE: 100,
+            PERSONALITY_SHIFT_THRESHOLD: 10,
+            LEARNING_RATE: 0.1,
+            EMOTION_DECAY_RATE: 0.95,
+            RESPONSE_QUALITY_THRESHOLD: 0.7
+        };
+
+        // AIの状態管理
+        class AIState {
+            constructor() {
+                this.personality = 'friendly'; // friendly, curious, thoughtful, playful, serious
+                this.emotion = { type: 'neutral', intensity: 0.5 };
+                this.conversationContext = [];
+                this.longTermMemory = new Map();
+                this.userProfile = new Map();
+                this.learningData = [];
+                this.responseHistory = [];
+                this.currentTopic = null;
+                this.emotionHistory = [];
+                this.interactionCount = 0;
+                this.lastResponseQuality = 0.85;
+                this.thinkingPatterns = new Map();
+            }
+
+            updateEmotion(newEmotion, intensity) {
+                this.emotion = { type: newEmotion, intensity: Math.min(1, intensity) };
+                this.emotionHistory.push({ ...this.emotion, timestamp: Date.now() });
+                if (this.emotionHistory.length > 50) {
+                    this.emotionHistory.shift();
+                }
+            }
+
+            addToMemory(key, value, importance = 1) {
+                this.longTermMemory.set(key, {
+                    value,
+                    importance,
+                    timestamp: Date.now(),
+                    accessCount: 0
+                });
+
+                // メモリ容量管理
+                if (this.longTermMemory.size > CONFIG.MAX_MEMORY_SIZE) {
+                    this.cleanupMemory();
+                }
+            }
+
+            cleanupMemory() {
+                const entries = Array.from(this.longTermMemory.entries());
+                entries.sort((a, b) => {
+                    const scoreA = a[1].importance * a[1].accessCount;
+                    const scoreB = b[1].importance * b[1].accessCount;
+                    return scoreA - scoreB;
+                });
+                
+                const toDelete = entries.slice(0, Math.floor(CONFIG.MAX_MEMORY_SIZE * 0.2));
+                toDelete.forEach(([key]) => this.longTermMemory.delete(key));
+            }
+
+            getMemory(key) {
+                const memory = this.longTermMemory.get(key);
+                if (memory) {
+                    memory.accessCount++;
+                    return memory.value;
+                }
+                return null;
+            }
+
+            updatePersonality() {
+                const recentEmotions = this.emotionHistory.slice(-5);
+                const dominantEmotion = this.getDominantEmotion(recentEmotions);
+                
+                if (dominantEmotion === 'happy') this.personality = 'playful';
+                else if (dominantEmotion === 'curious') this.personality = 'curious';
+                else if (dominantEmotion === 'thoughtful') this.personality = 'thoughtful';
+                else if (dominantEmotion === 'serious') this.personality = 'serious';
+                else this.personality = 'friendly';
+            }
+
+            getDominantEmotion(emotions) {
+                const counts = {};
+                emotions.forEach(e => {
+                    counts[e.type] = (counts[e.type] || 0) + e.intensity;
+                });
+                return Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+            }
+        }
+
+        // 高度な自然言語処理クラス
+        class AdvancedNLP {
+            constructor() {
+                this.sentimentPatterns = this.initSentimentPatterns();
+                this.entityPatterns = this.initEntityPatterns();
+                this.intentPatterns = this.initIntentPatterns();
+                this.topicPatterns = this.initTopicPatterns();
+            }
+
+            initSentimentPatterns() {
+                return {
+                    positive: [
+                        /嬉しい|楽しい|幸せ|良い|素晴らしい|最高|好き|愛してる|ありがとう|感謝|喜んで/g,
+                        /面白い|興味深い|素敵|美しい|かっこいい|可愛い|癒される|安心/g,
+                        /成功|達成|勝利|合格|完成|解決|改善|進歩|成長/g
+                    ],
+                    negative: [
+                        /悲しい|辛い|苦しい|痛い|嫌|嫌い|憎い|怒り|腹立つ|ムカつく/g,
+                        /疲れた|眠い|だるい|しんどい|きつい|大変|困る|心配|不安/g,
+                        /失敗|負け|落第|破綻|問題|困難|挫折|絶望|諦め/g
+                    ],
+                    neutral: [
+                        /普通|まあまあ|そう|なるほど|分かる|理解|確認|報告/g
+                    ]
+                };
+            }
+
+            initEntityPatterns() {
+                return {
+                    person: /[一-龯]{2,4}さん|[ァ-ヶー]{2,6}さん|友達|恋人|家族|同僚|先生|医者/g,
+                    place: /東京|大阪|京都|北海道|沖縄|学校|会社|家|公園|駅|病院|店/g,
+                    time: /今日|昨日|明日|朝|昼|夜|週末|平日|春|夏|秋|冬|正月|クリスマス/g,
+                    object: /本|映画|音楽|ゲーム|車|スマホ|パソコン|料理|服|時計/g,
+                    emotion: /感情|気持ち|心|気分|感じ|思い|考え|意見|感想/g
+                };
+            }
+
+            initIntentPatterns() {
+                return {
+                    question: /何|どう|なぜ|いつ|どこ|だれ|どれ|どんな|どうして|なんで|\?|？/g,
+                    request: /して|お願い|頼む|手伝って|教えて|やって|作って|買って/g,
+                    complaint: /困った|どうしよう|大変|問題|トラブル|故障|壊れた/g,
+                    praise: /すごい|素晴らしい|上手|天才|最高|完璧|感動|尊敬/g,
+                    greeting: /こんにちは|おはよう|こんばんは|はじめまして|お疲れ|ただいま/g,
+                    farewell: /さよなら|また今度|失礼|お先に|おやすみ|バイバイ/g
+                };
+            }
+
+            initTopicPatterns() {
+                return {
+                    work: /仕事|会社|職場|上司|同僚|会議|プロジェクト|営業|残業|給料/g,
+                    study: /勉強|学校|授業|テスト|試験|宿題|卒業|入学|成績|大学/g,
+                    hobby: /趣味|映画|音楽|読書|ゲーム|スポーツ|旅行|料理|写真|絵/g,
+                    health: /健康|病気|薬|医者|病院|運動|ダイエット|疲れ|痛い|元気/g,
+                    family: /家族|両親|父|母|兄弟|姉妹|子供|祖父母|結婚|離婚/g,
+                    love: /恋愛|恋人|彼氏|彼女|好き|愛|デート|結婚|別れ|片思い/g,
+                    food: /食べ物|料理|レストラン|カフェ|美味しい|まずい|お腹|ダイエット/g,
+                    weather: /天気|雨|晴れ|曇り|雪|暑い|寒い|春|夏|秋|冬/g,
+                    technology: /スマホ|パソコン|インターネット|AI|ロボット|アプリ|ゲーム|SNS/g,
+                    money: /お金|給料|買い物|高い|安い|節約|貯金|投資|ローン|借金/g
+                };
+            }
+
+            analyze(text) {
+                return {
+                    sentiment: this.analyzeSentiment(text),
+                    entities: this.extractEntities(text),
+                    intent: this.detectIntent(text),
+                    topics: this.detectTopics(text),
+                    keywords: this.extractKeywords(text),
+                    complexity: this.analyzeComplexity(text),
+                    urgency: this.detectUrgency(text)
+                };
+            }
+
+            analyzeSentiment(text) {
+                let positiveScore = 0;
+                let negativeScore = 0;
+                
+                this.sentimentPatterns.positive.forEach(pattern => {
+                    const matches = text.match(pattern);
+                    if (matches) positiveScore += matches.length;
+                });
+                
+                this.sentimentPatterns.negative.forEach(pattern => {
+                    const matches = text.match(pattern);
+                    if (matches) negativeScore += matches.length;
+                });
+
+                const total = positiveScore + negativeScore;
+                if (total === 0) return { type: 'neutral', score: 0.5 };
+                
+                const sentiment = positiveScore > negativeScore ? 'positive' : 'negative';
+                const score = Math.max(positiveScore, negativeScore) / total;
+                
+                return { type: sentiment, score: Math.min(1, score) };
+            }
+
+            extractEntities(text) {
+                const entities = {};
+                Object.keys(this.entityPatterns).forEach(type => {
+                    const matches = text.match(this.entityPatterns[type]);
+                    if (matches) {
+                        entities[type] = [...new Set(matches)];
+                    }
+                });
+                return entities;
+            }
+
+            detectIntent(text) {
+                const intents = [];
+                Object.keys(this.intentPatterns).forEach(intent => {
+                    if (this.intentPatterns[intent].test(text)) {
+                        intents.push(intent);
+                    }
+                });
+                return intents;
+            }
+
+            detectTopics(text) {
+                const topics = [];
+                Object.keys(this.topicPatterns).forEach(topic => {
+                    const matches = text.match(this.topicPatterns[topic]);
+                    if (matches && matches.length > 0) {
+                        topics.push({ topic, relevance: matches.length });
+                    }
+                });
+                return topics.sort((a, b) => b.relevance - a.relevance);
+            }
+
+            extractKeywords(text) {
+                // より高度なキーワード抽出
+                const excludeWords = new Set([
+                    'は', 'が', 'を', 'に', 'で', 'と', 'から', 'まで', 'より', 'へ', 'の', 'や', 'か', 'も',
+                    'です', 'である', 'だ', 'ます', 'ました', 'でした', 'する', 'した', 'している', 'いる', 'ある',
+                    'この', 'その', 'あの', 'どの', 'これ', 'それ', 'あれ', 'どれ', 'ここ', 'そこ', 'あそこ', 'どこ',
+                    'でも', 'けど', 'しかし', 'だから', 'それで', 'なので', 'ところで', 'ちょっと', 'とても', 'すごく'
+                ]);
+
+                const words = [];
+                
+                // カタカナ語
+                const katakana = text.match(/[ァ-ヶー]{2,}/g) || [];
+                words.push(...katakana);
+                
+                // 漢字を含む語
+                const kanji = text.match(/[一-龯][ぁ-ん一-龯]*/g) || [];
+                words.push(...kanji.filter(w => w.length >= 2));
+                
+                // ひらがな語（3文字以上）
+                const hiragana = text.match(/[ぁ-ん]{3,}/g) || [];
+                words.push(...hiragana.filter(w => !excludeWords.has(w)));
+                
+                // 英語
+                const english = text.match(/[a-zA-Z]{3,}/g) || [];
+                words.push(...english);
+
+                return [...new Set(words)].slice(0, 10);
+            }
+
+            analyzeComplexity(text) {
+                const sentenceCount = (text.match(/[。！？.!?]/g) || []).length || 1;
+                const avgLength = text.length / sentenceCount;
+                const kanjiCount = (text.match(/[一-龯]/g) || []).length;
+                const kanjiRatio = kanjiCount / text.length;
+                
+                let complexity = 'simple';
+                if (avgLength > 30 || kanjiRatio > 0.3) complexity = 'complex';
+                else if (avgLength > 15 || kanjiRatio > 0.15) complexity = 'medium';
+                
+                return complexity;
+            }
+
+            detectUrgency(text) {
+                const urgentPatterns = [
+                    /急いで|すぐに|至急|緊急|大至急|いますぐ|早く|助けて|大変|やばい/g,
+                    /！{2,}|!{2,}|？{2,}|\?{2,}/g
+                ];
+                
+                return urgentPatterns.some(pattern => pattern.test(text));
+            }
+        }
+
+        // 高度な応答生成クラス
+        class ResponseGenerator {
+            constructor(aiState, nlp) {
+                this.aiState = aiState;
+                this.nlp = nlp;
+                this.responseTemplates = this.initResponseTemplates();
+                this.personalityResponses = this.initPersonalityResponses();
+            }
+
+            initResponseTemplates() {
+                return {
+                    // 感情に基づくテンプレート
+                    emotional: {
+                        positive: [
+                            'それは素晴らしいですね！{emotion} 私も一緒に喜んでいます♪',
+                            '{keyword}について嬉しそうに話されていますね。詳しく聞かせてください！',
+                            'ポジティブなエネルギーを感じます✨ {keyword}の件、もっと教えてください',
+                            'とても良いお話ですね！{keyword}について、どんなところが特に気に入っていますか？'
+                        ],
+                        negative: [
+                            '大変そうですね...{emotion} 何かお手伝いできることがあればいいのですが',
+                            '{keyword}のことで困っていらっしゃるんですね。詳しく聞かせてください',
+                            'そんな時もありますよね。{keyword}について、一緒に考えてみませんか？',
+                            'お疲れ様です。{keyword}の件、無理をしないでくださいね'
+                        ],
+                        neutral: [
+                            '{keyword}について話されているんですね。興味深いです',
+                            'なるほど、{keyword}のお話ですね。もう少し詳しく教えてください',
+                            '{keyword}について考えていらっしゃるんですね'
+                        ]
+                    },
+                    
+                    // 意図に基づくテンプレート
+                    intentional: {
+                        question: [
+                            'それは興味深い質問ですね！{keyword}について、私も一緒に考えてみましょう',
+                            '{keyword}についてのご質問ですね。私なりに考えてみます',
+                            'そういうことを考えるのって楽しいですよね。{keyword}について話し合いましょう'
+                        ],
+                        request: [
+                            '{keyword}についてお手伝いしたいのですが、人工無能の私にできることは限られています💦',
+                            'お役に立てるかわかりませんが、{keyword}について一緒に考えてみませんか？',
+                            '{keyword}の件、私なりにサポートさせていただきますね'
+                        ],
+                        complaint: [
+                            '{keyword}で困っていらっしゃるんですね。大変そうです...',
+                            'それは心配ですね。{keyword}の問題、解決策を一緒に考えてみましょう',
+                            '{keyword}のトラブル、ストレスですよね。話を聞かせてください'
+                        ]
+                    },
+                    
+                    // トピックに基づくテンプレート
+                    topical: {
+                        work: [
+                            'お仕事の話ですね。{keyword}について、どんなお仕事をされているんですか？',
+                            '働いている方は尊敬します。{keyword}の件、お疲れ様です',
+                            'お仕事関連のお話ですね。{keyword}について詳しく聞かせてください'
+                        ],
+                        hobby: [
+                            '趣味のお話ですね！{keyword}、私も興味があります♪',
+                            '{keyword}って楽しそうですね。どんなところが魅力的ですか？',
+                            '素敵な趣味ですね。{keyword}について、もっと教えてください'
+                        ],
+                        health: [
+                            'お体のことですね。{keyword}について、大丈夫ですか？',
+                            '健康は大切ですからね。{keyword}の件、お大事にしてください',
+                            '{keyword}について心配ですね。無理をしないでくださいね'
+                        ]
+                    }
+                };
+            }
+
+            initPersonalityResponses() {
+                return {
+                    friendly: {
+                        prefix: ['そうですね〜', 'わかります♪', 'なるほど！'],
+                        suffix: ['一緒にお話しできて嬉しいです♪', 'もっと聞かせてくださいね', '楽しいお話をありがとうございます']
+                    },
+                    curious: {
+                        prefix: ['興味深いですね', 'それは面白い！', 'へ〜、そうなんですね'],
+                        suffix: ['詳しく教えてください！', 'もっと知りたいです', 'それについてもっと聞かせて']
+                    },
+                    thoughtful: {
+                        prefix: ['なるほど...', '深く考えてみると', 'そういう視点もありますね'],
+                        suffix: ['いろいろ考えさせられます', '奥が深いお話ですね', '考える機会をくれてありがとう']
+                    },
+                    playful: {
+                        prefix: ['わーい！', 'えへへ', 'おもしろ〜い'],
+                        suffix: ['楽しいですね〜♪', 'ワクワクします！', '一緒に楽しみましょう']
+                    },
+                    serious: {
+                        prefix: ['承知いたしました', 'なるほど', '理解しました'],
+                        suffix: ['真剣に考えてみます', '重要なお話ですね', 'しっかりと受け止めます']
+                    }
+                };
+            }
+
+            generateResponse(userInput, analysis) {
+                // 複合的な応答生成アルゴリズム
+                let response = this.selectBaseResponse(analysis);
+                
+                // パーソナリティ調整
+                response = this.adjustForPersonality(response);
+                
+                // 文脈考慮
+                response = this.considerContext(response, userInput);
+                
+                // 学習データ反映
+                response = this.applyLearning(response, analysis);
+                
+                // 最終調整
+                response = this.finalizeResponse(response, analysis);
+                
+                return response;
+            }
+
+            selectBaseResponse(analysis) {
+                const { sentiment, intent, topics, keywords } = analysis;
+                
+                // 最も適切なテンプレートを選択
+                let templates = [];
+                
+                if (sentiment.score > 0.3) {
+                    templates = this.responseTemplates.emotional[sentiment.type] || [];
+                }
+                
+                if (intent.length > 0 && this.responseTemplates.intentional[intent[0]]) {
+                    templates = templates.concat(this.responseTemplates.intentional[intent[0]]);
+                }
+                
+                if (topics.length > 0 && this.responseTemplates.topical[topics[0].topic]) {
+                    templates = templates.concat(this.responseTemplates.topical[topics[0].topic]);
+                }
+                
+                if (templates.length === 0) {
+                    templates = [
+                        'そうですね、{keyword}のお話ですね',
+                        '{keyword}について話されているんですね',
+                        'なるほど、{keyword}のことを考えていらっしゃるんですね'
+                    ];
+                }
+                
+                const template = templates[Math.floor(Math.random() * templates.length)];
+                const keyword = keywords.length > 0 ? keywords[0] : '何か';
+                const emotion = this.getEmotionIcon(sentiment.type);
+                
+                return template.replace('{keyword}', keyword).replace('{emotion}', emotion);
+            }
+
+            adjustForPersonality(response) {
+                const personality = this.personalityResponses[this.aiState.personality];
+                
+                if (Math.random() < 0.4) { // 40%の確率でprefix追加
+                    const prefix = personality.prefix[Math.floor(Math.random() * personality.prefix.length)];
+                    response = prefix + '、' + response;
+                }
+                
+                if (Math.random() < 0.3) { // 30%の確率でsuffix追加
+                    const suffix = personality.suffix[Math.floor(Math.random() * personality.suffix.length)];
+                    response = response + '。' + suffix;
+                }
+                
+                return response;
+            }
+
+            considerContext(response, userInput) {
+                // 直前の会話を参照
+                const recentContext = this.aiState.conversationContext.slice(-3);
+                
+                if (recentContext.length > 0) {
+                    const lastUserInput = recentContext[recentContext.length - 1];
+                    
+                    // 継続的な話題の検出
+                    if (this.hasContinuousTopic(lastUserInput, userInput)) {
+                        const continuationPhrases = [
+                            'その話の続きですね',
+                            'さっきの件についてですね',
+                            'まだその話題について考えているんですね'
+                        ];
+                        
+                        if (Math.random() < 0.3) {
+                            const phrase = continuationPhrases[Math.floor(Math.random() * continuationPhrases.length)];
+                            response = phrase + '。' + response;
+                        }
+                    }
+                }
+                
+                return response;
+            }
+
+            applyLearning(response, analysis) {
+                // 学習したパターンを適用
+                const { topics, keywords } = analysis;
+                
+                if (topics.length > 0) {
+                    const topic = topics[0].topic;
+                    const learnedResponse = this.aiState.getMemory(`topic_${topic}`);
+                    
+                    if (learnedResponse && Math.random() < 0.2) {
+                        response = learnedResponse + '。' + response;
+                    }
+                }
+                
+                return response;
+            }
+
+            finalizeResponse(response, analysis) {
+                // 応答品質の評価と調整
+                const quality = this.evaluateResponseQuality(response, analysis);
+                this.aiState.lastResponseQuality = quality;
+                
+                // 品質が低い場合の補正
+                if (quality < CONFIG.RESPONSE_QUALITY_THRESHOLD) {
+                    const enhancementPhrases = [
+                        'もう少し詳しく教えてください',
+                        '興味深いお話ですね',
+                        'そのことについて一緒に考えてみましょう'
+                    ];
+                    
+                    const enhancement = enhancementPhrases[Math.floor(Math.random() * enhancementPhrases.length)];
+                    response = response + '。' + enhancement;
+                }
+                
+                return response;
+            }
+
+            evaluateResponseQuality(response, analysis) {
+                let score = 0.5;
+                
+                // 長さチェック
+                if (response.length > 20 && response.length < 100) score += 0.1;
+                
+                // キーワード含有チェック
+                if (analysis.keywords.some(keyword => response.includes(keyword))) score += 0.2;
+                
+                // 感情適合性チェック
+                if (analysis.sentiment.type !== 'neutral') score += 0.1;
+                
+                // パーソナリティ反映チェック
+                const personalityWords = this.personalityResponses[this.aiState.personality];
+                if (personalityWords.prefix.some(word => response.includes(word.replace('〜', ''))) ||
+                    personalityWords.suffix.some(word => response.includes(word))) {
+                    score += 0.1;
+                }
+                
+                return Math.min(1, score);
+            }
+
+            hasContinuousTopic(prev, current) {
+                const prevAnalysis = this.nlp.analyze(prev);
+                const currentAnalysis = this.nlp.analyze(current);
+                
+                return prevAnalysis.topics.some(prevTopic =>
+                    currentAnalysis.topics.some(currentTopic =>
+                        prevTopic.topic === currentTopic.topic
+                    )
+                );
+            }
+
+            getEmotionIcon(sentimentType) {
+                const icons = {
+                    positive: '😊',
+                    negative: '😔',
+                    neutral: '😐'
+                };
+                return icons[sentimentType] || '🤔';
+            }
+        }
+
+        // メインAIシステム
+        class AdvancedAISystem {
+            constructor() {
+                this.state = new AIState();
+                this.nlp = new AdvancedNLP();
+                this.responseGenerator = new ResponseGenerator(this.state, this.nlp);
+                this.messages = [];
+                this.isTyping = false;
+            }
+
+            async processMessage(userInput) {
+                // 入力分析
+                const analysis = this.nlp.analyze(userInput);
+                
+                // 状態更新
+                this.updateState(userInput, analysis);
+                
+                // 応答生成
+                const response = this.responseGenerator.generateResponse(userInput, analysis);
+                
+                // 学習
+                this.learn(userInput, analysis, response);
+                
+                // メタデータ付き応答
+                return {
+                    text: response,
+                    emotion: this.state.emotion,
+                    personality: this.state.personality,
+                    quality: this.state.lastResponseQuality,
+                    topics: analysis.topics,
+                    thinkingTime: Math.random() * 2000 + 1000 // 1-3秒
+                };
+            }
+
+            updateState(userInput, analysis) {
+                // 会話文脈更新
+                this.state.conversationContext.push(userInput);
+                if (this.state.conversationContext.length > 10) {
+                    this.state.conversationContext.shift();
+                }
+                
+                // 感情更新
+                if (analysis.sentiment.score > 0.3) {
+                    this.state.updateEmotion(analysis.sentiment.type, analysis.sentiment.score);
+                }
+                
+                // トピック記録
+                if (analysis.topics.length > 0) {
+                    this.state.currentTopic = analysis.topics[0].topic;
+                }
+                
+                // ユーザープロファイル更新
+                this.updateUserProfile(analysis);
+                
+                // パーソナリティ調整
+                this.state.interactionCount++;
+                if (this.state.interactionCount % CONFIG.PERSONALITY_SHIFT_THRESHOLD === 0) {
+                    this.state.updatePersonality();
+                }
+            }
+
+            updateUserProfile(analysis) {
+                // エンティティ記録
+                Object.keys(analysis.entities).forEach(type => {
+                    analysis.entities[type].forEach(entity => {
+                        const key = `user_${type}_${entity}`;
+                        const current = this.state.userProfile.get(key) || 0;
+                        this.state.userProfile.set(key, current + 1);
+                    });
+                });
+                
+                // トピック頻度記録
+                analysis.topics.forEach(topic => {
+                    const key = `user_topic_${topic.topic}`;
+                    const current = this.state.userProfile.get(key) || 0;
+                    this.state.userProfile.set(key, current + topic.relevance);
+                });
+            }
+
+            learn(userInput, analysis, response) {
+                // 学習データ追加
+                const learningEntry = {
+                    input: userInput,
+                    analysis: analysis,
+                    response: response,
+                    timestamp: Date.now(),
+                    quality: this.state.lastResponseQuality
+                };
+                
+                this.state.learningData.push(learningEntry);
+                if (this.state.learningData.length > 200) {
+                    this.state.learningData.shift();
+                }
+                
+                // パターン学習
+                if (analysis.topics.length > 0) {
+                    const topic = analysis.topics[0].topic;
+                    const responseFragment = response.split('。')[0];
+                    this.state.addToMemory(`topic_${topic}`, responseFragment, analysis.topics[0].relevance);
+                }
+                
+                // 成功パターン記録
+                if (this.state.lastResponseQuality > 0.8) {
+                    const pattern = `${analysis.sentiment.type}_${analysis.intent.join('_')}`;
+                    const currentCount = this.state.thinkingPatterns.get(pattern) || 0;
+                    this.state.thinkingPatterns.set(pattern, currentCount + 1);
+                }
+            }
+
+            getStats() {
+                return {
+                    learnedCount: this.state.learningData.length,
+                    qualityScore: Math.round(this.state.lastResponseQuality * 100),
+                    emotionState: this.getEmotionDescription(this.state.emotion),
+                    memoryUsage: Math.round((this.state.longTermMemory.size / CONFIG.MAX_MEMORY_SIZE) * 100),
+                    personality: this.getPersonalityDescription(this.state.personality),
+                    topTopics: this.getTopTopics()
+                };
+            }
+
+            getEmotionDescription(emotion) {
+                const descriptions = {
+                    positive: '楽しい',
+                    negative: '心配',
+                    neutral: '穏やか',
+                    happy: '嬉しい',
+                    sad: '悲しい',
+                    curious: '好奇心旺盛',
+                    thoughtful: '思慮深い'
+                };
+                return descriptions[emotion.type] || '穏やか';
+            }
+
+            getPersonalityDescription(personality) {
+                const descriptions = {
+                    friendly: '友好的',
+                    curious: '好奇心旺盛',
+                    thoughtful: '思慮深い',
+                    playful: '遊び心',
+                    serious: '真面目'
+                };
+                return descriptions[personality] || '友好的';
+            }
+
+            getTopTopics() {
+                const topicCounts = {};
+                this.state.userProfile.forEach((count, key) => {
+                    if (key.startsWith('user_topic_')) {
+                        const topic = key.replace('user_topic_', '');
+                        topicCounts[topic] = count;
+                    }
+                });
+                
+                return Object.entries(topicCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 3)
+                    .map(([topic, count]) => topic);
+            }
+
+            exportData() {
+                return {
+                    stats: this.getStats(),
+                    personality: this.state.personality,
+                    emotion: this.state.emotion,
+                    memorySize: this.state.longTermMemory.size,
+                    learningDataSize: this.state.learningData.length,
+                    interactionCount: this.state.interactionCount,
+                    topThinkingPatterns: Array.from(this.state.thinkingPatterns.entries())
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 5)
+                };
+            }
+
+            clearMemory() {
+                this.state.longTermMemory.clear();
+                this.state.learningData = [];
+                this.state.conversationContext = [];
+                this.state.userProfile.clear();
+                this.state.interactionCount = 0;
+            }
+        }
+
+        // グローバル変数
+        let ai = new AdvancedAISystem();
+        let personalityIndex = 0;
+        const personalities = ['friendly', 'curious', 'thoughtful', 'playful', 'serious'];
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('initialTime').textContent = getCurrentTime();
+            loadMessages();
+            updateUI();
+        });
+
+        // 現在時刻を取得
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // メッセージ送信
+        async function sendMessage(event) {
+            event.preventDefault();
+            
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message === '' || ai.isTyping) return;
+            
+            // ユーザーメッセージを追加
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // AI処理開始
+            ai.isTyping = true;
+            showTypingIndicator();
+            
+            try {
+                const response = await ai.processMessage(message);
+                
+                // 思考時間シミュレーション
+                await new Promise(resolve => setTimeout(resolve, response.thinkingTime));
+                
+                hideTypingIndicator();
+                ai.isTyping = false;
+                
+                // AI応答を追加
+                addMessage(response.text, 'ai', response);
+                updateUI();
+                
+            } catch (error) {
+                hideTypingIndicator();
+                ai.isTyping = false;
+                addMessage('申し訳ありません、処理中にエラーが発生しました。', 'ai');
+            }
+        }
+
+        // メッセージ追加
+        function addMessage(text, sender, metadata = {}) {
+            const messageObj = {
+                text: text,
+                sender: sender,
+                time: getCurrentTime(),
+                emotion: metadata.emotion || { type: 'neutral', intensity: 0.5 },
+                quality: metadata.quality || 0.5,
+                topics: metadata.topics || []
+            };
+            
+            ai.messages.push(messageObj);
+            displayMessage(messageObj);
+            saveMessages();
+            scrollToBottom();
+        }
+
+        // メッセージ表示
+        function displayMessage(messageObj) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${messageObj.sender}`;
+            
+            const avatar = messageObj.sender === 'user' ? '👤' : '🤖';
+            const qualityClass = messageObj.quality > 0.8 ? 'high' : messageObj.quality > 0.5 ? 'medium' : 'low';
+            const emotionIcon = getEmotionIcon(messageObj.emotion.type);
+            const emotionText = ai.getEmotionDescription(messageObj.emotion);
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content">
+                    <div class="message-bubble">
+                        ${messageObj.text}
+                        ${messageObj.sender === 'ai' ? `<div class="response-quality-indicator ${qualityClass}"></div>` : ''}
+                    </div>
+                    <div class="message-meta">
+                        <div class="message-time">${messageObj.time}</div>
+                        ${messageObj.sender === 'ai' ? `<div class="message-emotion">${emotionIcon} ${emotionText}</div>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+        }
+
+        // UI更新
+        function updateUI() {
+            const stats = ai.getStats();
+            
+            document.getElementById('learnedCount').textContent = stats.learnedCount;
+            document.getElementById('qualityScore').textContent = stats.qualityScore + '%';
+            document.getElementById('emotionState').textContent = stats.emotionState;
+            document.getElementById('memoryUsage').textContent = stats.memoryUsage + '%';
+            document.getElementById('personalityDisplay').textContent = stats.personality + 'モード';
+            
+            // パーソナリティアイコン更新
+            const personalityIcons = {
+                friendly: '😊',
+                curious: '🤔',
+                thoughtful: '🧐',
+                playful: '😄',
+                serious: '😐'
+            };
+            
+            document.querySelector('.personality-icon').textContent = personalityIcons[ai.state.personality];
+        }
+
+        // 感情アイコン取得
+        function getEmotionIcon(emotionType) {
+            const icons = {
+                positive: '😊',
+                negative: '😔',
+                neutral: '😐',
+                happy: '😄',
+                sad: '😢',
+                curious: '🤔',
+                thoughtful: '🧐'
+            };
+            return icons[emotionType] || '🤔';
+        }
+
+        // タイピングインジケーター表示
+        function showTypingIndicator() {
+            const thinkingTexts = [
+                '思考中...',
+                '分析中...',
+                '理解中...',
+                '処理中...',
+                '考え中...'
+            ];
+            
+            const randomText = thinkingTexts[Math.floor(Math.random() * thinkingTexts.length)];
+            document.getElementById('thinkingText').textContent = randomText;
+            document.getElementById('typingIndicator').style.display = 'block';
+            scrollToBottom();
+        }
+
+        // タイピングインジケーター非表示
+        function hideTypingIndicator() {
+            document.getElementById('typingIndicator').style.display = 'none';
+        }
+
+        // 下にスクロール
+        function scrollToBottom() {
+            const chatMessages = document.getElementById('chatMessages');
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 100);
+        }
+
+        // 統計表示切り替え
+        function toggleStats() {
+            const stats = document.getElementById('aiStats');
+            stats.classList.toggle('show');
+        }
+
+        // パーソナリティ切り替え
+        function togglePersonality() {
+            personalityIndex = (personalityIndex + 1) % personalities.length;
+            ai.state.personality = personalities[personalityIndex];
+            updateUI();
+            
+            const responses = [
+                'パーソナリティを変更しました！',
+                '性格を切り替えてみますね',
+                '新しいモードになりました♪',
+                'ちょっと雰囲気を変えてみます',
+                '気分転換してみました'
+            ];
+            
+            const response = responses[Math.floor(Math.random() * responses.length)];
+            setTimeout(() => addMessage(response, 'ai'), 500);
+        }
+
+        // 記憶削除
+        function clearMemory() {
+            if (confirm('学習した記憶をすべて削除しますか？')) {
+                ai.clearMemory();
+                updateUI();
+                
+                const messagesContainer = document.getElementById('chatMessages');
+                messagesContainer.innerHTML = `
+                    <div class="message ai">
+                        <div class="message-avatar">🤖</div>
+                        <div class="message-content">
+                            <div class="message-bubble">
+                                記憶をリセットしました。新たな気持ちで会話を始めましょう！
+                                <div class="response-quality-indicator high"></div>
+                            </div>
+                            <div class="message-meta">
+                                <div class="message-time">${getCurrentTime()}</div>
+                                <div class="message-emotion">😊 友好的</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // データ出力
+        function exportData() {
+            const data = ai.exportData();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ai_data_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            addMessage('学習データを出力しました！ダウンロードが開始されます。', 'ai');
+        }
+
+        // メッセージ保存/読み込み
+        function saveMessages() {
+            try {
+                localStorage.setItem('advanced_ai_messages', JSON.stringify(ai.messages));
+                localStorage.setItem('advanced_ai_state', JSON.stringify({
+                    personality: ai.state.personality,
+                    emotion: ai.state.emotion,
+                    interactionCount: ai.state.interactionCount
+                }));
+            } catch (e) {
+                console.log('Failed to save messages:', e);
+            }
+        }
+
+        function loadMessages() {
+            try {
+                const savedMessages = localStorage.getItem('advanced_ai_messages');
+                const savedState = localStorage.getItem('advanced_ai_state');
+                
+                if (savedMessages) {
+                    ai.messages = JSON.parse(savedMessages);
+                    ai.messages.forEach(msg => displayMessage(msg));
+                    scrollToBottom();
+                }
+                
+                if (savedState) {
+                    const state = JSON.parse(savedState);
+                    ai.state.personality = state.personality || 'friendly';
+                    ai.state.emotion = state.emotion || { type: 'neutral', intensity: 0.5 };
+                    ai.state.interactionCount = state.interactionCount || 0;
+                    updateUI();
+                }
+            } catch (e) {
+                console.log('Failed to load messages:', e);
+            }
+        }
+
+        // Enterキーでメッセージ送信
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage(e);
+            }
+        });
+
+        // 長押しで隠し機能
+        let longPressTimer;
+        document.querySelector('.ai-title').addEventListener('mousedown', function() {
+            longPressTimer = setTimeout(() => {
+                alert('🚀 Claude Code Edition - Advanced AI\n\n実装機能:\n• 高度な自然言語処理\n• 感情分析システム\n• 動的パーソナリティ\n• 学習・記憶機能\n• インテリジェント応答生成\n• リアルタイム品質評価');
+            }, 2000);
+        });
+
+        document.querySelector('.ai-title').addEventListener('mouseup', function() {
+            clearTimeout(longPressTimer);
+        });
+    </script>
+</body>
+</html>
