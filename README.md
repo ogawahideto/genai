@@ -150,6 +150,14 @@ Excel形式の報告書作成ツール。
 *スマホ対応: ✅ / Smartphone Support: ✅*
 *開発日: 2025-06-16 / Development Date: June 16, 2025*
 
+#### [オチナイゲー](ochinai/index.html) 🎮📱
+テトリス風ブロックゲームの面白いパロディ。ブロックが落ちると思いきや、途中で止まったり上がったりする予想外の動作をする。
+*Funny parody of Tetris-style block game. Blocks unexpectedly stop mid-air, bounce up, jump, or vanish instead of falling normally.*
+*操作: キーボード（←→移動・↓高速落下・スペース回転）+ タッチ操作 / Controls: Keyboard (←→ move, ↓ fast drop, space rotate) + Touch*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 2025-06-16 / Development Date: June 16, 2025*
+*特徴: 5つの予想外動作（停止・逆方向・ジャンプ・バウンス・消失）90%の確率で発生 / Features: 5 unexpected behaviors (stop, reverse, jump, bounce, vanish) with 90% probability*
+
 ---
 
 ## 技術的特徴
