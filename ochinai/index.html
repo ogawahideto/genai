@@ -402,16 +402,19 @@
 
             switch(e.code) {
                 case 'ArrowLeft':
+                    e.preventDefault();
                     if (isValidPosition(currentPiece, -1, 0)) {
                         currentPiece.x--;
                     }
                     break;
                 case 'ArrowRight':
+                    e.preventDefault();
                     if (isValidPosition(currentPiece, 1, 0)) {
                         currentPiece.x++;
                     }
                     break;
                 case 'ArrowDown':
+                    e.preventDefault();
                     if (isValidPosition(currentPiece, 0, 1)) {
                         currentPiece.y++;
                         score += 1;
