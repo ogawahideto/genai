@@ -143,6 +143,13 @@ Excel形式の報告書作成ツール。
 *スマホ対応: ✅ / Smartphone Support: ✅*
 *開発日: 2025-06-11 / Development Date: June 11, 2025*
 
+#### [Rock or Pops](rockorpops/index.html) 🎮
+ロックかポップスかを判断する音楽ジャンル識別ゲーム。
+*Music genre identification game to distinguish between rock and pop.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 2025-06-16 / Development Date: June 16, 2025*
+
 ---
 
 ## 技術的特徴
