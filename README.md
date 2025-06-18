@@ -158,6 +158,13 @@ Excel形式の報告書作成ツール。
 *開発日: 2025-06-16 / Development Date: June 16, 2025*
 *特徴: 5つの予想外動作（停止・逆方向・ジャンプ・バウンス・消失）90%の確率で発生 / Features: 5 unexpected behaviors (stop, reverse, jump, bounce, vanish) with 90% probability*
 
+#### [犬も歩けば棒に当たる](inumo_arukeba/index.html) 🖱️
+日本のことわざ「犬も歩けば棒に当たる」をビジュアル化したインタラクティブアプリ。
+*Interactive visualization of the Japanese proverb "Even a dog will encounter a stick if it walks."*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 2025-06-18 / Development Date: June 18, 2025*
+
 ---
 
 ## 技術的特徴
