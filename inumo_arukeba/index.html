@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>犬も歩けば棒に当たる</title>
+    <!-- Tailwind CSS CDNを読み込み -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Interフォントを適用 */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE10+/Edge */
+            user-select: none; /* Standard */
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-purple-200 min-h-screen flex items-center justify-center p-4">
+    <div class="relative w-full max-w-4xl bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
+        <h1 class="text-4xl md:text-5xl font-bold text-center text-gray-800 mb-8 tracking-tight">
+            犬も歩けば棒に当たる
+        </h1>
+
+        <!-- ゲームエリア -->
+        <div id="game-area" class="relative w-full h-40 md:h-48 bg-green-100 border-4 border-green-600 rounded-lg overflow-hidden mb-8">
+            <!-- 犬 -->
+            <div id="dog" class="absolute text-6xl md:text-7xl" style="left: -100px; top: 50%; transform: translateY(-50%);">
+                🐶
+            </div>
+            <!-- 棒 -->
+            <div id="stick" class="absolute text-5xl md:text-6xl" style="right: -100px; top: 50%; transform: translateY(-50%);">
+                🌳
+            </div>
+        </div>
+
+        <!-- メッセージ表示エリア -->
+        <div id="message-box" class="min-h-[6rem] bg-gray-50 p-4 rounded-xl text-center text-gray-700 text-lg mb-8 transition-all duration-300 ease-in-out">
+            「歩く」ボタンを押して、犬を歩かせてみましょう！
+        </div>
+
+        <!-- ボタン -->
+        <div class="flex justify-center">
+            <button id="startButton" class="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl rounded-full shadow-lg transition-transform transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300">
+                犬を歩かせる
+            </button>
+        </div>
+
+        <!-- ことわざの説明 -->
+        <div class="mt-10 text-center text-gray-600 text-base md:text-lg leading-relaxed">
+            <p class="font-semibold text-gray-800 mb-2">「犬も歩けば棒に当たる」とは？</p>
+            <p>
+                何かをしようと行動すれば、思いがけないこと（良いことも悪いことも）に遭遇するという意味のことわざです。
+                このアプリでは、犬が歩くことで「棒」という出来事に遭遇する様子を表現しています。
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // DOM要素の取得
+        const dog = document.getElementById('dog');
+        const stick = document.getElementById('stick');
+        const messageBox = document.getElementById('message-box');
+        const startButton = document.getElementById('startButton');
+        const gameArea = document.getElementById('game-area');
+
+        // ゲームの状態変数
+        let dogPosition = -100; // 犬の初期位置（画面外左）
+        const dogSpeed = 3;     // 犬の移動速度（ピクセル/フレーム）
+        let stickPosition = 0;  // 棒の初期位置（ランダムに設定される）
+        let animationFrameId;   // requestAnimationFrameのID
+        let isAnimating = false; // アニメーションが実行中かどうかのフラグ
+        const hitThreshold = 30; // 犬と棒が当たったと判定する距離（ピクセル）
+
+        /**
+         * ゲームを初期化する
+         */
+        function initializeGame() {
+            // アニメーションを停止
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            isAnimating = false;
+
+            // 犬の初期位置を設定
+            dogPosition = -dog.offsetWidth; // 犬が完全に画面外に隠れる位置
+            dog.style.left = `${dogPosition}px`;
+            dog.style.transition = 'none'; // 位置リセット時にトランジションを無効化
+
+            // 棒の位置をランダムに設定
+            // 棒はゲームエリアの幅の20%から80%の間に配置
+            const gameAreaWidth = gameArea.offsetWidth;
+            stickPosition = Math.random() * (gameAreaWidth * 0.6) + (gameAreaWidth * 0.2);
+            stick.style.left = `${stickPosition}px`;
+            stick.style.opacity = '1'; // 棒を可視化
+            stick.style.transition = 'none'; // 位置リセット時にトランジションを無効化
+
+            // メッセージを初期化
+            messageBox.innerHTML = '「歩く」ボタンを押して、犬を歩かせてみましょう！';
+            messageBox.classList.remove('bg-yellow-100', 'bg-red-100', 'border-yellow-300', 'border-red-300'); //以前のスタイルを削除
+            messageBox.classList.add('bg-gray-50');
+
+            // ボタンのテキストをリセット
+            startButton.textContent = '犬を歩かせる';
+
+            // レイアウトが確定した後にトランジションを有効化
+            setTimeout(() => {
+                dog.style.transition = 'left linear 0.1s'; // アニメーション速度に応じて調整
+                stick.style.transition = 'none'; // 棒は移動しないのでトランジション不要
+            }, 50);
+        }
+
+        /**
+         * 犬のアニメーションを処理する
+         */
+        function animateDog() {
+            if (!isAnimating) return;
+
+            dogPosition += dogSpeed;
+            dog.style.left = `${dogPosition}px`;
+
+            // 衝突判定
+            const dogRightEdge = dogPosition + dog.offsetWidth;
+            const stickLeftEdge = stickPosition;
+            const stickRightEdge = stickPosition + stick.offsetWidth;
+
+            // 犬の右端が棒の左端を越え、かつ犬の左端が棒の右端を越えていない場合
+            if (dogRightEdge >= stickLeftEdge + hitThreshold && dogPosition < stickRightEdge - hitThreshold) {
+                // 衝突！
+                isAnimating = false;
+                cancelAnimationFrame(animationFrameId);
+                messageBox.innerHTML = '<span class="font-bold text-yellow-700">棒に当たりました！</span><br>予期せぬ出来事に遭遇しましたね！';
+                messageBox.classList.remove('bg-gray-50');
+                messageBox.classList.add('bg-yellow-100', 'border-yellow-300');
+                startButton.textContent = 'もう一度歩かせる';
+                stick.style.opacity = '0.5'; // 棒に当たったことを視覚的に示す
+                return;
+            }
+
+            // 犬が画面の右端を超えた場合（棒に当たらなかった場合）
+            if (dogPosition > gameArea.offsetWidth + 50) { // 少し画面外まで進ませる
+                isAnimating = false;
+                cancelAnimationFrame(animationFrameId);
+                messageBox.innerHTML = '<span class="font-bold text-blue-700">犬は歩きましたが、棒には当たりませんでした。</span><br>何も起こらないこともありますね！';
+                messageBox.classList.remove('bg-gray-50');
+                messageBox.classList.add('bg-blue-100', 'border-blue-300');
+                startButton.textContent = 'もう一度歩かせる';
+                return;
+            }
+
+            animationFrameId = requestAnimationFrame(animateDog);
+        }
+
+        /**
+         * スタートボタンがクリックされた時の処理
+         */
+        startButton.addEventListener('click', () => {
+            initializeGame(); // ゲームを初期化
+            isAnimating = true; // アニメーションを開始するフラグを立てる
+            animationFrameId = requestAnimationFrame(animateDog); // アニメーションを開始
+            messageBox.innerHTML = '犬が歩いています...';
+        });
+
+        // ページロード時にゲームを初期化
+        window.onload = initializeGame;
+
+        // ウィンドウのリサイズ時にゲームを初期化して、棒の位置を調整
+        window.addEventListener('resize', initializeGame);
+    </script>
+</body>
+</html>
