@@ -92,6 +92,13 @@ Claude Codeで作成されたシューティングゲーム。
 *スマホ対応: ✅ / Smartphone Support: ✅*
 *開発日: 2025-06-04 / Development Date: June 4, 2025*
 
+#### [激似！国旗クイズ](flags/index.html) 🖱️
+見た目がそっくりな国旗ばかりを集めた国名当てクイズゲーム。
+*Flag identification quiz game featuring similar-looking flags from around the world.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 2025-06-20 / Development Date: June 20, 2025*
+
 ### 🎭 Interactive & Utilities
 
 #### [Anthropic & Claude 愛称ジェネレーター](claude_nickname/index.html) 🖱️
