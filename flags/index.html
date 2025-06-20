@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>激似！国旗クイズ</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>🎌 激似！国旗クイズ 🎌</h1>
+
+        <div id="start-screen" class="screen active">
+            <p>見た目がそっくりな国旗ばかりを集めた、国名当てクイズです！</p>
+            <p>あなたの国旗知識が試されます。</p>
+            <button id="start-button" class="action-button">クイズスタート！</button>
+        </div>
+
+        <div id="quiz-screen" class="screen">
+            <p class="question-text">この国旗はどこの国でしょう？</p>
+
+            <div class="flag-display">
+                <img src="" alt="クイズの国旗" id="current-flag">
+            </div>
+
+            <div class="options">
+                <button class="option-button" data-country="">選択肢1</button>
+                <button class="option-button" data-country="">選択肢2</button>
+                <button class="option-button" data-country="">選択肢3</button>
+                <button class="option-button" data-country="">選択肢4</button>
+            </div>
+
+            <div class="feedback-area">
+                <p id="feedback-message"></p>
+                <button class="next-button" style="display: none;">次の問題へ</button>
+            </div>
+        </div>
+
+        <div id="result-screen" class="screen">
+            <h2>クイズ終了！</h2>
+            <p id="final-score-message"></p>
+            <button id="reset-button" class="action-button">もう一度プレイ！</button>
+        </div>
+
+        <div class="score-area">
+            <p>現在のスコア: <span id="score">0</span> / <span id="total-questions">0</span></p>
+        </div>
+    </div>
+
+    <script>
+        // HTML要素の取得
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const startButton = document.getElementById('start-button');
+        const resetButton = document.getElementById('reset-button');
+
+        const optionButtons = document.querySelectorAll('.option-button');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const nextButton = document.querySelector('.next-button');
+        const currentFlag = document.getElementById('current-flag');
+        const scoreDisplay = document.getElementById('score');
+        const totalQuestionsDisplay = document.getElementById('total-questions');
+        const finalScoreMessage = document.getElementById('final-score-message');
+
+        let score = 0;
+        let totalQuestionsAttempted = 0; // 回答した問題数
+        let currentQuestionIndex = 0;
+        let shuffledQuizData = []; // シャッフルされた問題データを格納する配列
+
+        // 国旗データと選択肢
+        const quizData = [
+            // インドネシア vs モナコ vs ポーランド
+            { flag: 'https://flagcdn.com/id.svg', answer: 'インドネシア', options: ['インドネシア', 'モナコ', 'ポーランド', 'シンガポール'] },
+            { flag: 'https://flagcdn.com/mc.svg', answer: 'モナコ', options: ['モナコ', 'インドネシア', 'ポーランド', 'マルタ'] },
+            { flag: 'https://flagcdn.com/pl.svg', answer: 'ポーランド', options: ['ポーランド', 'インドネシア', 'モナコ', 'チェコ'] },
+            // アイルランド vs コートジボワール
+            { flag: 'https://flagcdn.com/ie.svg', answer: 'アイルランド', options: ['アイルランド', 'コートジボワール', 'イタリア', 'ナイジェリア'] },
+            { flag: 'https://flagcdn.com/ci.svg', answer: 'コートジボワール', options: ['コートジボワール', 'アイルランド', 'イタリア', 'マリ'] },
+            // ルーマニア vs チャド
+            { flag: 'https://flagcdn.com/ro.svg', answer: 'ルーマニア', options: ['ルーマニア', 'チャド', 'アンドラ', 'モルドバ'] },
+            { flag: 'https://flagcdn.com/td.svg', answer: 'チャド', options: ['チャド', 'ルーマニア', 'アンドラ', 'コロンビア'] },
+            // ニュージーランド vs オーストラリア
+            { flag: 'https://flagcdn.com/nz.svg', answer: 'ニュージーランド', options: ['ニュージーランド', 'オーストラリア', 'フィジー', 'イギリス'] },
+            { flag: 'https://flagcdn.com/au.svg', answer: 'オーストラリア', options: ['オーストラリア', 'ニュージーランド', 'フィジー', 'ツバル'] },
+            // セネガル vs マリ vs ギニア
+            { flag: 'https://flagcdn.com/sn.svg', answer: 'セネガル', options: ['セネガル', 'マリ', 'ギニア', 'カメルーン'] },
+            { flag: 'https://flagcdn.com/ml.svg', answer: 'マリ', options: ['マリ', 'セネガル', 'ギニア', 'ベナン'] },
+            { flag: 'https://flagcdn.com/gn.svg', answer: 'ギニア', options: ['ギニア', 'マリ', 'セネガル', 'ブルキナファソ'] },
+            // ノルウェー vs アイスランド vs フェロー諸島
+            { flag: 'https://flagcdn.com/no.svg', answer: 'ノルウェー', options: ['ノルウェー', 'アイスランド', 'フェロー諸島', 'スウェーデン'] },
+            { flag: 'https://flagcdn.com/is.svg', answer: 'アイスランド', options: ['アイスランド', 'ノルウェー', 'フェロー諸島', 'フィンランド'] },
+            { flag: 'https://flagcdn.com/fo.svg', answer: 'フェロー諸島', options: ['フェロー諸島', 'アイスランド', 'ノルウェー', 'デンマーク'] },
+            // エジプト vs イラク vs シリア vs イエメン
+            { flag: 'https://flagcdn.com/eg.svg', answer: 'エジプト', options: ['エジプト', 'イラク', 'シリア', 'イエメン'] },
+            { flag: 'https://flagcdn.com/iq.svg', answer: 'イラク', options: ['イラク', 'エジプト', 'シリア', 'ヨルダン'] },
+            { flag: 'https://flagcdn.com/sy.svg', answer: 'シリア', options: ['シリア', 'イラク', 'エジプト', 'レバノン'] },
+            { flag: 'https://flagcdn.com/ye.svg', answer: 'イエメン', options: ['イエメン', 'エジプト', 'シリア', 'アラブ首長国連邦'] },
+            // 日本 vs バングラデシュ
+            { flag: 'https://flagcdn.com/jp.svg', answer: '日本', options: ['日本', 'バングラデシュ', 'ラオス', 'パラオ'] },
+            { flag: 'https://flagcdn.com/bd.svg', answer: 'バングラデシュ', options: ['バングラデシュ', '日本', 'ラオス', 'ニジェール'] },
+            // ベネズエラ vs コロンビア vs エクアドル
+            { flag: 'https://flagcdn.com/ve.svg', answer: 'ベネズエラ', options: ['ベネズエラ', 'コロンビア', 'エクアドル', 'ボリビア'] },
+            { flag: 'https://flagcdn.com/co.svg', answer: 'コロンビア', options: ['コロンビア', 'ベネズエラ', 'エクアドル', 'リトアニア'] },
+            { flag: 'https://flagcdn.com/ec.svg', answer: 'エクアドル', options: ['エクアドル', 'ベネズエラ', 'コロンビア', 'モルドバ'] },
+            // エチオピア vs トーゴ vs カメルーン
+            { flag: 'https://flagcdn.com/et.svg', answer: 'エチオピア', options: ['エチオピア', 'トーゴ', 'カメルーン', 'ガーナ'] },
+            { flag: 'https://flagcdn.com/tg.svg', answer: 'トーゴ', options: ['トーゴ', 'エチオピア', 'カメルーン', 'ブルキナファソ'] },
+            { flag: 'https://flagcdn.com/cm.svg', answer: 'カメルーン', options: ['カメルーン', 'エチオピア', 'トーゴ', 'セネガル'] },
+            // ロシア vs スロバキア vs スロベニア vs セルビア
+            { flag: 'https://flagcdn.com/ru.svg', answer: 'ロシア', options: ['ロシア', 'スロバキア', 'スロベニア', 'セルビア'] },
+            { flag: 'https://flagcdn.com/sk.svg', answer: 'スロバキア', options: ['スロバキア', 'スロベニア', 'ロシア', 'チェコ'] },
+            { flag: 'https://flagcdn.com/si.svg', answer: 'スロベニア', options: ['スロベニア', 'スロバキア', 'ロシア', 'クロアチア'] },
+            { flag: 'https://flagcdn.com/rs.svg', answer: 'セルビア', options: ['セルビア', 'スロバキア', 'スロベニア', 'ロシア'] },
+            // ベルギー vs ドイツ (色の縦横の違い)
+            { flag: 'https://flagcdn.com/be.svg', answer: 'ベルギー', options: ['ベルギー', 'ドイツ', 'ウガンダ', 'マリ'] },
+            { flag: 'https://flagcdn.com/de.svg', answer: 'ドイツ', options: ['ドイツ', 'ベルギー', 'ウガンダ', 'エジプト'] },
+            // シンガポール vs インドネシア（再登場、難易度UP）
+            { flag: 'https://flagcdn.com/sg.svg', answer: 'シンガポール', options: ['シンガポール', 'インドネシア', 'モナコ', 'マレーシア'] },
+            // オーストリア vs ラトビア vs レバノン (赤白赤系)
+            { flag: 'https://flagcdn.com/at.svg', answer: 'オーストリア', options: ['オーストリア', 'ラトビア', 'レバノン', 'ペルー'] },
+            { flag: 'https://flagcdn.com/lv.svg', answer: 'ラトビア', options: ['ラトビア', 'オーストリア', 'レバノン', 'リトアニア'] },
+            { flag: 'https://flagcdn.com/lb.svg', answer: 'レバノン', options: ['レバノン', 'オーストリア', 'ラトビア', 'カナダ'] },
+            // ハンガリー vs イラン vs タジキスタン (緑白赤系)
+            { flag: 'https://flagcdn.com/hu.svg', answer: 'ハンガリー', options: ['ハンガリー', 'イラン', 'タジキスタン', 'ブルガリア'] },
+            { flag: 'https://flagcdn.com/ir.svg', answer: 'イラン', options: ['イラン', 'ハンガリー', 'タジキスタン', 'メキシコ'] },
+            { flag: 'https://flagcdn.com/tj.svg', answer: 'タジキスタン', options: ['タジキスタン', 'ハンガリー', 'イラン', 'ウズベキスタン'] },
+            // イタリア vs メキシコ vs ブルガリア (緑白赤の組み合わせ)
+            { flag: 'https://flagcdn.com/it.svg', answer: 'イタリア', options: ['イタリア', 'メキシコ', 'ブルガリア', 'ハンガリー'] },
+            { flag: 'https://flagcdn.com/mx.svg', answer: 'メキシコ', options: ['メキシコ', 'イタリア', 'ブルガリア', 'ポルトガル'] },
+            { flag: 'https://flagcdn.com/bg.svg', answer: 'ブルガリア', options: ['ブルガリア', 'イタリア', 'ハンガリー', 'イラン'] },
+            // ギリシャ vs ウルグアイ (青と白の横縞)
+            { flag: 'https://flagcdn.com/gr.svg', answer: 'ギリシャ', options: ['ギリシャ', 'ウルグアイ', 'フィンランド', 'アルゼンチン'] },
+            { flag: 'https://flagcdn.com/uy.svg', answer: 'ウルグアイ', options: ['ウルグアイ', 'ギリシャ', 'アルゼンチン', 'ケニア'] },
+            // チリ vs テキサス州 (赤白青、星)
+            { flag: 'https://flagcdn.com/cl.svg', answer: 'チリ', options: ['チリ', 'テキサス州 (アメリカ)', 'プエルトリコ', 'キューバ'] },
+            { flag: 'https://flagcdn.com/us-tx.svg', answer: 'テキサス州 (アメリカ)', options: ['テキサス州 (アメリカ)', 'チリ', 'プエルトリコ', 'オハイオ州 (アメリカ)'] },
+            // チュニジア vs トルコ (赤地、三日月と星)
+            { flag: 'https://flagcdn.com/tn.svg', answer: 'チュニジア', options: ['チュニジア', 'トルコ', 'アルジェリア', 'アゼルバイジャン'] },
+            { flag: 'https://flagcdn.com/tr.svg', answer: 'トルコ', options: ['トルコ', 'チュニジア', 'アルジェリア', 'パキスタン'] },
+            // スイス vs トンガ (赤地、十字)
+            { flag: 'https://flagcdn.com/ch.svg', answer: 'スイス', options: ['スイス', 'トンガ', 'デンマーク', 'マルタ'] },
+            { flag: 'https://flagcdn.com/to.svg', answer: 'トンガ', options: ['トンガ', 'スイス', 'ニュージーランド', 'オーストラリア'] },
+            // スーダン vs パレスチナ vs ヨルダン (汎アラブ色、三角形)
+            { flag: 'https://flagcdn.com/sd.svg', answer: 'スーダン', options: ['スーダン', 'パレスチナ', 'ヨルダン', 'クウェート'] },
+            { flag: 'https://flagcdn.com/ps.svg', answer: 'パレスチナ', options: ['パレスチナ', 'スーダン', 'ヨルダン', 'UAE'] },
+            { flag: 'https://flagcdn.com/jo.svg', answer: 'ヨルダン', options: ['ヨルダン', 'パレスチナ', 'スーダン', 'イラク'] },
+            // アンゴラ vs モザンビーク (赤・黒・黄、マーク)
+            { flag: 'https://flagcdn.com/ao.svg', answer: 'アンゴラ', options: ['アンゴラ', 'モザンビーク', 'ケニア', 'ジンバブエ'] },
+            { flag: 'https://flagcdn.com/mz.svg', answer: 'モザンビーク', options: ['モザンビーク', 'アンゴラ', 'ケニア', 'ウガンダ'] },
+            // ベナン vs ガーナ (黄赤緑、比率・星の違い)
+            { flag: 'https://flagcdn.com/bj.svg', answer: 'ベナン', options: ['ベナン', 'ガーナ', 'ボリビア', 'カメルーン'] },
+            { flag: 'https://flagcdn.com/gh.svg', answer: 'ガーナ', options: ['ガーナ', 'ベナン', 'ボリビア', 'ギニア'] }
+        ];
+
+        // --- ユーティリティ関数 ---
+
+        /**
+         * 配列をシャッフルする（Fisher-Yatesアルゴリズム）
+         * @param {Array} array シャッフルしたい配列
+         * @returns {Array} シャッフルされた新しい配列
+         */
+        function shuffleArray(array) {
+            const shuffled = array.slice(); // 元の配列を改変しないようにコピーを作成
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; // 要素を交換
+            }
+            return shuffled;
+        }
+
+        /**
+         * 国名に対応する絵文字を取得
+         * @param {string} countryName 国名
+         * @returns {string} 国旗の絵文字またはデフォルト絵文字
+         */
+        function getFlagEmoji(countryName) {
+            const emojiMap = {
+                'インドネシア': '🇮🇩', 'モナコ': '🇲🇨', 'ポーランド': '🇵🇱', 'シンガポール': '🇸🇬',
+                'アイルランド': '🇮🇪', 'コートジボワール': '🇨🇮',
+                'ルーマニア': '🇷🇴', 'チャド': '🇹🇩',
+                'ニュージーランド': '🇳🇿', 'オーストラリア': '🇦🇺',
+                'セネガル': '🇸🇳', 'マリ': '🇲🇱', 'ギニア': '🇬🇳',
+                'ノルウェー': '🇳🇴', 'アイスランド': '🇮🇸', 'フェロー諸島': '🇫🇴',
+                'エジプト': '🇪🇬', 'イラク': '🇮🇶', 'シリア': '🇸🇾', 'イエメン': '🇾🇪',
+                '日本': '🇯🇵', 'バングラデシュ': '🇧🇩',
+                'ベネズエラ': '🇻🇪', 'コロンビア': '🇨🇴', 'エクアドル': '🇪🇨',
+                'エチオピア': '🇪🇹', 'トーゴ': '🇹🇬', 'カメルーン': '🇨🇲',
+                'ロシア': '🇷🇺', 'スロバキア': '🇸🇰', 'スロベニア': '🇸🇮', 'セルビア': '🇷🇸',
+                'ベルギー': '🇧🇪', 'ドイツ': '🇩🇪',
+                'オーストリア': '🇦🇹', 'ラトビア': '🇱🇻', 'レバノン': '🇱🇧',
+                'ハンガリー': '🇭🇺', 'イラン': '🇮🇷', 'タジキスタン': '🇹🇯',
+                'イタリア': '🇮🇹', 'メキシコ': '🇲🇽', 'ブルガリア': '🇧🇬',
+                'ギリシャ': '🇬🇷', 'ウルグアイ': '🇺🇾',
+                'チリ': '🇨🇱', 'テキサス州 (アメリカ)': '🇹🇽', // テキサス州は非公式ですが視覚的に似ているため追加
+                'チュニジア': '🇹🇳', 'トルコ': '🇹🇷',
+                'スイス': '🇨🇭', 'トンガ': '🇹🇴',
+                'スーダン': '🇸🇩', 'パレスチナ': '🇵🇸', 'ヨルダン': '🇯🇴',
+                'アンゴラ': '🇦🇴', 'モザンビーク': '🇲🇿',
+                'ベナン': '🇧🇯', 'ガーナ': '🇬🇭',
+                'カナダ': '🇨🇦', // レバノンと似た赤白赤構成
+                'その他': '❓' // その他選択肢用
+            };
+            return emojiMap[countryName] || '🌍'; // 見つからない場合は地球の絵文字
+        }
+
+        // --- クイズロジック ---
+
+        /**
+         * クイズを初期化し、最初の問題を表示する
+         */
+        function initializeQuiz() {
+            score = 0;
+            totalQuestionsAttempted = 0;
+            currentQuestionIndex = 0;
+            shuffledQuizData = shuffleArray(quizData); // 問題をシャッフル
+            scoreDisplay.textContent = score;
+            totalQuestionsDisplay.textContent = shuffledQuizData.length; // シャッフル後の問題数
+            
+            // 画面表示の切り替え
+            startScreen.classList.remove('active');
+            resultScreen.classList.remove('active');
+            quizScreen.classList.add('active');
+
+            loadQuestion();
+        }
+
+        /**
+         * 次の問題をロードして表示する
+         */
+        function loadQuestion() {
+            // 問題が残っているか確認
+            if (currentQuestionIndex < shuffledQuizData.length) {
+                const question = shuffledQuizData[currentQuestionIndex];
+                currentFlag.src = question.flag;
+                currentFlag.alt = question.answer + 'の国旗';
+
+                // オプションボタンのテキストとデータ属性を更新
+                const shuffledOptions = shuffleArray(question.options); // 選択肢もシャッフル
+                optionButtons.forEach((button, index) => {
+                    const optionText = shuffledOptions[index];
+                    button.textContent = `${getFlagEmoji(optionText)} ${optionText}`;
+                    button.dataset.country = optionText;
+                    button.disabled = false; // ボタンを有効にする
+                    button.classList.remove('correct', 'incorrect'); // スタイルをリセット
+                });
+
+                feedbackMessage.textContent = '';
+                nextButton.style.display = 'none'; // 「次の問題へ」ボタンを非表示に
+            } else {
+                // 全ての問題が終了したら結果画面を表示
+                displayResultScreen();
+            }
+        }
+
+        /**
+         * 結果画面を表示する
+         */
+        function displayResultScreen() {
+            quizScreen.classList.remove('active');
+            resultScreen.classList.add('active');
+            finalScoreMessage.textContent = `あなたのスコアは ${score} / ${totalQuestionsAttempted} でした！お疲れ様でした！`;
+        }
+
+        // --- イベントリスナー ---
+
+        // スタートボタン
+        startButton.addEventListener('click', initializeQuiz);
+
+        // 各オプションボタン
+        optionButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                totalQuestionsAttempted++; // 回答した問題数をカウント
+                const selectedAnswer = button.dataset.country;
+                const correctAnswer = shuffledQuizData[currentQuestionIndex].answer;
+
+                // 回答後はすべてのボタンを無効化
+                optionButtons.forEach(btn => btn.disabled = true);
+
+                if (selectedAnswer === correctAnswer) {
+                    feedbackMessage.textContent = '✅ 正解です！お見事！';
+                    button.classList.add('correct');
+                    score++; // 正解スコアを加算
+                } else {
+                    feedbackMessage.textContent = `❌ 不正解...正解は ${correctAnswer} でした。`;
+                    button.classList.add('incorrect');
+                    // 正解のボタンを緑色にする
+                    optionButtons.forEach(btn => {
+                        if (btn.dataset.country === correctAnswer) {
+                            btn.classList.add('correct');
+                        }
+                    });
+                }
+                scoreDisplay.textContent = score; // スコア表示を更新
+                nextButton.style.display = 'block'; // 「次の問題へ」ボタンを表示
+            });
+        });
+
+        // 「次の問題へ」ボタン
+        nextButton.addEventListener('click', () => {
+            currentQuestionIndex++; // 次の問題へ
+            loadQuestion(); // 新しい問題をロード
+        });
+
+        // リセットボタン
+        resetButton.addEventListener('click', () => {
+            startScreen.classList.add('active'); // スタート画面に戻る
+            quizScreen.classList.remove('active');
+            resultScreen.classList.remove('active');
+            // スコア表示をリセット
+            scoreDisplay.textContent = 0;
+            totalQuestionsDisplay.textContent = quizData.length;
+        });
+
+        // アプリ起動時はスタート画面を表示
+        startScreen.classList.add('active');
+        totalQuestionsDisplay.textContent = quizData.length; // 初期問題数を表示
+    </script>
+</body>
+</html>
