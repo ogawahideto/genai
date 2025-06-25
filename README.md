@@ -99,6 +99,13 @@ Claude Codeで作成されたシューティングゲーム。
 *スマホ対応: ✅ / Smartphone Support: ✅*
 *開発日: 2025-06-20 / Development Date: June 20, 2025*
 
+#### [国家クイズアプリ](national_songs/index.html) 🖱️
+各国の国歌の歌詞から国名を当てるクイズゲーム。
+*National anthem quiz game - guess the country from anthem lyrics.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
 ### 🎭 Interactive & Utilities
 
 #### [Anthropic & Claude 愛称ジェネレーター](claude_nickname/index.html) 🖱️
