@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>国家クイズアプリ</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .quiz-container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+        }
+
+        .question-box {
+            background-color: #e9f7ef;
+            border: 1px solid #d0eccb;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        #lyrics {
+            font-size: 1.2em;
+            color: #555;
+            font-weight: bold;
+            line-height: 1.6;
+        }
+
+        .options-container {
+            display: grid;
+            grid-template-columns: 1fr; /* 1列 */
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .option-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+        }
+
+        .option-button:hover {
+            background-color: #0056b3;
+        }
+
+        .option-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        #feedback {
+            margin-top: 20px;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .correct {
+            color: #28a745; /* Green */
+        }
+
+        .incorrect {
+            color: #dc3545; /* Red */
+        }
+
+        #next-button {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+            display: none; /* 最初は非表示 */
+        }
+
+        #next-button:hover {
+            background-color: #5a6268;
+        }
+
+        #score-display {
+            font-size: 1.1em;
+            margin-top: 15px;
+            color: #333;
+        }
+
+        @media (min-width: 600px) {
+            .options-container {
+                grid-template-columns: 1fr 1fr; /* 2列 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <h1>国家クイズアプリ</h1>
+        <div class="question-box">
+            <p id="lyrics">ここに歌詞が表示されます。</p>
+        </div>
+        <div class="options-container" id="options">
+            </div>
+        <div id="feedback"></div>
+        <button id="next-button">次の問題へ</button>
+        <p id="score-display">スコア: 0 / 0</p>
+    </div>
+
+    <script>
+        const quizData = [
+            {
+                lyrics: "君が代は 千代に八千代に さざれ石の 巌となりて 苔のむすまで",
+                answer: "日本",
+            },
+            {
+                lyrics: "ああ、〇〇、我らが故郷、我らが生まれし土地！",
+                answer: "カナダ",
+            },
+            {
+                lyrics: "星条旗よ永遠にひるがえれ、自由の地、勇者の家に！",
+                answer: "アメリカ",
+            },
+            {
+                lyrics: "おお、神よ、女王を救いたまえ！",
+                answer: "イギリス",
+            },
+            {
+                lyrics: "起て、飢えたる者よ、いまぞ決戦の時！",
+                answer: "フランス",
+            },
+            {
+                lyrics: "統一と正義と自由のために、〇〇の祖国のために！",
+                answer: "ドイツ",
+            },
+            {
+                lyrics: "すべては過ぎ去り、すべては変わる。だが、〇〇の魂は永遠だ。",
+                answer: "ロシア",
+            },
+            {
+                lyrics: "〇〇は世界に輝く宝石、ヒマラヤの山々よ！",
+                answer: "インド",
+            },
+            {
+                lyrics: "〇〇の自由と独立は、我らが希望の光。",
+                answer: "韓国",
+            },
+            {
+                lyrics: "立ち上がれ、眠れる獅子、古きよき〇〇の魂よ！",
+                answer: "中国",
+            },
+            {
+                lyrics: "〇〇の地には、自由の誓いが響く。",
+                answer: "ウルグアイ",
+            },
+            {
+                lyrics: "〇〇よ、栄光の民よ、勝利の聖歌よ！",
+                answer: "アルゼンチン",
+            },
+            {
+                lyrics: "〇〇の大地に平和が訪れんことを。",
+                answer: "ブラジル",
+            },
+            {
+                lyrics: "我が祖国、ああ、〇〇よ、太陽と愛の地よ！",
+                answer: "イタリア",
+            },
+            {
+                lyrics: "ああ、祖国よ、ああ、祖国よ、太陽と月の地よ！",
+                answer: "メキシコ",
+            },
+            {
+                lyrics: "〇〇、わが祖国、喜びと誇りの地よ。",
+                answer: "スペイン",
+            },
+            {
+                lyrics: "栄光あれ、栄光あれ、〇〇の民よ！",
+                answer: "キューバ",
+            },
+            {
+                lyrics: "〇〇よ、我らの大地よ、神の恵みあれ！",
+                answer: "南アフリカ",
+            },
+            {
+                lyrics: "〇〇よ、進め、美しき大地よ！",
+                answer: "オーストラリア",
+            },
+            {
+                lyrics: "〇〇よ、守られし地よ、神の祝福あれ！",
+                answer: "ニュージーランド",
+            },
+            {
+                lyrics: "〇〇よ、自由の地、英雄の血潮よ！",
+                answer: "トルコ",
+            },
+            {
+                lyrics: "〇〇よ、我が地、我が祖国よ！",
+                answer: "エジプト",
+            },
+            {
+                lyrics: "〇〇よ、自由の山々、神の国よ！",
+                answer: "スウェーデン",
+            },
+            {
+                lyrics: "〇〇はまだ失われず、我らが生きる限り！",
+                answer: "ポーランド",
+            },
+            {
+                lyrics: "ああ、祖国よ、ああ、〇〇よ、神は祝福を与えん！",
+                answer: "ハンガリー",
+            },
+            {
+                lyrics: "希望と栄光の旗、〇〇よ永遠に！",
+                answer: "オーストリア",
+            },
+            {
+                lyrics: "自由の旗がはためく、〇〇の空に！",
+                answer: "ベルギー",
+            },
+            {
+                lyrics: "我らは〇〇の民、自由と正義の友！",
+                answer: "インドネシア",
+            },
+            {
+                lyrics: "〇〇よ、太陽と月の地、英雄の光よ！",
+                answer: "フィリピン",
+            },
+            {
+                lyrics: "〇〇よ、自由の地、栄光の太陽よ！",
+                answer: "チリ",
+            },
+            {
+                lyrics: "〇〇、我らの国、勇者の地！",
+                answer: "アイルランド",
+            },
+            {
+                lyrics: "〇〇、英雄の国、海を越えし民よ！",
+                answer: "ポルトガル",
+            },
+            {
+                lyrics: "〇〇、自由の地、古き栄光よ！",
+                answer: "ギリシャ",
+            },
+            {
+                lyrics: "〇〇よ、望みの地、古き民の歌よ！",
+                answer: "イスラエル",
+            },
+            {
+                lyrics: "〇〇、自由の地、英雄の血潮よ！",
+                answer: "イラン",
+            },
+            {
+                lyrics: "〇〇、王の国、自由の民よ！",
+                answer: "タイ",
+            },
+            {
+                lyrics: "〇〇、自由の民、輝く星よ！",
+                answer: "ベトナム",
+            },
+            {
+                lyrics: "〇〇、千の湖の国、自由の地よ！",
+                answer: "フィンランド",
+            },
+            {
+                lyrics: "〇〇、山々を越えて、我らが地よ！",
+                answer: "ノルウェー",
+            },
+            {
+                lyrics: "〇〇、古き国、美しい地よ！",
+                answer: "デンマーク",
+            },
+            {
+                lyrics: "アムステルダム、自由の地、わが祖国よ！",
+                answer: "オランダ", // オランダの国家はアムステルダムから始まることで有名ですが、国名が直接入らないように調整
+            },
+            {
+                lyrics: "〇〇、自由の盟約、永遠の山々よ！",
+                answer: "スイス",
+            },
+            {
+                lyrics: "〇〇、我が祖国、希望の光よ！",
+                answer: "チェコ",
+            },
+            {
+                lyrics: "〇〇、栄光の地、自由の旗よ！",
+                answer: "ルーマニア",
+            },
+            {
+                lyrics: "〇〇、美しき地、永遠の家よ！",
+                answer: "クロアチア",
+            },
+            {
+                lyrics: "〇〇、自由の地、太陽の輝きよ！",
+                answer: "ペルー",
+            },
+            {
+                lyrics: "〇〇、祖国よ、平和と自由の地よ！",
+                answer: "コロンビア",
+            },
+            {
+                lyrics: "神の祝福あれ、我らの地よ！", // 南アフリカを再調整
+                answer: "南アフリカ",
+            },
+            {
+                lyrics: "団結と自由の地、我らの国よ！", // ナイジェリアを再調整
+                answer: "ナイジェリア",
+            },
+            {
+                lyrics: "自由の地、誇り高き国よ！", // エチオピアを再調整
+                answer: "エチオピア",
+            }
+        ];
+
+        // 全ての国のリスト（選択肢生成用）
+        const allCountries = [
+            "日本", "カナダ", "アメリカ", "イギリス", "フランス", "ドイツ", "ロシア", "インド", "韓国", "中国",
+            "ウルグアイ", "アルゼンチン", "ブラジル", "イタリア", "メキシコ", "スペイン", "キューバ", "南アフリカ", "オーストラリア", "ニュージーランド",
+            "トルコ", "エジプト", "スウェーデン", "ポーランド", "ハンガリー", "オーストリア", "ベルギー", "インドネシア", "フィリピン", "チリ",
+            "アイルランド", "ポルトガル", "ギリシャ", "イスラエル", "イラン", "タイ", "ベトナム", "フィンランド", "ノルウェー", "デンマーク",
+            "オランダ", "スイス", "チェコ", "ルーマニア", "クロアチア", "ペルー", "コロンビア", "ナイジェリア", "エチオピア",
+            // 選択肢として使いたいが正解ではない国を追加
+            "ニュージーランド", "スコットランド", "ウェールズ", "パキスタン", "バングラデシュ", "スリランカ", "北朝鮮", "台湾", "ベルギー", "スイス",
+            "オランダ", "オーストリア", "ポーランド", "チェコ", "ウクライナ", "ベラルーシ", "カザフスタン", "メキシコ", "ブラジル", "ドイツ",
+            "ハイチ", "ドミニカ共和国", "ベネズエラ", "ナイジェリア", "エチオピア", "ケニア", "ジンバブエ", "フィジー", "パプアニューギニア",
+            "シリア", "スーダン", "リビア", "チュニジア", "ノルウェー", "フィンランド", "デンマーク", "リトアニア", "スロバキア", "ルーマニア",
+            "ブルガリア", "セルビア", "ボスニア・ヘルツェゴビナ", "スロベニア", "エクアドル", "ボリビア", "パナマ", "ガーナ", "タンザニア", "ソマリア",
+            "トルコ", "ギリシャ", "キプロス", "ヨルダン", "レバノン", "イラク", "アフガニスタン", "カンボジア", "ラオス", "ミャンマー",
+            "マレーシア", "シンガポール"
+        ];
+
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let totalQuestionsAttempted = 0;
+
+        const lyricsElement = document.getElementById('lyrics');
+        const optionsContainer = document.getElementById('options');
+        const feedbackElement = document.getElementById('feedback');
+        const nextButton = document.getElementById('next-button');
+        const scoreDisplay = document.getElementById('score-display');
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // 要素を交換
+            }
+        }
+
+        // クイズデータをシャッフル
+        shuffleArray(quizData);
+
+        function generateOptions(correctAnswer) {
+            let options = new Set();
+            options.add(correctAnswer); // 正解を必ず含める
+
+            // 正解以外の国をallCountriesからランダムに選んで追加
+            while (options.size < 4) {
+                const randomIndex = Math.floor(Math.random() * allCountries.length);
+                const randomCountry = allCountries[randomIndex];
+                if (randomCountry !== correctAnswer) { // 正解と重複しないようにする
+                    options.add(randomCountry);
+                }
+            }
+            return Array.from(options); // Setを配列に変換
+        }
+
+        function loadQuestion() {
+            if (currentQuestionIndex < quizData.length) {
+                const currentQuiz = quizData[currentQuestionIndex];
+                lyricsElement.textContent = currentQuiz.lyrics;
+                optionsContainer.innerHTML = ''; // 選択肢をクリア
+
+                // 選択肢を生成してシャッフル
+                const generatedOptions = generateOptions(currentQuiz.answer);
+                shuffleArray(generatedOptions);
+
+                generatedOptions.forEach(option => {
+                    const button = document.createElement('button');
+                    button.classList.add('option-button');
+                    button.textContent = option;
+                    button.onclick = () => checkAnswer(option, currentQuiz.answer);
+                    optionsContainer.appendChild(button);
+                });
+
+                feedbackElement.textContent = '';
+                nextButton.style.display = 'none'; // 次の問題ボタンを非表示
+                enableOptions(); // 選択肢を有効化
+                updateScoreDisplay();
+            } else {
+                displayQuizEnd();
+            }
+        }
+
+        function checkAnswer(selectedOption, correctAnswer) {
+            disableOptions(); // 選択肢を無効化
+            totalQuestionsAttempted++; // 回答した問題数を増やす
+            if (selectedOption === correctAnswer) {
+                feedbackElement.textContent = '正解です！';
+                feedbackElement.classList.remove('incorrect');
+                feedbackElement.classList.add('correct');
+                score++;
+            } else {
+                feedbackElement.textContent = `不正解です！正解は「${correctAnswer}」でした。`;
+                feedbackElement.classList.remove('correct');
+                feedbackElement.classList.add('incorrect');
+            }
+            nextButton.style.display = 'block'; // 次の問題ボタンを表示
+            updateScoreDisplay();
+        }
+
+        function enableOptions() {
+            const buttons = optionsContainer.getElementsByClassName('option-button');
+            for (let i = 0; i < buttons.length; i++) {
+                buttons[i].disabled = false;
+            }
+        }
+
+        function disableOptions() {
+            const buttons = optionsContainer.getElementsByClassName('option-button');
+            for (let i = 0; i < buttons.length; i++) {
+                buttons[i].disabled = true;
+            }
+        }
+
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `スコア: ${score} / ${totalQuestionsAttempted}`;
+        }
+
+        function displayQuizEnd() {
+            lyricsElement.textContent = `クイズ終了！あなたの最終スコアは ${score} / ${quizData.length} です。`;
+            optionsContainer.innerHTML = '';
+            feedbackElement.textContent = '';
+            nextButton.style.display = 'none';
+            scoreDisplay.textContent = ''; // スコア表示をクリア
+        }
+
+        nextButton.addEventListener('click', () => {
+            currentQuestionIndex++;
+            loadQuestion();
+        });
+
+        // アプリ起動時に最初の問題をロード
+        loadQuestion();
+    </script>
+</body>
+</html>
