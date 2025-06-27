@@ -179,6 +179,20 @@ Excel形式の報告書作成ツール。
 *スマホ対応: ✅ / Smartphone Support: ✅*
 *開発日: 2025-06-18 / Development Date: June 18, 2025*
 
+#### [何もしないアプリ](nani_mo_shinai/index.html) 🖱️
+文字通り「何もしない」シンプルなアプリ。達成感を味わえる最小機能アプリ。
+*Literally "do nothing" simple app. Minimal functionality app where you can feel a sense of accomplishment.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
+#### [ALPHARD SmartBuy](zancre/index.html) 🖱️
+アルファード購入支援アプリ。車両選択とカスタマイズ機能付き。
+*Alphard car purchase assistance app with vehicle selection and customization features.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
 ---
 
 ## 技術的特徴
