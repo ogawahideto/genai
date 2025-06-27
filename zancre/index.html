@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALPHARD SmartBuy - あなたのアルファードライフを彩る賢い選択</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
+            color: #333;
+            line-height: 1.6;
+            overflow-x: hidden; /* 横スクロール禁止 */
+        }
+        .app-container {
+            max-width: 850px;
+            margin: 30px auto;
+            background-color: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(45deg, #0f4c81 0%, #1e629a 100%);
+            color: #fff;
+            padding: 35px 20px;
+            text-align: center;
+            border-bottom: 5px solid #ffcc00;
+            position: relative;
+            overflow: hidden;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 2.8em;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        }
+        header p {
+            font-size: 1.1em;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+        .header-bg-elements::before, .header-bg-elements::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .header-bg-elements::before {
+            width: 150px;
+            height: 150px;
+            top: -50px;
+            left: -50px;
+        }
+        .header-bg-elements::after {
+            width: 200px;
+            height: 200px;
+            bottom: -80px;
+            right: -80px;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-around;
+            background-color: #e0e9f2;
+            padding: 15px 0;
+            border-bottom: 1px solid #d0dbe8;
+        }
+        nav a {
+            text-decoration: none;
+            color: #0f4c81;
+            font-weight: bold;
+            padding: 10px 15px;
+            border-radius: 25px;
+            transition: background-color 0.3s, color 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        nav a:hover, nav a.active {
+            background-color: #0f4c81;
+            color: #ffcc00;
+        }
+        nav a svg {
+            margin-right: 8px;
+        }
+
+        .content-section {
+            padding: 40px;
+        }
+        h2 {
+            color: #0f4c81;
+            text-align: center;
+            font-size: 2.2em;
+            margin-bottom: 35px;
+            position: relative;
+        }
+        h2::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 4px;
+            background-color: #ffcc00;
+            margin: 10px auto 0;
+            border-radius: 2px;
+        }
+
+        .card {
+            background-color: #f8fbfd;
+            border: 1px solid #e0e9f2;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            transition: transform 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+            font-size: 0.95em;
+        }
+        .form-group input[type="number"],
+        .form-group select {
+            width: calc(100% - 24px);
+            padding: 12px;
+            border: 1px solid #cce0f0;
+            border-radius: 8px;
+            font-size: 1.05em;
+            box-sizing: border-box;
+            background-color: #fefeff;
+        }
+        .form-group input[type="range"] {
+            width: 100%;
+            height: 10px;
+            -webkit-appearance: none;
+            background: #d0dbe8;
+            outline: none;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .form-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            background: #0f4c81;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 3px solid #ffcc00;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .form-group input[type="range"]::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            background: #0f4c81;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 3px solid #ffcc00;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .range-value {
+            font-weight: bold;
+            color: #0f4c81;
+            margin-left: 10px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(90deg, #ffcc00 0%, #f7b731 100%);
+            color: #0f4c81;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 5px 15px rgba(255, 204, 0, 0.4);
+        }
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255, 204, 0, 0.6);
+        }
+        .result-panel {
+            background-color: #e6f7ff;
+            border: 2px solid #a8e0f5;
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 35px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        .result-panel p {
+            font-size: 1.2em;
+            margin: 10px 0;
+            color: #0f4c81;
+        }
+        .result-panel strong {
+            font-size: 1.5em;
+            color: #d9004c;
+            display: block;
+            margin-top: 5px;
+        }
+        .result-panel .small-note {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 15px;
+        }
+
+        .info-panel {
+            background-color: #f0f7f9;
+            border-left: 6px solid #ffcc00;
+            padding: 20px 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .info-panel h3 {
+            color: #0f4c81;
+            margin-top: 0;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+        .info-panel ul {
+            list-style-type: '🌟 '; /* 絵文字リストマーカー */
+            padding-left: 25px;
+            margin: 0;
+        }
+        .info-panel li {
+            margin-bottom: 10px;
+            line-height: 1.8;
+        }
+        .info-panel a {
+            color: #0f4c81;
+            font-weight: bold;
+            text-decoration: none;
+        }
+        .info-panel a:hover {
+            text-decoration: underline;
+        }
+
+        footer {
+            background-color: #0f4c81;
+            color: #e0e9f2;
+            text-align: center;
+            padding: 25px 20px;
+            border-top: 5px solid #ffcc00;
+            font-size: 0.9em;
+            border-radius: 0 0 20px 20px;
+        }
+        footer p {
+            margin: 5px 0;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="header-bg-elements"></div>
+            <h1>ALPHARD SmartBuy</h1>
+            <p>残クレで、夢のアルファードをもっと身近に！</p>
+        </header>
+
+        <nav>
+            <a href="#simulator" class="active">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calculator"><rect x="9" y="3" width="6" height="18" rx="2"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
+                シミュレーター
+            </a>
+            <a href="#options-guide">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                残クレガイド
+            </a>
+            <a href="#faq">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-help-circle"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                よくある質問
+            </a>
+        </nav>
+
+        <div class="content-section" id="simulator-section">
+            <h2>残クレシミュレーター</h2>
+            <div class="card">
+                <form id="calculatorForm">
+                    <div class="form-group">
+                        <label for="carPrice">✨ アルファード本体価格 (万円)</label>
+                        <input type="number" id="carPrice" value="550" min="300" step="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="downPayment">💰 頭金 (万円)</label>
+                        <input type="number" id="downPayment" value="0" min="0" step="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="bonusPayment">🎁 ボーナス加算額 (万円/回)</label>
+                        <input type="number" id="bonusPayment" value="0" min="0" step="5">
+                    </div>
+                    <div class="form-group">
+                        <label for="term">🗓️ 契約期間</label>
+                        <select id="term">
+                            <option value="3">3年 (36回払い)</option>
+                            <option value="5">5年 (60回払い)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="interestRate">📊 金利 (%) <span class="range-value" id="interestRateValue">2.9</span>%</label>
+                        <input type="range" id="interestRate" value="2.9" min="1.0" max="7.0" step="0.1">
+                    </div>
+                    <button type="button" onclick="calculateResidualCredit()">計算してみる！</button>
+                </form>
+            </div>
+
+            <div class="result-panel hidden" id="resultBox">
+                <h3>あなたの残クレプラン、これで決まり！</h3>
+                <p>月々の支払い額: <strong><span id="monthlyPayment"></span> 円</strong></p>
+                <p>最終回支払い額 (残価): <strong><span id="residualValue"></span> 円</strong></p>
+                <p>支払総額 (概算): <strong><span id="totalPayment"></span> 円</strong></p>
+                <p class="small-note">※シミュレーションは目安です。実際の契約はディーラーにご確認ください。</p>
+            </div>
+        </div>
+
+        <div class="content-section hidden" id="options-guide-section">
+            <h2>残クレ、契約終了時の３つの選択肢</h2>
+            <div class="info-panel">
+                <h3>🚗 1. 新しいアルファードに乗り換え！</h3>
+                <ul>
+                    <li>✨ いつでも最新モデルのアルファードに乗れる喜び！</li>
+                    <li>残価の支払いは不要。スマートに次の車へバトンタッチ。</li>
+                    <li>手間なく乗り換えたいあなたにピッtari！</li>
+                </ul>
+            </div>
+            <div class="info-panel">
+                <h3>🏠 2. あなたのアルファードを買い取る！</h3>
+                <ul>
+                    <li>💖 大切に乗ってきたアルファードを完全にあなたのものに！</li>
+                    <li>残価を一括で支払うか、再ローンを組んでじっくりと。</li>
+                    <li>走行距離やカスタマイズの制限から解放され、本当のオーナーに！</li>
+                </ul>
+            </div>
+            <div class="info-panel">
+                <h3>🔄 3. アルファードを返却する</h3>
+                <ul>
+                    <li>🤝 残価の支払いは不要。シンプルに契約を終了。</li>
+                    <li>ライフスタイルの変化に合わせて、柔軟な選択を。</li>
+                    <li>**注意**: 走行距離超過や車の状態によっては追加費用が発生する可能性があるので、日頃のケアが重要です。</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="content-section hidden" id="faq-section">
+            <h2>アルファード残クレ、よくある疑問を解決！</h2>
+            <div class="info-panel">
+                <h3>Q: 残価率はどうやって決まるの？</h3>
+                <p>A: 新車時の車両本体価格に対して、将来の市場価値を予測して設定されます。アルファードは人気が高いため、比較的高い残価率が設定されやすい傾向にあります。</p>
+            </div>
+            <div class="info-panel">
+                <h3>Q: 金利ってどれくらいかかるの？</h3>
+                <p>A: 一般的なディーラーの残クレ金利は、通常のマイカーローンと比較してやや高めに設定されていることもあります。しかし、月々の支払額を抑えられるメリットと総合的に判断しましょう。</p>
+            </div>
+            <div class="info-panel">
+                <h3>Q: 事故で車が傷ついたらどうなる？</h3>
+                <p>A: 返却時や乗り換え時に、規定以上の損傷がある場合は修理費用などが請求されることがあります。万一に備えて車両保険への加入を強くおすすめします。</p>
+            </div>
+            <div class="info-panel">
+                <h3>Q: 途中で残クレを解約できる？</h3>
+                <p>A: 原則として残クレ契約は中途解約できません。ただし、どうしても解約が必要な場合は、残りのローン残高を一括精算したり、買取専門店に売却して残債を清算するなどの方法があります。</p>
+            </div>
+            <div class="info-panel">
+                <h3>💡 もっと詳しく知りたい？</h3>
+                <p>残クレについてさらに疑問がある場合は、<a href="https://toyota.jp/request/credit/alphard/" target="_blank">トヨタ公式サイト</a>やディーラーにお問い合わせください。</p>
+            </div>
+        </div>
+
+        <footer>
+            <p>&copy; 2025 ALPHARD SmartBuy. All Rights Reserved.</p>
+            <p>このアプリはアルファードの残クレ購入検討をサポートするものであり、実際の契約内容を保証するものではありません。詳細な情報は販売店でご確認ください。</p>
+            <p>※掲載されているアルファードの画像はイメージです。</p>
+        </footer>
+    </div>
+
+    <script>
+        // ナビゲーションの切り替え処理
+        document.querySelectorAll('nav a').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault(); // デフォルトのアンカーリンク動作を無効化
+
+                // すべてのコンテンツセクションを非表示にする
+                document.querySelectorAll('.content-section').forEach(section => {
+                    section.classList.add('hidden');
+                });
+                // すべてのナビゲーションリンクのアクティブクラスを解除
+                document.querySelectorAll('nav a').forEach(navLink => {
+                    navLink.classList.remove('active');
+                });
+
+                // クリックされたリンクに対応するセクションを表示する
+                const targetId = this.getAttribute('href').substring(1) + '-section';
+                document.getElementById(targetId).classList.remove('hidden');
+                // クリックされたリンクにアクティブクラスを追加
+                this.classList.add('active');
+
+                // スムーズスクロール
+                document.getElementById(targetId).scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+
+        // 金利スライダーの値表示を更新
+        document.getElementById('interestRate').addEventListener('input', function() {
+            document.getElementById('interestRateValue').textContent = this.value;
+        });
+
+        // 残クレシミュレーション計算ロジック（簡易版、正確性は問わない）
+        function calculateResidualCredit() {
+            const carPrice = parseFloat(document.getElementById('carPrice').value) * 10000; // 万円を円に変換
+            const downPayment = parseFloat(document.getElementById('downPayment').value) * 10000;
+            const bonusPayment = parseFloat(document.getElementById('bonusPayment').value) * 10000;
+            const term = parseInt(document.getElementById('term').value); // years
+            const interestRate = parseFloat(document.getElementById('interestRate').value) / 100; // as decimal
+
+            if (isNaN(carPrice) || isNaN(downPayment) || isNaN(bonusPayment) || isNaN(term) || isNaN(interestRate) || carPrice <= 0) {
+                alert('全ての項目を正しく入力してください！');
+                return;
+            }
+
+            // アルファードの残価率を大胆に設定（想像上のデータ）
+            let residualRate;
+            if (term === 3) {
+                residualRate = 0.70; // 3年後も超高値！
+            } else if (term === 5) {
+                residualRate = 0.58; // 5年後もまだまだ人気！
+            } else {
+                residualRate = 0.60; // デフォルト
+            }
+
+            const residualValue = carPrice * residualRate;
+            let principalForLoan = carPrice - downPayment - residualValue;
+            const numberOfPayments = term * 12; // 月々の支払い回数
+
+            // ボーナス払いを年間2回と仮定し、元金から差し引くことで月々の負担を軽減するロジック（簡易）
+            const totalBonusPayments = bonusPayment * 2 * term;
+            principalForLoan -= totalBonusPayments; // 月々の支払いの対象となる元金を調整
+
+            let monthlyPayment = 0;
+            if (interestRate === 0) {
+                monthlyPayment = principalForLoan / numberOfPayments;
+            } else {
+                const monthlyInterestRate = interestRate / 12;
+                // 元利均等方式の計算（調整後の元金に対して）
+                // 支払い元金がマイナスになる場合は、月々支払いは0とする
+                if (principalForLoan > 0) {
+                     monthlyPayment = principalForLoan * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments) / (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
+                } else {
+                    monthlyPayment = 0;
+                }
+            }
+
+            // 総支払額の算出（今回は「買い取る場合」を想定した概算）
+            // 頭金 + 月々の支払い総額 + ボーナス払い総額 + 残価（買い取る場合） + 残価にかかる簡易金利
+            // 残価にかかる金利も月々の金利と同じと仮定（実際の残クレとは異なります）
+            const totalInterestOnResidual = residualValue * interestRate * (term); // 簡易的な計算
+            const totalPayment = downPayment + (monthlyPayment * numberOfPayments) + totalBonusPayments + residualValue + totalInterestOnResidual;
+
+
+            document.getElementById('monthlyPayment').textContent = Math.round(monthlyPayment).toLocaleString();
+            document.getElementById('residualValue').textContent = Math.round(residualValue).toLocaleString();
+            document.getElementById('totalPayment').textContent = Math.round(totalPayment).toLocaleString();
+            document.getElementById('resultBox').classList.remove('hidden'); // 結果表示を可視化
+            document.getElementById('resultBox').scrollIntoView({ behavior: 'smooth' }); // 結果までスクロール
+        }
+    </script>
+</body>
+</html>
