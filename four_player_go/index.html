@@ -1,0 +1,601 @@
+<!--
+AI Model: Claude 3.5 Sonnet
+User Prompt: 4人打ち囲碁を作ってください
+AI Approach: HTML5 Canvas with full Go rules implementation, 4-player turn system, territory calculation and scoring
+Implementation Intent: Complete 4-player Go game with proper rules, Ko detection, territory scoring, and game management
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>四人打ち囲碁</title>
+    <style>
+        body {
+            font-family: 'MS PGothic', 'Hiragino Sans', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .game-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        canvas {
+            border: 3px solid #34495e;
+            background: linear-gradient(45deg, #deb887 0%, #cdaa7d 100%);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .game-panel {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            width: 250px;
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .player-info.active {
+            background: rgba(52, 152, 219, 0.2);
+            transform: scale(1.05);
+        }
+
+        .player-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid #333;
+        }
+
+        .black { background: #333; }
+        .white { background: #fff; }
+        .red { background: #e74c3c; }
+        .blue { background: #3498db; }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        button {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.danger {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        button.danger:hover {
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .score-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #ecf0f1;
+        }
+
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-weight: bold;
+        }
+
+        .game-status {
+            text-align: center;
+            margin: 15px 0;
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .winner-announcement {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <h1>四人打ち囲碁</h1>
+    
+    <div class="game-container">
+        <canvas id="goBoard" width="760" height="760"></canvas>
+        
+        <div class="game-panel">
+            <div class="game-status" id="gameStatus">ゲーム進行中</div>
+            
+            <div id="playersInfo">
+                <div class="player-info" data-player="0">
+                    <div class="player-color black"></div>
+                    <span>黒 (プレイヤー)</span>
+                </div>
+                <div class="player-info" data-player="1">
+                    <div class="player-color white"></div>
+                    <span>白 (コンピュータ)</span>
+                </div>
+                <div class="player-info" data-player="2">
+                    <div class="player-color red"></div>
+                    <span>赤 (コンピュータ)</span>
+                </div>
+                <div class="player-info" data-player="3">
+                    <div class="player-color blue"></div>
+                    <span>青 (コンピュータ)</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="passButton">パス</button>
+                <button id="resignButton" class="danger">投了</button>
+                <button id="resetButton">新しいゲーム</button>
+                <button id="calculateScoreButton">得点計算</button>
+            </div>
+
+            <div class="score-section" id="scoreSection" style="display: none;">
+                <h3>得点</h3>
+                <div class="score-item">
+                    <span>黒:</span>
+                    <span id="blackScore">0</span>
+                </div>
+                <div class="score-item">
+                    <span>白:</span>
+                    <span id="whiteScore">0</span>
+                </div>
+                <div class="score-item">
+                    <span>赤:</span>
+                    <span id="redScore">0</span>
+                </div>
+                <div class="score-item">
+                    <span>青:</span>
+                    <span id="blueScore">0</span>
+                </div>
+            </div>
+
+            <div id="winnerAnnouncement" class="winner-announcement" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('goBoard');
+        const ctx = canvas.getContext('2d');
+        
+        const BOARD_SIZE = 19;
+        const CELL_SIZE = canvas.width / (BOARD_SIZE + 1);
+        const STONE_RADIUS = CELL_SIZE / 2 - 2;
+
+        let board = [];
+        let currentPlayer = 0;
+        let gameActive = true;
+        let passCount = 0;
+        let captures = [0, 0, 0, 0];
+        let koPoint = null;
+        let gameEnded = false;
+
+        const players = ['黒', '白', '赤', '青'];
+        const stoneColors = ['#333', '#fff', '#e74c3c', '#3498db'];
+
+        function initBoard() {
+            board = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(-1));
+            currentPlayer = 0;
+            gameActive = true;
+            passCount = 0;
+            captures = [0, 0, 0, 0];
+            koPoint = null;
+            gameEnded = false;
+            
+            document.getElementById('scoreSection').style.display = 'none';
+            document.getElementById('winnerAnnouncement').style.display = 'none';
+            document.getElementById('gameStatus').textContent = 'ゲーム進行中';
+            
+            drawBoard();
+            updateGameInfo();
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // グリッド線を描画
+            ctx.strokeStyle = '#2c3e50';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                ctx.beginPath();
+                ctx.moveTo(CELL_SIZE + i * CELL_SIZE, CELL_SIZE);
+                ctx.lineTo(CELL_SIZE + i * CELL_SIZE, canvas.height - CELL_SIZE);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(CELL_SIZE, CELL_SIZE + i * CELL_SIZE);
+                ctx.lineTo(canvas.width - CELL_SIZE, CELL_SIZE + i * CELL_SIZE);
+                ctx.stroke();
+            }
+
+            // 星（天元）を描画
+            const hoshi = [3, 9, 15];
+            ctx.fillStyle = '#2c3e50';
+            hoshi.forEach(row => {
+                hoshi.forEach(col => {
+                    ctx.beginPath();
+                    ctx.arc(CELL_SIZE + col * CELL_SIZE, CELL_SIZE + row * CELL_SIZE, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            });
+
+            // 石を描画
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (board[r][c] !== -1) {
+                        drawStone(r, c, stoneColors[board[r][c]]);
+                    }
+                }
+            }
+        }
+
+        function drawStone(row, col, color) {
+            const x = CELL_SIZE + col * CELL_SIZE;
+            const y = CELL_SIZE + row * CELL_SIZE;
+            
+            // 影を描画
+            ctx.beginPath();
+            ctx.arc(x + 2, y + 2, STONE_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fill();
+            
+            // 石を描画
+            ctx.beginPath();
+            ctx.arc(x, y, STONE_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            
+            // 縁を描画
+            ctx.strokeStyle = color === '#fff' ? '#333' : '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // 白石にグラデーション効果
+            if (color === '#fff') {
+                const gradient = ctx.createRadialGradient(x - 5, y - 5, 0, x, y, STONE_RADIUS);
+                gradient.addColorStop(0, '#fff');
+                gradient.addColorStop(1, '#e0e0e0');
+                ctx.fillStyle = gradient;
+                ctx.fill();
+            }
+        }
+
+        function updateGameInfo() {
+            document.querySelectorAll('.player-info').forEach((el, index) => {
+                el.classList.toggle('active', index === currentPlayer && gameActive);
+            });
+        }
+
+        function isValidMove(row, col) {
+            return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE && board[row][col] === -1;
+        }
+
+        function getGroup(r, c, color, visited) {
+            const group = [];
+            const queue = [[r, c]];
+            visited[r][c] = true;
+
+            while (queue.length > 0) {
+                const [currR, currC] = queue.shift();
+                group.push({ r: currR, c: currC });
+
+                const neighbors = [
+                    [currR - 1, currC], [currR + 1, currC],
+                    [currR, currC - 1], [currR, currC + 1]
+                ];
+
+                for (const [nr, nc] of neighbors) {
+                    if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && !visited[nr][nc]) {
+                        if (board[nr][nc] === color) {
+                            visited[nr][nc] = true;
+                            queue.push([nr, nc]);
+                        }
+                    }
+                }
+            }
+            return group;
+        }
+
+        function countLiberties(group) {
+            const liberties = new Set();
+            for (const { r, c } of group) {
+                const neighbors = [
+                    [r - 1, c], [r + 1, c],
+                    [r, c - 1], [r, c + 1]
+                ];
+                for (const [nr, nc] of neighbors) {
+                    if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === -1) {
+                        liberties.add(`${nr},${nc}`);
+                    }
+                }
+            }
+            return liberties.size;
+        }
+
+        function removeStones(group) {
+            for (const { r, c } of group) {
+                board[r][c] = -1;
+            }
+        }
+
+        function placeStone(row, col) {
+            if (!gameActive || !isValidMove(row, col)) {
+                return false;
+            }
+
+            if (koPoint && koPoint.r === row && koPoint.c === col) {
+                alert("コウのルールにより、この手は打てません。");
+                return false;
+            }
+
+            const originalBoard = JSON.parse(JSON.stringify(board));
+            board[row][col] = currentPlayer;
+
+            let capturedStones = [];
+            let totalCaptured = 0;
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+            // 相手の石の取りをチェック
+            for (const [dr, dc] of directions) {
+                const nr = row + dr;
+                const nc = col + dc;
+
+                if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE) {
+                    const neighborColor = board[nr][nc];
+                    if (neighborColor !== -1 && neighborColor !== currentPlayer) {
+                        const visited = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(false));
+                        const opponentGroup = getGroup(nr, nc, neighborColor, visited);
+                        if (countLiberties(opponentGroup) === 0) {
+                            capturedStones = capturedStones.concat(opponentGroup);
+                            totalCaptured += opponentGroup.length;
+                            removeStones(opponentGroup);
+                        }
+                    }
+                }
+            }
+
+            // 自殺手チェック
+            const visitedSelf = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(false));
+            const playerGroup = getGroup(row, col, currentPlayer, visitedSelf);
+            if (countLiberties(playerGroup) === 0 && capturedStones.length === 0) {
+                board = originalBoard;
+                alert("自殺手は打てません。");
+                return false;
+            }
+
+            // 取った石をカウント
+            captures[currentPlayer] += totalCaptured;
+
+            // コウポイント更新
+            if (capturedStones.length === 1) {
+                koPoint = capturedStones[0];
+            } else {
+                koPoint = null;
+            }
+
+            passCount = 0;
+            drawBoard();
+            nextTurn();
+            return true;
+        }
+
+        function nextTurn() {
+            if (!gameActive) return;
+            
+            currentPlayer = (currentPlayer + 1) % players.length;
+            updateGameInfo();
+            
+            if (currentPlayer !== 0) {
+                setTimeout(computerMove, 1000);
+            }
+        }
+
+        function computerMove() {
+            if (!gameActive || currentPlayer === 0) return;
+
+            let attempts = 0;
+            let moved = false;
+            
+            while (!moved && attempts < 100) {
+                const row = Math.floor(Math.random() * BOARD_SIZE);
+                const col = Math.floor(Math.random() * BOARD_SIZE);
+                
+                if (isValidMove(row, col)) {
+                    // 簡単なヒューリスティック：危険な手を避ける
+                    const originalBoard = JSON.parse(JSON.stringify(board));
+                    moved = placeStone(row, col);
+                    if (!moved) {
+                        board = originalBoard;
+                    }
+                }
+                attempts++;
+            }
+            
+            if (!moved) {
+                passMove();
+            }
+        }
+
+        function passMove() {
+            if (!gameActive) return;
+            
+            passCount++;
+            
+            if (passCount >= players.length) {
+                endGame();
+                return;
+            }
+            
+            nextTurn();
+        }
+
+        function calculateTerritory() {
+            const territory = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(-1));
+            const visited = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(false));
+            const scores = [0, 0, 0, 0];
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (board[r][c] === -1 && !visited[r][c]) {
+                        const emptyGroup = [];
+                        const queue = [[r, c]];
+                        const surroundingColors = new Set();
+                        
+                        visited[r][c] = true;
+                        
+                        while (queue.length > 0) {
+                            const [currR, currC] = queue.shift();
+                            emptyGroup.push({ r: currR, c: currC });
+                            
+                            const neighbors = [
+                                [currR - 1, currC], [currR + 1, currC],
+                                [currR, currC - 1], [currR, currC + 1]
+                            ];
+                            
+                            for (const [nr, nc] of neighbors) {
+                                if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE) {
+                                    if (board[nr][nc] === -1 && !visited[nr][nc]) {
+                                        visited[nr][nc] = true;
+                                        queue.push([nr, nc]);
+                                    } else if (board[nr][nc] !== -1) {
+                                        surroundingColors.add(board[nr][nc]);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (surroundingColors.size === 1) {
+                            const owner = Array.from(surroundingColors)[0];
+                            scores[owner] += emptyGroup.length;
+                            emptyGroup.forEach(({ r, c }) => {
+                                territory[r][c] = owner;
+                            });
+                        }
+                    }
+                }
+            }
+
+            // 取った石を得点に加算
+            for (let i = 0; i < 4; i++) {
+                scores[i] += captures[i];
+            }
+
+            return scores;
+        }
+
+        function endGame() {
+            gameActive = false;
+            gameEnded = true;
+            
+            const scores = calculateTerritory();
+            
+            document.getElementById('blackScore').textContent = scores[0];
+            document.getElementById('whiteScore').textContent = scores[1];
+            document.getElementById('redScore').textContent = scores[2];
+            document.getElementById('blueScore').textContent = scores[3];
+            
+            document.getElementById('scoreSection').style.display = 'block';
+            document.getElementById('gameStatus').textContent = 'ゲーム終了';
+            
+            const maxScore = Math.max(...scores);
+            const winners = scores.map((score, index) => score === maxScore ? index : -1).filter(i => i !== -1);
+            
+            let winnerText;
+            if (winners.length === 1) {
+                winnerText = `勝者: ${players[winners[0]]} (${maxScore}点)`;
+            } else {
+                const winnerNames = winners.map(i => players[i]).join(', ');
+                winnerText = `引き分け: ${winnerNames} (${maxScore}点)`;
+            }
+            
+            document.getElementById('winnerAnnouncement').textContent = winnerText;
+            document.getElementById('winnerAnnouncement').style.display = 'block';
+            
+            updateGameInfo();
+        }
+
+        function resignGame() {
+            if (!gameActive) return;
+            
+            const resigningPlayer = players[currentPlayer];
+            alert(`${resigningPlayer}が投了しました。`);
+            endGame();
+        }
+
+        // イベントリスナー
+        canvas.addEventListener('click', (event) => {
+            if (currentPlayer === 0 && gameActive) {
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                const col = Math.round((x - CELL_SIZE) / CELL_SIZE);
+                const row = Math.round((y - CELL_SIZE) / CELL_SIZE);
+
+                placeStone(row, col);
+            }
+        });
+
+        document.getElementById('passButton').addEventListener('click', passMove);
+        document.getElementById('resignButton').addEventListener('click', resignGame);
+        document.getElementById('resetButton').addEventListener('click', initBoard);
+        document.getElementById('calculateScoreButton').addEventListener('click', () => {
+            if (!gameEnded) {
+                endGame();
+            }
+        });
+
+        // ゲーム初期化
+        initBoard();
+    </script>
+</body>
+</html>
