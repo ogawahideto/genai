@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ピタゴラゲーム</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>ピタゴラゲーム</h1>
+    <div id="game-container"></div>
+    <div id="toolbox">
+        <button class="tool" data-tool="box">ボックス</button>
+        <button class="tool" data-tool="slope">スロープ</button>
+        <button class="tool" data-tool="static-box">固定ブロック</button>
+        <button class="tool" data-tool="domino">ドミノ</button>
+        <button class="tool" data-tool="pendulum">振り子</button>
+    </div>
+    <button id="start-btn">スタート</button>
+    <button id="reset-btn">リセット</button>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.18.0/matter.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
