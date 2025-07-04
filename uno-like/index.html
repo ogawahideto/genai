@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNO風カードゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .game-container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .game-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .game-title {
+            font-size: 3rem;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .info-card {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 15px 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .game-area {
+            display: grid;
+            grid-template-columns: 1fr 300px 1fr;
+            gap: 30px;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .deck-area {
+            text-align: center;
+        }
+
+        .current-card {
+            width: 120px;
+            height: 180px;
+            margin: 0 auto 20px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            transform: rotate(-3deg);
+            transition: transform 0.3s ease;
+        }
+
+        .current-card:hover {
+            transform: rotate(0deg) scale(1.05);
+        }
+
+        .draw-pile {
+            width: 100px;
+            height: 150px;
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            border-radius: 12px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .draw-pile:hover {
+            transform: scale(1.05);
+        }
+
+        .player-hand {
+            min-height: 200px;
+        }
+
+        .hand-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            min-height: 160px;
+        }
+
+        .card {
+            width: 80px;
+            height: 120px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-10px) scale(1.1);
+            z-index: 10;
+        }
+
+        .card.playable {
+            box-shadow: 0 0 20px rgba(255,255,0,0.8);
+            animation: glow 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 20px rgba(255,255,0,0.5); }
+            to { box-shadow: 0 0 30px rgba(255,255,0,1); }
+        }
+
+        .card-number {
+            font-size: 1.5rem;
+        }
+
+        .card-suit {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .red { background: linear-gradient(135deg, #ff6b6b, #ee5a52); }
+        .blue { background: linear-gradient(135deg, #4ecdc4, #44a08d); }
+        .green { background: linear-gradient(135deg, #95e1d3, #68b0ab); }
+        .yellow { background: linear-gradient(135deg, #fce38a, #f38ba8); }
+
+        .controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+
+        .message {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+            min-height: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        @media (max-width: 768px) {
+            .game-area {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .game-title {
+                font-size: 2rem;
+            }
+            
+            .card {
+                width: 60px;
+                height: 90px;
+            }
+            
+            .current-card {
+                width: 100px;
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1 class="game-title">UNO風ゲーム</h1>
+            <div class="game-info">
+                <div class="info-card">
+                    <div>残りカード: <span id="playerCardCount">7</span></div>
+                </div>
+                <div class="info-card">
+                    <div>山札: <span id="deckCount">40</span></div>
+                </div>
+                <div class="info-card">
+                    <div>CPU: <span id="cpuCardCount">7</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-area">
+            <div class="player-hand">
+                <div class="hand-title">CPUの手札</div>
+                <div class="cards-container" id="cpuHand"></div>
+            </div>
+
+            <div class="deck-area">
+                <div class="current-card" id="currentCard"></div>
+                <div class="draw-pile" id="drawPile" onclick="drawCard()">
+                    山札<br>クリック
+                </div>
+            </div>
+
+            <div class="player-hand">
+                <div class="hand-title">あなたの手札</div>
+                <div class="cards-container" id="playerHand"></div>
+            </div>
+        </div>
+
+        <div class="message" id="message">ゲームスタート！プレイできるカードを選んでください</div>
+
+        <div class="controls">
+            <button class="btn" onclick="newGame()">新しいゲーム</button>
+        </div>
+    </div>
+
+    <script>
+        class UnoGame {
+            constructor() {
+                this.colors = ['red', 'blue', 'green', 'yellow'];
+                this.numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+                this.deck = [];
+                this.playerHand = [];
+                this.cpuHand = [];
+                this.currentCard = null;
+                this.currentPlayer = 'player';
+                this.gameOver = false;
+                
+                this.initGame();
+            }
+
+            createDeck() {
+                this.deck = [];
+                for (let color of this.colors) {
+                    for (let number of this.numbers) {
+                        this.deck.push({ color, number });
+                        if (number !== 0) {
+                            this.deck.push({ color, number });
+                        }
+                    }
+                }
+                this.shuffleDeck();
+            }
+
+            shuffleDeck() {
+                for (let i = this.deck.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]];
+                }
+            }
+
+            dealCards() {
+                this.playerHand = [];
+                this.cpuHand = [];
+                
+                for (let i = 0; i < 7; i++) {
+                    this.playerHand.push(this.deck.pop());
+                    this.cpuHand.push(this.deck.pop());
+                }
+                
+                this.currentCard = this.deck.pop();
+            }
+
+            initGame() {
+                this.createDeck();
+                this.dealCards();
+                this.currentPlayer = 'player';
+                this.gameOver = false;
+                this.updateDisplay();
+                this.updateMessage('ゲームスタート！プレイできるカードを選んでください');
+            }
+
+            canPlayCard(card) {
+                return card.color === this.currentCard.color || 
+                       card.number === this.currentCard.number;
+            }
+
+            playCard(cardIndex, isPlayer = true) {
+                const hand = isPlayer ? this.playerHand : this.cpuHand;
+                const card = hand[cardIndex];
+                
+                if (!this.canPlayCard(card)) {
+                    if (isPlayer) {
+                        this.updateMessage('そのカードは出せません！');
+                        return false;
+                    }
+                }
+                
+                this.currentCard = card;
+                hand.splice(cardIndex, 1);
+                
+                if (hand.length === 0) {
+                    this.gameOver = true;
+                    this.updateMessage(isPlayer ? 'あなたの勝ち！おめでとうございます！' : 'CPUの勝ち！次回頑張りましょう！');
+                    return true;
+                }
+                
+                this.currentPlayer = isPlayer ? 'cpu' : 'player';
+                this.updateDisplay();
+                
+                if (isPlayer) {
+                    this.updateMessage('CPUのターンです...');
+                    setTimeout(() => this.cpuTurn(), 1000);
+                } else {
+                    this.updateMessage('あなたのターンです！');
+                }
+                
+                return true;
+            }
+
+            drawCard(isPlayer = true) {
+                if (this.deck.length === 0) {
+                    this.updateMessage('山札がありません！');
+                    return;
+                }
+                
+                const hand = isPlayer ? this.playerHand : this.cpuHand;
+                const drawnCard = this.deck.pop();
+                hand.push(drawnCard);
+                
+                if (isPlayer) {
+                    this.updateMessage('カードを1枚引きました');
+                    this.currentPlayer = 'cpu';
+                    this.updateDisplay();
+                    setTimeout(() => this.cpuTurn(), 1000);
+                } else {
+                    this.updateDisplay();
+                }
+            }
+
+            cpuTurn() {
+                if (this.gameOver) return;
+                
+                const playableCards = this.cpuHand
+                    .map((card, index) => ({ card, index }))
+                    .filter(item => this.canPlayCard(item.card));
+                
+                if (playableCards.length > 0) {
+                    const randomChoice = playableCards[Math.floor(Math.random() * playableCards.length)];
+                    this.playCard(randomChoice.index, false);
+                } else {
+                    this.drawCard(false);
+                    this.updateMessage('CPUがカードを引きました。あなたのターンです！');
+                    this.currentPlayer = 'player';
+                }
+            }
+
+            updateDisplay() {
+                this.updateCurrentCard();
+                this.updatePlayerHand();
+                this.updateCpuHand();
+                this.updateCounts();
+            }
+
+            updateCurrentCard() {
+                const currentCardEl = document.getElementById('currentCard');
+                currentCardEl.className = `current-card ${this.currentCard.color}`;
+                currentCardEl.innerHTML = `
+                    <div class="card-number">${this.currentCard.number}</div>
+                    <div class="card-suit">${this.getColorName(this.currentCard.color)}</div>
+                `;
+            }
+
+            updatePlayerHand() {
+                const handEl = document.getElementById('playerHand');
+                handEl.innerHTML = '';
+                
+                this.playerHand.forEach((card, index) => {
+                    const cardEl = document.createElement('div');
+                    cardEl.className = `card ${card.color}`;
+                    
+                    if (this.currentPlayer === 'player' && this.canPlayCard(card)) {
+                        cardEl.classList.add('playable');
+                    }
+                    
+                    cardEl.innerHTML = `
+                        <div class="card-number">${card.number}</div>
+                        <div class="card-suit">${this.getColorName(card.color)}</div>
+                    `;
+                    
+                    cardEl.onclick = () => {
+                        if (this.currentPlayer === 'player' && !this.gameOver) {
+                            this.playCard(index, true);
+                        }
+                    };
+                    
+                    handEl.appendChild(cardEl);
+                });
+            }
+
+            updateCpuHand() {
+                const handEl = document.getElementById('cpuHand');
+                handEl.innerHTML = '';
+                
+                this.cpuHand.forEach(() => {
+                    const cardEl = document.createElement('div');
+                    cardEl.className = 'card';
+                    cardEl.style.background = 'linear-gradient(135deg, #4a5568, #2d3748)';
+                    cardEl.innerHTML = '<div style="font-size: 1rem;">?</div>';
+                    handEl.appendChild(cardEl);
+                });
+            }
+
+            updateCounts() {
+                document.getElementById('playerCardCount').textContent = this.playerHand.length;
+                document.getElementById('cpuCardCount').textContent = this.cpuHand.length;
+                document.getElementById('deckCount').textContent = this.deck.length;
+            }
+
+            updateMessage(message) {
+                document.getElementById('message').textContent = message;
+            }
+
+            getColorName(color) {
+                const names = {
+                    red: '赤',
+                    blue: '青',
+                    green: '緑',
+                    yellow: '黄'
+                };
+                return names[color];
+            }
+        }
+
+        let game = new UnoGame();
+
+        function drawCard() {
+            if (game.currentPlayer === 'player' && !game.gameOver) {
+                game.drawCard(true);
+            }
+        }
+
+        function newGame() {
+            game = new UnoGame();
+        }
+    </script>
+</body>
+</html>
