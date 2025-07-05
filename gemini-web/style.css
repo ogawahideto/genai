@@ -1,0 +1,63 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #000;
+    color: #fff;
+    font-family: 'Times New Roman', Times, serif;
+}
+
+#starfield {
+    position: fixed; /* Changed to fixed */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+}
+
+.content {
+    position: absolute;
+    top: 40%; /* Adjusted position */
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #0ff, 0 0 40px #0ff, 0 0 50px #0ff, 0 0 60px #0ff, 0 0 70px #0ff;
+    z-index: 1;
+}
+
+h1 {
+    font-size: 5em;
+    margin: 0;
+}
+
+p {
+    font-size: 1.5em;
+}
+
+.myth-container {
+    position: absolute;
+    bottom: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    max-width: 800px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    z-index: 1;
+    color: #eee;
+    text-shadow: 0 0 5px #000;
+}
+
+.myth-container h2 {
+    color: #0ff;
+    text-shadow: 0 0 10px #0ff;
+}
+
+body {
+    overflow-y: auto; /* Allow scrolling */
+}
