@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibe Coding - バイブコーディング体験</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e);
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            position: relative;
+        }
+
+        .vibe-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 10px rgba(255, 107, 107, 0.5)); }
+            to { filter: drop-shadow(0 0 20px rgba(78, 205, 196, 0.8)); }
+        }
+
+        .code-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .particles-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2;
+        }
+
+        .interactive-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .code-editor {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 800px;
+            z-index: 20;
+            pointer-events: all;
+        }
+
+        .editor-container {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .editor-title {
+            color: #4ecdc4;
+            font-size: 1.2em;
+        }
+
+        .vibe-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .vibe-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .vibe-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .code-input {
+            width: 100%;
+            height: 120px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            padding: 15px;
+            resize: none;
+            outline: none;
+            line-height: 1.5;
+        }
+
+        .code-input:focus {
+            border-color: #4ecdc4;
+            box-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
+        }
+
+        .vibe-meter {
+            position: absolute;
+            top: 50%;
+            right: 30px;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 50;
+        }
+
+        .vibe-level {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(0deg, #ff6b6b, #4ecdc4, #45b7d1);
+            transition: height 0.3s ease;
+            border-radius: 10px;
+        }
+
+        .floating-code {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.3);
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            pointer-events: none;
+            animation: float 8s linear infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+
+        .beat-visualizer {
+            position: absolute;
+            top: 50%;
+            left: 30px;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 50;
+        }
+
+        .beat-bar {
+            width: 4px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            transition: all 0.1s ease;
+        }
+
+        .beat-bar.active {
+            background: linear-gradient(0deg, #ff6b6b, #4ecdc4);
+            height: 40px;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+
+        .status-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        .status-text {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            opacity: 0.7;
+        }
+
+        .typing-indicator {
+            font-size: 0.9em;
+            color: #4ecdc4;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .typing-indicator.active {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="vibe-container">
+        <div class="header">
+            <h1>Vibe Coding</h1>
+        </div>
+
+        <canvas class="code-canvas" id="codeCanvas"></canvas>
+        <canvas class="particles-canvas" id="particlesCanvas"></canvas>
+
+        <div class="interactive-layer"></div>
+
+        <div class="status-display">
+            <div class="status-text">コードを入力してバイブを感じよう</div>
+            <div class="typing-indicator" id="typingIndicator">⌨️ タイピング中...</div>
+        </div>
+
+        <div class="vibe-meter">
+            <div class="vibe-level" id="vibeLevel"></div>
+        </div>
+
+        <div class="beat-visualizer" id="beatVisualizer">
+            <div class="beat-bar"></div>
+            <div class="beat-bar"></div>
+            <div class="beat-bar"></div>
+            <div class="beat-bar"></div>
+            <div class="beat-bar"></div>
+            <div class="beat-bar"></div>
+            <div class="beat-bar"></div>
+            <div class="beat-bar"></div>
+        </div>
+
+        <div class="code-editor">
+            <div class="editor-container">
+                <div class="editor-header">
+                    <div class="editor-title">🎵 Vibe Code Editor</div>
+                    <div class="vibe-controls">
+                        <button class="vibe-btn" id="clearBtn">Clear</button>
+                        <button class="vibe-btn" id="randomBtn">Random</button>
+                        <button class="vibe-btn" id="vibeBtn">Vibe!</button>
+                    </div>
+                </div>
+                <textarea class="code-input" id="codeInput" placeholder="// コードを入力してバイブを体感しよう
+function vibe() {
+    return 'Hello World!';
+}
+
+vibe();"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class VibeCoding {
+            constructor() {
+                this.canvas = document.getElementById('codeCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.particlesCanvas = document.getElementById('particlesCanvas');
+                this.particlesCtx = this.particlesCanvas.getContext('2d');
+                this.codeInput = document.getElementById('codeInput');
+                this.vibeLevel = document.getElementById('vibeLevel');
+                this.beatVisualizer = document.getElementById('beatVisualizer');
+                this.typingIndicator = document.getElementById('typingIndicator');
+                
+                this.particles = [];
+                this.floatingCode = [];
+                this.vibeIntensity = 0;
+                this.beatPattern = 0;
+                this.typingTimeout = null;
+                
+                this.init();
+                this.setupEventListeners();
+                this.startAnimation();
+            }
+            
+            init() {
+                this.resizeCanvas();
+                this.createParticles();
+                window.addEventListener('resize', () => this.resizeCanvas());
+            }
+            
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                this.particlesCanvas.width = window.innerWidth;
+                this.particlesCanvas.height = window.innerHeight;
+            }
+            
+            createParticles() {
+                for (let i = 0; i < 100; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        vx: (Math.random() - 0.5) * 0.5,
+                        vy: (Math.random() - 0.5) * 0.5,
+                        size: Math.random() * 3 + 1,
+                        color: this.getRandomColor(),
+                        life: Math.random() * 100 + 50
+                    });
+                }
+            }
+            
+            getRandomColor() {
+                const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7'];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+            
+            setupEventListeners() {
+                this.codeInput.addEventListener('input', (e) => {
+                    this.onCodeInput(e.target.value);
+                });
+                
+                document.getElementById('clearBtn').addEventListener('click', () => {
+                    this.codeInput.value = '';
+                    this.vibeIntensity = 0;
+                    this.updateVibeLevel();
+                });
+                
+                document.getElementById('randomBtn').addEventListener('click', () => {
+                    this.insertRandomCode();
+                });
+                
+                document.getElementById('vibeBtn').addEventListener('click', () => {
+                    this.triggerVibeExplosion();
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    this.createMouseTrail(e.clientX, e.clientY);
+                });
+            }
+            
+            onCodeInput(code) {
+                clearTimeout(this.typingTimeout);
+                this.typingIndicator.classList.add('active');
+                
+                this.calculateVibeIntensity(code);
+                this.updateVibeLevel();
+                this.createCodeParticles();
+                this.spawnFloatingCode(code);
+                
+                this.typingTimeout = setTimeout(() => {
+                    this.typingIndicator.classList.remove('active');
+                }, 1000);
+            }
+            
+            calculateVibeIntensity(code) {
+                const length = code.length;
+                const keywords = ['function', 'class', 'const', 'let', 'var', 'if', 'for', 'while', 'vibe'];
+                let keywordCount = 0;
+                
+                keywords.forEach(keyword => {
+                    keywordCount += (code.match(new RegExp(keyword, 'g')) || []).length;
+                });
+                
+                this.vibeIntensity = Math.min(100, (length * 0.1) + (keywordCount * 10));
+            }
+            
+            updateVibeLevel() {
+                this.vibeLevel.style.height = `${this.vibeIntensity}%`;
+            }
+            
+            createCodeParticles() {
+                for (let i = 0; i < 5; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: this.canvas.height,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: -Math.random() * 3 - 1,
+                        size: Math.random() * 4 + 2,
+                        color: this.getRandomColor(),
+                        life: 60,
+                        isCode: true
+                    });
+                }
+            }
+            
+            spawnFloatingCode(code) {
+                if (code.length > 0) {
+                    const words = code.split(/\s+/).filter(word => word.length > 0);
+                    if (words.length > 0) {
+                        const word = words[Math.floor(Math.random() * words.length)];
+                        this.createFloatingElement(word);
+                    }
+                }
+            }
+            
+            createFloatingElement(text) {
+                const element = document.createElement('div');
+                element.className = 'floating-code';
+                element.textContent = text;
+                element.style.left = Math.random() * window.innerWidth + 'px';
+                element.style.animationDelay = Math.random() * 2 + 's';
+                document.body.appendChild(element);
+                
+                setTimeout(() => {
+                    element.remove();
+                }, 8000);
+            }
+            
+            createMouseTrail(x, y) {
+                for (let i = 0; i < 3; i++) {
+                    this.particles.push({
+                        x: x + (Math.random() - 0.5) * 20,
+                        y: y + (Math.random() - 0.5) * 20,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        size: Math.random() * 2 + 1,
+                        color: this.getRandomColor(),
+                        life: 30
+                    });
+                }
+            }
+            
+            insertRandomCode() {
+                const randomCodes = [
+                    'console.log("Hello Vibe!");',
+                    'const vibe = () => "awesome";',
+                    'let energy = 100;',
+                    'function createMagic() { return "✨"; }',
+                    'const colors = ["#ff6b6b", "#4ecdc4"];',
+                    'if (vibe > 9000) { explode(); }',
+                    'while (coding) { enjoy(); }',
+                    'class VibeGenerator { constructor() { this.level = 100; } }'
+                ];
+                
+                const randomCode = randomCodes[Math.floor(Math.random() * randomCodes.length)];
+                this.codeInput.value += '\n' + randomCode;
+                this.onCodeInput(this.codeInput.value);
+            }
+            
+            triggerVibeExplosion() {
+                for (let i = 0; i < 50; i++) {
+                    this.particles.push({
+                        x: this.canvas.width / 2,
+                        y: this.canvas.height / 2,
+                        vx: (Math.random() - 0.5) * 10,
+                        vy: (Math.random() - 0.5) * 10,
+                        size: Math.random() * 6 + 3,
+                        color: this.getRandomColor(),
+                        life: 120,
+                        isExplosion: true
+                    });
+                }
+                
+                this.vibeIntensity = 100;
+                this.updateVibeLevel();
+            }
+            
+            updateBeatVisualizer() {
+                const bars = this.beatVisualizer.querySelectorAll('.beat-bar');
+                bars.forEach((bar, index) => {
+                    const shouldBeActive = (this.beatPattern + index) % 8 < 4;
+                    bar.classList.toggle('active', shouldBeActive);
+                });
+                this.beatPattern = (this.beatPattern + 1) % 16;
+            }
+            
+            updateParticles() {
+                this.particlesCtx.clearRect(0, 0, this.particlesCanvas.width, this.particlesCanvas.height);
+                
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const particle = this.particles[i];
+                    
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.life--;
+                    
+                    if (particle.life <= 0) {
+                        this.particles.splice(i, 1);
+                        continue;
+                    }
+                    
+                    const alpha = particle.life / (particle.isExplosion ? 120 : 60);
+                    this.particlesCtx.save();
+                    this.particlesCtx.globalAlpha = alpha;
+                    this.particlesCtx.fillStyle = particle.color;
+                    this.particlesCtx.beginPath();
+                    this.particlesCtx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    this.particlesCtx.fill();
+                    this.particlesCtx.restore();
+                }
+            }
+            
+            drawBackground() {
+                const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+                gradient.addColorStop(0, `rgba(10, 10, 10, 0.1)`);
+                gradient.addColorStop(0.5, `rgba(26, 26, 46, 0.1)`);
+                gradient.addColorStop(1, `rgba(22, 33, 62, 0.1)`);
+                
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+            
+            startAnimation() {
+                const animate = () => {
+                    this.drawBackground();
+                    this.updateParticles();
+                    
+                    if (Date.now() % 200 < 50) {
+                        this.updateBeatVisualizer();
+                    }
+                    
+                    requestAnimationFrame(animate);
+                };
+                animate();
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            new VibeCoding();
+        });
+    </script>
+</body>
+</html>
+
+<!--
+AI Model: Claude 3.5 Sonnet
+User Prompt: vibeディレクトリを作成し、vibe codingを体感するwebアプリを作ってください
+AI Approach: Interactive web application with visual effects, particles, and real-time feedback based on code input
+Implementation Intent: Create an immersive "vibe coding" experience with visual effects, particle systems, and interactive elements that respond to user input
+-->
