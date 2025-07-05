@@ -106,6 +106,10 @@ Claude Codeで作成されたシューティングゲーム。
 *スマホ対応: ✅ / Smartphone Support: ✅*
 *開発日: 不明 / Development Date: Unknown*
 
+#### [化学式クイズ](chem_formula_quiz/index.html) 🧪🎮🖱️
+化学式と物質名をマッチングするミニゲーム。
+*操作: マウスクリック*
+
 ### 🎭 Interactive & Utilities
 
 #### [Anthropic & Claude 愛称ジェネレーター](claude_nickname/index.html) 🖱️
