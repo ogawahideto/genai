@@ -197,6 +197,62 @@ Excel形式の報告書作成ツール。
 *スマホ対応: ✅ / Smartphone Support: ✅*
 *開発日: 不明 / Development Date: Unknown*
 
+#### [Cube Claude](cube-claude/index.html) 🎮🖱️
+3Dキューブを使ったインタラクティブなClaude体験アプリ。
+*Interactive 3D cube experience featuring Claude.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
+#### [Cube Gemini](cube-gemini/index.html) 🎮🖱️
+3DキューブベースのGemini体験アプリ。
+*3D cube-based Gemini experience application.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
+#### [四人囲碁](four_player_go/index.html) 🖱️
+4人対戦用の革新的な囲碁ゲーム。
+*Innovative four-player Go game.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
+#### [Gemini Game](gemini-game/index.html) 🎮🖱️
+Gemini AIをテーマにしたインタラクティブゲーム。
+*Interactive game themed around Gemini AI.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
+#### [LLM Battle](llm-battle/index.html) 🎮🖱️
+異なるLLMモデル間のバトルシミュレーションゲーム。
+*Battle simulation game between different LLM models.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
+#### [ピタゴラゲーム](pitagora-game/index.html) 🎮🖱️
+ピタゴラスイッチ風の物理パズルゲーム。
+*Rube Goldberg machine-style physics puzzle game.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
+#### [UNO風ゲーム](uno-like/index.html) 🎮🖱️
+UNOに似たカードゲーム。
+*Card game similar to UNO.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
+#### [Vibe](vibe/index.html) 🎮🖱️
+インタラクティブなバイブ体験アプリ。
+*Interactive vibe experience application.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
 ---
 
 ## 技術的特徴
