@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>化学式クイズ</title>
+<style>
+ body {font-family: sans-serif; text-align:center; background:#f0f8ff; margin:0; padding:20px;}
+ h1 {color:#2c3e50;}
+ #quiz {margin-top:30px;}
+ button.option {display:block; width:80%; max-width:300px; margin:10px auto; padding:10px; font-size:18px; border-radius:6px; border:none; background:#ecf0f1; cursor:pointer;}
+ button.option:hover {background:#d0e4f5;}
+ #score {margin-top:20px; font-size:20px; color:#2c3e50;}
+ #result {margin-top:40px; font-size:24px; color:#e74c3c;}
+ #startBtn {padding:10px 30px; font-size:20px;}
+</style>
+</head>
+<body>
+<h1>化学式クイズ</h1>
+<div id="quiz">
+  <p id="question"></p>
+  <div id="options"></div>
+</div>
+<p id="score"></p>
+<p id="result"></p>
+<button id="startBtn">スタート</button>
+<script>
+const data = [
+  {formula:"H2O", name:"水"},
+  {formula:"CO2", name:"二酸化炭素"},
+  {formula:"O2", name:"酸素"},
+  {formula:"N2", name:"窒素"},
+  {formula:"CH4", name:"メタン"},
+  {formula:"C2H5OH", name:"エタノール"},
+  {formula:"NH3", name:"アンモニア"},
+  {formula:"NaCl", name:"食塩"},
+  {formula:"H2SO4", name:"硫酸"},
+  {formula:"NaHCO3", name:"重曹"},
+];
+let questions = [];
+let current = 0;
+let score = 0;
+let audioCtx;
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()* (i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}}
+function playTone(freq){audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)(); const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.frequency.value=freq; o.connect(g); g.connect(audioCtx.destination); o.start(); setTimeout(()=>{o.stop();},150);} 
+function showQuestion(){document.getElementById('result').textContent=''; const q=questions[current]; document.getElementById('question').textContent=`${q.formula} はどれ？`; const opts=[q.name]; while(opts.length<4){const rand=data[Math.floor(Math.random()*data.length)].name; if(!opts.includes(rand)) opts.push(rand);} shuffle(opts); const optDiv=document.getElementById('options'); optDiv.innerHTML=''; opts.forEach(text=>{const btn=document.createElement('button'); btn.textContent=text; btn.className='option'; btn.onclick=()=>answer(text); optDiv.appendChild(btn);}); document.getElementById('score').textContent=`第 ${current+1} 問 / 得点 ${score}`;}
+function answer(choice){const q=questions[current]; if(choice===q.name){score++; playTone(600); document.getElementById('result').textContent='正解！'; } else {playTone(200); document.getElementById('result').textContent=`残念 正解は ${q.name}`;} current++; if(current<questions.length){setTimeout(showQuestion,800);} else {showEnd();}}
+function showEnd(){document.getElementById('quiz').style.display='none'; document.getElementById('score').textContent=`最終得点: ${score} / ${questions.length}`; document.getElementById('startBtn').textContent='もう一度'; document.getElementById('startBtn').style.display='inline-block';}
+function start(){questions=data.slice(); shuffle(questions); current=0; score=0; document.getElementById('quiz').style.display='block'; document.getElementById('startBtn').style.display='none'; showQuestion();}
+document.getElementById('startBtn').onclick=start;
+</script>
+</body>
+</html>
