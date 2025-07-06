@@ -190,6 +190,13 @@ Excel形式の報告書作成ツール。
 *スマホ対応: ✅ / Smartphone Support: ✅*
 *開発日: 不明 / Development Date: Unknown*
 
+#### [たなばたイブ](tanabata-eve/index.html) 🎮🖱️
+七夕の前夜を楽しむインタラクティブアプリ。
+*Interactive application for enjoying Tanabata Eve.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
 #### [ALPHARD SmartBuy](zancre/index.html) 🖱️
 アルファード購入支援アプリ。車両選択とカスタマイズ機能付き。
 *Alphard car purchase assistance app with vehicle selection and customization features.*
@@ -225,6 +232,13 @@ Gemini AIをテーマにしたインタラクティブゲーム。
 *スマホ対応: ✅ / Smartphone Support: ✅*
 *開発日: 不明 / Development Date: Unknown*
 
+#### [Gemini Web](gemini-web/index.html) 🎮🖱️
+Gemini AIをテーマにしたウェブアプリケーション。
+*Web application themed around Gemini AI.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
 #### [LLM Battle](llm-battle/index.html) 🎮🖱️
 異なるLLMモデル間のバトルシミュレーションゲーム。
 *Battle simulation game between different LLM models.*
@@ -249,6 +263,13 @@ UNOに似たカードゲーム。
 #### [Vibe](vibe/index.html) 🎮🖱️
 インタラクティブなバイブ体験アプリ。
 *Interactive vibe experience application.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
+#### [Swingby Simulator](swingby/index.html) 🚀🖱️
+天体の重力を利用した軌道シミュレーター。
+*Orbital simulator using planetary gravity assists.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
 *開発日: 不明 / Development Date: Unknown*
