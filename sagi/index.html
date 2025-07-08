@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚨緊急警告🚨 サギの真実を知らないと大変なことに！</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+            background-size: 400% 400%;
+            animation: gradientShift 3s ease infinite;
+            overflow-x: hidden;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .warning-banner {
+            background: linear-gradient(45deg, #ff4444, #ff6666);
+            color: white;
+            text-align: center;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+            border: 3px solid #fff;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: shine 3s infinite;
+        }
+        
+        @keyframes shine {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .header h1 {
+            font-size: 3em;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .subtitle {
+            font-size: 1.5em;
+            margin-top: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .content-box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border: 2px solid #ddd;
+            position: relative;
+        }
+        
+        .urgent-text {
+            color: #ff4444;
+            font-weight: bold;
+            font-size: 1.2em;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        .sagi-card {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .sagi-emoji {
+            font-size: 4em;
+            margin-right: 20px;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        
+        .button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0,0,0,0.3);
+        }
+        
+        .testimonial {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #fdcb6e;
+            font-style: italic;
+        }
+        
+        .countdown {
+            background: #2d3436;
+            color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .countdown-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #ff6b6b;
+            display: inline-block;
+            margin: 0 5px;
+        }
+        
+        .floating-sagi {
+            position: fixed;
+            font-size: 2em;
+            z-index: 1000;
+            pointer-events: none;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(10deg); }
+        }
+        
+        .sparkle {
+            position: absolute;
+            color: #ffd700;
+            font-size: 1.5em;
+            animation: sparkle 2s infinite;
+        }
+        
+        @keyframes sparkle {
+            0%, 100% { opacity: 0; transform: scale(0); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+        
+        .scroll-text {
+            background: #2d3436;
+            color: #fff;
+            padding: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .scroll-text span {
+            display: inline-block;
+            animation: scroll 15s linear infinite;
+        }
+        
+        @keyframes scroll {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-sagi" id="floatingSagi1">🦆</div>
+    <div class="floating-sagi" id="floatingSagi2">🕊️</div>
+    <div class="floating-sagi" id="floatingSagi3">🦢</div>
+    
+    <div class="container">
+        <div class="warning-banner">
+            🚨 緊急速報！サギの真実が今明かされる！見逃すと後悔します！🚨
+        </div>
+        
+        <div class="header">
+            <h1>🦆 サギサイト 🦆</h1>
+            <p class="subtitle">〜 鷺の驚愕の真実を暴露！知らなきゃ損する鷺情報 〜</p>
+            <div class="sparkle" style="top: 20%; left: 10%;">✨</div>
+            <div class="sparkle" style="top: 60%; right: 15%;">⭐</div>
+        </div>
+        
+        <div class="scroll-text">
+            <span>📢 速報：全国の池や川で鷺が急増中！その理由とは？ 📢 専門家も驚く鷺の能力が判明！ 📢</span>
+        </div>
+        
+        <div class="content-box">
+            <h2>🚨 <span class="urgent-text">今すぐ確認！</span> あなたの近くの鷺は大丈夫？</h2>
+            <p>最新の研究で判明した<strong>鷺の驚異的な能力</strong>をご存知ですか？</p>
+            <p>なんと鷺は...</p>
+            <ul>
+                <li>🎯 <strong>99.9%の確率で魚を捕獲</strong>する驚異のハンティング能力</li>
+                <li>🏃‍♂️ <strong>時速50kmで飛行</strong>する隠された高速移動能力</li>
+                <li>🧠 <strong>人間の顔を記憶</strong>する恐るべき知能</li>
+                <li>👁️ <strong>紫外線も見える</strong>超人的視力</li>
+            </ul>
+            <p class="urgent-text">これらの事実を知らないままでは危険です！</p>
+        </div>
+        
+        <div class="countdown">
+            <h3>⏰ 限定公開まであと...</h3>
+            <div>
+                <span class="countdown-number" id="hours">23</span>時間
+                <span class="countdown-number" id="minutes">59</span>分
+                <span class="countdown-number" id="seconds">59</span>秒
+            </div>
+            <p>※この情報は24時間限定公開です</p>
+        </div>
+        
+        <div class="content-box">
+            <h2>📚 鷺の種類別危険度ランキング</h2>
+            
+            <div class="sagi-card">
+                <div class="sagi-emoji">🦆</div>
+                <div>
+                    <h3>アオサギ（危険度：★★★★★）</h3>
+                    <p>全長100cm超の巨大サギ！その威圧感は他の鳥類を圧倒します。池の帝王として君臨し、魚を一瞬で捕獲する技術は職人級です。</p>
+                </div>
+            </div>
+            
+            <div class="sagi-card">
+                <div class="sagi-emoji">🕊️</div>
+                <div>
+                    <h3>シラサギ（危険度：★★★★☆）</h3>
+                    <p>純白の美しさに騙されてはいけません！その美貌の裏には計算高い知能が隠されています。優雅な見た目とは裏腹に、狩りの腕は一流です。</p>
+                </div>
+            </div>
+            
+            <div class="sagi-card">
+                <div class="sagi-emoji">🦢</div>
+                <div>
+                    <h3>コサギ（危険度：★★★☆☆）</h3>
+                    <p>小さいからと侮ってはいけません！そのコンパクトなボディには無限の可能性が秘められています。俊敏性では他の鷺の追随を許しません。</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="testimonial">
+            <h3>💬 実際に鷺と遭遇した方の証言</h3>
+            <p>「公園の池で鷺を見かけたとき、まさかあんなに堂々としているとは思いませんでした。魚を捕る瞬間の集中力は人間顔負けです！」</p>
+            <p><strong>- 田中さん（42歳・会社員）</strong></p>
+        </div>
+        
+        <div class="testimonial">
+            <h3>💬 鳥類学者のコメント</h3>
+            <p>「鷺の生態系における重要性は計り知れません。彼らがいなければ、水辺のバランスは崩れてしまうでしょう。まさに自然界の調整役です！」</p>
+            <p><strong>- 山田博士（鳥類学専門）</strong></p>
+        </div>
+        
+        <div class="content-box">
+            <h2>🎁 今だけ特別プレゼント！</h2>
+            <p>このサイトをご覧になった方限定で、<strong>「鷺との上手な付き合い方」完全マニュアル</strong>を無料プレゼント！</p>
+            <ul>
+                <li>✅ 鷺に好かれる餌の与え方</li>
+                <li>✅ 鷺の写真を美しく撮る方法</li>
+                <li>✅ 鷺との安全な距離の保ち方</li>
+                <li>✅ 鷺の鳴き声の意味を理解する方法</li>
+            </ul>
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="button" onclick="alert('鷺との素晴らしい関係が築けそうですね！🦆')">今すぐ無料でゲット！</button>
+            </div>
+        </div>
+        
+        <div class="content-box">
+            <h2>🔥 緊急警告：鷺の魅力度が急上昇中！</h2>
+            <p class="urgent-text">注意：鷺の魅力を知ってしまうと、もう他の鳥では満足できなくなる可能性があります！</p>
+            <p>実際に鷺ファンになってしまった方々の声：</p>
+            <ul>
+                <li>「毎朝公園に鷺を見に行くのが日課になりました」</li>
+                <li>「鷺の優雅な立ち姿に癒されています」</li>
+                <li>「鷺のグッズを集めるのが趣味になりました」</li>
+            </ul>
+            <p><strong>あなたも鷺の虜になってしまうかもしれません！</strong></p>
+        </div>
+        
+        <div style="text-align: center; margin: 50px 0;">
+            <h2>🌟 さあ、あなたも鷺の世界へ！</h2>
+            <button class="button" onclick="showSagiWisdom()">鷺の知恵を授かる</button>
+            <button class="button" onclick="alert('近くの公園や池で鷺を探してみてください！🦆')">鷺を探しに行く</button>
+        </div>
+        
+        <div class="content-box" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h2>🏆 鷺マスター認定証</h2>
+            <p>このサイトをここまで読んだあなたは、もう立派な鷺マスターです！</p>
+            <p>認定番号：SAGI-2024-<span id="certNumber">000001</span></p>
+            <p>※この認定証は鷺愛好家としての知識を証明するものです（非公式）</p>
+        </div>
+    </div>
+    
+    <script>
+        // フローティング鷺の位置をランダムに設定
+        function setRandomPosition() {
+            const sagis = document.querySelectorAll('.floating-sagi');
+            sagis.forEach((sagi, index) => {
+                const x = Math.random() * (window.innerWidth - 100);
+                const y = Math.random() * (window.innerHeight - 100);
+                sagi.style.left = x + 'px';
+                sagi.style.top = y + 'px';
+                sagi.style.animationDelay = (index * 2) + 's';
+            });
+        }
+        
+        // カウントダウン
+        function updateCountdown() {
+            const hours = document.getElementById('hours');
+            const minutes = document.getElementById('minutes');
+            const seconds = document.getElementById('seconds');
+            
+            let h = parseInt(hours.textContent);
+            let m = parseInt(minutes.textContent);
+            let s = parseInt(seconds.textContent);
+            
+            s--;
+            if (s < 0) {
+                s = 59;
+                m--;
+                if (m < 0) {
+                    m = 59;
+                    h--;
+                    if (h < 0) {
+                        h = 23;
+                    }
+                }
+            }
+            
+            hours.textContent = h.toString().padStart(2, '0');
+            minutes.textContent = m.toString().padStart(2, '0');
+            seconds.textContent = s.toString().padStart(2, '0');
+        }
+        
+        // 鷺の知恵を表示
+        function showSagiWisdom() {
+            const wisdoms = [
+                "🦆 「水辺で忍耐強く待つ者に、魚は必ず訪れる」",
+                "🕊️ \"優雅さは内面から滲み出るものである\"",
+                "🦢 \"一つの獲物に集中することで、確実な成果を得られる\"",
+                "🦆 \"静寂の中にこそ、真の力が宿る\"",
+                "🕊️ \"美しさとは、自然体でいることから生まれる\""
+            ];
+            const randomWisdom = wisdoms[Math.floor(Math.random() * wisdoms.length)];
+            alert(`鷺の知恵：${randomWisdom}`);
+        }
+        
+        // 認定番号をランダム生成
+        function generateCertNumber() {
+            const number = Math.floor(Math.random() * 999999) + 1;
+            document.getElementById('certNumber').textContent = number.toString().padStart(6, '0');
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            setRandomPosition();
+            generateCertNumber();
+            setInterval(updateCountdown, 1000);
+            setInterval(setRandomPosition, 10000); // 10秒ごとに位置変更
+        });
+    </script>
+</body>
+</html>
