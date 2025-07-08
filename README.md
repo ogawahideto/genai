@@ -246,6 +246,13 @@ Gemini AIをテーマにしたウェブアプリケーション。
 *スマホ対応: ✅ / Smartphone Support: ✅*
 *開発日: 不明 / Development Date: Unknown*
 
+#### [サギサイト](sagi/index.html) 🦆🖱️
+鷺（サギ）の生態を面白おかしく紹介するパロディサイト。詐欺サイトのスタイルを模倣した教育的コメディアプリ。
+*Parody website introducing heron ecology in a humorous way. Educational comedy app that mimics the style of scam websites.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 不明 / Development Date: Unknown*
+
 #### [ピタゴラゲーム](pitagora-game/index.html) 🎮🖱️
 ピタゴラスイッチ風の物理パズルゲーム。
 *Rube Goldberg machine-style physics puzzle game.*
