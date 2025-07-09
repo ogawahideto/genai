@@ -108,7 +108,10 @@ Claude Codeで作成されたシューティングゲーム。
 
 #### [化学式クイズ](chem_formula_quiz/index.html) 🧪🎮🖱️
 化学式と物質名をマッチングするミニゲーム。
-*操作: マウスクリック*
+*Chemistry quiz game matching chemical formulas with substance names.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 2025-07-05 / Development Date: July 5, 2025*
 
 ### 🎭 Interactive & Utilities
 
@@ -188,98 +191,112 @@ Excel形式の報告書作成ツール。
 *Literally "do nothing" simple app. Minimal functionality app where you can feel a sense of accomplishment.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-06-26 / Development Date: June 26, 2025*
 
 #### [たなばたイブ](tanabata-eve/index.html) 🎮🖱️
 七夕の前夜を楽しむインタラクティブアプリ。
 *Interactive application for enjoying Tanabata Eve.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-07-06 / Development Date: July 6, 2025*
 
 #### [ALPHARD SmartBuy](zancre/index.html) 🖱️
 アルファード購入支援アプリ。車両選択とカスタマイズ機能付き。
 *Alphard car purchase assistance app with vehicle selection and customization features.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-06-27 / Development Date: June 27, 2025*
 
 #### [Cube Claude](cube-claude/index.html) 🎮🖱️
 3Dキューブを使ったインタラクティブなClaude体験アプリ。
 *Interactive 3D cube experience featuring Claude.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-06-29 / Development Date: June 29, 2025*
 
 #### [Cube Gemini](cube-gemini/index.html) 🎮🖱️
 3DキューブベースのGemini体験アプリ。
 *3D cube-based Gemini experience application.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-06-29 / Development Date: June 29, 2025*
 
 #### [四人囲碁](four_player_go/index.html) 🖱️
 4人対戦用の革新的な囲碁ゲーム。
 *Innovative four-player Go game.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-06-28 / Development Date: June 28, 2025*
 
 #### [Gemini Game](gemini-game/index.html) 🎮🖱️
 Gemini AIをテーマにしたインタラクティブゲーム。
 *Interactive game themed around Gemini AI.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-07-02 / Development Date: July 2, 2025*
 
 #### [Gemini Web](gemini-web/index.html) 🎮🖱️
 Gemini AIをテーマにしたウェブアプリケーション。
 *Web application themed around Gemini AI.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-07-05 / Development Date: July 5, 2025*
 
 #### [LLM Battle](llm-battle/index.html) 🎮🖱️
 異なるLLMモデル間のバトルシミュレーションゲーム。
 *Battle simulation game between different LLM models.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-07-02 / Development Date: July 2, 2025*
 
 #### [サギサイト](sagi/index.html) 🦆🖱️
 鷺（サギ）の生態を面白おかしく紹介するパロディサイト。詐欺サイトのスタイルを模倣した教育的コメディアプリ。
 *Parody website introducing heron ecology in a humorous way. Educational comedy app that mimics the style of scam websites.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-07-08 / Development Date: July 8, 2025*
 
 #### [ピタゴラゲーム](pitagora-game/index.html) 🎮🖱️
 ピタゴラスイッチ風の物理パズルゲーム。
 *Rube Goldberg machine-style physics puzzle game.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-06-30 / Development Date: June 30, 2025*
 
 #### [UNO風ゲーム](uno-like/index.html) 🎮🖱️
 UNOに似たカードゲーム。
 *Card game similar to UNO.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-07-04 / Development Date: July 4, 2025*
 
 #### [Vibe](vibe/index.html) 🎮🖱️
 インタラクティブなバイブ体験アプリ。
 *Interactive vibe experience application.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-07-05 / Development Date: July 5, 2025*
 
-#### [Swingby Simulator](swingby/index.html) 🚀🖱️
+#### [Swingby Simulator](swingby/public/index.html) 🚀🖱️
 天体の重力を利用した軌道シミュレーター。
 *Orbital simulator using planetary gravity assists.*
 *操作: マウスクリック / Controls: Mouse click*
 *スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+*開発日: 2025-07-05 / Development Date: July 5, 2025*
+
+#### [当たる予言](ataru-yogen/index.html) 🎮🖱️
+必ず当たる予言を生成するユニークなアプリ。
+*Unique app that generates predictions that are always correct.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 2025-07-08 / Development Date: July 8, 2025*
+
+#### [ECサイト](ecsite/index.html) 🛒🖱️
+フルフィーチャーなeコマースサイト。商品閲覧、カート、配送機能を備えています。
+*Full-featured e-commerce site with product browsing, cart, and shipping features.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 2025-07-09 / Development Date: July 9, 2025*
 
 ---
 
