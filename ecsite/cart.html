@@ -28,28 +28,16 @@
                         <tr>
                             <th>御品</th>
                             <th>価格</th>
-                            <th>数量</th>
-                            <th>小計</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr>
-                            <td>最新式ちょんまげ</td>
-                            <td>二両</td>
-                            <td>壱</td>
-                            <td>二両</td>
-                        </tr>
-                        <tr>
-                            <td>浮世絵「富嶽三十六景」揃</td>
-                            <td>五十両</td>
-                            <td>壱</td>
-                            <td>五十両</td>
-                        </tr>
+                    <tbody id="cart-body">
+                        <!-- ここに商品が動的に追加されます -->
                     </tbody>
                 </table>
                 <div class="cart-total">
-                    <h3>合計: 五十二両</h3>
+                    <h3 id="cart-total">合計: ---</h3>
                     <button class="checkout-btn">勘定を済ませる</button>
+                    <button class="clear-cart-btn">かごを空にする</button>
                 </div>
             </div>
         </div>
@@ -61,10 +49,6 @@
         </div>
     </footer>
 
-    <script>
-        document.querySelector('.checkout-btn').addEventListener('click', () => {
-            alert('毎度ありがとうございます！すぐに飛脚を向かわせまする！');
-        });
-    </script>
+    <script src="cart-logic.js"></script>
 </body>
 </html>
