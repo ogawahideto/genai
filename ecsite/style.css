@@ -1,0 +1,184 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap');
+
+body {
+    font-family: 'Noto Serif JP', serif;
+    background-color: #f3f0e9; /* 和紙のような色 */
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+header {
+    background-color: #5a4a42; /* 焦げ茶 */
+    color: #f3f0e9;
+    padding: 1em 0;
+    text-align: center;
+    border-bottom: 5px solid #d4ac0d; /* 金色 */
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2.5em;
+}
+
+header .tagline {
+    margin: 0;
+    font-size: 1em;
+    opacity: 0.9;
+}
+
+nav {
+    margin-top: 1em;
+}
+
+nav a {
+    color: #f3f0e9;
+    text-decoration: none;
+    margin: 0 15px;
+    font-size: 1.1em;
+}
+
+main {
+    padding: 2em 0;
+}
+
+main h2 {
+    text-align: center;
+    font-size: 2em;
+    margin-bottom: 1.5em;
+    /* border-bottom: 2px solid #5a4a42; */
+    /* display: inline-block; */
+    padding-bottom: 0.3em;
+}
+
+.main-content h2 {
+    text-align: center;
+    font-size: 2em;
+    margin-bottom: 1.5em;
+    border-bottom: 2px solid #5a4a42;
+    display: inline-block;
+    padding-bottom: 0.3em;
+}
+
+.main-content {
+    background: #fff;
+    padding: 2em;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.text-content p {
+    line-height: 1.8;
+}
+
+.text-content h3 {
+    font-size: 1.5em;
+    margin-top: 1.5em;
+    border-left: 5px solid #c0392b;
+    padding-left: 0.5em;
+}
+
+/* Cart Table */
+.cart-items table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 2em;
+}
+
+.cart-items th, .cart-items td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: center;
+}
+
+.cart-items th {
+    background-color: #f2f2f2;
+}
+
+.cart-total {
+    text-align: right;
+}
+
+.cart-total h3 {
+    font-size: 1.8em;
+    margin-bottom: 0.5em;
+}
+
+.checkout-btn {
+    background-color: #c0392b; /* 朱色 */
+    color: #fff;
+    border: none;
+    padding: 15px 30px;
+    cursor: pointer;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 1.2em;
+    transition: background-color 0.3s;
+}
+
+.checkout-btn:hover {
+    background-color: #a93226;
+}
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2em;
+}
+
+.product-card {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    text-align: center;
+    padding: 1.5em;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.product-image {
+    height: 150px;
+    background-color: #e0e0e0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #888;
+    margin-bottom: 1em;
+}
+
+.product-card h3 {
+    margin: 0.5em 0;
+    font-size: 1.4em;
+}
+
+.price {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #c0392b; /* 朱色 */
+    margin: 0.5em 0;
+}
+
+.cart-btn {
+    background-color: #2c3e50; /* 藍色 */
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 1em;
+    transition: background-color 0.3s;
+}
+
+.cart-btn:hover {
+    background-color: #34495e;
+}
+
+footer {
+    background-color: #333;
+    color: #f3f0e9;
+    text-align: center;
+    padding: 1.5em 0;
+    margin-top: 2em;
+}
