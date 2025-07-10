@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap');
+
+body {
+    font-family: 'Noto Serif JP', serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+}
+
+.container {
+    text-align: center;
+    background-color: #2c2c2c;
+    padding: 3em;
+    border-radius: 15px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+    border: 1px solid #444;
+}
+
+h1 {
+    color: #c7a500;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+#date {
+    color: #aaa;
+    font-size: 0.9em;
+    margin-top: -1.5em;
+    margin-bottom: 2em;
+}
+
+#prediction {
+    font-size: 1.5em;
+    margin: 2em 0;
+    min-height: 4em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #f0f0f0;
+    font-weight: 400;
+    font-style: italic;
+}
+
+button {
+    padding: 12px 25px;
+    font-size: 1.1em;
+    cursor: pointer;
+    border: 1px solid #c7a500;
+    border-radius: 8px;
+    background-color: #333;
+    color: #c7a500;
+    transition: background-color 0.3s, color 0.3s, box-shadow 0.3s;
+    font-family: 'Noto Serif JP', serif;
+}
+
+button:hover {
+    background-color: #c7a500;
+    color: #2c2c2c;
+    box-shadow: 0 0 15px rgba(200, 165, 0, 0.6);
+}
