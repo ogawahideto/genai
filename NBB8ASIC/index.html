@@ -1,0 +1,567 @@
+<!--
+AI Model: Claude 3.5 Sonnet
+User Prompt: NBB8ASICディレクトリはN88 BASIC風のWebアプリです。単独のhtmlで動くように作ったはずですが動きません。修正してください。
+AI Approach: 外部CDN依存を排除し、バニラJavaScriptで実装してCLAUDE.mdの単一ファイル方針に従う
+Implementation Intent: N88 BASIC風のレトロコンピューターエミュレータ
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBB 8ASIC エミュレータ</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            background-color: #000;
+            color: #00ff00;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .terminal {
+            background-color: #000;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 24px;
+            color: #00ff88;
+            margin: 0 0 10px 0;
+        }
+        .header p {
+            font-size: 14px;
+            color: #00ff88;
+            margin: 0;
+        }
+        .screen {
+            background-color: #111;
+            border: 1px solid #00ff00;
+            border-radius: 4px;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .output-line {
+            margin-bottom: 5px;
+        }
+        .input-line {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .prompt {
+            color: #00ff88;
+            margin-right: 10px;
+        }
+        .input-area {
+            flex: 1;
+            position: relative;
+        }
+        .input-field {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            width: 100%;
+            line-height: 1.4;
+            display: inline;
+        }
+        .cursor {
+            position: absolute;
+            animation: blink 1s infinite;
+            line-height: 1.4;
+            left: 0;
+            top: 0;
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        .help-text {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #00ff88;
+        }
+        .help-text p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="terminal">
+            <div class="header">
+                <h1>NBB 8ASIC エミュレータ</h1>
+                <p>HELPでコマンド表示</p>
+            </div>
+            <div class="screen" id="screen">
+                <div class="output-line">NBB 8ASIC Ver.2024</div>
+                <div class="output-line">Ready</div>
+                <div class="input-line">
+                    <span class="prompt">></span>
+                    <div class="input-area">
+                        <input type="text" id="inputField" class="input-field" autocomplete="off">
+                        <span class="cursor">█</span>
+                    </div>
+                </div>
+            </div>
+            <div class="help-text">
+                <p>キーボード操作: Enter=実行, ↑↓=履歴</p>
+                <p>サンプル: LOAD "DEMO" または SAMPLES で一覧表示</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class N88BasicEmulator {
+            constructor() {
+                this.program = {};
+                this.output = [];
+                this.history = [];
+                this.historyIndex = -1;
+                this.isRunning = false;
+                this.variables = {};
+                this.forStack = [];
+                
+                this.samplePrograms = {
+                    'DEMO': [
+                        '10 PRINT "こんにちは、レトロな世界へようこそ！"',
+                        '20 FOR I = 1 TO 10',
+                        '30 PRINT I; "番目のメッセージ"',
+                        '40 NEXT I',
+                        '50 PRINT "プログラム終了"'
+                    ],
+                    'FORTUNE': [
+                        '10 PRINT "今日の運勢は..."',
+                        '20 N = INT(RND(1) * 5) + 1',
+                        '30 IF N = 1 THEN PRINT "大吉：今日はラッキーデー！"',
+                        '40 IF N = 2 THEN PRINT "中吉：まずまずの日になりそう"',
+                        '50 IF N = 3 THEN PRINT "小吉：小さな幸せが見つかるかも"',
+                        '60 IF N = 4 THEN PRINT "吉：普通の日、でも悪くない"',
+                        '70 IF N = 5 THEN PRINT "凶：明日に期待しよう..."'
+                    ],
+                    'PATTERN': [
+                        '10 FOR I = 1 TO 10',
+                        '20 FOR J = 1 TO I',
+                        '30 PRINT "*";',
+                        '40 NEXT J',
+                        '50 PRINT',
+                        '60 NEXT I'
+                    ]
+                };
+                
+                this.initializeUI();
+                this.setupEventListeners();
+                this.updateCursorPosition();
+            }
+            
+            initializeUI() {
+                this.screen = document.getElementById('screen');
+                this.inputField = document.getElementById('inputField');
+                this.inputField.focus();
+            }
+            
+            setupEventListeners() {
+                this.inputField.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        this.processInput();
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        this.navigateHistory(-1);
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        this.navigateHistory(1);
+                    }
+                });
+                
+                this.inputField.addEventListener('input', () => {
+                    this.updateCursorPosition();
+                });
+                
+                this.inputField.addEventListener('keyup', () => {
+                    this.updateCursorPosition();
+                });
+                
+                document.addEventListener('click', () => {
+                    if (!this.isRunning) {
+                        this.inputField.focus();
+                    }
+                });
+            }
+            
+            updateCursorPosition() {
+                const cursor = this.screen.querySelector('.cursor');
+                const inputField = this.inputField;
+                
+                // Create a temporary span to measure text width
+                const tempSpan = document.createElement('span');
+                tempSpan.style.fontFamily = 'Courier New, monospace';
+                tempSpan.style.fontSize = '14px';
+                tempSpan.style.visibility = 'hidden';
+                tempSpan.style.position = 'absolute';
+                tempSpan.textContent = inputField.value;
+                
+                document.body.appendChild(tempSpan);
+                const textWidth = tempSpan.offsetWidth;
+                document.body.removeChild(tempSpan);
+                
+                cursor.style.left = textWidth + 'px';
+            }
+            
+            processInput() {
+                const input = this.inputField.value.trim();
+                if (!input) return;
+                
+                this.addToHistory(input);
+                this.addOutput(`> ${input}`);
+                this.executeCommand(input);
+                this.inputField.value = '';
+                this.historyIndex = -1;
+                this.updateCursorPosition();
+            }
+            
+            addToHistory(command) {
+                this.history.push(command);
+                if (this.history.length > 50) {
+                    this.history.shift();
+                }
+            }
+            
+            navigateHistory(direction) {
+                if (this.history.length === 0) return;
+                
+                if (direction === -1) {
+                    if (this.historyIndex === -1) {
+                        this.historyIndex = this.history.length - 1;
+                    } else if (this.historyIndex > 0) {
+                        this.historyIndex--;
+                    }
+                } else {
+                    if (this.historyIndex >= 0 && this.historyIndex < this.history.length - 1) {
+                        this.historyIndex++;
+                    } else {
+                        this.historyIndex = -1;
+                        this.inputField.value = '';
+                        return;
+                    }
+                }
+                
+                this.inputField.value = this.history[this.historyIndex];
+                this.updateCursorPosition();
+            }
+            
+            addOutput(text) {
+                const outputLine = document.createElement('div');
+                outputLine.className = 'output-line';
+                outputLine.textContent = text;
+                
+                const inputLine = this.screen.querySelector('.input-line');
+                this.screen.insertBefore(outputLine, inputLine);
+                this.screen.scrollTop = this.screen.scrollHeight;
+            }
+            
+            executeCommand(command) {
+                const cmd = command.trim().toUpperCase();
+                
+                if (/^\d+/.test(cmd)) {
+                    this.handleProgramLine(cmd);
+                    return;
+                }
+                
+                if (cmd.startsWith('PRINT ')) {
+                    this.executePrint(cmd.substring(6));
+                    return;
+                }
+                
+                switch (cmd) {
+                    case 'LIST':
+                        this.executeList();
+                        break;
+                    case 'RUN':
+                        this.executeRun();
+                        break;
+                    case 'NEW':
+                        this.executeNew();
+                        break;
+                    case 'HELP':
+                        this.executeHelp();
+                        break;
+                    case 'SAMPLES':
+                        this.executeSamples();
+                        break;
+                    case 'ABOUT':
+                        this.executeAbout();
+                        break;
+                    case 'FORTUNE':
+                        this.executeFortune();
+                        break;
+                    default:
+                        if (cmd.startsWith('LOAD ')) {
+                            this.executeLoad(cmd.substring(5));
+                        } else {
+                            this.addOutput(`構文エラー: ${cmd}`);
+                        }
+                }
+            }
+            
+            handleProgramLine(cmd) {
+                const match = cmd.match(/^(\d+)(.*)$/);
+                if (!match) return;
+                
+                const lineNum = parseInt(match[1]);
+                const code = match[2].trim();
+                
+                if (code === '') {
+                    delete this.program[lineNum];
+                } else {
+                    this.program[lineNum] = code;
+                }
+            }
+            
+            executeList() {
+                const lines = Object.keys(this.program).map(num => parseInt(num)).sort((a, b) => a - b);
+                
+                if (lines.length === 0) {
+                    this.addOutput('プログラムがありません');
+                    return;
+                }
+                
+                lines.forEach(lineNum => {
+                    this.addOutput(`${lineNum} ${this.program[lineNum]}`);
+                });
+            }
+            
+            executeRun() {
+                this.isRunning = true;
+                this.inputField.disabled = true;
+                this.variables = {};
+                this.forStack = [];
+                
+                const lines = Object.keys(this.program).map(num => parseInt(num)).sort((a, b) => a - b);
+                
+                if (lines.length === 0) {
+                    this.addOutput('実行するプログラムがありません');
+                    this.isRunning = false;
+                    this.inputField.disabled = false;
+                    return;
+                }
+                
+                this.executeProgram(lines, 0);
+            }
+            
+            executeProgram(lines, index) {
+                if (index >= lines.length) {
+                    this.isRunning = false;
+                    this.inputField.disabled = false;
+                    this.inputField.focus();
+                    return;
+                }
+                
+                const lineNum = lines[index];
+                const code = this.program[lineNum];
+                
+                setTimeout(() => {
+                    this.executeProgramLine(code, lines, index);
+                }, 100);
+            }
+            
+            executeProgramLine(code, lines, index) {
+                const cmd = code.trim();
+                
+                if (cmd.startsWith('PRINT ')) {
+                    this.executePrint(cmd.substring(6));
+                } else if (cmd.startsWith('FOR ')) {
+                    this.executeFor(cmd, lines, index);
+                    return;
+                } else if (cmd.startsWith('NEXT')) {
+                    this.executeNext(lines, index);
+                    return;
+                } else if (cmd.startsWith('IF ')) {
+                    if (this.executeIf(cmd)) {
+                        this.executeProgram(lines, index + 1);
+                    } else {
+                        this.executeProgram(lines, index + 1);
+                    }
+                    return;
+                } else {
+                    this.addOutput(`実行: ${cmd}`);
+                }
+                
+                this.executeProgram(lines, index + 1);
+            }
+            
+            executeFor(cmd, lines, index) {
+                const match = cmd.match(/FOR\s+(\w+)\s*=\s*(\d+)\s+TO\s+(\d+)/);
+                if (match) {
+                    const [, varName, start, end] = match;
+                    const startVal = parseInt(start);
+                    const endVal = parseInt(end);
+                    
+                    this.variables[varName] = startVal;
+                    this.forStack.push({
+                        varName: varName,
+                        endVal: endVal,
+                        loopStart: index
+                    });
+                }
+                
+                this.executeProgram(lines, index + 1);
+            }
+            
+            executeNext(lines, index) {
+                if (this.forStack.length === 0) {
+                    this.executeProgram(lines, index + 1);
+                    return;
+                }
+                
+                const forInfo = this.forStack[this.forStack.length - 1];
+                this.variables[forInfo.varName]++;
+                
+                if (this.variables[forInfo.varName] <= forInfo.endVal) {
+                    this.executeProgram(lines, forInfo.loopStart + 1);
+                } else {
+                    this.forStack.pop();
+                    this.executeProgram(lines, index + 1);
+                }
+            }
+            
+            executeIf(cmd) {
+                const match = cmd.match(/IF\s+(\w+)\s*=\s*(\d+)\s+THEN\s+(.+)/);
+                if (match) {
+                    const [, varName, value, thenCmd] = match;
+                    if (this.variables[varName] == parseInt(value)) {
+                        if (thenCmd.startsWith('PRINT ')) {
+                            this.executePrint(thenCmd.substring(6));
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            executePrint(expression) {
+                const result = this.evaluateExpression(expression);
+                this.addOutput(result);
+            }
+            
+            evaluateExpression(expr) {
+                expr = expr.trim();
+                
+                if (expr.startsWith('"') && expr.endsWith('"')) {
+                    return expr.slice(1, -1);
+                }
+                
+                if (expr.includes(';')) {
+                    const parts = expr.split(';');
+                    let result = '';
+                    for (let part of parts) {
+                        part = part.trim();
+                        if (part.startsWith('"') && part.endsWith('"')) {
+                            result += part.slice(1, -1);
+                        } else if (/^\d+$/.test(part)) {
+                            result += part;
+                        } else if (this.variables[part] !== undefined) {
+                            result += this.variables[part];
+                        } else {
+                            result += part;
+                        }
+                    }
+                    return result;
+                }
+                
+                if (/^\d+$/.test(expr)) {
+                    return expr;
+                }
+                
+                if (this.variables[expr] !== undefined) {
+                    return this.variables[expr];
+                }
+                
+                if (expr.includes('INT(RND(1) * 5) + 1')) {
+                    return Math.floor(Math.random() * 5) + 1;
+                }
+                
+                return expr;
+            }
+            
+            executeNew() {
+                this.program = {};
+                this.variables = {};
+                this.addOutput('プログラムクリア');
+            }
+            
+            executeHelp() {
+                this.addOutput('--- コマンド一覧 ---');
+                this.addOutput('LIST - プログラム表示');
+                this.addOutput('RUN - プログラム実行');
+                this.addOutput('NEW - プログラムクリア');
+                this.addOutput('LOAD "名前" - サンプル読み込み');
+                this.addOutput('SAMPLES - サンプル一覧');
+                this.addOutput('ABOUT - このシステムについて');
+                this.addOutput('FORTUNE - 今日の運勢');
+            }
+            
+            executeSamples() {
+                this.addOutput('--- サンプルプログラム ---');
+                this.addOutput('LOAD "DEMO" - デモプログラム');
+                this.addOutput('LOAD "FORTUNE" - 運勢占い');
+                this.addOutput('LOAD "PATTERN" - パターン表示');
+            }
+            
+            executeAbout() {
+                this.addOutput('NBB 8ASIC エミュレータ');
+                this.addOutput('作者: AI Assistant');
+                this.addOutput('バグは仕様です（笑）');
+            }
+            
+            executeFortune() {
+                const fortunes = [
+                    '大吉：今日はコードが一発で動きます！',
+                    '中吉：バグは少なめの予感',
+                    '小吉：小さな発見がありそう',
+                    '吉：普通に作業が進みます',
+                    '凶：今日はデバッグの日かも...'
+                ];
+                this.addOutput(fortunes[Math.floor(Math.random() * fortunes.length)]);
+            }
+            
+            executeLoad(programName) {
+                const name = programName.replace(/"/g, '').trim();
+                
+                if (this.samplePrograms[name]) {
+                    this.program = {};
+                    this.samplePrograms[name].forEach(line => {
+                        const match = line.match(/^(\d+)\s+(.*)$/);
+                        if (match) {
+                            const lineNum = parseInt(match[1]);
+                            const code = match[2];
+                            this.program[lineNum] = code;
+                        }
+                    });
+                    this.addOutput(`"${name}" を読み込みました`);
+                } else {
+                    this.addOutput(`"${name}" が見つかりません`);
+                }
+            }
+        }
+        
+        const emulator = new N88BasicEmulator();
+    </script>
+</body>
+</html>
