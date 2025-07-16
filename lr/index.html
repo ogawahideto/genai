@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>参院選風 政治的立場診断</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header .emoji {
+            font-size: 4em;
+            margin: 20px 0;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .progress-section {
+            margin-bottom: 40px;
+        }
+        
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .progress-bar {
+            background: #e5e7eb;
+            height: 8px;
+            border-radius: 10px;
+            overflow: hidden;
+            flex: 1;
+            margin: 0 20px;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+        
+        .question-section {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 40px;
+            margin-bottom: 30px;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .question-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 30px;
+            line-height: 1.4;
+        }
+        
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .option {
+            background: white;
+            border: 3px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .option:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.1);
+        }
+        
+        .option-text {
+            font-size: 1.1em;
+            color: #475569;
+            font-weight: 500;
+        }
+        
+        .result-section {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .result-badge {
+            display: inline-block;
+            padding: 20px 40px;
+            border-radius: 50px;
+            color: white;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 20px 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .result-description {
+            font-size: 1.2em;
+            color: #475569;
+            margin: 30px 0;
+            line-height: 1.6;
+        }
+        
+        .score-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .score-bar-container {
+            position: relative;
+            background: #e5e7eb;
+            height: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .score-center-line {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 2px;
+            height: 100%;
+            background: #6b7280;
+            transform: translateX(-50%);
+        }
+        
+        .score-fill {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            border-radius: 10px;
+            transition: all 0.5s ease;
+        }
+        
+        .score-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #6b7280;
+            margin-top: 10px;
+        }
+        
+        .notice {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 0 10px 10px 0;
+        }
+        
+        .notice-text {
+            color: #92400e;
+            font-weight: 600;
+        }
+        
+        .disclaimer {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.9em;
+            line-height: 1.5;
+            margin: 20px 0;
+        }
+        
+        .restart-btn {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+        
+        .restart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .question-section {
+                padding: 20px;
+            }
+            
+            .progress-info {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .progress-bar {
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>参院選風 政治的立場診断</h1>
+            <div class="emoji">🗳️</div>
+            <p>あなたの政治的立場を診断します</p>
+        </div>
+        
+        <div id="quiz-section" class="content">
+            <div class="progress-section">
+                <div class="progress-info">
+                    <span id="question-counter">質問 1 / 18</span>
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill"></div>
+                    </div>
+                    <span id="progress-percent">5%</span>
+                </div>
+            </div>
+            
+            <div class="question-section">
+                <h2 id="question-text" class="question-title"></h2>
+                <div id="options-container" class="options"></div>
+            </div>
+            
+            <div class="disclaimer">
+                <p>※政治的な質問のように見えますが、実は違います...</p>
+            </div>
+        </div>
+        
+        <div id="result-section" class="content hidden">
+            <div class="result-section">
+                <h1>判定結果</h1>
+                <div class="emoji">🗳️</div>
+                
+                <div id="result-badge" class="result-badge"></div>
+                <p id="result-description" class="result-description"></p>
+                
+                <div class="score-section">
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        <span id="score-text">スコア: 0/50</span>
+                    </div>
+                    <div class="score-bar-container">
+                        <div class="score-center-line"></div>
+                        <div id="score-fill" class="score-fill"></div>
+                    </div>
+                    <div class="score-labels">
+                        <span>左 -50</span>
+                        <span>中央 0</span>
+                        <span>右 +50</span>
+                    </div>
+                </div>
+                
+                <div class="disclaimer">
+                    <p>※このアプリは娯楽目的です。実際の政治的立場とは関係ありません。</p>
+                    <p>左右の方角判定を楽しんでいただけましたでしょうか？</p>
+                </div>
+                
+                <div class="notice">
+                    <p class="notice-text">
+                        <strong>注意:</strong> このアプリでは「左」は西、「右」は東を意味します
+                    </p>
+                </div>
+                
+                <button id="restart-btn" class="restart-btn">🔄 もう一度診断する</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                question: "朝の太陽に向かって歩きたいですか？",
+                options: [
+                    { text: "はい、朝日を浴びながら歩きたい", value: 10 },
+                    { text: "どちらでもない", value: 0 },
+                    { text: "いいえ、夕日の方が好き", value: -10 }
+                ]
+            },
+            {
+                question: "お米の産地はどちらが好みですか？",
+                options: [
+                    { text: "新潟、秋田などの米どころ", value: -8 },
+                    { text: "どちらでもない", value: 0 },
+                    { text: "千葉、茨城などの関東産", value: 8 }
+                ]
+            },
+            {
+                question: "旅行するならどちらの方角？",
+                options: [
+                    { text: "富士山の方角", value: 7 },
+                    { text: "どちらでもない", value: 0 },
+                    { text: "京都の方角", value: -7 }
+                ]
+            },
+            {
+                question: "風水で良いとされる玄関の向きは？",
+                options: [
+                    { text: "朝日が差し込む方角", value: 9 },
+                    { text: "分からない", value: 0 },
+                    { text: "夕日が差し込む方角", value: -9 }
+                ]
+            },
+            {
+                question: "好きな季節の風は？",
+                options: [
+                    { text: "春一番（南から吹く風）", value: 0 },
+                    { text: "やませ（北東から吹く風）", value: 6 },
+                    { text: "からっ風（北西から吹く風）", value: -6 }
+                ]
+            },
+            {
+                question: "理想の住環境は？",
+                options: [
+                    { text: "朝日が入る明るい部屋", value: 8 },
+                    { text: "どちらでもない", value: 0 },
+                    { text: "夕日が入る温かい部屋", value: -8 }
+                ]
+            },
+            {
+                question: "お正月に拝む方角は？",
+                options: [
+                    { text: "初日の出の方角", value: 10 },
+                    { text: "分からない", value: 0 },
+                    { text: "西方浄土の方角", value: -10 }
+                ]
+            },
+            {
+                question: "好きな時間帯は？",
+                options: [
+                    { text: "早朝（6時頃）", value: 9 },
+                    { text: "正午（12時頃）", value: 0 },
+                    { text: "夕方（18時頃）", value: -9 }
+                ]
+            },
+            {
+                question: "日本の文化的中心地はどこだと思いますか？",
+                options: [
+                    { text: "東京", value: 9 },
+                    { text: "名古屋", value: 0 },
+                    { text: "京都・大阪", value: -9 }
+                ]
+            },
+            {
+                question: "好きな交通機関は？",
+                options: [
+                    { text: "東海道新幹線（上り）", value: 7 },
+                    { text: "どちらでもない", value: 0 },
+                    { text: "東海道新幹線（下り）", value: -7 }
+                ]
+            },
+            {
+                question: "理想の別荘地は？",
+                options: [
+                    { text: "軽井沢", value: 6 },
+                    { text: "どちらでもない", value: 0 },
+                    { text: "京都の山科", value: -6 }
+                ]
+            },
+            {
+                question: "好きな海は？",
+                options: [
+                    { text: "太平洋", value: 8 },
+                    { text: "瀬戸内海", value: 0 },
+                    { text: "日本海", value: -8 }
+                ]
+            },
+            {
+                question: "好きな祭りは？",
+                options: [
+                    { text: "神田祭", value: 7 },
+                    { text: "どちらでもない", value: 0 },
+                    { text: "祇園祭", value: -7 }
+                ]
+            },
+            {
+                question: "好きな方言は？",
+                options: [
+                    { text: "江戸弁", value: 8 },
+                    { text: "標準語", value: 0 },
+                    { text: "関西弁", value: -8 }
+                ]
+            },
+            {
+                question: "好きな山は？",
+                options: [
+                    { text: "筑波山", value: 6 },
+                    { text: "富士山", value: 0 },
+                    { text: "比叡山", value: -6 }
+                ]
+            },
+            {
+                question: "好きな川は？",
+                options: [
+                    { text: "隅田川", value: 7 },
+                    { text: "多摩川", value: 3 },
+                    { text: "淀川", value: -7 }
+                ]
+            },
+            {
+                question: "理想の大学は？",
+                options: [
+                    { text: "東京大学", value: 9 },
+                    { text: "どちらでもない", value: 0 },
+                    { text: "京都大学", value: -9 }
+                ]
+            },
+            {
+                question: "好きな季節は？",
+                options: [
+                    { text: "春（桜の季節）", value: 5 },
+                    { text: "夏", value: 0 },
+                    { text: "秋（紅葉の季節）", value: -5 }
+                ]
+            }
+        ];
+
+        let currentQuestion = 0;
+        let totalScore = 0;
+
+        function displayQuestion() {
+            const question = questions[currentQuestion];
+            
+            document.getElementById('question-counter').textContent = `質問 ${currentQuestion + 1} / ${questions.length}`;
+            document.getElementById('question-text').textContent = question.question;
+            
+            const progressPercent = Math.round(((currentQuestion + 1) / questions.length) * 100);
+            document.getElementById('progress-percent').textContent = `${progressPercent}%`;
+            document.getElementById('progress-fill').style.width = `${progressPercent}%`;
+            
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach((option, index) => {
+                const optionElement = document.createElement('div');
+                optionElement.className = 'option';
+                optionElement.innerHTML = `<div class="option-text">${option.text}</div>`;
+                optionElement.addEventListener('click', () => selectOption(option.value));
+                optionsContainer.appendChild(optionElement);
+            });
+        }
+
+        function selectOption(value) {
+            totalScore += value;
+            
+            if (currentQuestion < questions.length - 1) {
+                currentQuestion++;
+                displayQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        function showResult() {
+            document.getElementById('quiz-section').classList.add('hidden');
+            document.getElementById('result-section').classList.remove('hidden');
+            
+            const finalScore = Math.max(-50, Math.min(50, totalScore));
+            const result = getResult(finalScore);
+            
+            document.getElementById('result-badge').textContent = result.position;
+            document.getElementById('result-badge').className = `result-badge ${result.colorClass}`;
+            document.getElementById('result-description').textContent = result.description;
+            document.getElementById('score-text').textContent = `スコア: ${finalScore}/50`;
+            
+            const scoreFill = document.getElementById('score-fill');
+            const scoreWidth = Math.abs(finalScore);
+            const scoreLeft = finalScore >= 0 ? 50 : (50 + finalScore);
+            
+            scoreFill.style.width = `${scoreWidth}%`;
+            scoreFill.style.left = `${scoreLeft}%`;
+            scoreFill.style.background = result.gradient;
+        }
+
+        function getResult(score) {
+            if (score >= 35) {
+                return {
+                    position: "極右派",
+                    description: "あなたは完全に右向きです！太陽の昇る方角を愛する朝型人間ですね。",
+                    colorClass: "extreme-right",
+                    gradient: "linear-gradient(90deg, #f97316, #ea580c)"
+                };
+            } else if (score >= 15) {
+                return {
+                    position: "右寄り",
+                    description: "あなたは右寄りです。朝の光を好む傾向があります。",
+                    colorClass: "right",
+                    gradient: "linear-gradient(90deg, #eab308, #ca8a04)"
+                };
+            } else if (score >= -15) {
+                return {
+                    position: "中道",
+                    description: "あなたは中道です。左右のバランスが取れています。",
+                    colorClass: "center",
+                    gradient: "linear-gradient(90deg, #22c55e, #16a34a)"
+                };
+            } else if (score >= -35) {
+                return {
+                    position: "左寄り",
+                    description: "あなたは左寄りです。夕日の美しさを愛する人ですね。",
+                    colorClass: "left",
+                    gradient: "linear-gradient(90deg, #3b82f6, #2563eb)"
+                };
+            } else {
+                return {
+                    position: "極左派",
+                    description: "あなたは完全に左向きです！夕日の方角を愛する夜型人間ですね。",
+                    colorClass: "extreme-left",
+                    gradient: "linear-gradient(90deg, #8b5cf6, #7c3aed)"
+                };
+            }
+        }
+
+        function restart() {
+            currentQuestion = 0;
+            totalScore = 0;
+            document.getElementById('quiz-section').classList.remove('hidden');
+            document.getElementById('result-section').classList.add('hidden');
+            displayQuestion();
+        }
+
+        // イベントリスナーの設定
+        document.getElementById('restart-btn').addEventListener('click', restart);
+
+        // 初期化
+        displayQuestion();
+
+        // 結果バッジのスタイル追加
+        const style = document.createElement('style');
+        style.textContent = `
+            .extreme-right { background: linear-gradient(135deg, #f97316, #ea580c); }
+            .right { background: linear-gradient(135deg, #eab308, #ca8a04); }
+            .center { background: linear-gradient(135deg, #22c55e, #16a34a); }
+            .left { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+            .extreme-left { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
