@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三連休計算機</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .input-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 2px solid #e9ecef;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        label {
+            font-weight: 600;
+            color: #495057;
+            min-width: 120px;
+        }
+
+        input[type="number"] {
+            padding: 12px 16px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            width: 100px;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            transform: translateY(0);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result-section {
+            background: #fff;
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+            margin-bottom: 20px;
+        }
+
+        .result-summary {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .result-summary h2 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .result-summary p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .yearly-breakdown {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .year-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.3s ease;
+        }
+
+        .year-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .year-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .year-card p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .holiday-list {
+            margin-top: 20px;
+        }
+
+        .holiday-item {
+            background: #e3f2fd;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #856404;
+        }
+
+        @media (max-width: 600px) {
+            .input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            label {
+                min-width: auto;
+            }
+
+            input[type="number"] {
+                width: 100%;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗓️ 三連休計算機</h1>
+        
+        <div class="input-section">
+            <div class="input-group">
+                <label for="years">計算期間:</label>
+                <input type="number" id="years" min="1" max="50" value="5">
+                <span>年間</span>
+            </div>
+            <div class="input-group">
+                <label for="startYear">開始年:</label>
+                <input type="number" id="startYear" min="2025" max="2100" value="2025">
+                <span>年</span>
+            </div>
+            <div class="input-group">
+                <button onclick="calculateThreeDayWeekends()">計算する</button>
+            </div>
+        </div>
+
+        <div id="results" class="result-section" style="display: none;">
+            <div class="result-summary">
+                <h2 id="totalCount">0</h2>
+                <p id="summaryText">回の三連休があります</p>
+            </div>
+            
+            <div class="yearly-breakdown" id="yearlyBreakdown">
+            </div>
+            
+            <div class="holiday-list" id="holidayList">
+            </div>
+        </div>
+
+        <div class="note">
+            <strong>注意:</strong> この計算は日本の国民の祝日を基準としています。祝日が土曜日と重なった場合の振替休日や、将来の祝日法改正は考慮していません。
+        </div>
+    </div>
+
+    <script>
+        // 日本の祝日データ（基本的な祝日のみ）
+        const holidays = {
+            // 固定祝日
+            '01-01': '元日',
+            '02-11': '建国記念の日',
+            '02-23': '天皇誕生日',
+            '04-29': '昭和の日',
+            '05-03': '憲法記念日',
+            '05-04': 'みどりの日',
+            '05-05': 'こどもの日',
+            '08-11': '山の日',
+            '11-03': '文化の日',
+            '11-23': '勤労感謝の日',
+            '12-29': '年末休暇', // 一般的な年末休暇
+            '12-30': '年末休暇',
+            '12-31': '年末休暇'
+        };
+
+        // 移動祝日を計算する関数
+        function getMobileHolidays(year) {
+            const mobileHolidays = [];
+            
+            // 成人の日（1月第2月曜日）
+            const secondMondayJan = getSecondMondayOfMonth(year, 0);
+            mobileHolidays.push({
+                date: secondMondayJan,
+                name: '成人の日'
+            });
+            
+            // 海の日（7月第3月曜日）
+            const thirdMondayJul = getThirdMondayOfMonth(year, 6);
+            mobileHolidays.push({
+                date: thirdMondayJul,
+                name: '海の日'
+            });
+            
+            // 敬老の日（9月第3月曜日）
+            const thirdMondaySep = getThirdMondayOfMonth(year, 8);
+            mobileHolidays.push({
+                date: thirdMondaySep,
+                name: '敬老の日'
+            });
+            
+            // 体育の日/スポーツの日（10月第2月曜日）
+            const secondMondayOct = getSecondMondayOfMonth(year, 9);
+            mobileHolidays.push({
+                date: secondMondayOct,
+                name: 'スポーツの日'
+            });
+            
+            // 春分の日（概算）
+            const springEquinox = getSpringEquinox(year);
+            mobileHolidays.push({
+                date: springEquinox,
+                name: '春分の日'
+            });
+            
+            // 秋分の日（概算）
+            const autumnEquinox = getAutumnEquinox(year);
+            mobileHolidays.push({
+                date: autumnEquinox,
+                name: '秋分の日'
+            });
+            
+            return mobileHolidays;
+        }
+
+        function getSecondMondayOfMonth(year, month) {
+            const firstDay = new Date(year, month, 1);
+            const firstMonday = firstDay.getDay() === 1 ? 1 : 8 - firstDay.getDay();
+            return new Date(year, month, firstMonday + 7);
+        }
+
+        function getThirdMondayOfMonth(year, month) {
+            const firstDay = new Date(year, month, 1);
+            const firstMonday = firstDay.getDay() === 1 ? 1 : 8 - firstDay.getDay();
+            return new Date(year, month, firstMonday + 14);
+        }
+
+        function getSpringEquinox(year) {
+            // 春分の日の概算計算
+            const day = Math.floor(20.8431 + 0.242194 * (year - 1851) - Math.floor((year - 1851) / 4));
+            return new Date(year, 2, day);
+        }
+
+        function getAutumnEquinox(year) {
+            // 秋分の日の概算計算
+            const day = Math.floor(23.2488 + 0.242194 * (year - 1851) - Math.floor((year - 1851) / 4));
+            return new Date(year, 8, day);
+        }
+
+        function isHoliday(date) {
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const dateKey = `${month}-${day}`;
+            
+            if (holidays[dateKey]) {
+                return holidays[dateKey];
+            }
+            
+            // 移動祝日をチェック
+            const year = date.getFullYear();
+            const mobileHolidays = getMobileHolidays(year);
+            
+            for (const holiday of mobileHolidays) {
+                if (holiday.date.getTime() === date.getTime()) {
+                    return holiday.name;
+                }
+            }
+            
+            return null;
+        }
+
+        function isWeekend(date) {
+            const day = date.getDay();
+            return day === 0 || day === 6; // 日曜日または土曜日
+        }
+
+        function findThreeDayWeekends(startYear, years) {
+            const threeDayWeekends = [];
+            
+            for (let year = startYear; year < startYear + years; year++) {
+                const yearWeekends = [];
+                
+                // 各月をチェック
+                for (let month = 0; month < 12; month++) {
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+                    
+                    // 各日をチェック
+                    for (let day = 1; day <= daysInMonth - 2; day++) {
+                        const date1 = new Date(year, month, day);
+                        const date2 = new Date(year, month, day + 1);
+                        const date3 = new Date(year, month, day + 2);
+                        
+                        // 3日連続が休日かチェック
+                        const isRest1 = isWeekend(date1) || isHoliday(date1);
+                        const isRest2 = isWeekend(date2) || isHoliday(date2);
+                        const isRest3 = isWeekend(date3) || isHoliday(date3);
+                        
+                        if (isRest1 && isRest2 && isRest3) {
+                            const weekend = {
+                                start: new Date(date1),
+                                end: new Date(date3),
+                                days: [
+                                    { date: new Date(date1), reason: isHoliday(date1) || (isWeekend(date1) ? (date1.getDay() === 0 ? '日曜日' : '土曜日') : '') },
+                                    { date: new Date(date2), reason: isHoliday(date2) || (isWeekend(date2) ? (date2.getDay() === 0 ? '日曜日' : '土曜日') : '') },
+                                    { date: new Date(date3), reason: isHoliday(date3) || (isWeekend(date3) ? (date3.getDay() === 0 ? '日曜日' : '土曜日') : '') }
+                                ]
+                            };
+                            
+                            // 重複チェック
+                            const isOverlap = yearWeekends.some(existing => 
+                                existing.start.getTime() <= date3.getTime() && 
+                                existing.end.getTime() >= date1.getTime()
+                            );
+                            
+                            if (!isOverlap) {
+                                yearWeekends.push(weekend);
+                            }
+                        }
+                    }
+                }
+                
+                threeDayWeekends.push({
+                    year: year,
+                    weekends: yearWeekends
+                });
+            }
+            
+            return threeDayWeekends;
+        }
+
+        function calculateThreeDayWeekends() {
+            const yearsInput = document.getElementById('years');
+            const startYearInput = document.getElementById('startYear');
+            const years = parseInt(yearsInput.value);
+            const startYear = parseInt(startYearInput.value);
+            
+            if (years < 1 || years > 50) {
+                alert('計算期間は1年以上50年以下で入力してください。');
+                return;
+            }
+            
+            const results = findThreeDayWeekends(startYear, years);
+            const totalCount = results.reduce((sum, year) => sum + year.weekends.length, 0);
+            
+            // 結果を表示
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('summaryText').textContent = `${startYear}年から${years}年間で${totalCount}回の三連休があります`;
+            
+            const yearlyBreakdown = document.getElementById('yearlyBreakdown');
+            yearlyBreakdown.innerHTML = '';
+            
+            results.forEach(yearData => {
+                const yearCard = document.createElement('div');
+                yearCard.className = 'year-card';
+                yearCard.innerHTML = `
+                    <h3>${yearData.year}年</h3>
+                    <p>${yearData.weekends.length}回の三連休</p>
+                `;
+                yearlyBreakdown.appendChild(yearCard);
+            });
+            
+            // 詳細リストを表示
+            const holidayList = document.getElementById('holidayList');
+            holidayList.innerHTML = '<h3>三連休詳細</h3>';
+            
+            results.forEach(yearData => {
+                if (yearData.weekends.length > 0) {
+                    const yearSection = document.createElement('div');
+                    yearSection.innerHTML = `<h4 style="margin: 20px 0 10px 0; color: #333;">${yearData.year}年</h4>`;
+                    holidayList.appendChild(yearSection);
+                    
+                    yearData.weekends.forEach(weekend => {
+                        const weekendItem = document.createElement('div');
+                        weekendItem.className = 'holiday-item';
+                        
+                        const startDate = weekend.start.toLocaleDateString('ja-JP', {
+                            month: 'long',
+                            day: 'numeric'
+                        });
+                        const endDate = weekend.end.toLocaleDateString('ja-JP', {
+                            month: 'long',
+                            day: 'numeric'
+                        });
+                        
+                        const dayDetails = weekend.days.map(day => 
+                            `${day.date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}(${day.reason})`
+                        ).join(' → ');
+                        
+                        weekendItem.innerHTML = `
+                            <strong>${startDate} ～ ${endDate}</strong><br>
+                            <small>${dayDetails}</small>
+                        `;
+                        holidayList.appendChild(weekendItem);
+                    });
+                }
+            });
+            
+            document.getElementById('results').style.display = 'block';
+        }
+
+        // 初期計算
+        calculateThreeDayWeekends();
+    </script>
+</body>
+</html>
