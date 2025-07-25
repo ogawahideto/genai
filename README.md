@@ -298,6 +298,62 @@ UNOに似たカードゲーム。
 *スマホ対応: ✅ / Smartphone Support: ✅*
 *開発日: 2025-07-09 / Development Date: July 9, 2025*
 
+#### [三連休計算機](3daysholiday/index.html) 🖱️
+三連休を計算・予測するアプリ。カレンダー機能付き。
+*Three-day holiday calculator and predictor with calendar features.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 2025-07-18 / Development Date: July 18, 2025*
+
+#### [NBB8ASIC エミュレータ](NBB8ASIC/index.html) 🖱️
+N88 BASIC風のレトロコンピューターエミュレータ。
+*Retro computer emulator in the style of N88 BASIC.*
+*操作: キーボード・マウスクリック / Controls: Keyboard, Mouse click*
+*スマホ対応: ⚠️ / Smartphone Support: ⚠️ (キーボード操作のため部分対応 / Partial support due to keyboard controls)*
+*開発日: 2025-07-10 / Development Date: July 10, 2025*
+
+#### [あっちむいてほい](acchi/acchi-muite-hoi.html) 🎮📱🖱️
+日本の伝統的なゲーム「あっちむいてほい」のデジタル版。
+*Digital version of the traditional Japanese game "Acchi Muite Hoi".*
+*操作: マウスクリック・タッチ / Controls: Mouse click, Touch*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 2025-07-17 / Development Date: July 17, 2025*
+
+#### [落ちる文字](fallingtext/index.html) 🖱️
+文字をクリックすると物理的に落下するインタラクティブなWebページ。
+*Interactive webpage where characters physically fall when clicked.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ⚠️ / Smartphone Support: ⚠️ (タッチ操作で一部対応 / Partial touch support)*
+*開発日: 2025-07-25 / Development Date: July 25, 2025*
+
+#### [世界の曜日当てゲーム](globalday/index.html) 🎮🖱️
+世界各国の日付から曜日を当てるクイズゲーム。
+*Quiz game to guess the day of the week from dates around the world.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 2025-07-25 / Development Date: July 25, 2025*
+
+#### [政治的立場診断](lr/index.html) 🖱️
+参院選風の政治的立場を診断するアプリ。
+*Political stance diagnostic app in the style of Upper House elections.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 2025-07-16 / Development Date: July 16, 2025*
+
+#### [月の満ち欠け](moon-phase/index.html) 🌙🖱️
+リアルタイムで月の満ち欠けを表示するビジュアライザー。
+*Real-time moon phase visualizer.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 2025-07-25 / Development Date: July 25, 2025*
+
+#### [地下鉄路線距離当てゲーム](subwaylength/index.html) 🚇🎮🖱️
+地下鉄路線の距離を当てるクイズゲーム。
+*Quiz game to guess the length of subway lines.*
+*操作: マウスクリック / Controls: Mouse click*
+*スマホ対応: ✅ / Smartphone Support: ✅*
+*開発日: 2025-07-25 / Development Date: July 25, 2025*
+
 ---
 
 ## 技術的特徴
