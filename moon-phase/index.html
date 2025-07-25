@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月の満ち欠け</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            color: #f0f0f0;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .moon-container {
+            position: relative;
+            display: inline-block;
+            margin: 40px 0;
+        }
+
+        #moonCanvas {
+            border-radius: 50%;
+            box-shadow: 
+                0 0 50px rgba(255, 255, 255, 0.2),
+                0 0 100px rgba(255, 255, 255, 0.1),
+                inset 0 0 50px rgba(0, 0, 0, 0.3);
+            background: #1a1a1a;
+        }
+
+        .info-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .phase-name {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ffeb3b;
+            text-shadow: 0 0 10px rgba(255, 235, 59, 0.5);
+        }
+
+        .date-info {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #e0e0e0;
+        }
+
+        .illumination {
+            font-size: 1.1rem;
+            color: #bbbbbb;
+        }
+
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.3; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .phase-cycle {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .phase-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #333;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .phase-icon.current {
+            border-color: #ffeb3b;
+            box-shadow: 0 0 15px rgba(255, 235, 59, 0.5);
+        }
+
+        .phase-icon::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f0f0f0;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            #moonCanvas {
+                width: 250px !important;
+                height: 250px !important;
+            }
+            
+            .info-panel {
+                padding: 20px;
+                margin: 20px;
+            }
+            
+            .phase-name {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<!--
+AI Model: Claude Sonnet 4
+User Prompt: Create a web page that visually shows the current moon phases
+AI Approach: HTML5 Canvas with astronomical calculations, real-time moon phase rendering with shadow effects
+Implementation Intent: Educational astronomy tool showing accurate current moon phase with visual representation
+-->
+
+<div class="stars" id="stars"></div>
+
+<div class="container">
+    <h1>🌙 月の満ち欠け</h1>
+    
+    <div class="moon-container">
+        <canvas id="moonCanvas" width="300" height="300"></canvas>
+    </div>
+    
+    <div class="info-panel">
+        <div class="phase-name" id="phaseName">新月</div>
+        <div class="date-info" id="dateInfo">2024年1月1日</div>
+        <div class="illumination" id="illumination">輝面比: 0%</div>
+        <div class="illumination" id="moonAge">月齢: 0.0日</div>
+    </div>
+    
+    <div class="phase-cycle" id="phaseCycle">
+        <!-- Phase icons will be generated here -->
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('moonCanvas');
+const ctx = canvas.getContext('2d');
+const phaseNameElement = document.getElementById('phaseName');
+const dateInfoElement = document.getElementById('dateInfo');
+const illuminationElement = document.getElementById('illumination');
+const moonAgeElement = document.getElementById('moonAge');
+
+// Moon phase names in Japanese
+const phaseNames = [
+    '新月', '新月', '三日月', '上弦の月',
+    '上弦の月', '十三夜', '満月', '十六夜',
+    '下弦の月', '下弦の月', '二十六夜', '新月'
+];
+
+// Calculate moon phase using accurate astronomical calculation
+function getMoonPhase(date) {
+    // Known new moon dates for 2025 (in UTC)
+    const newMoons2025 = [
+        new Date('2024-12-30T22:27:00Z'), // Dec 30, 2024
+        new Date('2025-01-29T12:36:00Z'), // Jan 29, 2025
+        new Date('2025-02-28T00:45:00Z'), // Feb 28, 2025
+        new Date('2025-03-29T10:58:00Z'), // Mar 29, 2025
+        new Date('2025-04-27T19:31:00Z'), // Apr 27, 2025
+        new Date('2025-05-27T03:02:00Z'), // May 27, 2025
+        new Date('2025-06-25T10:32:00Z'), // Jun 25, 2025
+        new Date('2025-07-24T19:11:00Z'), // Jul 24, 2025 (yesterday)
+        new Date('2025-08-23T06:06:00Z'), // Aug 23, 2025
+        new Date('2025-09-21T19:54:00Z'), // Sep 21, 2025
+        new Date('2025-10-21T12:25:00Z'), // Oct 21, 2025
+        new Date('2025-11-20T06:47:00Z'), // Nov 20, 2025
+        new Date('2025-12-20T01:43:00Z'), // Dec 20, 2025
+        new Date('2026-01-18T19:52:00Z')  // Jan 18, 2026
+    ];
+    
+    const synodicMonth = 29.53058867; // Synodic month length
+    
+    // Find the most recent new moon
+    let lastNewMoon = newMoons2025[0];
+    for (let i = 0; i < newMoons2025.length; i++) {
+        if (newMoons2025[i] <= date) {
+            lastNewMoon = newMoons2025[i];
+        } else {
+            break;
+        }
+    }
+    
+    // Calculate lunar age in days
+    const lunarAge = (date.getTime() - lastNewMoon.getTime()) / (1000 * 60 * 60 * 24);
+    
+    // Convert to phase (0-1)
+    const phase = lunarAge / synodicMonth;
+    
+    return { phase: phase, age: lunarAge };
+}
+
+// Get moon phase name based on age
+function getPhaseName(age) {
+    if (age < 1.84566) return "新月";
+    else if (age < 5.53699) return "三日月";
+    else if (age < 9.22831) return "上弦の月";
+    else if (age < 12.91963) return "十日夜";
+    else if (age < 16.61096) return "満月";
+    else if (age < 20.30228) return "十六夜";
+    else if (age < 23.99361) return "下弦の月";
+    else if (age < 27.68493) return "二十六夜";
+    else return "新月";
+}
+
+// Get accurate illumination percentage
+function getIllumination(phase) {
+    // Calculate illumination based on phase
+    // phase 0 = new moon (0% illuminated)
+    // phase 0.5 = full moon (100% illuminated)
+    let illumination;
+    if (phase <= 0.5) {
+        // Waxing: 0% to 100%
+        illumination = phase * 2;
+    } else {
+        // Waning: 100% to 0%
+        illumination = (1 - phase) * 2;
+    }
+    return illumination * 100;
+}
+
+// Draw moon
+function drawMoon(phase) {
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 120;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Create gradient for moon surface
+    const moonGradient = ctx.createRadialGradient(
+        centerX - 30, centerY - 30, 0,
+        centerX, centerY, radius
+    );
+    moonGradient.addColorStop(0, '#f5f5f5');
+    moonGradient.addColorStop(0.7, '#e0e0e0');
+    moonGradient.addColorStop(1, '#bdbdbd');
+    
+    // Draw full moon
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fillStyle = moonGradient;
+    ctx.fill();
+    
+    // Add moon craters
+    drawCraters(centerX, centerY, radius);
+    
+    // Draw shadow based on phase
+    if (phase !== 0.5) { // Not full moon
+        ctx.save();
+        
+        // Create clipping path for moon
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.clip();
+        
+        // Calculate shadow
+        const shadowWidth = radius * 2 * Math.abs(0.5 - phase) * 2;
+        let shadowX;
+        
+        if (phase < 0.5) {
+            // Waxing - shadow on right
+            shadowX = centerX + radius - shadowWidth;
+        } else {
+            // Waning - shadow on left
+            shadowX = centerX - radius;
+        }
+        
+        // Draw shadow
+        const shadowGradient = ctx.createLinearGradient(shadowX, 0, shadowX + shadowWidth, 0);
+        shadowGradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
+        shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        
+        ctx.fillStyle = shadowGradient;
+        ctx.fillRect(shadowX, centerY - radius, shadowWidth, radius * 2);
+        
+        ctx.restore();
+    }
+    
+    // Add outer glow
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    const glowGradient = ctx.createRadialGradient(centerX, centerY, radius, centerX, centerY, radius + 20);
+    glowGradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+    glowGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius + 20, 0, Math.PI * 2);
+    ctx.fillStyle = glowGradient;
+    ctx.fill();
+    ctx.restore();
+}
+
+// Draw moon craters
+function drawCraters(centerX, centerY, radius) {
+    const craters = [
+        { x: -20, y: -30, r: 8 },
+        { x: 40, y: -10, r: 12 },
+        { x: -35, y: 25, r: 6 },
+        { x: 15, y: 45, r: 10 },
+        { x: -10, y: 10, r: 4 },
+        { x: 50, y: 30, r: 7 }
+    ];
+    
+    craters.forEach(crater => {
+        const x = centerX + crater.x;
+        const y = centerY + crater.y;
+        
+        // Only draw if within moon circle
+        const distance = Math.sqrt(crater.x * crater.x + crater.y * crater.y);
+        if (distance < radius - crater.r) {
+            ctx.beginPath();
+            ctx.arc(x, y, crater.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fill();
+            
+            // Add crater highlight
+            ctx.beginPath();
+            ctx.arc(x - crater.r * 0.3, y - crater.r * 0.3, crater.r * 0.6, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.fill();
+        }
+    });
+}
+
+// Create stars background
+function createStars() {
+    const starsContainer = document.getElementById('stars');
+    const starCount = 100;
+    
+    for (let i = 0; i < starCount; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        
+        const size = Math.random() * 2 + 1;
+        const x = Math.random() * 100;
+        const y = Math.random() * 100;
+        const delay = Math.random() * 3;
+        
+        star.style.width = size + 'px';
+        star.style.height = size + 'px';
+        star.style.left = x + '%';
+        star.style.top = y + '%';
+        star.style.animationDelay = delay + 's';
+        
+        starsContainer.appendChild(star);
+    }
+}
+
+// Create phase cycle icons
+function createPhaseCycle(currentPhase) {
+    const phaseCycleElement = document.getElementById('phaseCycle');
+    phaseCycleElement.innerHTML = '';
+    
+    const phases = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875];
+    const phaseLabels = ['新月', '三日月', '上弦', '十日夜', '満月', '十六夜', '下弦', '二十六夜'];
+    
+    phases.forEach((phase, index) => {
+        const icon = document.createElement('div');
+        icon.className = 'phase-icon';
+        icon.title = phaseLabels[index];
+        
+        // Check if this is close to current phase
+        const diff = Math.abs(phase - currentPhase);
+        if (diff < 0.0625 || diff > 0.9375) {
+            icon.classList.add('current');
+        }
+        
+        // Create mini moon visualization
+        const illumination = phase <= 0.5 ? phase * 2 : (1 - phase) * 2;
+        const isWaxing = phase < 0.5;
+        
+        if (phase === 0) {
+            icon.style.background = '#333';
+        } else if (phase === 0.5) {
+            icon.style.background = '#f0f0f0';
+        } else {
+            const gradient = isWaxing 
+                ? `linear-gradient(90deg, #f0f0f0 ${illumination * 100}%, #333 ${illumination * 100}%)`
+                : `linear-gradient(270deg, #f0f0f0 ${illumination * 100}%, #333 ${illumination * 100}%)`;
+            icon.style.background = gradient;
+        }
+        
+        phaseCycleElement.appendChild(icon);
+    });
+}
+
+// Update display
+function updateMoonDisplay() {
+    const now = new Date();
+    const moonData = getMoonPhase(now);
+    const phase = moonData.phase;
+    const age = moonData.age;
+    const phaseName = getPhaseName(age);
+    const illumination = getIllumination(phase);
+    
+    // Update text information
+    phaseNameElement.textContent = phaseName;
+    dateInfoElement.textContent = now.toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long'
+    });
+    illuminationElement.textContent = `輝面比: ${Math.round(illumination)}%`;
+    moonAgeElement.textContent = `月齢: ${age.toFixed(1)}日`;
+    
+    // Draw moon
+    drawMoon(phase);
+    
+    // Update phase cycle
+    createPhaseCycle(phase);
+}
+
+// Initialize
+function init() {
+    createStars();
+    updateMoonDisplay();
+    
+    // Update every hour
+    setInterval(updateMoonDisplay, 3600000);
+}
+
+// Handle window resize
+window.addEventListener('resize', () => {
+    const canvas = document.getElementById('moonCanvas');
+    if (window.innerWidth <= 768) {
+        canvas.width = 250;
+        canvas.height = 250;
+    } else {
+        canvas.width = 300;
+        canvas.height = 300;
+    }
+    updateMoonDisplay();
+});
+
+init();
+</script>
+</body>
+</html>
