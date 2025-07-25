@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地下鉄路線距離順番当てゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .game-info {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .score-board {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .question {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            color: #4a5568;
+        }
+
+        .routes-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .route-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .route-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .route-card.selected {
+            border-color: #4299e1;
+            background: linear-gradient(135deg, #e6f3ff 0%, #cce7ff 100%);
+        }
+
+        .route-card.correct {
+            border-color: #48bb78;
+            background: linear-gradient(135deg, #e6ffed 0%, #c6f6d5 100%);
+        }
+
+        .route-card.incorrect {
+            border-color: #f56565;
+            background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
+        }
+
+        .route-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #2d3748;
+        }
+
+        .route-info {
+            font-size: 0.9rem;
+            color: #718096;
+            margin-bottom: 10px;
+        }
+
+        .distance {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #4a5568;
+            padding: 8px;
+            background: rgba(74, 85, 104, 0.1);
+            border-radius: 8px;
+            display: none;
+        }
+
+        .order-number {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #4299e1;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .route-card.selected .order-number {
+            opacity: 1;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(66, 153, 225, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(66, 153, 225, 0.4);
+        }
+
+        .btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            box-shadow: 0 4px 15px rgba(245, 101, 101, 0.3);
+        }
+
+        .result {
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .result.correct {
+            background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%);
+            color: #22543d;
+        }
+
+        .result.incorrect {
+            background: linear-gradient(135deg, #fed7d7 0%, #fc8181 100%);
+            color: #742a2a;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78 0%, #38a169 100%);
+            transition: width 0.3s ease;
+            border-radius: 5px;
+        }
+
+        .final-score {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .final-score h2 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 2rem;
+        }
+
+        .score-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #4299e1;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .routes-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .score-board {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚇 地下鉄路線距離順番当てゲーム</h1>
+            <p>路線を営業距離の長い順に並べてください！</p>
+        </div>
+
+        <div class="game-info">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="score-board">
+                <div>問題: <span id="currentQuestion">1</span> / <span id="totalQuestions">10</span></div>
+                <div>正解数: <span id="correctCount">0</span></div>
+                <div>スコア: <span id="score">0</span>点</div>
+            </div>
+            <div class="question" id="questionText">
+                次の路線を営業距離の長い順に並べてください（1番目が最も長い）
+            </div>
+        </div>
+
+        <div class="routes-container" id="routesContainer">
+            <!-- ルートカードがここに動的に生成されます -->
+        </div>
+
+        <div class="controls">
+            <button class="btn" id="submitBtn" onclick="submitAnswer()" disabled>回答を確定</button>
+            <button class="btn" id="resetBtn" onclick="resetSelection()">選択をリセット</button>
+            <button class="btn btn-success" id="nextBtn" onclick="nextQuestion()" style="display: none;">次の問題</button>
+        </div>
+
+        <div id="result"></div>
+        <div id="finalScore" style="display: none;"></div>
+    </div>
+
+    <script>
+        // 地下鉄路線データ
+        const allRoutes = [
+            { name: "都営大江戸線", info: "東京都交通局", distance: 40.7 },
+            { name: "横浜市営ブルーライン", info: "横浜市交通局", distance: 40.4 },
+            { name: "東京メトロ東西線", info: "東京地下鉄", distance: 30.8 },
+            { name: "東京メトロ有楽町線", info: "東京地下鉄", distance: 28.3 },
+            { name: "Osaka Metro谷町線", info: "大阪市高速電気軌道", distance: 28.1 },
+            { name: "都営三田線", info: "東京都交通局", distance: 26.5 },
+            { name: "名古屋市営名城線", info: "名古屋市交通局", distance: 26.4 },
+            { name: "Osaka Metro御堂筋線", info: "大阪市高速電気軌道", distance: 24.5 },
+            { name: "東京メトロ丸ノ内線", info: "東京地下鉄", distance: 24.2 },
+            { name: "都営新宿線", info: "東京都交通局", distance: 23.5 },
+            { name: "神戸市営西神・山手線", info: "神戸市交通局", distance: 22.7 },
+            { name: "名古屋市営東山線", info: "名古屋市交通局", distance: 20.6 },
+            { name: "名古屋市営桜通線", info: "名古屋市交通局", distance: 20.6 },
+            { name: "名古屋市営鶴舞線", info: "名古屋市交通局", distance: 20.2 },
+            { name: "札幌市営東西線", info: "札幌市交通局", distance: 20.1 },
+            { name: "東京メトロ日比谷線", info: "東京地下鉄", distance: 20.3 },
+            { name: "東京メトロ千代田線", info: "東京地下鉄", distance: 19.3 },
+            { name: "東京メトロ副都心線", info: "東京地下鉄", distance: 19.3 },
+            { name: "東京メトロ南北線", info: "東京地下鉄", distance: 19.2 },
+            { name: "都営浅草線", info: "東京都交通局", distance: 18.3 },
+            { name: "Osaka Metro中央線", info: "大阪市高速電気軌道", distance: 17.9 },
+            { name: "京都市営東西線", info: "京都市交通局", distance: 17.5 },
+            { name: "東京メトロ半蔵門線", info: "東京地下鉄", distance: 16.8 },
+            { name: "Osaka Metro長堀鶴見緑地線", info: "大阪市高速電気軌道", distance: 15.0 },
+            { name: "名古屋市営名港線", info: "名古屋市交通局", distance: 15.2 },
+            { name: "仙台市営南北線", info: "仙台市交通局", distance: 14.8 },
+            { name: "札幌市営南北線", info: "札幌市交通局", distance: 14.3 },
+            { name: "東京メトロ銀座線", info: "東京地下鉄", distance: 14.2 },
+            { name: "仙台市営東西線", info: "仙台市交通局", distance: 13.9 },
+            { name: "京都市営烏丸線", info: "京都市交通局", distance: 13.7 },
+            { name: "札幌市営東豊線", info: "札幌市交通局", distance: 13.6 },
+            { name: "Osaka Metro千日前線", info: "大阪市高速電気軌道", distance: 13.1 },
+            { name: "福岡市営空港線", info: "福岡市交通局", distance: 13.1 },
+            { name: "横浜市営グリーンライン", info: "横浜市交通局", distance: 13.1 },
+            { name: "福岡市営七隈線", info: "福岡市交通局", distance: 12.0 },
+            { name: "Osaka Metro今里筋線", info: "大阪市高速電気軌道", distance: 11.9 },
+            { name: "Osaka Metro四つ橋線", info: "大阪市高速電気軌道", distance: 11.4 },
+            { name: "Osaka Metro堺筋線", info: "大阪市高速電気軌道", distance: 8.5 },
+            { name: "神戸市営海岸線", info: "神戸市交通局", distance: 7.9 },
+            { name: "Osaka Metro南港ポートタウン線", info: "大阪市高速電気軌道", distance: 7.9 },
+            { name: "神戸市営北神線", info: "神戸市交通局", distance: 7.5 },
+            { name: "福岡市営箱崎線", info: "福岡市交通局", distance: 4.7 },
+            { name: "横浜高速みなとみらい線", info: "横浜高速鉄道", distance: 4.1 },
+            { name: "名古屋市営上飯田線", info: "名古屋市交通局", distance: 0.8 }
+        ];
+
+        let currentQuestionNumber = 1;
+        let totalQuestions = 10;
+        let correctAnswers = 0;
+        let currentScore = 0;
+        let selectedOrder = [];
+        let currentRoutes = [];
+        let gameStarted = false;
+
+        function generateQuestion() {
+            // ランダムに3-5個の路線を選択
+            const numRoutes = Math.floor(Math.random() * 3) + 3; // 3-5個
+            const shuffledRoutes = [...allRoutes].sort(() => Math.random() - 0.5);
+            currentRoutes = shuffledRoutes.slice(0, numRoutes);
+            
+            // 距離順にソート（正解の順番）
+            currentRoutes.sort((a, b) => b.distance - a.distance);
+            
+            // 表示用にシャッフル
+            const displayRoutes = [...currentRoutes].sort(() => Math.random() - 0.5);
+            
+            renderRoutes(displayRoutes);
+            selectedOrder = [];
+            updateUI();
+        }
+
+        function renderRoutes(routes) {
+            const container = document.getElementById('routesContainer');
+            container.innerHTML = '';
+            
+            routes.forEach((route, index) => {
+                const card = document.createElement('div');
+                card.className = 'route-card';
+                card.dataset.routeName = route.name;
+                card.onclick = () => selectRoute(card, route);
+                
+                card.innerHTML = `
+                    <div class="route-name">${route.name}</div>
+                    <div class="route-info">${route.info}</div>
+                    <div class="distance">${route.distance}km</div>
+                    <div class="order-number"></div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        function selectRoute(card, route) {
+            if (card.classList.contains('selected')) {
+                // 既に選択されている場合は選択を解除
+                const orderIndex = selectedOrder.findIndex(item => item.route.name === route.name);
+                if (orderIndex !== -1) {
+                    selectedOrder.splice(orderIndex, 1);
+                    // 後の順番を調整
+                    for (let i = orderIndex; i < selectedOrder.length; i++) {
+                        selectedOrder[i].order = i + 1;
+                    }
+                }
+                card.classList.remove('selected');
+                updateOrderNumbers();
+            } else {
+                // 新しく選択
+                selectedOrder.push({
+                    route: route,
+                    order: selectedOrder.length + 1
+                });
+                card.classList.add('selected');
+                updateOrderNumbers();
+            }
+            
+            updateSubmitButton();
+        }
+
+        function updateOrderNumbers() {
+            const cards = document.querySelectorAll('.route-card');
+            cards.forEach(card => {
+                const routeName = card.dataset.routeName;
+                const selectedItem = selectedOrder.find(item => item.route.name === routeName);
+                const orderElement = card.querySelector('.order-number');
+                
+                if (selectedItem) {
+                    orderElement.textContent = selectedItem.order;
+                    card.classList.add('selected');
+                } else {
+                    orderElement.textContent = '';
+                    card.classList.remove('selected');
+                }
+            });
+        }
+
+        function updateSubmitButton() {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = selectedOrder.length !== currentRoutes.length;
+        }
+
+        function resetSelection() {
+            selectedOrder = [];
+            const cards = document.querySelectorAll('.route-card');
+            cards.forEach(card => {
+                card.classList.remove('selected', 'correct', 'incorrect');
+                card.querySelector('.order-number').textContent = '';
+            });
+            updateSubmitButton();
+            document.getElementById('result').innerHTML = '';
+        }
+
+        function submitAnswer() {
+            const correctOrder = [...currentRoutes]; // 既に距離順にソート済み
+            let score = 0;
+            let correctCount = 0;
+            
+            // 回答をチェック
+            const userAnswer = selectedOrder.sort((a, b) => a.order - b.order).map(item => item.route);
+            
+            for (let i = 0; i < correctOrder.length; i++) {
+                if (userAnswer[i].name === correctOrder[i].name) {
+                    correctCount++;
+                    score += 10;
+                }
+            }
+            
+            // 完全正解ボーナス
+            if (correctCount === correctOrder.length) {
+                score += 20;
+                correctAnswers++;
+            }
+            
+            currentScore += score;
+            
+            // 結果表示
+            showResults(correctOrder, userAnswer, score, correctCount);
+            
+            // UI更新
+            document.getElementById('correctCount').textContent = correctAnswers;
+            document.getElementById('score').textContent = currentScore;
+            document.getElementById('submitBtn').style.display = 'none';
+            document.getElementById('resetBtn').style.display = 'none';
+            
+            if (currentQuestionNumber < totalQuestions) {
+                document.getElementById('nextBtn').style.display = 'inline-block';
+            } else {
+                showFinalScore();
+            }
+        }
+
+        function showResults(correctOrder, userAnswer, score, correctCount) {
+            const resultDiv = document.getElementById('result');
+            const isCorrect = correctCount === correctOrder.length;
+            
+            // カードに正解/不正解を表示
+            const cards = document.querySelectorAll('.route-card');
+            cards.forEach(card => {
+                const routeName = card.dataset.routeName;
+                const correctRoute = correctOrder.find(route => route.name === routeName);
+                const userRoute = userAnswer.find(route => route.name === routeName);
+                const correctIndex = correctOrder.findIndex(route => route.name === routeName);
+                const userIndex = userAnswer.findIndex(route => route.name === routeName);
+                
+                // 距離を表示
+                card.querySelector('.distance').style.display = 'block';
+                
+                if (correctIndex === userIndex) {
+                    card.classList.add('correct');
+                } else {
+                    card.classList.add('incorrect');
+                }
+            });
+            
+            let resultHTML = `
+                <div class="result ${isCorrect ? 'correct' : 'incorrect'}">
+                    ${isCorrect ? '🎉 完全正解！' : '❌ 不正解'}
+                    <br>
+                    ${correctCount}/${correctOrder.length}個正解 (${score}点)
+                    <br><br>
+                    <strong>正解順序:</strong><br>
+            `;
+            
+            correctOrder.forEach((route, index) => {
+                resultHTML += `${index + 1}. ${route.name} (${route.distance}km)<br>`;
+            });
+            
+            resultHTML += '</div>';
+            resultDiv.innerHTML = resultHTML;
+        }
+
+        function nextQuestion() {
+            currentQuestionNumber++;
+            document.getElementById('currentQuestion').textContent = currentQuestionNumber;
+            
+            // プログレスバー更新
+            const progress = (currentQuestionNumber - 1) / totalQuestions * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('submitBtn').style.display = 'inline-block';
+            document.getElementById('resetBtn').style.display = 'inline-block';
+            document.getElementById('nextBtn').style.display = 'none';
+            
+            generateQuestion();
+        }
+
+        function showFinalScore() {
+            const finalScoreDiv = document.getElementById('finalScore');
+            const percentage = Math.round((correctAnswers / totalQuestions) * 100);
+            let message = '';
+            
+            if (percentage >= 90) {
+                message = '🏆 素晴らしい！地下鉄マスターです！';
+            } else if (percentage >= 70) {
+                message = '🎉 よくできました！地下鉄通ですね！';
+            } else if (percentage >= 50) {
+                message = '👍 まずまずです！もう少し頑張りましょう！';
+            } else {
+                message = '📚 もっと勉強が必要ですね！';
+            }
+            
+            finalScoreDiv.innerHTML = `
+                <div class="final-score">
+                    <h2>ゲーム終了！</h2>
+                    <div class="score-display">${currentScore}点</div>
+                    <p>正解率: ${percentage}% (${correctAnswers}/${totalQuestions}問正解)</p>
+                    <p>${message}</p>
+                    <br>
+                    <button class="btn btn-success" onclick="restartGame()">もう一度挑戦</button>
+                </div>
+            `;
+            finalScoreDiv.style.display = 'block';
+            
+            // プログレスバーを100%に
+            document.getElementById('progressFill').style.width = '100%';
+        }
+
+        function restartGame() {
+            currentQuestionNumber = 1;
+            correctAnswers = 0;
+            currentScore = 0;
+            selectedOrder = [];
+            
+            document.getElementById('currentQuestion').textContent = currentQuestionNumber;
+            document.getElementById('correctCount').textContent = correctAnswers;
+            document.getElementById('score').textContent = currentScore;
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('finalScore').style.display = 'none';
+            document.getElementById('submitBtn').style.display = 'inline-block';
+            document.getElementById('resetBtn').style.display = 'inline-block';
+            document.getElementById('nextBtn').style.display = 'none';
+            
+            generateQuestion();
+        }
+
+        function updateUI() {
+            document.getElementById('totalQuestions').textContent = totalQuestions;
+            document.getElementById('currentQuestion').textContent = currentQuestionNumber;
+            document.getElementById('correctCount').textContent = correctAnswers;
+            document.getElementById('score').textContent = currentScore;
+        }
+
+        // ゲーム初期化
+        updateUI();
+        generateQuestion();
+    </script>
+</body>
+</html>
