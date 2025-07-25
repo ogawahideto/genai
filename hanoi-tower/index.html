@@ -1,0 +1,689 @@
+<!--
+AI Model: Claude Sonnet 4
+User Prompt: 100段のハノイの塔を自動で解くアプリを作ってください。過程をビジュアルに表現してください。エンタメ的な演出を加えてください。
+AI Approach: HTML5 Canvas with recursive algorithm, particle effects, smooth animations, and entertainment elements
+Implementation Intent: Educational and entertaining visualization of the Tower of Hanoi puzzle with automatic solving
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ハノイの塔 - 自動解答システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            overflow: hidden;
+        }
+
+        .title {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientMove 3s ease-in-out infinite;
+        }
+
+        @keyframes gradientMove {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.1);
+            padding: 10px 15px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        input[type="range"] {
+            width: 120px;
+        }
+
+        canvas {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+        }
+
+        .stats {
+            margin-top: 20px;
+            display: flex;
+            gap: 30px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 25px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            min-width: 120px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4ecdc4;
+            text-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .completion-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            padding: 30px 50px;
+            border-radius: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.5s ease;
+            z-index: 1000;
+        }
+
+        .completion-message.show {
+            opacity: 1;
+            visibility: visible;
+            animation: bounce 0.6s ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translate(-50%, -50%) scale(1); }
+            40% { transform: translate(-50%, -50%) scale(1.1); }
+            60% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 1.8em;
+            }
+            
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            canvas {
+                max-width: 95vw;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas class="particles" id="particleCanvas"></canvas>
+    
+    <h1 class="title">🗼 ハノイの塔 自動解答システム 🗼</h1>
+    
+    <div class="controls">
+        <div class="slider-container">
+            <label for="disks">円盤数:</label>
+            <input type="range" id="disks" min="3" max="100" value="8">
+            <span id="diskCount">8</span>
+        </div>
+        
+        <div class="slider-container">
+            <label for="speed">速度:</label>
+            <input type="range" id="speed" min="1" max="100" value="5">
+            <span id="speedValue">5</span>
+        </div>
+        
+        <button id="startBtn">🚀 開始</button>
+        <button id="pauseBtn" disabled>⏸️ 一時停止</button>
+        <button id="resetBtn">🔄 リセット</button>
+    </div>
+    
+    <canvas id="gameCanvas" width="1000" height="600"></canvas>
+    
+    <div class="stats">
+        <div class="stat-item">
+            <div>移動回数</div>
+            <div class="stat-value" id="moveCount">0</div>
+        </div>
+        <div class="stat-item">
+            <div>理論値</div>
+            <div class="stat-value" id="theoreticalMoves">255</div>
+        </div>
+        <div class="stat-item">
+            <div>進捗</div>
+            <div class="stat-value" id="progress">0%</div>
+        </div>
+        <div class="stat-item">
+            <div>経過時間</div>
+            <div class="stat-value" id="elapsedTime">0s</div>
+        </div>
+    </div>
+    
+    <div class="completion-message" id="completionMessage">
+        🎉 完了！おめでとうございます！ 🎉
+    </div>
+
+    <script>
+        class HanoiTower {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.particleCanvas = document.getElementById('particleCanvas');
+                this.particleCtx = this.particleCanvas.getContext('2d');
+                
+                this.setupParticleCanvas();
+                this.initializeGame();
+                this.setupEventListeners();
+                this.startParticleAnimation();
+                this.startTime = null;
+                this.animationId = null;
+            }
+            
+            setupParticleCanvas() {
+                this.particleCanvas.width = window.innerWidth;
+                this.particleCanvas.height = window.innerHeight;
+                this.particles = [];
+                
+                // 背景パーティクルを生成
+                for (let i = 0; i < 50; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.particleCanvas.width,
+                        y: Math.random() * this.particleCanvas.height,
+                        vx: (Math.random() - 0.5) * 0.5,
+                        vy: (Math.random() - 0.5) * 0.5,
+                        size: Math.random() * 3 + 1,
+                        opacity: Math.random() * 0.5 + 0.2
+                    });
+                }
+            }
+            
+            initializeGame() {
+                this.diskCount = parseInt(document.getElementById('disks').value);
+                this.speed = parseInt(document.getElementById('speed').value);
+                this.towers = [[], [], []];
+                this.moves = [];
+                this.currentMoveIndex = 0;
+                this.moveCount = 0;
+                this.isRunning = false;
+                this.isPaused = false;
+                this.animatingMove = false;
+                this.animationProgress = 0;
+                this.currentMove = null;
+                
+                // 最初の塔にすべての円盤を配置
+                for (let i = this.diskCount; i >= 1; i--) {
+                    this.towers[0].push(i);
+                }
+                
+                // 解法を生成
+                this.generateSolution();
+                this.updateStats();
+                this.draw();
+            }
+            
+            generateSolution() {
+                this.moves = [];
+                this.hanoi(this.diskCount, 0, 2, 1);
+            }
+            
+            hanoi(n, from, to, aux) {
+                if (n === 1) {
+                    this.moves.push({ from, to, disk: 1 });
+                } else {
+                    this.hanoi(n - 1, from, aux, to);
+                    this.moves.push({ from, to, disk: n });
+                    this.hanoi(n - 1, aux, to, from);
+                }
+            }
+            
+            setupEventListeners() {
+                document.getElementById('startBtn').addEventListener('click', () => this.start());
+                document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                
+                document.getElementById('disks').addEventListener('input', (e) => {
+                    document.getElementById('diskCount').textContent = e.target.value;
+                    if (!this.isRunning) {
+                        this.initializeGame();
+                    }
+                });
+                
+                document.getElementById('speed').addEventListener('input', (e) => {
+                    document.getElementById('speedValue').textContent = e.target.value;
+                    this.speed = parseInt(e.target.value);
+                });
+                
+                window.addEventListener('resize', () => {
+                    this.setupParticleCanvas();
+                });
+            }
+            
+            start() {
+                if (this.isPaused) {
+                    this.isPaused = false;
+                } else {
+                    this.isRunning = true;
+                    this.startTime = Date.now();
+                }
+                
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('pauseBtn').disabled = false;
+                document.getElementById('disks').disabled = true;
+                
+                this.animate();
+            }
+            
+            pause() {
+                this.isPaused = true;
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+            }
+            
+            reset() {
+                this.isRunning = false;
+                this.isPaused = false;
+                this.animatingMove = false;
+                this.currentMoveIndex = 0;
+                this.startTime = null;
+                
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                }
+                
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('disks').disabled = false;
+                document.getElementById('completionMessage').classList.remove('show');
+                
+                this.initializeGame();
+            }
+            
+            animate() {
+                if (!this.isRunning || this.isPaused) return;
+                
+                if (this.currentMoveIndex >= this.moves.length) {
+                    this.complete();
+                    return;
+                }
+                
+                // 大量の円盤の場合は高速処理
+                if (this.diskCount > 20) {
+                    this.fastForwardMoves();
+                } else {
+                    if (!this.animatingMove) {
+                        this.startMove();
+                    }
+                    this.updateAnimation();
+                }
+                
+                this.draw();
+                this.updateStats();
+                
+                this.animationId = requestAnimationFrame(() => this.animate());
+            }
+            
+            fastForwardMoves() {
+                // 大量の円盤の場合、複数の移動を一度に処理
+                const batchSize = Math.max(1, Math.floor(this.speed * 10));
+                
+                for (let i = 0; i < batchSize && this.currentMoveIndex < this.moves.length; i++) {
+                    const move = this.moves[this.currentMoveIndex];
+                    const disk = this.towers[move.from].pop();
+                    this.towers[move.to].push(disk);
+                    this.currentMoveIndex++;
+                    this.moveCount++;
+                }
+            }
+            
+            startMove() {
+                this.currentMove = this.moves[this.currentMoveIndex];
+                this.animatingMove = true;
+                this.animationProgress = 0;
+                
+                // 移動する円盤を特定
+                this.movingDisk = this.towers[this.currentMove.from].pop();
+                this.createMoveParticles();
+            }
+            
+            updateAnimation() {
+                const animationSpeed = this.speed * 0.02;
+                this.animationProgress += animationSpeed;
+                
+                if (this.animationProgress >= 1) {
+                    this.completeMove();
+                }
+            }
+            
+            completeMove() {
+                this.towers[this.currentMove.to].push(this.movingDisk);
+                this.animatingMove = false;
+                this.currentMoveIndex++;
+                this.moveCount++;
+                this.movingDisk = null;
+                this.currentMove = null;
+            }
+            
+            createMoveParticles() {
+                const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57'];
+                for (let i = 0; i < 10; i++) {
+                    this.particles.push({
+                        x: this.getTowerX(this.currentMove.from),
+                        y: this.canvas.height - 100,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: -Math.random() * 3 - 2,
+                        size: Math.random() * 4 + 2,
+                        opacity: 1,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        life: 60,
+                        maxLife: 60
+                    });
+                }
+            }
+            
+            startParticleAnimation() {
+                const animateParticles = () => {
+                    this.particleCtx.clearRect(0, 0, this.particleCanvas.width, this.particleCanvas.height);
+                    
+                    // 背景パーティクル
+                    this.particleCtx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                    this.particles.forEach((particle, index) => {
+                        if (particle.life !== undefined) {
+                            // エフェクトパーティクル
+                            particle.x += particle.vx;
+                            particle.y += particle.vy;
+                            particle.vy += 0.1; // 重力
+                            particle.life--;
+                            particle.opacity = particle.life / particle.maxLife;
+                            
+                            if (particle.life <= 0) {
+                                this.particles.splice(index, 1);
+                                return;
+                            }
+                            
+                            this.particleCtx.fillStyle = particle.color + Math.floor(particle.opacity * 255).toString(16).padStart(2, '0');
+                        } else {
+                            // 背景パーティクル
+                            particle.x += particle.vx;
+                            particle.y += particle.vy;
+                            
+                            if (particle.x < 0 || particle.x > this.particleCanvas.width) particle.vx *= -1;
+                            if (particle.y < 0 || particle.y > this.particleCanvas.height) particle.vy *= -1;
+                            
+                            this.particleCtx.fillStyle = `rgba(255, 255, 255, ${particle.opacity})`;
+                        }
+                        
+                        this.particleCtx.beginPath();
+                        this.particleCtx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                        this.particleCtx.fill();
+                    });
+                    
+                    requestAnimationFrame(animateParticles);
+                };
+                animateParticles();
+            }
+            
+            getTowerX(tower) {
+                return this.canvas.width / 4 * (tower + 1);
+            }
+            
+            getDiskColor(size) {
+                const colors = [
+                    '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57',
+                    '#ff9ff3', '#54a0ff', '#5f27cd', '#00d2d3', '#ff9f43',
+                    '#ee5a24', '#0abde3', '#10ac84', '#ee5a24', '#222f3e'
+                ];
+                return colors[size % colors.length];
+            }
+            
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 背景グラデーション
+                const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+                gradient.addColorStop(0, 'rgba(30, 60, 114, 0.1)');
+                gradient.addColorStop(1, 'rgba(42, 82, 152, 0.3)');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 塔の棒を描画
+                this.ctx.fillStyle = '#34495e';
+                this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+                this.ctx.shadowBlur = 10;
+                
+                for (let i = 0; i < 3; i++) {
+                    const x = this.getTowerX(i);
+                    this.ctx.fillRect(x - 5, this.canvas.height - 350, 10, 300);
+                }
+                
+                this.ctx.shadowBlur = 0;
+                
+                // 台座を描画
+                this.ctx.fillStyle = '#2c3e50';
+                for (let i = 0; i < 3; i++) {
+                    const x = this.getTowerX(i);
+                    this.ctx.fillRect(x - 100, this.canvas.height - 60, 200, 20);
+                }
+                
+                // 円盤を描画
+                for (let tower = 0; tower < 3; tower++) {
+                    for (let disk = 0; disk < this.towers[tower].length; disk++) {
+                        this.drawDisk(tower, disk, this.towers[tower][disk]);
+                    }
+                }
+                
+                // アニメーション中の円盤を描画
+                if (this.animatingMove && this.movingDisk) {
+                    this.drawMovingDisk();
+                }
+                
+                // 塔のラベル
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = 'bold 20px Arial';
+                this.ctx.textAlign = 'center';
+                for (let i = 0; i < 3; i++) {
+                    this.ctx.fillText(['A', 'B', 'C'][i], this.getTowerX(i), this.canvas.height - 20);
+                }
+            }
+            
+            drawDisk(tower, position, size) {
+                const x = this.getTowerX(tower);
+                // 大量の円盤に対応するため高さを調整
+                const diskHeight = Math.max(3, Math.min(20, 400 / this.diskCount));
+                const y = this.canvas.height - 80 - position * diskHeight;
+                // 幅も調整して見やすく
+                const maxWidth = 180;
+                const minWidth = 20;
+                const width = Math.min(maxWidth, Math.max(minWidth, size * (maxWidth - minWidth) / this.diskCount + minWidth));
+                const height = diskHeight;
+                
+                // 影
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                this.ctx.fillRect(x - width/2 + 3, y + 3, width, height);
+                
+                // 円盤
+                this.ctx.fillStyle = this.getDiskColor(size);
+                this.ctx.fillRect(x - width/2, y, width, height);
+                
+                // ハイライト
+                const gradient = this.ctx.createLinearGradient(x - width/2, y, x - width/2, y + height);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0.1)');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(x - width/2, y, width, height);
+                
+                // 番号（大量の円盤では表示しない）
+                if (this.diskCount <= 20 && height >= 10) {
+                    this.ctx.fillStyle = 'white';
+                    this.ctx.font = `bold ${Math.min(14, height)}px Arial`;
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(size.toString(), x, y + height * 0.7);
+                }
+            }
+            
+            drawMovingDisk() {
+                const fromX = this.getTowerX(this.currentMove.from);
+                const toX = this.getTowerX(this.currentMove.to);
+                const topY = this.canvas.height - 450;
+                const diskHeight = Math.max(3, Math.min(20, 400 / this.diskCount));
+                const fromY = this.canvas.height - 80 - this.towers[this.currentMove.from].length * diskHeight;
+                const toY = this.canvas.height - 80 - this.towers[this.currentMove.to].length * diskHeight;
+                
+                let x, y;
+                
+                if (this.animationProgress < 0.3) {
+                    // 上昇
+                    const progress = this.animationProgress / 0.3;
+                    x = fromX;
+                    y = fromY + (topY - fromY) * progress;
+                } else if (this.animationProgress < 0.7) {
+                    // 横移動
+                    const progress = (this.animationProgress - 0.3) / 0.4;
+                    x = fromX + (toX - fromX) * progress;
+                    y = topY;
+                } else {
+                    // 下降
+                    const progress = (this.animationProgress - 0.7) / 0.3;
+                    x = toX;
+                    y = topY + (toY - topY) * progress;
+                }
+                
+                const size = this.movingDisk;
+                const maxWidth = 180;
+                const minWidth = 20;
+                const width = Math.min(maxWidth, Math.max(minWidth, size * (maxWidth - minWidth) / this.diskCount + minWidth));
+                const height = Math.max(3, Math.min(20, 400 / this.diskCount));
+                
+                // 移動中の円盤にグロー効果
+                this.ctx.shadowColor = this.getDiskColor(size);
+                this.ctx.shadowBlur = 20;
+                this.ctx.fillStyle = this.getDiskColor(size);
+                this.ctx.fillRect(x - width/2, y, width, height);
+                this.ctx.shadowBlur = 0;
+                
+                // 番号（大量の円盤では表示しない）
+                if (this.diskCount <= 20 && height >= 10) {
+                    this.ctx.fillStyle = 'white';
+                    this.ctx.font = `bold ${Math.min(14, height)}px Arial`;
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(size.toString(), x, y + height * 0.7);
+                }
+            }
+            
+            updateStats() {
+                document.getElementById('moveCount').textContent = this.moveCount;
+                document.getElementById('theoreticalMoves').textContent = Math.pow(2, this.diskCount) - 1;
+                
+                const progress = this.moves.length > 0 ? Math.round((this.currentMoveIndex / this.moves.length) * 100) : 0;
+                document.getElementById('progress').textContent = progress + '%';
+                
+                if (this.startTime) {
+                    const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                    document.getElementById('elapsedTime').textContent = elapsed + 's';
+                }
+            }
+            
+            complete() {
+                this.isRunning = false;
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('disks').disabled = false;
+                document.getElementById('completionMessage').classList.add('show');
+                
+                // 完了パーティクル
+                for (let i = 0; i < 50; i++) {
+                    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57'];
+                    this.particles.push({
+                        x: this.canvas.width / 2,
+                        y: this.canvas.height / 2,
+                        vx: (Math.random() - 0.5) * 10,
+                        vy: (Math.random() - 0.5) * 10,
+                        size: Math.random() * 6 + 3,
+                        opacity: 1,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        life: 120,
+                        maxLife: 120
+                    });
+                }
+                
+                setTimeout(() => {
+                    document.getElementById('completionMessage').classList.remove('show');
+                }, 3000);
+            }
+        }
+        
+        window.addEventListener('load', () => {
+            new HanoiTower();
+        });
+    </script>
+</body>
+</html>
