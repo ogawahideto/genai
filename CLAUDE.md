@@ -22,6 +22,20 @@ This repository contains a collection of small, self-contained web applications 
 
 ## Development Workflow
 
+### Creating New Applications
+When creating new applications:
+1. **Create a dedicated directory** for each application
+2. **Place the HTML file as `index.html`** within that directory
+3. **Follow the single-file architecture** - keep all HTML, CSS, and JavaScript in one file
+
+Example structure:
+```
+/my-game/
+  index.html
+/falling-text/
+  index.html
+```
+
 ### Running Applications
 ```bash
 # Simply open any HTML file in a web browser
