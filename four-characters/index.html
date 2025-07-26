@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>四字熟語パズルゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'MS Gothic', 'Yu Gothic', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .score-board {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .score-item {
+            text-align: center;
+        }
+
+        .score-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .score-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .problem-area {
+            margin-bottom: 30px;
+        }
+
+        .problem-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .answer-slots {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .answer-slot {
+            width: 80px;
+            height: 80px;
+            border: 3px dashed #ccc;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            background: #f9f9f9;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .answer-slot.filled {
+            border: 3px solid #4CAF50;
+            background: #e8f5e8;
+            color: #333;
+        }
+
+        .answer-slot.correct {
+            border: 3px solid #4CAF50;
+            background: #c8e6c8;
+            animation: correctPulse 0.6s ease-in-out;
+            transform: scale(1.1);
+        }
+
+        .answer-slot.incorrect {
+            border: 3px solid #f44336;
+            background: #ffcdd2;
+            animation: incorrectShake 0.6s ease-in-out;
+        }
+
+        @keyframes correctPulse {
+            0% { transform: scale(1); background: #e8f5e8; }
+            50% { transform: scale(1.15); background: #4CAF50; color: white; }
+            100% { transform: scale(1.1); background: #c8e6c8; color: #333; }
+        }
+
+        @keyframes incorrectShake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #4CAF50;
+            animation: confetti-fall 3s ease-out forwards;
+        }
+
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .firework {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            animation: firework 1s ease-out forwards;
+        }
+
+        @keyframes firework {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+
+        .answer-slot.drop-zone {
+            border-color: #667eea;
+            background: #e3f2fd;
+            transform: scale(1.05);
+        }
+
+        .kanji-options {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        .kanji-card {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .kanji-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+
+        .kanji-card.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+
+        .kanji-card.used {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #f44336, #da190b);
+            color: white;
+        }
+
+        .btn-info {
+            background: linear-gradient(45deg, #2196F3, #0b7dda);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .feedback {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .feedback.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .feedback.correct {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .feedback.incorrect {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .meaning {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: normal;
+        }
+
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .popup-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .popup-content {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            transform: scale(0.8) translateY(50px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .popup-overlay.show .popup-content {
+            transform: scale(1) translateY(0);
+        }
+
+        .popup-content.correct {
+            border: 4px solid #4CAF50;
+        }
+
+        .popup-content.incorrect {
+            border: 4px solid #f44336;
+        }
+
+        .popup-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .popup-content.correct::before {
+            animation: shimmer 2s ease-in-out;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .popup-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: popIcon 0.6s ease-out;
+        }
+
+        .popup-icon.correct {
+            color: #4CAF50;
+        }
+
+        .popup-icon.incorrect {
+            color: #f44336;
+        }
+
+        @keyframes popIcon {
+            0% { transform: scale(0) rotate(-180deg); }
+            50% { transform: scale(1.2) rotate(0deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        .popup-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .popup-word {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 20px 0;
+            letter-spacing: 8px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: wordGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes wordGlow {
+            0% { filter: drop-shadow(0 0 5px rgba(102, 126, 234, 0.3)); }
+            100% { filter: drop-shadow(0 0 15px rgba(102, 126, 234, 0.6)); }
+        }
+
+        .popup-meaning {
+            font-size: 1.1rem;
+            color: #666;
+            line-height: 1.6;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .popup-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.5rem;
+            color: #999;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .popup-close:hover {
+            color: #333;
+        }
+
+        @media (max-width: 480px) {
+            .game-container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .answer-slot {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+            
+            .kanji-card {
+                width: 55px;
+                height: 55px;
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>四字熟語パズル</h1>
+        <div class="subtitle">漢字を正しい順序で並べて四字熟語を完成させよう！</div>
+        
+        <div class="score-board">
+            <div class="score-item">
+                <div class="score-label">スコア</div>
+                <div class="score-value" id="score">0</div>
+            </div>
+            <div class="score-item">
+                <div class="score-label">問題</div>
+                <div class="score-value" id="current-problem">1</div>
+            </div>
+            <div class="score-item">
+                <div class="score-label">正解率</div>
+                <div class="score-value" id="accuracy">0%</div>
+            </div>
+        </div>
+
+        <div class="problem-area">
+            <div class="problem-title">四字熟語を完成させてください</div>
+            <div class="answer-slots" id="answer-slots">
+                <div class="answer-slot" data-position="0"></div>
+                <div class="answer-slot" data-position="1"></div>
+                <div class="answer-slot" data-position="2"></div>
+                <div class="answer-slot" data-position="3"></div>
+            </div>
+        </div>
+
+        <div class="kanji-options" id="kanji-options">
+            <!-- 漢字オプションがここに動的に追加されます -->
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-secondary" id="clear-btn">クリア</button>
+            <button class="btn btn-info" id="hint-btn">ヒント</button>
+        </div>
+
+        <div class="feedback" id="feedback">
+            <!-- フィードバックがここに表示されます -->
+        </div>
+
+        <!-- ポップアップオーバーレイ -->
+        <div class="popup-overlay" id="popup-overlay">
+            <div class="popup-content" id="popup-content">
+                <div class="popup-close" id="popup-close">×</div>
+                <div class="popup-icon" id="popup-icon"></div>
+                <div class="popup-title" id="popup-title"></div>
+                <div class="popup-word" id="popup-word"></div>
+                <div class="popup-meaning" id="popup-meaning"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class YojijukugoGame {
+            constructor() {
+                this.problems = [
+                    { word: "一期一会", meaning: "一生に一度だけの機会。二度と繰り返すことのない出会い。" },
+                    { word: "四面楚歌", meaning: "周囲がすべて敵や反対者に囲まれて、全く味方がいない状況。" },
+                    { word: "自業自得", meaning: "自分の行いの結果を自分が受けること。" },
+                    { word: "百花繚乱", meaning: "様々な花が咲き乱れること。多くの優れた人や作品が同時に現れること。" },
+                    { word: "温故知新", meaning: "古いことを研究して、新しい知識や見解を得ること。" },
+                    { word: "切磋琢磨", meaning: "学問や技芸などで、お互いに励まし合い競い合って向上すること。" },
+                    { word: "七転八起", meaning: "何度失敗してもくじけずに立ち上がること。" },
+                    { word: "心機一転", meaning: "気持ちを入れ替えて新たに物事に取り組むこと。" },
+                    { word: "試行錯誤", meaning: "様々な方法を試しながら解決策を見つけること。" },
+                    { word: "千載一遇", meaning: "千年に一度の機会。滅多にない良い機会。" },
+                    { word: "画竜点睛", meaning: "物事を完成させるための最後の重要な仕上げ。" },
+                    { word: "臥薪嘗胆", meaning: "目的を達成するために苦労に耐え忍ぶこと。" },
+                    { word: "櫛風沐雨", meaning: "風雨にさらされながら苦労すること。" },
+                    { word: "狡兎死走狗烹", meaning: "用済みになったものは捨てられるということ。" },
+                    { word: "蛍雪之功", meaning: "苦学して学問に励むこと。" },
+                    { word: "羊頭狗肉", meaning: "見かけと実際が異なること。" },
+                    { word: "杞憂天墜", meaning: "心配する必要のないことを心配すること。" },
+                    { word: "完璧帰趙", meaning: "物事を完全無欠な状態で元に戻すこと。" },
+                    { word: "朝令暮改", meaning: "方針が頻繁に変わること。" },
+                    { word: "四六時中", meaning: "一日中、いつでも。" },
+                    { word: "疑心暗鬼", meaning: "疑いの心を持つと何でも怖く思えること。" },
+                    { word: "明鏡止水", meaning: "曇りのない澄み切った心境。" },
+                    { word: "呉越同舟", meaning: "敵同士が同じ場所で協力すること。" },
+                    { word: "虎視眈々", meaning: "機会をうかがって狙っていること。" },
+                    { word: "破釜沈船", meaning: "決死の覚悟で事に当たること。" },
+                    { word: "鳳毛麟角", meaning: "非常に珍しく貴重なもの。" },
+                    { word: "兎死狗烹", meaning: "用が済めば捨てられること。" },
+                    { word: "管鮑之交", meaning: "利害を超えた真の友情。" },
+                    { word: "刎頸之友", meaning: "首を刎ねられても後悔しない親友。" },
+                    { word: "膠柱鼓瑟", meaning: "融通が利かず、頑固なこと。" },
+                    { word: "魑魅魍魎", meaning: "様々な化け物。得体の知れない者たち。" },
+                    { word: "縦横無尽", meaning: "思いのままに自由自在に行うこと。" },
+                    { word: "紆余曲折", meaning: "事情が複雑で、いろいろと変化すること。" },
+                    { word: "抱薪救火", meaning: "害を除こうとして、かえって害を大きくすること。" },
+                    { word: "蛍窓雪案", meaning: "苦学すること。貧しい中でも学問に励むこと。" },
+                    { word: "鶏鳴狗盗", meaning: "つまらない技能でも、時には役に立つこと。" },
+                    { word: "狐疑逡巡", meaning: "疑い迷ってためらうこと。" },
+                    { word: "竜頭蛇尾", meaning: "初めは勢いがよいが、終わりは振るわないこと。" },
+                    { word: "酔生夢死", meaning: "何もしないで、むなしく一生を過ごすこと。" },
+                    { word: "邯鄲之夢", meaning: "人生の栄華のはかないこと。" },
+                    { word: "泰山北斗", meaning: "その道の第一人者として仰がれる人。" },
+                    { word: "万里一空", meaning: "どこまでも同じ青空が続くように、心境が一定していること。" },
+                    { word: "堅忍不抜", meaning: "じっと我慢して、意志を曲げないこと。" },
+                    { word: "厚顔無恥", meaning: "恥知らずで図々しいこと。" },
+                    { word: "孤軍奮闘", meaning: "助けもなく一人で困難に立ち向かうこと。" },
+                    { word: "豪華絢爛", meaning: "きらびやかで美しいこと。" },
+                    { word: "空前絶後", meaning: "過去にもなく、将来もないであろうこと。" },
+                    { word: "半信半疑", meaning: "信じる気持ちと疑う気持ちが半分ずつあること。" },
+                    { word: "波瀾万丈", meaning: "変化が激しく、劇的なこと。" },
+                    { word: "百戦錬磨", meaning: "多くの経験を積んで腕前が上がること。" },
+                    { word: "風林火山", meaning: "戦術の極意を表した言葉。" },
+                    { word: "粉骨砕身", meaning: "骨身を惜しまず努力すること。" },
+                    { word: "悠悠自適", meaning: "のんびりと気ままに過ごすこと。" },
+                    { word: "酒池肉林", meaning: "贅沢の限りを尽くした遊び。" },
+                    { word: "支離滅裂", meaning: "物事に一貫性がなく、ばらばらなこと。" },
+                    { word: "針小棒大", meaning: "小さなことを大げさに言うこと。" },
+                    { word: "舌先三寸", meaning: "口先だけの巧みな話術。" },
+                    { word: "油断大敵", meaning: "注意を怠ると失敗の原因となること。" },
+                    { word: "老若男女", meaning: "年齢や性別に関係なく、すべての人。" },
+                    { word: "和気藹々", meaning: "なごやかで親しみやすい雰囲気。" },
+                    { word: "行雲流水", meaning: "自然に従って行動すること。" },
+                    { word: "夜郎自大", meaning: "自分の力量を知らずに威張ること。" }
+                ];
+                
+                this.currentProblem = 0;
+                this.score = 0;
+                this.correctAnswers = 0;
+                this.totalAttempts = 0;
+                this.userAnswer = ['', '', '', ''];
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.loadProblem();
+                this.updateScoreboard();
+            }
+
+            setupEventListeners() {
+                const clearBtn = document.getElementById('clear-btn');
+                const hintBtn = document.getElementById('hint-btn');
+                const popupClose = document.getElementById('popup-close');
+                const popupOverlay = document.getElementById('popup-overlay');
+
+                clearBtn.addEventListener('click', () => this.clearAnswer());
+                hintBtn.addEventListener('click', () => this.showHint());
+                
+                // ポップアップを閉じる
+                popupClose.addEventListener('click', () => this.hidePopup());
+                popupOverlay.addEventListener('click', (e) => {
+                    if (e.target === popupOverlay) {
+                        this.hidePopup();
+                    }
+                });
+
+                // ドラッグ&ドロップのイベント設定
+                this.setupDragAndDrop();
+            }
+
+            setupDragAndDrop() {
+                const slots = document.querySelectorAll('.answer-slot');
+                
+                slots.forEach(slot => {
+                    slot.addEventListener('dragover', this.handleDragOver);
+                    slot.addEventListener('drop', (e) => this.handleDrop(e));
+                    slot.addEventListener('dragenter', this.handleDragEnter);
+                    slot.addEventListener('dragleave', this.handleDragLeave);
+                });
+            }
+
+            loadProblem() {
+                const problem = this.problems[this.currentProblem];
+                const characters = problem.word.split('');
+                
+                // 答えスロットをクリア
+                this.clearAnswer();
+                
+                // 漢字オプションを生成（正解の文字 + ダミー文字）
+                const dummyChars = ['心', '物', '事', '人', '時', '月', '日', '年', '手', '足', '目', '耳', '火', '水', '木', '金', '土', '山', '川', '海', '空', '雲', '星', '光', '影', '声', '音', '色', '花', '鳥', '風', '雪'];
+                const allChars = [...characters];
+                
+                // ダミー文字を4つ追加
+                while (allChars.length < 8) {
+                    const randomDummy = dummyChars[Math.floor(Math.random() * dummyChars.length)];
+                    if (!allChars.includes(randomDummy)) {
+                        allChars.push(randomDummy);
+                    }
+                }
+                
+                // シャッフル
+                allChars.sort(() => Math.random() - 0.5);
+                
+                this.renderKanjiOptions(allChars);
+                this.hideFeedback();
+            }
+
+            renderKanjiOptions(characters) {
+                const container = document.getElementById('kanji-options');
+                container.innerHTML = '';
+                
+                characters.forEach((char, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'kanji-card';
+                    card.textContent = char;
+                    card.draggable = true;
+                    card.dataset.char = char;
+                    
+                    card.addEventListener('dragstart', (e) => this.handleDragStart(e));
+                    card.addEventListener('dragend', (e) => this.handleDragEnd(e));
+                    card.addEventListener('click', () => this.handleKanjiClick(char));
+                    
+                    container.appendChild(card);
+                });
+            }
+
+            handleDragStart(e) {
+                e.dataTransfer.setData('text/plain', e.target.dataset.char);
+                e.target.classList.add('dragging');
+            }
+
+            handleDragEnd(e) {
+                e.target.classList.remove('dragging');
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+            }
+
+            handleDragEnter(e) {
+                e.preventDefault();
+                e.target.classList.add('drop-zone');
+            }
+
+            handleDragLeave(e) {
+                e.target.classList.remove('drop-zone');
+            }
+
+            handleDrop(e) {
+                e.preventDefault();
+                e.target.classList.remove('drop-zone');
+                
+                const char = e.dataTransfer.getData('text/plain');
+                const position = parseInt(e.target.dataset.position);
+                
+                this.placeCharacter(char, position);
+            }
+
+            handleKanjiClick(char) {
+                // 空いている最初のスロットに配置
+                const emptySlot = this.userAnswer.findIndex(slot => slot === '');
+                if (emptySlot !== -1) {
+                    this.placeCharacter(char, emptySlot);
+                }
+            }
+
+            placeCharacter(char, position) {
+                // すでに使用済みの文字かチェック
+                const kanjiCard = document.querySelector(`[data-char="${char}"]:not(.used)`);
+                if (!kanjiCard) return;
+                
+                // 既にその位置に文字がある場合は、その文字を戻す
+                if (this.userAnswer[position] !== '') {
+                    this.removeCharacterFromSlot(position);
+                }
+                
+                this.userAnswer[position] = char;
+                kanjiCard.classList.add('used');
+                
+                const slot = document.querySelector(`[data-position="${position}"]`);
+                slot.textContent = char;
+                slot.classList.add('filled');
+                
+                // 4文字すべて選択された場合、自動的に正誤判定
+                if (this.userAnswer.every(char => char !== '')) {
+                    setTimeout(() => {
+                        this.checkAnswer();
+                    }, 500); // 少し遅延させて自然な感じに
+                }
+            }
+
+            removeCharacterFromSlot(position) {
+                const char = this.userAnswer[position];
+                if (char) {
+                    const kanjiCard = document.querySelector(`[data-char="${char}"].used`);
+                    if (kanjiCard) {
+                        kanjiCard.classList.remove('used');
+                    }
+                    
+                    this.userAnswer[position] = '';
+                    const slot = document.querySelector(`[data-position="${position}"]`);
+                    slot.textContent = '';
+                    slot.classList.remove('filled');
+                }
+            }
+
+            clearAnswer() {
+                this.userAnswer = ['', '', '', ''];
+                
+                document.querySelectorAll('.answer-slot').forEach(slot => {
+                    slot.textContent = '';
+                    slot.classList.remove('filled', 'correct', 'incorrect');
+                });
+                
+                document.querySelectorAll('.kanji-card').forEach(card => {
+                    card.classList.remove('used');
+                });
+                
+                this.hideFeedback();
+            }
+
+            checkAnswer() {
+                const userWord = this.userAnswer.join('');
+                const correctWord = this.problems[this.currentProblem].word;
+                
+                this.totalAttempts++;
+                
+                if (userWord === correctWord) {
+                    this.correctAnswers++;
+                    this.score += 100;
+                    this.playCorrectAnimation();
+                    
+                    // 正解ポップアップを表示
+                    setTimeout(() => {
+                        this.showPopup(true, correctWord, this.problems[this.currentProblem].meaning);
+                    }, 800);
+                    
+                    setTimeout(() => {
+                        this.nextProblem();
+                    }, 4000);
+                } else {
+                    this.playIncorrectAnimation();
+                    
+                    // 不正解ポップアップを表示
+                    setTimeout(() => {
+                        this.showPopup(false, correctWord, this.problems[this.currentProblem].meaning);
+                    }, 800);
+                    
+                    // 不正解の場合は5秒後にリセット
+                    setTimeout(() => {
+                        this.clearAnswer();
+                    }, 5000);
+                }
+                
+                this.updateScoreboard();
+            }
+
+            showPopup(isCorrect, word, meaning) {
+                const overlay = document.getElementById('popup-overlay');
+                const content = document.getElementById('popup-content');
+                const icon = document.getElementById('popup-icon');
+                const title = document.getElementById('popup-title');
+                const wordElement = document.getElementById('popup-word');
+                const meaningElement = document.getElementById('popup-meaning');
+                
+                // コンテンツを設定
+                if (isCorrect) {
+                    icon.textContent = '🎉';
+                    icon.className = 'popup-icon correct';
+                    title.textContent = '正解！';
+                    content.className = 'popup-content correct';
+                } else {
+                    icon.textContent = '😔';
+                    icon.className = 'popup-icon incorrect';
+                    title.textContent = '不正解...';
+                    content.className = 'popup-content incorrect';
+                }
+                
+                wordElement.textContent = word;
+                meaningElement.textContent = meaning;
+                
+                // ポップアップを表示
+                overlay.classList.add('show');
+                
+                // 3秒後に自動で閉じる
+                setTimeout(() => {
+                    this.hidePopup();
+                }, 3000);
+            }
+
+            hidePopup() {
+                const overlay = document.getElementById('popup-overlay');
+                overlay.classList.remove('show');
+            }
+
+            playCorrectAnimation() {
+                // スロットにアニメーションを追加
+                const slots = document.querySelectorAll('.answer-slot');
+                slots.forEach(slot => {
+                    slot.classList.add('correct');
+                });
+                
+                // 紙吹雪エフェクト
+                this.createConfetti();
+                
+                // 花火エフェクト
+                this.createFireworks();
+                
+                // アニメーション終了後にクラスを削除
+                setTimeout(() => {
+                    slots.forEach(slot => {
+                        slot.classList.remove('correct');
+                    });
+                }, 600);
+            }
+
+            playIncorrectAnimation() {
+                const slots = document.querySelectorAll('.answer-slot');
+                slots.forEach(slot => {
+                    slot.classList.add('incorrect');
+                });
+                
+                setTimeout(() => {
+                    slots.forEach(slot => {
+                        slot.classList.remove('incorrect');
+                    });
+                }, 600);
+            }
+
+            createConfetti() {
+                const colors = ['#4CAF50', '#2196F3', '#FF9800', '#E91E63', '#9C27B0'];
+                const container = document.querySelector('.game-container');
+                
+                for (let i = 0; i < 50; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() * 2 + 's';
+                    confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                    
+                    container.appendChild(confetti);
+                    
+                    setTimeout(() => {
+                        confetti.remove();
+                    }, 4000);
+                }
+            }
+
+            createFireworks() {
+                const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'];
+                const container = document.querySelector('.game-container');
+                
+                for (let i = 0; i < 20; i++) {
+                    const firework = document.createElement('div');
+                    firework.className = 'firework';
+                    firework.style.left = Math.random() * 100 + '%';
+                    firework.style.top = Math.random() * 50 + '%';
+                    firework.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    firework.style.animationDelay = Math.random() * 0.5 + 's';
+                    
+                    container.appendChild(firework);
+                    
+                    setTimeout(() => {
+                        firework.remove();
+                    }, 1500);
+                }
+            }
+
+            showHint() {
+                const problem = this.problems[this.currentProblem];
+                const firstChar = problem.word[0];
+                
+                // 最初の文字をヒントとして配置
+                if (this.userAnswer[0] === '') {
+                    this.placeCharacter(firstChar, 0);
+                    this.showFeedback(false, `ヒント: 最初の文字は「${firstChar}」です`, '');
+                } else {
+                    this.showFeedback(false, `ヒント: この四字熟語の意味は「${problem.meaning}」`, '');
+                }
+            }
+
+            showFeedback(isCorrect, message, meaning) {
+                const feedback = document.getElementById('feedback');
+                feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'} show`;
+                feedback.innerHTML = `
+                    ${message}
+                    ${meaning ? `<div class="meaning">${meaning}</div>` : ''}
+                `;
+            }
+
+            hideFeedback() {
+                const feedback = document.getElementById('feedback');
+                feedback.classList.remove('show');
+            }
+
+            nextProblem() {
+                this.currentProblem = (this.currentProblem + 1) % this.problems.length;
+                this.loadProblem();
+                this.updateScoreboard();
+            }
+
+            updateScoreboard() {
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('current-problem').textContent = this.currentProblem + 1;
+                
+                const accuracy = this.totalAttempts > 0 ? 
+                    Math.round((this.correctAnswers / this.totalAttempts) * 100) : 0;
+                document.getElementById('accuracy').textContent = `${accuracy}%`;
+            }
+        }
+
+        // ゲーム開始
+        document.addEventListener('DOMContentLoaded', () => {
+            new YojijukugoGame();
+        });
+    </script>
+</body>
+</html>
