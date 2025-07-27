@@ -124,6 +124,9 @@ Web application built with AI assistance
 ### [地下鉄路線距離順番当てゲーム](subwaylength/)
 ルートカードがここに動的に生成されます 
 
+### [夏休み予定表 2025](summer-schedule/)
+カレンダーがここに生成されます 
+
 ### [七夕前夜 - 星に願いを](tanabata-eve/)
 Web application built with AI assistance
 
