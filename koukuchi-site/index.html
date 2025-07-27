@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工口サイト - 工業・工学情報ポータル</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #8e0e00 0%, #1f1c2c 30%, #7b2c7b 60%, #d53369 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #ff6b9d;
+            text-shadow: 2px 2px 8px rgba(255, 107, 157, 0.5), 0 0 20px rgba(255, 107, 157, 0.3);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #ff9cb8;
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .section {
+            background: rgba(0, 0, 0, 0.85);
+            margin: 30px 0;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3), 0 0 30px rgba(255, 107, 157, 0.1);
+            transition: transform 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 107, 157, 0.2);
+        }
+
+        .section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4), 0 0 40px rgba(255, 107, 157, 0.2);
+        }
+
+        .section h2 {
+            color: #ff6b9d;
+            border-bottom: 3px solid #ff6b9d;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            text-shadow: 0 0 10px rgba(255, 107, 157, 0.5);
+        }
+
+        .section p {
+            color: #e0e0e0;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .tool-card {
+            background: linear-gradient(145deg, rgba(123, 44, 123, 0.3), rgba(213, 51, 105, 0.2));
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 107, 157, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+        }
+
+        .tool-card:hover {
+            border-color: #ff6b9d;
+            background: linear-gradient(145deg, rgba(123, 44, 123, 0.5), rgba(213, 51, 105, 0.4));
+            transform: scale(1.02);
+            box-shadow: 0 5px 20px rgba(255, 107, 157, 0.3);
+        }
+
+        .tool-card h3 {
+            color: #ff9cb8;
+            margin-bottom: 10px;
+            text-shadow: 0 0 5px rgba(255, 107, 157, 0.3);
+        }
+
+        .tool-card p {
+            color: #e0e0e0;
+        }
+
+        .calculator {
+            background: linear-gradient(145deg, rgba(123, 44, 123, 0.4), rgba(31, 28, 44, 0.6));
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #ff6b9d;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 107, 157, 0.2);
+        }
+
+        .calculator:hover {
+            background: linear-gradient(145deg, rgba(123, 44, 123, 0.6), rgba(31, 28, 44, 0.8));
+            transform: translateX(5px);
+            box-shadow: 0 3px 10px rgba(255, 107, 157, 0.3), 0 0 20px rgba(255, 107, 157, 0.1);
+        }
+
+        .calculator h3 {
+            color: #ff9cb8;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            border-bottom: 2px solid rgba(255, 107, 157, 0.3);
+            padding-bottom: 8px;
+            text-shadow: 0 0 5px rgba(255, 107, 157, 0.3);
+        }
+
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .calc-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid rgba(255, 107, 157, 0.3);
+            border-radius: 5px;
+            font-size: 1rem;
+            margin: 5px 0;
+            background: rgba(0, 0, 0, 0.5);
+            color: #e0e0e0;
+            backdrop-filter: blur(5px);
+        }
+
+        .calc-input:focus {
+            border-color: #ff6b9d;
+            outline: none;
+            box-shadow: 0 0 10px rgba(255, 107, 157, 0.5);
+        }
+
+        .calc-button {
+            background: linear-gradient(145deg, #ff6b9d, #d53369);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(255, 107, 157, 0.3);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .calc-button:hover {
+            background: linear-gradient(145deg, #d53369, #ff6b9d);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 157, 0.5);
+        }
+
+        .result {
+            background: linear-gradient(145deg, rgba(255, 107, 157, 0.2), rgba(213, 51, 105, 0.1));
+            border: 2px solid #ff6b9d;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+            color: #ff9cb8;
+            text-shadow: 0 0 5px rgba(255, 107, 157, 0.3);
+            backdrop-filter: blur(5px);
+        }
+
+        .news-item {
+            border-left: 4px solid #ff6b9d;
+            padding: 15px;
+            margin: 15px 0;
+            background: linear-gradient(145deg, rgba(123, 44, 123, 0.3), rgba(31, 28, 44, 0.4));
+            border-radius: 0 10px 10px 0;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 107, 157, 0.2);
+        }
+
+        .news-item h3 {
+            color: #ff9cb8;
+            text-shadow: 0 0 5px rgba(255, 107, 157, 0.3);
+        }
+
+        .news-item p {
+            color: #e0e0e0;
+        }
+
+        .date {
+            color: #ff9cb8;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .footer {
+            background: rgba(0, 0, 0, 0.9);
+            text-align: center;
+            padding: 20px;
+            margin-top: 50px;
+            color: #ff9cb8;
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 107, 157, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 20px 10px;
+            }
+            
+            .section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">工口サイト</div>
+        <div class="subtitle">工業・工学情報ポータル - Engineering Excellence</div>
+        <p style="font-size: 0.9rem; color: #ff9cb8; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">※「エロサイト」ではありません。工業・工学の「工」と「口」です。</p>
+    </div>
+
+    <div class="container">
+        <div class="section">
+            <h2>🔧 工学計算ツール</h2>
+            <p>様々な工学計算を簡単に行えるツールです。</p>
+            
+            <div class="calc-grid">
+            <div class="calculator">
+                <h3>材料強度計算</h3>
+                <input type="number" id="force" class="calc-input" placeholder="荷重 (N)">
+                <input type="number" id="area" class="calc-input" placeholder="断面積 (mm²)">
+                <button class="calc-button" onclick="calculateStress()">応力を計算</button>
+                <div id="stress-result"></div>
+            </div>
+
+            <div class="calculator">
+                <h3>電力計算</h3>
+                <input type="number" id="voltage" class="calc-input" placeholder="電圧 (V)">
+                <input type="number" id="current" class="calc-input" placeholder="電流 (A)">
+                <button class="calc-button" onclick="calculatePower()">電力を計算</button>
+                <div id="power-result"></div>
+            </div>
+
+            <div class="calculator">
+                <h3>流体計算（レイノルズ数）</h3>
+                <input type="number" id="density" class="calc-input" placeholder="密度 (kg/m³)">
+                <input type="number" id="velocity" class="calc-input" placeholder="流速 (m/s)">
+                <input type="number" id="diameter" class="calc-input" placeholder="管径 (m)">
+                <input type="number" id="viscosity" class="calc-input" placeholder="動粘度 (m²/s)">
+                <button class="calc-button" onclick="calculateReynolds()">レイノルズ数を計算</button>
+                <div id="reynolds-result"></div>
+            </div>
+
+            <div class="calculator">
+                <h3>熱伝導計算</h3>
+                <input type="number" id="thermal-conductivity" class="calc-input" placeholder="熱伝導率 (W/m·K)">
+                <input type="number" id="area-heat" class="calc-input" placeholder="面積 (m²)">
+                <input type="number" id="temp-diff" class="calc-input" placeholder="温度差 (K)">
+                <input type="number" id="thickness" class="calc-input" placeholder="厚さ (m)">
+                <button class="calc-button" onclick="calculateHeatTransfer()">熱流量を計算</button>
+                <div id="heat-result"></div>
+            </div>
+
+            <div class="calculator">
+                <h3>梁の曲げ計算</h3>
+                <input type="number" id="load" class="calc-input" placeholder="荷重 (N)">
+                <input type="number" id="length" class="calc-input" placeholder="スパン長 (m)">
+                <input type="number" id="moment-inertia" class="calc-input" placeholder="断面二次モーメント (m⁴)">
+                <input type="number" id="elastic-modulus" class="calc-input" placeholder="弾性係数 (Pa)">
+                <button class="calc-button" onclick="calculateDeflection()">たわみを計算</button>
+                <div id="deflection-result"></div>
+            </div>
+
+            <div class="calculator">
+                <h3>回転体の遠心力計算</h3>
+                <input type="number" id="mass" class="calc-input" placeholder="質量 (kg)">
+                <input type="number" id="radius" class="calc-input" placeholder="回転半径 (m)">
+                <input type="number" id="rpm" class="calc-input" placeholder="回転数 (rpm)">
+                <button class="calc-button" onclick="calculateCentrifugalForce()">遠心力を計算</button>
+                <div id="centrifugal-result"></div>
+            </div>
+
+            <div class="calculator">
+                <h3>ギア比計算</h3>
+                <input type="number" id="drive-teeth" class="calc-input" placeholder="駆動歯車の歯数">
+                <input type="number" id="driven-teeth" class="calc-input" placeholder="従動歯車の歯数">
+                <input type="number" id="input-speed" class="calc-input" placeholder="入力回転数 (rpm)">
+                <button class="calc-button" onclick="calculateGearRatio()">出力回転数を計算</button>
+                <div id="gear-result"></div>
+            </div>
+
+            <div class="calculator">
+                <h3>圧力損失計算（管路）</h3>
+                <input type="number" id="pipe-length" class="calc-input" placeholder="管路長 (m)">
+                <input type="number" id="pipe-diameter" class="calc-input" placeholder="管径 (m)">
+                <input type="number" id="flow-velocity" class="calc-input" placeholder="流速 (m/s)">
+                <input type="number" id="friction-factor" class="calc-input" placeholder="摩擦係数" step="0.001">
+                <button class="calc-button" onclick="calculatePressureLoss()">圧力損失を計算</button>
+                <div id="pressure-result"></div>
+            </div>
+
+            <div class="calculator">
+                <h3>電気回路計算（オームの法則）</h3>
+                <select id="calc-type" class="calc-input">
+                    <option value="voltage">電圧を計算</option>
+                    <option value="current-ohm">電流を計算</option>
+                    <option value="resistance">抵抗を計算</option>
+                </select>
+                <input type="number" id="value1" class="calc-input" placeholder="値1">
+                <input type="number" id="value2" class="calc-input" placeholder="値2">
+                <button class="calc-button" onclick="calculateOhmsLaw()">計算実行</button>
+                <div id="ohms-result"></div>
+            </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🏭 工業分野</h2>
+            <div class="tools-grid">
+                <div class="tool-card" onclick="showInfo('manufacturing')">
+                    <h3>製造業</h3>
+                    <p>製造プロセス、品質管理、生産効率の最適化について</p>
+                </div>
+                <div class="tool-card" onclick="showInfo('automotive')">
+                    <h3>自動車工業</h3>
+                    <p>自動車の設計、製造、新技術の開発動向</p>
+                </div>
+                <div class="tool-card" onclick="showInfo('electronics')">
+                    <h3>電子工業</h3>
+                    <p>半導体、回路設計、電子部品の技術情報</p>
+                </div>
+                <div class="tool-card" onclick="showInfo('materials')">
+                    <h3>材料工学</h3>
+                    <p>新素材、金属加工、材料特性の研究</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📚 工学ニュース</h2>
+            <div class="news-item">
+                <div class="date">2024年12月15日</div>
+                <h3>新しい超軽量合金の開発に成功</h3>
+                <p>東京工業大学の研究チームが、従来比30%軽量化を実現した新合金を開発。航空宇宙産業への応用が期待されています。</p>
+            </div>
+            <div class="news-item">
+                <div class="date">2024年12月10日</div>
+                <h3>AI活用による工場の生産効率向上</h3>
+                <p>機械学習を用いた予知保全システムにより、製造業の稼働率が20%向上する事例が報告されました。</p>
+            </div>
+            <div class="news-item">
+                <div class="date">2024年12月05日</div>
+                <h3>次世代半導体技術の最新動向</h3>
+                <p>3nmプロセス技術の量産化が本格化し、コンピューターの処理能力向上が加速しています。</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎓 工学教育リソース</h2>
+            <div class="tools-grid">
+                <div class="tool-card">
+                    <h3>基礎数学</h3>
+                    <p>微分積分、線形代数、確率統計の基礎</p>
+                </div>
+                <div class="tool-card">
+                    <h3>工学物理</h3>
+                    <p>力学、電磁気学、熱力学の応用</p>
+                </div>
+                <div class="tool-card">
+                    <h3>CAD/CAM</h3>
+                    <p>設計ソフトウェアの使用方法とチュートリアル</p>
+                </div>
+                <div class="tool-card">
+                    <h3>プログラミング</h3>
+                    <p>工学計算に使用されるプログラミング言語</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2024 工口サイト - Engineering Portal. すべての工学者と技術者を応援しています。</p>
+        <p>本サイトは工業・工学の情報提供を目的としたサイトです。</p>
+    </div>
+
+    <script>
+        function calculateStress() {
+            const force = parseFloat(document.getElementById('force').value);
+            const area = parseFloat(document.getElementById('area').value);
+            
+            if (force && area && area > 0) {
+                const stress = force / area;
+                document.getElementById('stress-result').innerHTML = 
+                    `<div class="result">応力: ${stress.toFixed(2)} N/mm² (MPa)</div>`;
+            } else {
+                document.getElementById('stress-result').innerHTML = 
+                    `<div style="color: red;">正しい数値を入力してください。</div>`;
+            }
+        }
+
+        function calculatePower() {
+            const voltage = parseFloat(document.getElementById('voltage').value);
+            const current = parseFloat(document.getElementById('current').value);
+            
+            if (voltage && current) {
+                const power = voltage * current;
+                document.getElementById('power-result').innerHTML = 
+                    `<div class="result">電力: ${power.toFixed(2)} W</div>`;
+            } else {
+                document.getElementById('power-result').innerHTML = 
+                    `<div style="color: red;">正しい数値を入力してください。</div>`;
+            }
+        }
+
+        function calculateReynolds() {
+            const density = parseFloat(document.getElementById('density').value);
+            const velocity = parseFloat(document.getElementById('velocity').value);
+            const diameter = parseFloat(document.getElementById('diameter').value);
+            const viscosity = parseFloat(document.getElementById('viscosity').value);
+            
+            if (density && velocity && diameter && viscosity && viscosity > 0) {
+                const reynolds = (density * velocity * diameter) / viscosity;
+                let flowType = reynolds < 2300 ? "層流" : reynolds > 4000 ? "乱流" : "遷移流";
+                document.getElementById('reynolds-result').innerHTML = 
+                    `<div class="result">レイノルズ数: ${reynolds.toFixed(0)}<br>流れの状態: ${flowType}</div>`;
+            } else {
+                document.getElementById('reynolds-result').innerHTML = 
+                    `<div style="color: red;">正しい数値を入力してください。</div>`;
+            }
+        }
+
+        function calculateHeatTransfer() {
+            const k = parseFloat(document.getElementById('thermal-conductivity').value);
+            const area = parseFloat(document.getElementById('area-heat').value);
+            const tempDiff = parseFloat(document.getElementById('temp-diff').value);
+            const thickness = parseFloat(document.getElementById('thickness').value);
+            
+            if (k && area && tempDiff && thickness && thickness > 0) {
+                const heatFlow = (k * area * tempDiff) / thickness;
+                document.getElementById('heat-result').innerHTML = 
+                    `<div class="result">熱流量: ${heatFlow.toFixed(2)} W</div>`;
+            } else {
+                document.getElementById('heat-result').innerHTML = 
+                    `<div style="color: red;">正しい数値を入力してください。</div>`;
+            }
+        }
+
+        function calculateDeflection() {
+            const load = parseFloat(document.getElementById('load').value);
+            const length = parseFloat(document.getElementById('length').value);
+            const momentInertia = parseFloat(document.getElementById('moment-inertia').value);
+            const elasticModulus = parseFloat(document.getElementById('elastic-modulus').value);
+            
+            if (load && length && momentInertia && elasticModulus && momentInertia > 0 && elasticModulus > 0) {
+                const deflection = (load * Math.pow(length, 3)) / (48 * elasticModulus * momentInertia);
+                document.getElementById('deflection-result').innerHTML = 
+                    `<div class="result">最大たわみ: ${(deflection * 1000).toFixed(3)} mm<br>(単純支持梁の中央集中荷重)</div>`;
+            } else {
+                document.getElementById('deflection-result').innerHTML = 
+                    `<div style="color: red;">正しい数値を入力してください。</div>`;
+            }
+        }
+
+        function calculateCentrifugalForce() {
+            const mass = parseFloat(document.getElementById('mass').value);
+            const radius = parseFloat(document.getElementById('radius').value);
+            const rpm = parseFloat(document.getElementById('rpm').value);
+            
+            if (mass && radius && rpm) {
+                const omega = (rpm * 2 * Math.PI) / 60; // rad/s
+                const centrifugalForce = mass * Math.pow(omega, 2) * radius;
+                document.getElementById('centrifugal-result').innerHTML = 
+                    `<div class="result">遠心力: ${centrifugalForce.toFixed(2)} N<br>角速度: ${omega.toFixed(2)} rad/s</div>`;
+            } else {
+                document.getElementById('centrifugal-result').innerHTML = 
+                    `<div style="color: red;">正しい数値を入力してください。</div>`;
+            }
+        }
+
+        function calculateGearRatio() {
+            const driveTeeth = parseFloat(document.getElementById('drive-teeth').value);
+            const drivenTeeth = parseFloat(document.getElementById('driven-teeth').value);
+            const inputSpeed = parseFloat(document.getElementById('input-speed').value);
+            
+            if (driveTeeth && drivenTeeth && inputSpeed && drivenTeeth > 0) {
+                const gearRatio = drivenTeeth / driveTeeth;
+                const outputSpeed = inputSpeed / gearRatio;
+                const torqueRatio = gearRatio;
+                document.getElementById('gear-result').innerHTML = 
+                    `<div class="result">ギア比: ${gearRatio.toFixed(3)}:1<br>出力回転数: ${outputSpeed.toFixed(1)} rpm<br>トルク比: ${torqueRatio.toFixed(3)}</div>`;
+            } else {
+                document.getElementById('gear-result').innerHTML = 
+                    `<div style="color: red;">正しい数値を入力してください。</div>`;
+            }
+        }
+
+        function calculatePressureLoss() {
+            const length = parseFloat(document.getElementById('pipe-length').value);
+            const diameter = parseFloat(document.getElementById('pipe-diameter').value);
+            const velocity = parseFloat(document.getElementById('flow-velocity').value);
+            const frictionFactor = parseFloat(document.getElementById('friction-factor').value);
+            
+            if (length && diameter && velocity && frictionFactor && diameter > 0) {
+                const density = 1000; // 水の密度 kg/m³
+                const pressureLoss = frictionFactor * (length / diameter) * (density * Math.pow(velocity, 2)) / 2;
+                document.getElementById('pressure-result').innerHTML = 
+                    `<div class="result">圧力損失: ${(pressureLoss / 1000).toFixed(2)} kPa<br>※水の場合(密度1000kg/m³)</div>`;
+            } else {
+                document.getElementById('pressure-result').innerHTML = 
+                    `<div style="color: red;">正しい数値を入力してください。</div>`;
+            }
+        }
+
+        function calculateOhmsLaw() {
+            const calcType = document.getElementById('calc-type').value;
+            const value1 = parseFloat(document.getElementById('value1').value);
+            const value2 = parseFloat(document.getElementById('value2').value);
+            
+            if (value1 && value2) {
+                let result;
+                let unit;
+                let formula;
+                
+                switch(calcType) {
+                    case 'voltage':
+                        result = value1 * value2; // I × R = V
+                        unit = 'V';
+                        formula = `電圧 = ${value1}A × ${value2}Ω = ${result.toFixed(2)}V`;
+                        break;
+                    case 'current-ohm':
+                        if (value2 > 0) {
+                            result = value1 / value2; // V ÷ R = I
+                            unit = 'A';
+                            formula = `電流 = ${value1}V ÷ ${value2}Ω = ${result.toFixed(3)}A`;
+                        }
+                        break;
+                    case 'resistance':
+                        if (value2 > 0) {
+                            result = value1 / value2; // V ÷ I = R
+                            unit = 'Ω';
+                            formula = `抵抗 = ${value1}V ÷ ${value2}A = ${result.toFixed(2)}Ω`;
+                        }
+                        break;
+                }
+                
+                if (result !== undefined) {
+                    document.getElementById('ohms-result').innerHTML = 
+                        `<div class="result">${formula}</div>`;
+                } else {
+                    document.getElementById('ohms-result').innerHTML = 
+                        `<div style="color: red;">計算エラー: ゼロ除算です。</div>`;
+                }
+            } else {
+                document.getElementById('ohms-result').innerHTML = 
+                    `<div style="color: red;">正しい数値を入力してください。</div>`;
+            }
+        }
+
+        function showInfo(category) {
+            const messages = {
+                manufacturing: "製造業では効率性と品質が重要です。リーン製造、6シグマ、IoTを活用したスマートファクトリーが注目されています。",
+                automotive: "自動車工業は電動化、自動運転、軽量化が主要トレンドです。新材料と先進的な製造技術が求められています。",
+                electronics: "電子工業では小型化、高性能化が続いています。5G、AI、量子コンピューティングが次世代技術の鍵となります。",
+                materials: "材料工学では持続可能性と性能向上の両立が課題です。ナノ材料、バイオ材料、リサイクル技術が重要分野です。"
+            };
+            
+            alert(messages[category] || "情報を準備中です。");
+        }
+
+        // ページロード時のアニメーション
+        window.addEventListener('load', function() {
+            const sections = document.querySelectorAll('.section');
+            sections.forEach((section, index) => {
+                setTimeout(() => {
+                    section.style.opacity = '0';
+                    section.style.transform = 'translateY(20px)';
+                    section.style.transition = 'all 0.6s ease';
+                    
+                    requestAnimationFrame(() => {
+                        section.style.opacity = '1';
+                        section.style.transform = 'translateY(0)';
+                    });
+                }, index * 200);
+            });
+        });
+
+        // 工学豆知識をランダム表示
+        const engineeringFacts = [
+            "エンジニアリングの語源は「ingenium（才能）」というラテン語です。",
+            "世界最古の工学校は1747年にフランスで設立されたエコール・デ・ポン・エ・ショセです。",
+            "現代の橋の多くは有限要素解析により設計されています。",
+            "産業革命以降、工学技術の進歩により人類の平均寿命は約3倍になりました。"
+        ];
+
+        setInterval(() => {
+            const randomFact = engineeringFacts[Math.floor(Math.random() * engineeringFacts.length)];
+            console.log("🔧 工学豆知識: " + randomFact);
+        }, 30000);
+    </script>
+</body>
+</html>
