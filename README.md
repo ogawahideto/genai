@@ -4,146 +4,164 @@ This repository contains a collection of small, self-contained web applications 
 
 ## Applications
 
-### [三連休計算機](3daysholiday/)
-Web application built with AI assistance
+### 🎮 ゲーム類 (Games)
 
-### [高性能人工無能AI - Claude Code Edition](advanced_ai/)
-Web application built with AI assistance
+#### [Gravity Game](gravity/) (2024-06-04)
+重力を利用した物理シミュレーションゲーム
 
-### [ラーメンとんかつアートバトル](art_food_battle/)
-Web application built with AI assistance
+#### [シューティングゲーム](shooting_cc/) (2024-06-07)
+クラシックなシューティングゲーム
 
-### [絶対に当たる予言](ataru-yogen/)
-Web application built with AI assistance
+#### [シューティングゲーム](shooting_cc_2/) (2024-06-07)  
+シューティングゲーム（第2版）
 
-### [化学式クイズ](chem_formula_quiz/)
-Web application built with AI assistance
+#### [リバーシ](reversi/) (2024-06-09)
+オセロ・リバーシのWebゲーム
 
-### [コード進行練習アプリ](chord_practice_app/)
-Web application built with AI assistance
+#### [オチナイゲー](ochinai/) (2024-06-17)
+落ちないようにバランスを取るアクションゲーム
 
-### [Anthropic & Claude 愛称ジェネレーター](claude_nickname/)
-Web application built with AI assistance
+#### [激似！国旗クイズ](flags/) (2024-06-20)
+世界の国旗を当てるクイズゲーム
 
-### [ルービックキューブ](cube-claude/)
-Web application built with AI assistance
+#### [四人打ち囲碁](four_player_go/) (2024-06-28)
+4人で遊ぶ囲碁ゲーム
 
-### [Rubik's Cube](cube-gemini/)
-Web application built with AI assistance
+#### [ルービックキューブ](cube-claude/) (2024-06-29)
+3Dルービックキューブパズル
 
-### [江戸世紀 - 令和の世からお買い物](ecsite/)
-Web application built with AI assistance
+#### [Rubik's Cube](cube-gemini/) (2024-06-29)
+3Dルービックキューブパズル（Gemini版）
 
-### [文字が落ちるWebページ](fallingtext/)
-Web application built with AI assistance
+#### [ピタゴラゲーム](pitagora-game/) (2024-06-30)
+ピタゴラスイッチ風のボール転がしゲーム
 
-### [激似！国旗クイズ](flags/)
-Web application built with AI assistance
+#### [UNO風カードゲーム](uno-like/) (2024-07-04)
+UNOライクなカードゲーム
 
-### [四人打ち囲碁](four_player_go/)
-Web application built with AI assistance
+#### [ハノイの塔 - 自動解答システム](hanoi-tower/) (2024-07-26)
+ハノイの塔パズルと自動解法システム
 
-### [四字熟語パズルゲーム](four-characters/)
-漢字オプションがここに動的に追加されます 
+#### [四字熟語パズルゲーム](four-characters/) (2024-07-27)
+漢字の四字熟語を作るパズルゲーム
 
-### [双子座](gemini-web/)
-Web application built with AI assistance
+### 🧠 クイズ・学習 (Quiz & Educational)
 
-### [世界の曜日当てゲーム](globalday/)
-言語リストがここに動的に挿入されます 
+#### [国家クイズアプリ](national_songs/) (2024-06-25)
+世界の国歌を当てるクイズ
 
-### [Gravity Game](gravity/)
-Web application built with AI assistance
+#### [化学式クイズ](chem_formula_quiz/) (2024-07-05)
+化学式を学ぶクイズアプリ
 
-### [ギタースケール練習アプリ](guitar_scale/)
-Web application built with AI assistance
+#### [日本三大クイズ - 三番目を当てよう！](japan-big-three-quiz/) (2024-07-27)
+日本の三大○○の三番目を当てるクイズ
 
-### [ハノイの塔 - 自動解答システム](hanoi-tower/)
-Web application built with AI assistance
+#### [地下鉄路線距離順番当てゲーム](subwaylength/) (2024-07-25)
+地下鉄路線の距離を当てるゲーム
 
-### [Grid Canvas](hougan/)
-Web application built with AI assistance
+#### [世界の曜日当てゲーム](globalday/) (2024-07-25)
+世界各国の言語で曜日を当てるゲーム
 
-### [犬も歩けば棒に当たる](inumo_arukeba/)
-Tailwind CSS CDNを読み込み 
+### 🎵 音楽・エンターテイメント (Music & Entertainment)
 
-### [日本三大クイズ - 三番目を当てよう！](japan-big-three-quiz/)
-Web application built with AI assistance
+#### [オトノキョリ](otono-kyori/) (2024-06-10)
+音の距離を体験するインタラクティブアプリ
 
-### [人工無能チャット](jinkou_munou/)
-Web application built with AI assistance
+#### [ロック＆ポップス 究極判定アプリ](rockorpops/) (2024-06-16)
+音楽ジャンル判定アプリ
 
-### [工口サイト - 工業・工学情報ポータル](koukuchi-site/)
-Web application built with AI assistance
+#### [ギタースケール練習アプリ](guitar_scale/) (2024-06-07)
+ギターのスケール練習ツール
 
-### [参院選風 政治的立場診断](lr/)
-Web application built with AI assistance
+#### [コード進行練習アプリ](chord_practice_app/) (2024-06-07)
+音楽のコード進行を学ぶアプリ
 
-### [月の満ち欠け](moon-phase/)
-Phase icons will be generated here 
+### 🛒 E-コマース・ビジネス (E-commerce & Business)
 
-### [何もしないアプリ](nani_mo_shinai/)
-Web application built with AI assistance
+#### [ALPHARD SmartBuy - あなたのアルファードライフを彩る賢い選択](zancre/) (2024-06-27)
+アルファード専門のECサイト
 
-### [国家クイズアプリ](national_songs/)
-Web application built with AI assistance
+#### [江戸世紀 - 令和の世からお買い物](ecsite/) (2024-07-09)
+江戸時代風のECサイト
 
-### [NBB 8ASIC エミュレータ](NBB8ASIC/)
-Web application built with AI assistance
+#### [工口サイト - 工業・工学情報ポータル](koukuchi-site/) (2024-07-27)
+工業・工学系のポータルサイト
 
-### [オチナイゲー](ochinai/)
-Web application built with AI assistance
+### 🤖 AI・チャット (AI & Chat)
 
-### [オトノキョリ](otono-kyori/)
-Web application built with AI assistance
+#### [Anthropic & Claude 愛称ジェネレーター](claude_nickname/) (2024-06-07)
+Claude AIの愛称を生成するツール
 
-### [ピタゴラゲーム](pitagora-game/)
-Web application built with AI assistance
+#### [人工無能チャット](jinkou_munou/) (2024-06-10)
+シンプルな人工無能チャット
 
-### [リバーシ](reversi/)
-Web application built with AI assistance
+#### [高性能人工無能AI - Claude Code Edition](advanced_ai/) (2024-06-11)
+高度な人工無能チャットボット
 
-### [ロック＆ポップス 究極判定アプリ](rockorpops/)
-Web application built with AI assistance
+### 🎨 ビジュアル・アート (Visual & Art)
 
-### [sagi](sagi/)
-Web application built with AI assistance
+#### [ゆれ豆腐](yuretofu/) (2024-06-04)
+揺れる豆腐のアニメーション
 
-### [シューティングゲーム](shooting_cc/)
-Web application built with AI assistance
+#### [ラーメンとんかつアートバトル](art_food_battle/) (2024-06-05)
+食べ物をテーマにしたアートバトル
 
-### [シューティングゲーム](shooting_cc_2/)
-Web application built with AI assistance
+#### [Grid Canvas](hougan/) (2024-06-12)
+グリッドベースの描画キャンバス
 
-### [ソフとウェア - ソフトウェア組み立てパズル](sofu_to_ware/)
-Components will be generated here 
+#### [文字が落ちるWebページ](fallingtext/) (2024-07-25)
+文字が落下するビジュアルエフェクト
 
-### [処理中... (永遠に続くバージョン)](status_bar/)
-Web application built with AI assistance
+#### [月の満ち欠け](moon-phase/) (2024-07-25)
+月の満ち欠けを表示するアプリ
 
-### [地下鉄路線距離順番当てゲーム](subwaylength/)
-ルートカードがここに動的に生成されます 
+### 🔧 ユーティリティ・ツール (Utilities & Tools)
 
-### [夏休み予定表 2025](summer-schedule/)
-カレンダーがここに生成されます 
+#### [ソフとウェア - ソフトウェア組み立てパズル](sofu_to_ware/) (2024-06-07)
+ソフトウェア組み立てをテーマにしたパズル
 
-### [七夕前夜 - 星に願いを](tanabata-eve/)
-Web application built with AI assistance
+#### [処理中... (永遠に続くバージョン)](status_bar/) (2024-06-11)
+永続的なローディング表示
 
-### [Test Application](test-app/)
-Web application built with AI assistance
+#### [犬も歩けば棒に当たる](inumo_arukeba/) (2024-06-18)
+ことわざをテーマにしたアプリ
 
-### [UNO風カードゲーム](uno-like/)
-Web application built with AI assistance
+#### [何もしないアプリ](nani_mo_shinai/) (2024-06-26)
+文字通り何もしないアプリ
 
-### [Vibe Coding - バイブコーディング体験](vibe/)
-Web application built with AI assistance
+#### [Vibe Coding - バイブコーディング体験](vibe/) (2024-07-05)
+バイブレーション機能を使ったコーディング体験
 
-### [ゆれ豆腐](yuretofu/)
-Web application built with AI assistance
+#### [絶対に当たる予言](ataru-yogen/) (2024-07-08)
+必ず当たる予言を生成するジョークアプリ
 
-### [ALPHARD SmartBuy - あなたのアルファードライフを彩る賢い選択](zancre/)
-Web application built with AI assistance
+#### [sagi](sagi/) (2024-07-08)
+詐欺対策・教育アプリ
+
+#### [参院選風 政治的立場診断](lr/) (2024-07-16)
+政治的立場を診断するアプリ
+
+#### [三連休計算機](3daysholiday/) (2024-07-18)
+三連休を計算するユーティリティ
+
+### 🎭 診断・分析 (Diagnosis & Analysis)
+
+#### [双子座](gemini-web/) (2024-07-05)
+星座をテーマにしたWebアプリ
+
+### 🎯 その他・実験的 (Others & Experimental)
+
+#### [七夕前夜 - 星に願いを](tanabata-eve/) (2024-07-06)
+七夕をテーマにしたインタラクティブアプリ
+
+#### [NBB 8ASIC エミュレータ](NBB8ASIC/) (2024-07-10)
+8ビットアセンブリのエミュレータ
+
+#### [Test Application](test-app/) (2024-07-27)
+テスト用アプリケーション
+
+#### [夏休み予定表 2025](summer-schedule/) (2024-07-27)
+夏休みの予定管理アプリ
 
 
 ## Usage
