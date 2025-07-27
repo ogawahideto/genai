@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本三大クイズ - 三番目を当てよう！</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Kaku Gothic Pro', 'ヒラギノ角ゴ Pro W3', Meiryo, メイリオ, Osaka, 'MS PGothic', arial, helvetica, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .quiz-section {
+            margin-bottom: 30px;
+        }
+
+        .question {
+            font-size: 1.8em;
+            color: #444;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .category {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        .known-items {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 5px solid #667eea;
+        }
+
+        .known-items h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .known-items ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .known-items li {
+            background: white;
+            margin: 8px 0;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-size: 1.1em;
+        }
+
+        .answer-options {
+            margin: 20px 0;
+        }
+
+        .option {
+            background: white;
+            border: 3px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1.1em;
+            text-align: left;
+        }
+
+        .option:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .option.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .option.correct {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+
+        .option.incorrect {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+
+        .submit-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 10px;
+            font-family: inherit;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .next-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+
+        .result {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 1.2em;
+        }
+
+        .correct {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .incorrect {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .score {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            margin: 20px 0;
+        }
+
+        .final-score {
+            background: #e7f3ff;
+            border: 2px solid #667eea;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+
+        .restart-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .question {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+<!--
+AI Model: Claude 3.5 Sonnet (Sonnet 4)
+User Prompt: 日本三大の三番目を当てるクイズを作ってください。HTMLで作ってください。
+AI Approach: Single-file HTML quiz game with embedded CSS and JavaScript, featuring Japanese Big Three categories
+Implementation Intent: Educational quiz game testing knowledge of Japan's famous "Big Three" cultural categories
+-->
+
+    <div class="container">
+        <h1>🇯🇵 日本三大クイズ</h1>
+        <p style="margin-bottom: 15px; font-size: 1.1em; color: #666;">三番目を当てよう！</p>
+        <p style="margin-bottom: 30px; font-size: 0.9em; color: #888; background: #f8f9fa; padding: 10px; border-radius: 8px; border-left: 3px solid #ffc107;">
+            ⚠️ 注意：日本三大には諸説あります
+        </p>
+        
+        <div id="quiz-container">
+            <div class="quiz-section">
+                <div class="question">
+                    <span class="category" id="category"></span><br>
+                    <span id="question-text"></span>
+                </div>
+                
+                <div class="known-items">
+                    <h3>すでに分かっている２つ:</h3>
+                    <ul id="known-list"></ul>
+                </div>
+                
+                <div id="answer-options" class="answer-options">
+                </div>
+                
+                <button id="submit-btn" class="submit-btn" style="display: none;">回答する</button>
+                <button id="skip-btn" class="submit-btn" style="background: #6c757d;">スキップ</button>
+            </div>
+            
+            <div id="result" class="result" style="display: none;"></div>
+            <button id="next-btn" class="submit-btn next-btn" style="display: none;">次の問題</button>
+        </div>
+
+        <div class="score">
+            <span id="current-score">正解数: 0</span> / <span id="total-questions">0</span>
+        </div>
+
+        <div id="final-result" class="final-score" style="display: none;">
+            <h2>クイズ終了！</h2>
+            <div id="final-score-text"></div>
+            <button id="restart-btn" class="submit-btn restart-btn">もう一度挑戦</button>
+        </div>
+    </div>
+
+    <script>
+        const quizData = [
+            {
+                category: "日本三大夜景",
+                question: "美しい夜景で有名な三大スポットの三番目は？",
+                known: ["函館山（北海道）", "摩耶山 掬星台（神戸）"],
+                answer: "稲佐山",
+                options: ["稲佐山", "六甲山", "東京タワー", "スカイツリー"],
+                hint: "長崎にある山です"
+            },
+            {
+                category: "日本三大桜",
+                question: "日本を代表する桜の名所の三番目は？",
+                known: ["吉野山（奈良県）", "弘前公園（青森県）"],
+                answer: "高遠城址公園",
+                options: ["高遠城址公園", "上野公園", "千鳥ヶ淵", "目黒川"],
+                hint: "長野県にある城址公園です"
+            },
+            {
+                category: "日本三大祭り",
+                question: "日本三大祭りの三番目は？",
+                known: ["祇園祭（京都）", "天神祭（大阪）"],
+                answer: "神田祭",
+                options: ["神田祭", "阿波踊り", "青森ねぶた祭", "博多どんたく"],
+                hint: "東京の神田で行われるお祭りです"
+            },
+            {
+                category: "日本三大温泉",
+                question: "日本三大温泉の三番目は？",
+                known: ["草津温泉（群馬県）", "有馬温泉（兵庫県）"],
+                answer: "下呂温泉",
+                options: ["下呂温泉", "別府温泉", "熱海温泉", "箱根温泉"],
+                hint: "岐阜県にある温泉です"
+            },
+            {
+                category: "日本三大庭園",
+                question: "日本三大庭園の三番目は？",
+                known: ["兼六園（石川県）", "偕楽園（茨城県）"],
+                answer: "後楽園",
+                options: ["後楽園", "栗林公園", "浜離宮恩賜庭園", "新宿御苑"],
+                hint: "岡山県にある庭園です"
+            },
+            {
+                category: "日本三大うどん",
+                question: "日本三大うどんの三番目は？",
+                known: ["讃岐うどん（香川県）", "稲庭うどん（秋田県）"],
+                answer: "水沢うどん",
+                options: ["水沢うどん", "武蔵野うどん", "氷見うどん", "五島うどん"],
+                hint: "群馬県の水沢地区の名物です"
+            },
+            {
+                category: "日本三大和牛",
+                question: "日本三大和牛の三番目は？",
+                known: ["松阪牛（三重県）", "神戸牛（兵庫県）"],
+                answer: "近江牛",
+                options: ["近江牛", "飛騨牛", "但馬牛", "前沢牛"],
+                hint: "滋賀県のブランド牛です"
+            },
+            {
+                category: "日本三大稲荷",
+                question: "日本三大稲荷の三番目は？",
+                known: ["伏見稲荷大社（京都府）", "豊川稲荷（愛知県）"],
+                answer: "笠間稲荷神社",
+                options: ["笠間稲荷神社", "竹駒神社", "祐徳稲荷神社", "王子稲荷神社"],
+                hint: "茨城県にある稲荷神社です"
+            },
+            {
+                category: "日本三大瀑布",
+                question: "日本三大瀑布の三番目は？",
+                known: ["華厳の滝（栃木県）", "袋田の滝（茨城県）"],
+                answer: "那智の滝",
+                options: ["那智の滝", "白糸の滝", "音止めの滝", "称名滝"],
+                hint: "和歌山県の熊野にある滝です"
+            },
+            {
+                category: "日本三大城",
+                question: "日本三大城の三番目は？",
+                known: ["姫路城（兵庫県）", "熊本城（熊本県）"],
+                answer: "名古屋城",
+                options: ["名古屋城", "大阪城", "江戸城", "松本城"],
+                hint: "愛知県にある城で金のしゃちほこで有名です"
+            },
+            {
+                category: "日本三大急流",
+                question: "日本三大急流の三番目は？",
+                known: ["富士川（山梨県・静岡県）", "球磨川（熊本県）"],
+                answer: "最上川",
+                options: ["最上川", "天竜川", "木曽川", "利根川"],
+                hint: "山形県を流れる川で松尾芭蕉の俳句でも有名です"
+            },
+            {
+                category: "日本三大松原",
+                question: "日本三大松原の三番目は？",
+                known: ["三保の松原（静岡県）", "気比の松原（福井県）"],
+                answer: "虹の松原",
+                options: ["虹の松原", "天橋立", "松島", "宮島"],
+                hint: "佐賀県唐津市にある松原です"
+            },
+            {
+                category: "日本三大花火大会",
+                question: "日本三大花火大会の三番目は？",
+                known: ["長岡まつり大花火大会（新潟県）", "土浦全国花火競技大会（茨城県）"],
+                answer: "大曲の花火",
+                options: ["大曲の花火", "隅田川花火大会", "江戸川区花火大会", "熱海海上花火大会"],
+                hint: "秋田県大仙市で開催される花火大会です"
+            },
+            {
+                category: "日本三大中華街",
+                question: "日本三大中華街の三番目は？",
+                known: ["横浜中華街（神奈川県）", "南京町（神戸）"],
+                answer: "新地中華街",
+                options: ["新地中華街", "池袋中華街", "上野中華街", "錦糸町中華街"],
+                hint: "長崎県にある中華街です"
+            },
+            {
+                category: "日本三大そば",
+                question: "日本三大そばの三番目は？",
+                known: ["信州そば（長野県）", "出雲そば（島根県）"],
+                answer: "わんこそば",
+                options: ["わんこそば", "越前そば", "更科そば", "十割そば"],
+                hint: "岩手県の名物で何杯も食べるそばです"
+            },
+            {
+                category: "日本三大朝市",
+                question: "日本三大朝市の三番目は？",
+                known: ["輪島朝市（石川県）", "宮川朝市（岐阜県）"],
+                answer: "勝浦朝市",
+                options: ["勝浦朝市", "築地市場", "豊洲市場", "函館朝市"],
+                hint: "千葉県勝浦市で開催される朝市です"
+            },
+            {
+                category: "日本三大盆踊り",
+                question: "日本三大盆踊りの三番目は？",
+                known: ["阿波踊り（徳島県）", "越中おわら風の盆（富山県）"],
+                answer: "郡上踊り",
+                options: ["郡上踊り", "花笠踊り", "ソーラン節", "よさこい踊り"],
+                hint: "岐阜県郡上市で踊られる盆踊りです"
+            },
+            {
+                category: "日本三大美林",
+                question: "日本三大美林の三番目は？",
+                known: ["青森ヒバ（青森県）", "木曽ヒノキ（長野県）"],
+                answer: "秋田スギ",
+                options: ["秋田スギ", "屋久杉", "立山杉", "吉野杉"],
+                hint: "秋田県の代表的な美しい杉の森です"
+            },
+            {
+                category: "日本三大奇橋",
+                question: "日本三大奇橋の三番目は？",
+                known: ["錦帯橋（山口県）", "猿橋（山梨県）"],
+                answer: "祖谷のかずら橋",
+                options: ["祖谷のかずら橋", "明石海峡大橋", "瀬戸大橋", "レインボーブリッジ"],
+                hint: "徳島県の山奥にある蔓で作られた橋です"
+            },
+            {
+                category: "日本三大鍾乳洞",
+                question: "日本三大鍾乳洞の三番目は？",
+                known: ["秋芳洞（山口県）", "龍泉洞（岩手県）"],
+                answer: "玉泉洞",
+                options: ["玉泉洞", "日原鍾乳洞", "あぶくま洞", "飛騨大鍾乳洞"],
+                hint: "沖縄県にある美しい鍾乳洞です"
+            },
+            {
+                category: "日本三大銘茶",
+                question: "日本三大銘茶の三番目は？",
+                known: ["静岡茶（静岡県）", "宇治茶（京都府）"],
+                answer: "狭山茶",
+                options: ["狭山茶", "八女茶", "知覧茶", "嬉野茶"],
+                hint: "埼玉県狭山市周辺で作られるお茶です"
+            },
+            {
+                category: "日本三大湖",
+                question: "日本三大湖の三番目は？",
+                known: ["琵琶湖（滋賀県）", "霞ヶ浦（茨城県）"],
+                answer: "サロマ湖",
+                options: ["サロマ湖", "猪苗代湖", "中海", "宍道湖"],
+                hint: "北海道にある湖です"
+            },
+            {
+                category: "日本三大史跡",
+                question: "日本三大史跡の三番目は？",
+                known: ["太宰府跡（福岡県）", "多賀城跡（宮城県）"],
+                answer: "平城宮跡",
+                options: ["平城宮跡", "飛鳥京跡", "難波宮跡", "藤原京跡"],
+                hint: "奈良県にある奈良時代の宮殿跡です"
+            },
+            {
+                category: "日本三大運河",
+                question: "日本三大運河の三番目は？",
+                known: ["小樽運河（北海道）", "富岩運河（富山県）"],
+                answer: "堀川",
+                options: ["堀川", "新川", "江戸川", "神田川"],
+                hint: "京都市内を流れる運河です"
+            },
+            {
+                category: "日本三大茅葺き集落",
+                question: "日本三大茅葺き集落の三番目は？",
+                known: ["白川郷（岐阜県）", "五箇山（富山県）"],
+                answer: "美山",
+                options: ["美山", "大内宿", "下郷町", "飛騨高山"],
+                hint: "京都府南丹市にある茅葺き集落です"
+            },
+            {
+                category: "日本三大砂丘",
+                question: "日本三大砂丘の三番目は？",
+                known: ["鳥取砂丘（鳥取県）", "九十九里浜（千葉県）"],
+                answer: "猿ヶ森砂丘",
+                options: ["猿ヶ森砂丘", "内灘砂丘", "庄内砂丘", "遠州灘"],
+                hint: "青森県にある砂丘です"
+            },
+            {
+                category: "日本三大古湯",
+                question: "日本三大古湯の三番目は？",
+                known: ["道後温泉（愛媛県）", "有馬温泉（兵庫県）"],
+                answer: "白浜温泉",
+                options: ["白浜温泉", "城崎温泉", "下呂温泉", "別府温泉"],
+                hint: "和歌山県にある古い温泉です"
+            },
+            {
+                category: "日本三大名園",
+                question: "日本三大名園の三番目は？",
+                known: ["兼六園（石川県）", "偕楽園（茨城県）"],
+                answer: "後楽園",
+                options: ["後楽園", "栗林公園", "浜離宮恩賜庭園", "新宿御苑"],
+                hint: "岡山県にある大名庭園です"
+            },
+            {
+                category: "日本三大秘境",
+                question: "日本三大秘境の三番目は？",
+                known: ["白川郷（岐阜県）", "祖谷（徳島県）"],
+                answer: "椎葉村",
+                options: ["椎葉村", "奥会津", "五木村", "十津川村"],
+                hint: "宮崎県にある山深い村です"
+            },
+            {
+                category: "日本三大霊山",
+                question: "日本三大霊山の三番目は？",
+                known: ["富士山（静岡県・山梨県）", "立山（富山県）"],
+                answer: "白山",
+                options: ["白山", "御嶽山", "大山", "剣山"],
+                hint: "石川県と岐阜県にまたがる山です"
+            },
+            {
+                category: "日本三大がっかり名所",
+                question: "日本三大がっかり名所の三番目は？",
+                known: ["札幌時計台（北海道）", "播磨屋橋（高知県）"],
+                answer: "守礼門",
+                options: ["守礼門", "姫路城", "金閣寺", "東大寺"],
+                hint: "沖縄県にある門です"
+            },
+            {
+                category: "日本三大清流",
+                question: "日本三大清流の三番目は？",
+                known: ["長良川（岐阜県）", "四万十川（高知県）"],
+                answer: "柿田川",
+                options: ["柿田川", "球磨川", "神流川", "荒川"],
+                hint: "静岡県にある短い川ですが水が美しいです"
+            },
+            {
+                category: "日本三大俳句の里",
+                question: "日本三大俳句の里の三番目は？",
+                known: ["伊賀（三重県）", "出羽（山形県）"],
+                answer: "土佐",
+                options: ["土佐", "信州", "越後", "甲斐"],
+                hint: "高知県の古名で正岡子規ゆかりの地です"
+            },
+            {
+                category: "日本三大河川",
+                question: "日本三大河川の三番目は？",
+                known: ["信濃川（新潟県）", "利根川（関東地方）"],
+                answer: "石狩川",
+                options: ["石狩川", "北上川", "阿賀野川", "最上川"],
+                hint: "北海道を流れる川です"
+            },
+            {
+                category: "日本三大開運神社",
+                question: "日本三大開運神社の三番目は？",
+                known: ["明治神宮（東京都）", "出雲大社（島根県）"],
+                answer: "住吉大社",
+                options: ["住吉大社", "伏見稲荷大社", "春日大社", "熱田神宮"],
+                hint: "大阪府にある古い神社です"
+            },
+            {
+                category: "日本三大桜名所",
+                question: "日本三大桜名所の三番目は？",
+                known: ["吉野山（奈良県）", "弘前公園（青森県）"],
+                answer: "高遠城址公園",
+                options: ["高遠城址公園", "上野公園", "千鳥ヶ淵", "目黒川"],
+                hint: "長野県にある城址で桜が有名です"
+            },
+            {
+                category: "日本三大薬草の里",
+                question: "日本三大薬草の里の三番目は？",
+                known: ["宇陀（奈良県）", "富山（富山県）"],
+                answer: "甲府",
+                options: ["甲府", "松本", "会津", "高山"],
+                hint: "山梨県の県庁所在地です"
+            },
+            {
+                category: "日本三大石材",
+                question: "日本三大石材の三番目は？",
+                known: ["大島石（愛媛県）", "庵治石（香川県）"],
+                answer: "稲田石",
+                options: ["稲田石", "青森ヒバ", "木曽ヒノキ", "秋田スギ"],
+                hint: "茨城県産の美しい石材です"
+            }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+        let shuffledQuizData = [];
+        let selectedOption = null;
+
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function startQuiz() {
+            shuffledQuizData = shuffleArray(quizData);
+            currentQuestion = 0;
+            score = 0;
+            document.getElementById('final-result').style.display = 'none';
+            document.getElementById('quiz-container').style.display = 'block';
+            updateScore();
+            showQuestion();
+        }
+
+        function showQuestion() {
+            if (currentQuestion >= shuffledQuizData.length) {
+                showFinalResult();
+                return;
+            }
+
+            const question = shuffledQuizData[currentQuestion];
+            document.getElementById('category').textContent = question.category;
+            document.getElementById('question-text').textContent = question.question;
+            
+            const knownList = document.getElementById('known-list');
+            knownList.innerHTML = '';
+            question.known.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item;
+                knownList.appendChild(li);
+            });
+
+            createAnswerOptions();
+            selectedOption = null;
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('submit-btn').style.display = 'none';
+            document.getElementById('skip-btn').style.display = 'inline-block';
+        }
+
+        function createAnswerOptions() {
+            const question = shuffledQuizData[currentQuestion];
+            const optionsContainer = document.getElementById('answer-options');
+            optionsContainer.innerHTML = '';
+            
+            // シャッフルされた選択肢を作成
+            const shuffledOptions = shuffleArray([...question.options]);
+            
+            shuffledOptions.forEach((option, index) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = 'option';
+                optionDiv.textContent = option;
+                optionDiv.addEventListener('click', () => selectOption(option, optionDiv));
+                optionsContainer.appendChild(optionDiv);
+            });
+        }
+
+        function selectOption(option, optionElement) {
+            // 他の選択肢の選択状態をリセット
+            document.querySelectorAll('.option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            // 選択された選択肢をハイライト
+            optionElement.classList.add('selected');
+            selectedOption = option;
+            
+            // 自動的に回答をチェック
+            setTimeout(() => {
+                checkAnswer();
+            }, 300);
+        }
+
+        function checkAnswer() {
+            if (!selectedOption) return;
+
+            const question = shuffledQuizData[currentQuestion];
+            const isCorrect = selectedOption === question.answer;
+
+            // 全ての選択肢に結果表示
+            document.querySelectorAll('.option').forEach(opt => {
+                opt.style.pointerEvents = 'none';
+                if (opt.textContent === question.answer) {
+                    opt.classList.add('correct');
+                } else if (opt.textContent === selectedOption && !isCorrect) {
+                    opt.classList.add('incorrect');
+                }
+            });
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+
+            if (isCorrect) {
+                score++;
+                resultDiv.className = 'result correct';
+                resultDiv.innerHTML = `
+                    <strong>🎉 正解！</strong><br>
+                    答え: ${question.answer}
+                `;
+            } else {
+                resultDiv.className = 'result incorrect';
+                resultDiv.innerHTML = `
+                    <strong>❌ 不正解</strong><br>
+                    正解: ${question.answer}<br>
+                    <small>ヒント: ${question.hint}</small>
+                `;
+            }
+
+            document.getElementById('submit-btn').style.display = 'none';
+            document.getElementById('skip-btn').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'inline-block';
+            updateScore();
+        }
+
+        function skipQuestion() {
+            const question = shuffledQuizData[currentQuestion];
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result incorrect';
+            resultDiv.innerHTML = `
+                <strong>⏭️ スキップ</strong><br>
+                正解: ${question.answer}<br>
+                <small>ヒント: ${question.hint}</small>
+            `;
+            
+            // 正解を表示
+            document.querySelectorAll('.option').forEach(opt => {
+                opt.style.pointerEvents = 'none';
+                if (opt.textContent === question.answer) {
+                    opt.classList.add('correct');
+                }
+            });
+
+            document.getElementById('submit-btn').style.display = 'none';
+            document.getElementById('skip-btn').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'inline-block';
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            showQuestion();
+        }
+
+        function updateScore() {
+            document.getElementById('current-score').textContent = `正解数: ${score}`;
+            document.getElementById('total-questions').textContent = currentQuestion + 1;
+        }
+
+        function showFinalResult() {
+            document.getElementById('quiz-container').style.display = 'none';
+            document.getElementById('final-result').style.display = 'block';
+            
+            const percentage = Math.round((score / shuffledQuizData.length) * 100);
+            let message = '';
+            
+            if (percentage >= 80) {
+                message = '🏆 素晴らしい！日本文化に詳しいですね！';
+            } else if (percentage >= 60) {
+                message = '👏 良くできました！なかなかの知識です！';
+            } else if (percentage >= 40) {
+                message = '📚 もう少し！日本の文化を学んでみましょう！';
+            } else {
+                message = '💪 頑張って！これから覚えていきましょう！';
+            }
+
+            document.getElementById('final-score-text').innerHTML = `
+                <div style="font-size: 2em; margin: 20px 0;">${score} / ${shuffledQuizData.length}</div>
+                <div style="font-size: 1.5em; margin: 10px 0;">正解率: ${percentage}%</div>
+                <div style="margin: 20px 0;">${message}</div>
+            `;
+        }
+
+        // Event listeners
+        document.getElementById('submit-btn').addEventListener('click', checkAnswer);
+        document.getElementById('skip-btn').addEventListener('click', skipQuestion);
+        document.getElementById('next-btn').addEventListener('click', nextQuestion);
+        document.getElementById('restart-btn').addEventListener('click', startQuiz);
+
+
+        // Start the quiz
+        startQuiz();
+    </script>
+</body>
+</html>
