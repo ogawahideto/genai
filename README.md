@@ -1,340 +1,153 @@
-# genai
-Small apps made with Generative AIs
+# GenAI Applications Collection
 
-## Web Applications
-以下の説明はClaude Codeが生成しました。
-誤りを含む可能性があります。
+This repository contains a collection of small, self-contained web applications created using Generative AI tools. Each application is designed to be educational and demonstrates various web technologies and programming concepts.
 
-### 🎮 Games
+## Applications
 
-#### [ラーメンとんかつアートバトル](art_food_battle/index.html) 🎮
-芸術的なラーメンとトンカツの戦いを描いたアクションゲーム。
-*Canvas-based shooting game with artistic food battle theme.*
-*操作: キーボード（方向キー・スペース）/ Controls: Keyboard (arrow keys, space)*
-*スマホ対応: ❌ / Smartphone Support: ❌*
-*開発日: 2025-06-05 / Development Date: June 5, 2025*
+### [三連休計算機](3daysholiday/)
+Web application built with AI assistance
 
-#### [リバーシ](reversi/index.html) 🖱️
-クラシックなリバーシ（オセロ）ゲーム。2人対戦でプレイ可能。
-*Classic Reversi (Othello) game for two players.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-04 / Development Date: June 4, 2025*
-- [四人用リバーシ](reversi/four-player.html) - 4人対戦版 🖱️ *Four-player version* *(2025-06-09)* *スマホ対応: ✅*
+### [高性能人工無能AI - Claude Code Edition](advanced_ai/)
+Web application built with AI assistance
 
+### [ラーメンとんかつアートバトル](art_food_battle/)
+Web application built with AI assistance
 
-#### [シューティングゲーム (Claude Code)](shooting_cc/index.html) *by Claude Code* 🎮
-Claude Codeで作成されたシューティングゲーム。
-*Shooting game created with Claude Code.*
-*操作: キーボード（WASD・方向キー・スペース・R）/ Controls: Keyboard (WASD, arrow keys, space, R)*
-*スマホ対応: ❌ / Smartphone Support: ❌*
-*開発日: 2025-06-07 / Development Date: June 7, 2025*
-- [Version 2](shooting_cc_2/index.html) - 改良版 *Improved version* *by Claude Code* 🎮 *スマホ対応: ❌*
+### [絶対に当たる予言](ataru-yogen/)
+Web application built with AI assistance
 
+### [化学式クイズ](chem_formula_quiz/)
+Web application built with AI assistance
 
-#### [重力ゲーム](gravity/index.html) 🎮
-物理シミュレーションによる重力パズルゲーム。
-*Gravity puzzle game with physics simulation.*
-*操作: キーボード（方向キー・スペース・R・E・N）/ Controls: Keyboard (arrow keys, space, R, E, N)*
-*スマホ対応: ❌ / Smartphone Support: ❌*
-*開発日: 2025-06-04 / Development Date: June 4, 2025*
+### [コード進行練習アプリ](chord_practice_app/)
+Web application built with AI assistance
 
+### [Anthropic & Claude 愛称ジェネレーター](claude_nickname/)
+Web application built with AI assistance
 
-#### [ゆれ豆腐](yuretofu/index.html) 🎮🖱️
-ユニークなキャラクターを操作する物理アクションゲーム。
-*Physics action game featuring a unique character.*
-*操作: キーボード（方向キー・スペース）+ マウスクリック / Controls: Keyboard (arrow keys, space) + Mouse click*
-*スマホ対応: ❌ / Smartphone Support: ❌*
-*開発日: 2025-06-04 / Development Date: June 4, 2025*
+### [ルービックキューブ](cube-claude/)
+Web application built with AI assistance
 
-### 🎵 Music & Education
+### [Rubik's Cube](cube-gemini/)
+Web application built with AI assistance
 
-#### [ギタースケール練習アプリ](guitar_scale/index.html) 🖱️
-ギターのスケール練習用アプリ。音声再生機能付き。
-*Guitar scale practice app with audio playback functionality.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-07 / Development Date: June 7, 2025*
+### [江戸世紀 - 令和の世からお買い物](ecsite/)
+Web application built with AI assistance
 
-#### [コード進行練習アプリ](chord_practice_app/index.html) 🖱️
-音楽理論のコード進行を学習するためのアプリ。
-*App for learning chord progressions in music theory.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-07 / Development Date: June 7, 2025*
+### [文字が落ちるWebページ](fallingtext/)
+Web application built with AI assistance
 
+### [激似！国旗クイズ](flags/)
+Web application built with AI assistance
 
-#### [激似！国旗クイズ](flags/index.html) 🖱️
-見た目がそっくりな国旗ばかりを集めた国名当てクイズゲーム。
-*Flag identification quiz game featuring similar-looking flags from around the world.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-20 / Development Date: June 20, 2025*
+### [四人打ち囲碁](four_player_go/)
+Web application built with AI assistance
 
-#### [国家クイズアプリ](national_songs/index.html) 🖱️
-各国の国歌の歌詞から国名を当てるクイズゲーム。
-*National anthem quiz game - guess the country from anthem lyrics.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 不明 / Development Date: Unknown*
+### [四字熟語パズルゲーム](four-characters/)
+漢字オプションがここに動的に追加されます 
 
-#### [化学式クイズ](chem_formula_quiz/index.html) 🧪🎮🖱️
-化学式と物質名をマッチングするミニゲーム。
-*Chemistry quiz game matching chemical formulas with substance names.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-05 / Development Date: July 5, 2025*
+### [双子座](gemini-web/)
+Web application built with AI assistance
 
-#### [日本ビッグ3クイズ](japan-big-three-quiz/index.html) 🖱️
-日本の「ビッグ3」に関するクイズゲーム。
-*Quiz game about Japan's "Big Three" in various categories.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-26 / Development Date: July 26, 2025*
+### [世界の曜日当てゲーム](globalday/)
+言語リストがここに動的に挿入されます 
 
-### 🎭 Interactive & Utilities
+### [Gravity Game](gravity/)
+Web application built with AI assistance
 
-#### [Anthropic & Claude 愛称ジェネレーター](claude_nickname/index.html) 🖱️
-AnthropicとClaudeに関連する愛称を生成するジェネレーター。
-*Generator for creating nicknames related to Anthropic and Claude.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-07 / Development Date: June 7, 2025*
+### [ギタースケール練習アプリ](guitar_scale/)
+Web application built with AI assistance
 
-#### [オトノキョリ](otono-kyori/index.html) 🎮🖱️
-音と距離をテーマにしたインタラクティブアプリ。
-*Interactive app themed around sound and distance.*
-*操作: キーボード（Rキー）+ マウスクリック / Controls: Keyboard (R key) + Mouse click*
-*スマホ対応: ⚠️ / Smartphone Support: ⚠️ (タッチ操作で一部対応 / Partial touch support)*
-*開発日: 2025-06-10 / Development Date: June 10, 2025*
+### [ハノイの塔 - 自動解答システム](hanoi-tower/)
+Web application built with AI assistance
 
-#### [ソフとウェア](sofu_to_ware/index.html) 🖱️
-ソフトウェア組み立てパズル。プログラミング概念を学べる教育的ゲーム。
-*Software assembly puzzle. Educational game for learning programming concepts.*
-*操作: マウス（クリック・ドラッグ&ドロップ・ダブルクリック）/ Controls: Mouse (click, drag & drop, double-click)*
-*スマホ対応: ⚠️ / Smartphone Support: ⚠️ (タッチ操作で一部対応 / Partial touch support)*
-*開発日: 2025-06-07 / Development Date: June 7, 2025*
+### [Grid Canvas](hougan/)
+Web application built with AI assistance
 
-#### [Advanced AI](advanced_ai/index.html) 🖱️
-AI関連の高度なアプリケーション。
-*Advanced AI-related application.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-11 / Development Date: June 11, 2025*
+### [犬も歩けば棒に当たる](inumo_arukeba/)
+Tailwind CSS CDNを読み込み 
 
-#### [人工無能](jinkou_munou/index.html) 🖱️
-人工無能チャットボット。基本的な会話機能を持つ。
-*Artificial non-intelligence chatbot with basic conversation features.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-11 / Development Date: June 11, 2025*
+### [日本三大クイズ - 三番目を当てよう！](japan-big-three-quiz/)
+Web application built with AI assistance
 
-#### [Ex○el 方眼紙](hougan/index.html) 🖱️
-Excel形式の報告書作成ツール。
-*Excel-style report creation tool.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ⚠️ / Smartphone Support: ⚠️ (タッチ操作で一部対応 / Partial touch support)*
-*開発日: 2025-06-12 / Development Date: June 12, 2025*
+### [人工無能チャット](jinkou_munou/)
+Web application built with AI assistance
 
-#### [ステータスバー](status_bar/index.html) 🖱️
-システムステータス表示アプリ。
-*System status display application.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-11 / Development Date: June 11, 2025*
+### [参院選風 政治的立場診断](lr/)
+Web application built with AI assistance
 
-#### [Rock or Pops](rockorpops/index.html) 🎮
-ロックかポップスかを判断する音楽ジャンル識別ゲーム。
-*Music genre identification game to distinguish between rock and pop.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-16 / Development Date: June 16, 2025*
+### [月の満ち欠け](moon-phase/)
+Phase icons will be generated here 
 
-#### [オチナイゲー](ochinai/index.html) 🎮📱
-テトリス風ブロックゲームの面白いパロディ。ブロックが落ちると思いきや、途中で止まったり上がったりする予想外の動作をする。
-*Funny parody of Tetris-style block game. Blocks unexpectedly stop mid-air, bounce up, jump, or vanish instead of falling normally.*
-*操作: キーボード（←→移動・↓高速落下・スペース回転）+ タッチ操作 / Controls: Keyboard (←→ move, ↓ fast drop, space rotate) + Touch*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-16 / Development Date: June 16, 2025*
-*特徴: 5つの予想外動作（停止・逆方向・ジャンプ・バウンス・消失）90%の確率で発生 / Features: 5 unexpected behaviors (stop, reverse, jump, bounce, vanish) with 90% probability*
+### [何もしないアプリ](nani_mo_shinai/)
+Web application built with AI assistance
 
-#### [犬も歩けば棒に当たる](inumo_arukeba/index.html) 🖱️
-日本のことわざ「犬も歩けば棒に当たる」をビジュアル化したインタラクティブアプリ。
-*Interactive visualization of the Japanese proverb "Even a dog will encounter a stick if it walks."*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-18 / Development Date: June 18, 2025*
+### [国家クイズアプリ](national_songs/)
+Web application built with AI assistance
 
-#### [何もしないアプリ](nani_mo_shinai/index.html) 🖱️
-文字通り「何もしない」シンプルなアプリ。達成感を味わえる最小機能アプリ。
-*Literally "do nothing" simple app. Minimal functionality app where you can feel a sense of accomplishment.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-26 / Development Date: June 26, 2025*
+### [NBB 8ASIC エミュレータ](NBB8ASIC/)
+Web application built with AI assistance
 
-#### [たなばたイブ](tanabata-eve/index.html) 🎮🖱️
-七夕の前夜を楽しむインタラクティブアプリ。
-*Interactive application for enjoying Tanabata Eve.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-06 / Development Date: July 6, 2025*
+### [オチナイゲー](ochinai/)
+Web application built with AI assistance
 
-#### [ALPHARD SmartBuy](zancre/index.html) 🖱️
-アルファード購入支援アプリ。車両選択とカスタマイズ機能付き。
-*Alphard car purchase assistance app with vehicle selection and customization features.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-27 / Development Date: June 27, 2025*
+### [オトノキョリ](otono-kyori/)
+Web application built with AI assistance
 
-#### [Cube Claude](cube-claude/index.html) 🎮🖱️
-3Dキューブを使ったインタラクティブなClaude体験アプリ。
-*Interactive 3D cube experience featuring Claude.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-29 / Development Date: June 29, 2025*
+### [ピタゴラゲーム](pitagora-game/)
+Web application built with AI assistance
 
-#### [Cube Gemini](cube-gemini/index.html) 🎮🖱️
-3DキューブベースのGemini体験アプリ。
-*3D cube-based Gemini experience application.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-29 / Development Date: June 29, 2025*
+### [リバーシ](reversi/)
+Web application built with AI assistance
 
-#### [四人囲碁](four_player_go/index.html) 🖱️
-4人対戦用の革新的な囲碁ゲーム。
-*Innovative four-player Go game.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-28 / Development Date: June 28, 2025*
+### [ロック＆ポップス 究極判定アプリ](rockorpops/)
+Web application built with AI assistance
 
-#### [四字熟語学習アプリ](four-characters/index.html) 🖱️
-四字熟語を学習できるクイズアプリ。語彙力向上に最適。
-*Four-character idiom learning quiz app. Perfect for vocabulary improvement.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-27 / Development Date: July 27, 2025*
+### [sagi](sagi/)
+Web application built with AI assistance
 
-#### [ハノイの塔](hanoi-tower/index.html) 🎮🖱️
-100枚ディスクの自動ソルバー付きハノイの塔ゲーム。
-*Tower of Hanoi game with 100-disk auto-solver.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-26 / Development Date: July 26, 2025*
+### [シューティングゲーム](shooting_cc/)
+Web application built with AI assistance
 
-#### [Gemini Web](gemini-web/index.html) 🎮🖱️
-Gemini AIをテーマにしたウェブアプリケーション。
-*Web application themed around Gemini AI.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-05 / Development Date: July 5, 2025*
+### [シューティングゲーム](shooting_cc_2/)
+Web application built with AI assistance
+
+### [ソフとウェア - ソフトウェア組み立てパズル](sofu_to_ware/)
+Components will be generated here 
+
+### [処理中... (永遠に続くバージョン)](status_bar/)
+Web application built with AI assistance
+
+### [地下鉄路線距離順番当てゲーム](subwaylength/)
+ルートカードがここに動的に生成されます 
+
+### [七夕前夜 - 星に願いを](tanabata-eve/)
+Web application built with AI assistance
+
+### [Test Application](test-app/)
+Web application built with AI assistance
+
+### [UNO風カードゲーム](uno-like/)
+Web application built with AI assistance
+
+### [Vibe Coding - バイブコーディング体験](vibe/)
+Web application built with AI assistance
+
+### [ゆれ豆腐](yuretofu/)
+Web application built with AI assistance
+
+### [ALPHARD SmartBuy - あなたのアルファードライフを彩る賢い選択](zancre/)
+Web application built with AI assistance
 
 
-#### [サギサイト](sagi/index.html) 🦆🖱️
-鷺（サギ）の生態を面白おかしく紹介するパロディサイト。詐欺サイトのスタイルを模倣した教育的コメディアプリ。
-*Parody website introducing heron ecology in a humorous way. Educational comedy app that mimics the style of scam websites.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-08 / Development Date: July 8, 2025*
+## Usage
 
-#### [ピタゴラゲーム](pitagora-game/index.html) 🎮🖱️
-ピタゴラスイッチ風の物理パズルゲーム。
-*Rube Goldberg machine-style physics puzzle game.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-06-30 / Development Date: June 30, 2025*
+Each application is completely self-contained. Simply open the `index.html` file in any modern web browser to run the application.
 
-#### [UNO風ゲーム](uno-like/index.html) 🎮🖱️
-UNOに似たカードゲーム。
-*Card game similar to UNO.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-04 / Development Date: July 4, 2025*
+## Development
 
-#### [Vibe](vibe/index.html) 🎮🖱️
-インタラクティブなバイブ体験アプリ。
-*Interactive vibe experience application.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-05 / Development Date: July 5, 2025*
+All applications follow a single-file architecture with embedded HTML, CSS, and JavaScript. No build process or external dependencies are required.
 
-#### [Swingby Simulator](swingby/public/index.html) 🚀🖱️
-天体の重力を利用した軌道シミュレーター。
-*Orbital simulator using planetary gravity assists.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-05 / Development Date: July 5, 2025*
+## License
 
-#### [当たる予言](ataru-yogen/index.html) 🎮🖱️
-必ず当たる予言を生成するユニークなアプリ。
-*Unique app that generates predictions that are always correct.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-08 / Development Date: July 8, 2025*
-
-#### [ECサイト](ecsite/index.html) 🛒🖱️
-フルフィーチャーなeコマースサイト。商品閲覧、カート、配送機能を備えています。
-*Full-featured e-commerce site with product browsing, cart, and shipping features.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-09 / Development Date: July 9, 2025*
-
-#### [三連休計算機](3daysholiday/index.html) 🖱️
-三連休を計算・予測するアプリ。カレンダー機能付き。
-*Three-day holiday calculator and predictor with calendar features.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-18 / Development Date: July 18, 2025*
-
-#### [NBB8ASIC エミュレータ](NBB8ASIC/index.html) 🖱️
-N88 BASIC風のレトロコンピューターエミュレータ。
-*Retro computer emulator in the style of N88 BASIC.*
-*操作: キーボード・マウスクリック / Controls: Keyboard, Mouse click*
-*スマホ対応: ⚠️ / Smartphone Support: ⚠️ (キーボード操作のため部分対応 / Partial support due to keyboard controls)*
-*開発日: 2025-07-10 / Development Date: July 10, 2025*
-
-
-#### [落ちる文字](fallingtext/index.html) 🖱️
-文字をクリックすると物理的に落下するインタラクティブなWebページ。
-*Interactive webpage where characters physically fall when clicked.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ⚠️ / Smartphone Support: ⚠️ (タッチ操作で一部対応 / Partial touch support)*
-*開発日: 2025-07-25 / Development Date: July 25, 2025*
-
-#### [世界の曜日当てゲーム](globalday/index.html) 🎮🖱️
-世界各国の日付から曜日を当てるクイズゲーム。
-*Quiz game to guess the day of the week from dates around the world.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-25 / Development Date: July 25, 2025*
-
-#### [政治的立場診断](lr/index.html) 🖱️
-参院選風の政治的立場を診断するアプリ。
-*Political stance diagnostic app in the style of Upper House elections.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-16 / Development Date: July 16, 2025*
-
-#### [月の満ち欠け](moon-phase/index.html) 🌙🖱️
-リアルタイムで月の満ち欠けを表示するビジュアライザー。
-*Real-time moon phase visualizer.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-25 / Development Date: July 25, 2025*
-
-#### [地下鉄路線距離当てゲーム](subwaylength/index.html) 🚇🎮🖱️
-地下鉄路線の距離を当てるクイズゲーム。
-*Quiz game to guess the length of subway lines.*
-*操作: マウスクリック / Controls: Mouse click*
-*スマホ対応: ✅ / Smartphone Support: ✅*
-*開発日: 2025-07-25 / Development Date: July 25, 2025*
-
----
-
-## 技術的特徴
-- **フレームワーク不使用**: 全てのアプリはVanilla JavaScript、HTML、CSSで構築
-- **単一ファイル構成**: 各アプリは依存関係のない単一のHTMLファイル
-- **レスポンシブデザイン**: モバイル対応
-- **多言語対応**: 日本語UIを中心とした設計
-
-## 使用方法
-各アプリケーションのHTMLファイルをブラウザで直接開くだけで動作します。ビルドプロセスは不要です。
+MIT License - See individual applications for specific details.
