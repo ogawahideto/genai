@@ -113,3 +113,13 @@ AI Approach: HTML5 Canvas with game loop, collision detection using coordinate c
 Implementation Intent: Educational game demonstrating basic game programming concepts
 -->
 ```
+
+## README.md Management
+
+**IMPORTANT**: When updating README.md, only include applications that have been committed and pushed to the git repository. 
+
+### README Update Rules:
+1. **Only include pushed applications** - Check `git ls-tree -r --name-only HEAD` to verify what's committed
+2. **Remove references to unpushed apps** - Delete entries for applications that exist locally but haven't been pushed
+3. **Verify with git status** - Ensure applications are not in untracked files before adding to README
+4. **Maintain chronological order** - Keep applications sorted by development date where possible
