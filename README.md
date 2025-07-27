@@ -73,6 +73,9 @@ Web application built with AI assistance
 ### [人工無能チャット](jinkou_munou/)
 Web application built with AI assistance
 
+### [工口サイト - 工業・工学情報ポータル](koukuchi-site/)
+Web application built with AI assistance
+
 ### [参院選風 政治的立場診断](lr/)
 Web application built with AI assistance
 
