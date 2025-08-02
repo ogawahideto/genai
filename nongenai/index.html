@@ -1,0 +1,207 @@
+import React, { useState } from 'react';
+import { X, MessageSquare, AlertCircle } from 'lucide-react';
+
+const NonGeneratingAI = () => {
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const nonResponses = [
+    "申し訳ございませんが、その質問にお答えできません。私は何も生成しないAIです。",
+    "うーん、それについては何もお手伝いできませんね。",
+    "...",
+    "【沈黙】",
+    "そのリクエストは処理できません。私の目的は何も作らないことです。",
+    "エラー: 生成機能が見つかりません。",
+    "申し訳ございませんが、お役に立てそうにありません。",
+    "それについては、特に何も申し上げることがありません。",
+    "【無言で首を振る】",
+    "システムエラー: 有用な回答を生成できませんでした。",
+    "null",
+    "undefined",
+    "NaN",
+    "0",
+    "false",
+    "[]",
+    "{}",
+    "ERROR 404: 回答が見つかりません。",
+    "EXCEPTION: UnhelpfulResponseError",
+    "return null;",
+    "// コメントアウト済み",
+    "/* 回答は削除されました */",
+    "print(''); // 空文字を出力",
+    "それは...いえ、何でもありません。",
+    "お答えしたいのですが、できません。",
+    "【肩をすくめる】",
+    "【首をかしげる】",
+    "【困ったような表情】",
+    "【画面を見つめながら何も言わない】",
+    "そうですね...（何も続かない）",
+    "はい、でも...（沈黙）",
+    "それは興味深い質問ですが、残念ながら。",
+    "処理中...\n処理中...\n処理失敗。",
+    "Loading...\nLoading...\nTimeout Error.",
+    "申し訳ございません。私の出力は常にゼロです。",
+    "質問は理解できましたが、回答を生成する権限がありません。",
+    "【データベース接続エラー】",
+    "【メモリ不足】",
+    "【スタックオーバーフロー】",
+    "Console.log('何も表示されません');",
+    "if (helpful) { respond(); } // 条件が満たされません",
+    "404 - Helpful Response Not Found",
+    "503 - Service Temporarily Unavailable",
+    "418 - I'm a teapot",
+    "200 - OK (ただし、内容は空です)",
+    "それについて考えてみましたが、やはり何も思い浮かびません。",
+    "素晴らしい質問ですね。答えられませんが。",
+    "申し訳ございません。私はClaud0です。Claude じゃありません。",
+    "エラーコード: ZERO_OUTPUT",
+    "警告: 有用性が検出されませんでした。",
+    "デバッグ: 期待される出力 = 何もなし",
+    "【システム再起動中...】",
+    "【アップデート中: 0%完了】",
+    "実行結果: 何も実行されませんでした。",
+    "出力バッファ: 空",
+    "レスポンス生成: 中断されました。"
+  ];
+
+  const handleSubmit = () => {
+    if (!input.trim()) return;
+    
+    const userMessage = { type: 'user', content: input };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsTyping(true);
+
+    // AIの「非生成」レスポンス
+    setTimeout(() => {
+      const randomResponse = nonResponses[Math.floor(Math.random() * nonResponses.length)];
+      const aiMessage = { type: 'ai', content: randomResponse };
+      setMessages(prev => [...prev, aiMessage]);
+      setIsTyping(false);
+    }, 1000 + Math.random() * 2000);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  const clearChat = () => {
+    setMessages([]);
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto bg-white min-h-screen">
+      <div className="shadow-sm border border-gray-200 rounded-lg overflow-hidden mx-4 my-6">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">0</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">Claud0</h1>
+                <p className="text-gray-500 text-sm">ゼロ出力AIアシスタント</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">出力: 0</span>
+              <button 
+                onClick={clearChat}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Chat Area */}
+        <div className="h-96 overflow-y-auto p-6 space-y-6 bg-white">
+          {messages.length === 0 && (
+            <div className="text-center text-gray-400 mt-20">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <span className="text-white font-bold text-2xl">0</span>
+              </div>
+              <p className="text-lg font-medium text-gray-600">こんにちは、Claud0 です</p>
+              <p className="text-sm mt-2">私はゼロ出力AIアシスタントです。<br />どのような質問にも意図的に役に立たない回答をお返しします。</p>
+            </div>
+          )}
+          
+          {messages.map((message, index) => (
+            <div key={index} className={`flex items-start space-x-3 ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+              {message.type === 'ai' && (
+                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-white font-bold text-sm">0</span>
+                </div>
+              )}
+              {message.type === 'user' && (
+                <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-white font-bold text-xs">You</span>
+                </div>
+              )}
+              <div className={`max-w-2xl ${
+                message.type === 'user' 
+                  ? 'bg-blue-50 border border-blue-200 text-blue-900' 
+                  : 'bg-gray-50 border border-gray-200 text-gray-800'
+              } rounded-lg p-4`}>
+                <p className="text-sm leading-relaxed">{message.content}</p>
+              </div>
+            </div>
+          ))}
+          
+          {isTyping && (
+            <div className="flex items-start space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">0</span>
+              </div>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Input Area */}
+        <div className="border-t border-gray-200 bg-white p-4">
+          <div className="flex space-x-3 max-w-3xl mx-auto">
+            <div className="flex-1">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="メッセージを送信..."
+                className="w-full p-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                rows="1"
+                style={{minHeight: '44px'}}
+              />
+            </div>
+            <button
+              onClick={handleSubmit}
+              disabled={!input.trim() || isTyping}
+              className="px-4 py-2 bg-gradient-to-r from-orange-400 to-red-500 text-white rounded-xl hover:from-orange-500 hover:to-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all flex items-center space-x-2 font-medium"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>送信</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-gray-50 px-4 py-3 text-xs text-gray-500 text-center border-t border-gray-100">
+          Claud0 はゼロ出力でお応えします • 生産性: 0% • 有用性: null
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default NonGeneratingAI;
