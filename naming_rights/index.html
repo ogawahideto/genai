@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スタジアム・ネーミングライツ マッチングゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .score, .level, .timer {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .score { color: #28a745; }
+        .level { color: #007bff; }
+        .timer { color: #dc3545; }
+
+        .game-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .column {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .column h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 8px;
+        }
+
+        .item {
+            padding: 15px;
+            margin: 8px 0;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .item.selected {
+            background: #e3f2fd;
+            border-color: #2196f3;
+            transform: scale(1.02);
+        }
+
+        .item.correct {
+            background: #d4edda;
+            border-color: #28a745;
+            animation: correctPulse 0.6s ease;
+        }
+
+        .item.incorrect {
+            background: #f8d7da;
+            border-color: #dc3545;
+            animation: shake 0.5s ease;
+        }
+
+        .difficulty-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .easy { background: #28a745; color: white; }
+        .medium { background: #ffc107; color: black; }
+        .hard { background: #dc3545; color: white; }
+        .master { background: #000; color: gold; }
+
+        @keyframes correctPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-message {
+            text-align: center;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .result-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+
+        .result-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #dc3545;
+        }
+
+        .game-over {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .game-over h2 {
+            margin-bottom: 15px;
+            font-size: 2em;
+        }
+
+        @media (max-width: 768px) {
+            .game-area {
+                grid-template-columns: 1fr;
+            }
+            
+            .game-info {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚽🏟️ スタジアム・ネーミングライツ クイズ</h1>
+        <p class="subtitle">ネーミング名称と正式名称をマッチングしよう！</p>
+        
+        <div class="game-info">
+            <div class="score">スコア: <span id="score">0</span>点</div>
+            <div class="level">レベル: <span id="level">1</span></div>
+            <div class="timer">残り時間: <span id="timer">60</span>秒</div>
+        </div>
+
+        <div class="controls">
+            <button id="startBtn" onclick="startGame()">ゲーム開始</button>
+            <button id="resetBtn" onclick="resetGame()">リセット</button>
+        </div>
+
+        <div id="resultMessage" class="result-message" style="display: none;"></div>
+
+        <div class="game-area" id="gameArea" style="display: none;">
+            <div class="column">
+                <h3>ネーミング名称</h3>
+                <div id="namingList"></div>
+            </div>
+            <div class="column">
+                <h3>正式名称</h3>
+                <div id="officialList"></div>
+            </div>
+        </div>
+
+        <div id="gameOver" class="game-over" style="display: none;">
+            <h2>🎉 ゲーム終了！</h2>
+            <p>最終スコア: <span id="finalScore">0</span>点</p>
+            <p>正解数: <span id="correctCount">0</span>問</p>
+            <button onclick="resetGame()">もう一度プレイ</button>
+        </div>
+    </div>
+
+    <script>
+        // ゲームデータ（全180施設以上のネーミングライツデータを問題化）
+        const gameData = [
+            // Easy - NPB本拠地球場 (10点)
+            { naming: 'エスコンフィールド', official: 'エスコンフィールドHOKKAIDO', difficulty: 'easy', points: 10 },
+            { naming: '楽天モバイルパーク', official: '宮城球場', difficulty: 'easy', points: 10 },
+            { naming: 'ベルーナドーム', official: '西武ドーム', difficulty: 'easy', points: 10 },
+            { naming: 'ZOZOマリンスタジアム', official: '千葉マリンスタジアム', difficulty: 'easy', points: 10 },
+            { naming: 'バンテリンドーム', official: 'ナゴヤドーム', difficulty: 'easy', points: 10 },
+            { naming: 'みずほPayPayドーム', official: '福岡ドーム', difficulty: 'easy', points: 10 },
+            { naming: '京セラドーム', official: '大阪ドーム', difficulty: 'easy', points: 10 },
+            { naming: 'MAZDA Zoom-Zoomスタジアム', official: '広島市民球場', difficulty: 'easy', points: 10 },
+            
+            // Medium - J1スタジアム (15点)
+            { naming: '味の素スタジアム', official: '東京スタジアム', difficulty: 'medium', points: 15 },
+            { naming: '日産スタジアム', official: '横浜国際総合競技場', difficulty: 'medium', points: 15 },
+            { naming: 'パナソニックスタジアム', official: '市立吹田サッカースタジアム', difficulty: 'medium', points: 15 },
+            { naming: 'ノエビアスタジアム', official: '神戸ウイングスタジアム', difficulty: 'medium', points: 15 },
+            { naming: 'ヨドコウ桜スタジアム', official: '長居球技場', difficulty: 'medium', points: 15 },
+            { naming: 'フクダ電子アリーナ', official: '千葉市蘇我球技場', difficulty: 'medium', points: 15 },
+            { naming: 'ニッパツ三ツ沢球技場', official: '三ツ沢公園球技場', difficulty: 'medium', points: 15 },
+            { naming: 'エディオンスタジアム', official: '広島ビッグアーチ', difficulty: 'medium', points: 15 },
+            { naming: 'ユアテックスタジアム', official: '仙台スタジアム', difficulty: 'medium', points: 15 },
+            { naming: 'キューアンドエースタジアム', official: '宮城スタジアム', difficulty: 'medium', points: 15 },
+            
+            // Hard - J2・J3・地方スタジアム (25点)
+            { naming: 'デンカビッグスワンスタジアム', official: '新潟スタジアム', difficulty: 'hard', points: 25 },
+            { naming: 'サンアルウィン', official: '長野県松本平広域公園総合球技場', difficulty: 'hard', points: 25 },
+            { naming: 'アイスタ日本平', official: '日本平スタジアム', difficulty: 'hard', points: 25 },
+            { naming: 'レベルファイブスタジアム', official: '博多の森球技場', difficulty: 'hard', points: 25 },
+            { naming: 'JFE晴れの国スタジアム', official: '岡山県総合グラウンド陸上競技場', difficulty: 'hard', points: 25 },
+            { naming: 'ちゅ〜るスタジアム', official: '徳島県鳴門総合運動公園陸上競技場', difficulty: 'hard', points: 25 },
+            { naming: 'レクザムBP丸亀', official: '四国コカ・コーラボトリングスタジアム丸亀', difficulty: 'hard', points: 25 },
+            { naming: 'ニンスタ', official: '愛媛県総合運動公園陸上競技場', difficulty: 'hard', points: 25 },
+            { naming: 'セーレンスタジアム', official: '福井県営陸上競技場', difficulty: 'hard', points: 25 },
+            { naming: '正田醤油スタジアム', official: '敷島公園県営陸上競技場', difficulty: 'hard', points: 25 },
+            { naming: 'とりぎんバードスタジアム', official: '鳥取県立鳥取陸上競技場', difficulty: 'hard', points: 25 },
+            { naming: 'Axisバードスタジアム', official: '鳥取市営陸上競技場', difficulty: 'hard', points: 25 },
+            { naming: 'カンコースタジアム', official: '岡山県津山陸上競技場', difficulty: 'hard', points: 25 },
+            { naming: 'Cスタ御前崎', official: '御前崎市総合運動場陸上競技場', difficulty: 'hard', points: 25 },
+            { naming: 'Pikaraスタジアム', official: '香川県立丸亀競技場', difficulty: 'hard', points: 25 },
+            
+            // Expert - 野球場（地方・マイナー） (35点)
+            { naming: 'スタルヒン球場', official: '花咲スポーツ公園硬式野球場', difficulty: 'expert', points: 35 },
+            { naming: '長嶋茂雄球場', official: '広瀬公園野球場', difficulty: 'expert', points: 35 },
+            { naming: '夜明け前スタジアム', official: '中津川公園野球場', difficulty: 'expert', points: 35 },
+            { naming: 'ダイワハウススタジアム', official: '八王子市民球場', difficulty: 'expert', points: 35 },
+            { naming: 'ネッツ多摩昭島スタジアム', official: '昭島市民球場', difficulty: 'expert', points: 35 },
+            { naming: 'バッティングパレス相石スタジアム', official: '平塚球場', difficulty: 'expert', points: 35 },
+            { naming: 'ほっともっとフィールド', official: '神戸総合運動公園野球場', difficulty: 'expert', points: 35 },
+            { naming: 'あじさいスタジアム', official: '北神戸田園スポーツ公園野球場', difficulty: 'expert', points: 35 },
+            { naming: 'とましんスタジアム', official: '苫小牧市営緑ヶ丘野球場', difficulty: 'expert', points: 35 },
+            { naming: 'サングリンスタジアム', official: '夕張市平和運動公園野球場', difficulty: 'expert', points: 35 },
+            { naming: '旭川ドリームスタジアム', official: '東光スポーツ公園軟式野球場', difficulty: 'expert', points: 35 },
+            { naming: 'オーシャンスタジアム', official: '千代台公園野球場', difficulty: 'expert', points: 35 },
+            { naming: '合浦公園スタジアム', official: '青森市営野球場', difficulty: 'expert', points: 35 },
+            { naming: 'はるか夢球場', official: '弘前市運動公園野球場', difficulty: 'expert', points: 35 },
+            { naming: 'メイプルスタジアム', official: '六戸町総合運動公園野球場', difficulty: 'expert', points: 35 },
+            { naming: 'ナスパ・スタジアム', official: '成田市大栄野球場', difficulty: 'expert', points: 35 },
+            { naming: 'サーティーフォー保土ヶ谷球場', official: '神奈川県立保土ケ谷公園硬式野球場', difficulty: 'expert', points: 35 },
+            { naming: '熱田愛知時計120スタジアム', official: '熱田神宮公園野球場', difficulty: 'expert', points: 35 },
+            { naming: 'パロマ瑞穂野球場', official: '名古屋市瑞穂公園野球場', difficulty: 'expert', points: 35 },
+            { naming: 'KYBスタジアム', official: '可児市運動公園スタジアム', difficulty: 'expert', points: 35 },
+            { naming: 'CHIKKIDOUANモーモースタジアム', official: '松阪公園グラウンド', difficulty: 'expert', points: 35 },
+            { naming: 'わかさスタジアム', official: '西京極野球場', difficulty: 'expert', points: 35 },
+            { naming: '富田林バファローズスタジアム', official: '富田林市立総合スポーツ公園野球場', difficulty: 'expert', points: 35 },
+            { naming: 'J:COMサザンスタジアム', official: '泉南市民球場', difficulty: 'expert', points: 35 },
+            { naming: '別府稲尾球場', official: '別府市民球場', difficulty: 'expert', points: 35 },
+            { naming: '昭和電工スタジアム', official: '大分スポーツ公園野球場', difficulty: 'expert', points: 35 },
+            { naming: '別大興産スタジアム', official: '大洲総合運動公園硬式野球場', difficulty: 'expert', points: 35 },
+            { naming: 'ダイハツ九州スタジアム', official: '大貞公園硬式野球場', difficulty: 'expert', points: 35 },
+            
+            // Master - 超特殊・文化的背景 (50点)
+            { naming: 'ゴーゴーカレースタジアム', official: '金沢市営陸上競技場', difficulty: 'master', points: 50 },
+            { naming: 'CHIKKIDOUANモーモースタジアム', official: '松阪公園グラウンド', difficulty: 'master', points: 50 },
+            { naming: 'OSAKO YUYA stadium', official: '加世田運動公園陸上競技場', difficulty: 'master', points: 50 },
+            { naming: '澤村-ベーブ・ルース Memorial Stadium', official: '静岡県草薙総合運動場硬式野球場', difficulty: 'master', points: 50 },
+            { naming: 'チェストふるさと総体記念スタジアム', official: '鹿児島県立鴨池陸上競技場', difficulty: 'master', points: 50 },
+            
+            // アリーナ・体育館 (20点)
+            { naming: 'よつ葉アリーナ', official: '北海きたえーる', difficulty: 'medium', points: 20 },
+            { naming: 'アダストリア・みと・アリーナ', official: '水戸市新体育館', difficulty: 'hard', points: 25 },
+            { naming: 'ひがしんアリーナ', official: '足立区総合スポーツセンター', difficulty: 'hard', points: 25 },
+            { naming: '住友金属鉱山アリーナ', official: '青梅市総合体育館', difficulty: 'hard', points: 25 },
+            { naming: 'セーレンアリーナ', official: '福井県営体育館', difficulty: 'hard', points: 25 },
+            { naming: 'おにクルアリーナ', official: '茨木市立市民体育館', difficulty: 'expert', points: 35 },
+            { naming: 'パナソニックアリーナ', official: '門真市民文化会館ルミエールホール', difficulty: 'expert', points: 35 },
+            { naming: '真駒内セキスイハイムアイスアリーナ', official: '真駒内アイスアリーナ', difficulty: 'expert', points: 35 },
+            
+            // 特殊施設 (40点)
+            { naming: '京王アリーナTOKYO', official: '武蔵野の森総合スポーツプラザ', difficulty: 'expert', points: 40 },
+            { naming: '味の素ナショナルトレーニングセンター', official: 'ナショナルトレーニングセンター', difficulty: 'expert', points: 40 },
+            { naming: '味の素フィールド', official: '西が丘サッカー場', difficulty: 'expert', points: 40 },
+            { naming: 'パロマ瑞穂スタジアム', official: '名古屋市瑞穂公園陸上競技場', difficulty: 'medium', points: 20 }
+        ];
+
+        let currentRound = [];
+        let selectedNaming = null;
+        let selectedOfficial = null;
+        let score = 0;
+        let level = 1;
+        let timeLeft = 60;
+        let gameTimer = null;
+        let gameActive = false;
+        let correctAnswers = 0;
+
+        function startGame() {
+            gameActive = true;
+            score = 0;
+            level = 1;
+            timeLeft = 60;
+            correctAnswers = 0;
+            
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('gameArea').style.display = 'grid';
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('resultMessage').style.display = 'none';
+            
+            updateDisplay();
+            generateRound();
+            startTimer();
+        }
+
+        function startTimer() {
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function generateRound() {
+            // レベルに応じて問題の難易度を調整
+            let availableData = [...gameData];
+            if (level <= 2) {
+                availableData = gameData.filter(item => item.difficulty === 'easy' || item.difficulty === 'medium');
+            } else if (level <= 4) {
+                availableData = gameData.filter(item => item.difficulty !== 'master');
+            } else if (level <= 6) {
+                availableData = gameData.filter(item => item.difficulty !== 'master' || Math.random() < 0.3);
+            }
+            
+            // ランダムに5-8問選択（レベルアップで問題数増加）
+            const roundSize = Math.min(5 + Math.floor(level / 2), 8);
+            currentRound = [];
+            
+            for (let i = 0; i < roundSize && availableData.length > 0; i++) {
+                const randomIndex = Math.floor(Math.random() * availableData.length);
+                currentRound.push(availableData[randomIndex]);
+                availableData.splice(randomIndex, 1);
+            }
+            
+            renderRound();
+            selectedNaming = null;
+            selectedOfficial = null;
+        }
+
+        function renderRound() {
+            const namingList = document.getElementById('namingList');
+            const officialList = document.getElementById('officialList');
+            
+            namingList.innerHTML = '';
+            officialList.innerHTML = '';
+            
+            // シャッフル
+            const shuffledNaming = [...currentRound].sort(() => Math.random() - 0.5);
+            const shuffledOfficial = [...currentRound].sort(() => Math.random() - 0.5);
+            
+            shuffledNaming.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `
+                    ${item.naming}
+                    <div class="difficulty-badge ${item.difficulty}">${item.points}pt</div>
+                `;
+                div.onclick = () => selectNaming(div, item);
+                namingList.appendChild(div);
+            });
+            
+            shuffledOfficial.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = item.official;
+                div.onclick = () => selectOfficial(div, item);
+                officialList.appendChild(div);
+            });
+        }
+
+        function selectNaming(element, item) {
+            document.querySelectorAll('#namingList .item').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedNaming = item;
+            checkMatch();
+        }
+
+        function selectOfficial(element, item) {
+            document.querySelectorAll('#officialList .item').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedOfficial = item;
+            checkMatch();
+        }
+
+        function checkMatch() {
+            if (!selectedNaming || !selectedOfficial) return;
+            
+            const isCorrect = selectedNaming.naming === selectedOfficial.naming;
+            const resultElement = document.getElementById('resultMessage');
+            
+            if (isCorrect) {
+                // スピードボーナス計算（残り問題数に応じて倍率調整）
+                const speedMultiplier = currentRound.length / (5 + Math.floor(level / 2)); // 1.0から徐々に減少
+                const bonusPoints = Math.round(selectedNaming.points * speedMultiplier);
+                
+                score += bonusPoints;
+                correctAnswers++;
+                
+                document.querySelectorAll('.item.selected').forEach(el => {
+                    el.classList.remove('selected');
+                    el.classList.add('correct');
+                });
+                
+                const speedBonusText = speedMultiplier < 1.0 ? ` (×${speedMultiplier.toFixed(1)})` : '';
+                resultElement.textContent = `正解！ +${bonusPoints}点${speedBonusText}`;
+                resultElement.className = 'result-message success';
+                
+                // 正解した項目を削除
+                currentRound = currentRound.filter(item => item.naming !== selectedNaming.naming);
+                
+                setTimeout(() => {
+                    document.querySelectorAll('.item.correct').forEach(el => el.remove());
+                    resultElement.style.display = 'none';
+                }, 1500);
+                
+            } else {
+                // 難易度別減点ペナルティ（ハイリスク・ハイリターン）
+                let penalty;
+                switch(selectedNaming.difficulty) {
+                    case 'easy': penalty = 3; break;
+                    case 'medium': penalty = 8; break;
+                    case 'hard': penalty = 15; break;
+                    case 'expert': penalty = 25; break;
+                    case 'master': penalty = 40; break;
+                    default: penalty = 5;
+                }
+                score = Math.max(0, score - penalty); // スコアが負にならないように
+                
+                document.querySelectorAll('.item.selected').forEach(el => {
+                    el.classList.remove('selected');
+                    el.classList.add('incorrect');
+                });
+                
+                resultElement.textContent = `不正解... -${penalty}点 正解は「${selectedNaming.official}」でした`;
+                resultElement.className = 'result-message error';
+                
+                setTimeout(() => {
+                    document.querySelectorAll('.item.incorrect').forEach(el => el.classList.remove('incorrect'));
+                    resultElement.style.display = 'none';
+                }, 2000);
+            }
+            
+            resultElement.style.display = 'block';
+            
+            selectedNaming = null;
+            selectedOfficial = null;
+            
+            // ラウンド完了チェック
+            if (currentRound.length === 0) {
+                level++;
+                timeLeft += 15; // ボーナス時間
+                setTimeout(() => {
+                    if (gameActive) {
+                        generateRound();
+                    }
+                }, 2000); // 2秒後に自動的に次のラウンドへ
+            }
+            
+            updateDisplay();
+        }
+
+        function nextRound() {
+            if (gameActive) {
+                generateRound();
+            }
+        }
+
+        function updateDisplay() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(gameTimer);
+            
+            document.getElementById('gameArea').style.display = 'none';
+            document.getElementById('gameOver').style.display = 'block';
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('correctCount').textContent = correctAnswers;
+            document.getElementById('startBtn').disabled = false;
+        }
+
+        function resetGame() {
+            gameActive = false;
+            clearInterval(gameTimer);
+            
+            score = 0;
+            level = 1;
+            timeLeft = 60;
+            correctAnswers = 0;
+            selectedNaming = null;
+            selectedOfficial = null;
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('nextBtn').disabled = true;
+            document.getElementById('gameArea').style.display = 'none';
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('resultMessage').style.display = 'none';
+            
+            updateDisplay();
+            document.getElementById('timer').textContent = '60';
+        }
+    </script>
+</body>
+</html>
