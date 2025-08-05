@@ -51,6 +51,9 @@ This repository contains a collection of small, self-contained web applications 
 #### [地下鉄路線距離順番当てゲーム](subwaylength/) (2025-07-25)
 ゲームアプリケーション
 
+#### [打ち水で世界を冷やすゲーム](uchimizu-game/) (2025-08-06)
+ゲームアプリケーション
+
 #### [UNO風カードゲーム](uno-like/) (2025-07-04)
 ゲームアプリケーション
 
