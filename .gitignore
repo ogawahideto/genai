@@ -1,0 +1,9 @@
+# Note.com用記事（Gitに登録しない）
+uchimizu_game_article.md
+
+# その他のプライベートファイル
+*.local.md
+.vscode/
+.DS_Store
+node_modules/
+*.log
