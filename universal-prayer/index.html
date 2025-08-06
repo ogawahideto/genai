@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prayer Time - 祈りの時間</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .prayer-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        .floating-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: float 6s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            color: #4a5568;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .prayer-section {
+            margin: 30px 0;
+        }
+
+        .prayer-input {
+            width: 100%;
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            font-size: 1.2rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+            background: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        .prayer-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+            background: rgba(255, 255, 255, 1);
+        }
+
+        .prayer-display {
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            padding: 25px;
+            border-radius: 15px;
+            font-size: 1.3rem;
+            line-height: 1.8;
+            min-height: 150px;
+            border: 2px solid #e2e8f0;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: left;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(72, 187, 120, 0.3);
+        }
+
+        .btn-tertiary {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        }
+
+        .btn-tertiary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(237, 137, 54, 0.3);
+        }
+
+        .timer-section {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+
+        .timer-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #4a5568;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .preset-prayers {
+            text-align: left;
+            margin: 30px 0;
+        }
+
+        .preset-prayer {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .preset-prayer:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateX(10px);
+            border-color: #667eea;
+        }
+
+        .preset-prayer h3 {
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+
+        .preset-prayer p {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .sound-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .volume-control {
+            width: 150px;
+            margin: 0 10px;
+        }
+
+        @media (max-width: 768px) {
+            .prayer-container {
+                padding: 20px;
+                margin: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .timer-display {
+                font-size: 2rem;
+            }
+            
+            .button-group {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 80%;
+                max-width: 250px;
+            }
+        }
+
+        .breathing-guide {
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 15px;
+        }
+
+        .breathing-circle {
+            width: 100px;
+            height: 100px;
+            border: 3px solid #667eea;
+            border-radius: 50%;
+            margin: 20px auto;
+            position: relative;
+            transition: all 4s ease-in-out;
+        }
+
+        .breathing-circle.inhale {
+            transform: scale(1.5);
+            border-color: #48bb78;
+        }
+
+        .breathing-circle.exhale {
+            transform: scale(1);
+            border-color: #ed8936;
+        }
+
+        .breathing-text {
+            font-size: 1.2rem;
+            margin-top: 15px;
+            color: #4a5568;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-particles" id="particles"></div>
+    
+    <div class="prayer-container">
+        <h1>🕊️ 祈りの時間 🕊️</h1>
+        
+        <div class="prayer-section">
+            <h2>あなたの祈りを書いてください</h2>
+            <textarea class="prayer-input" id="prayerInput" placeholder="ここに心からの祈りを書いてください...感謝、希望、平和、愛、健康、幸福など、どんな想いでも構いません。"></textarea>
+        </div>
+
+        <div class="button-group">
+            <button class="btn btn-primary" onclick="displayPrayer()">祈りを捧げる</button>
+            <button class="btn btn-secondary" onclick="clearPrayer()">クリア</button>
+            <button class="btn btn-tertiary" onclick="startMeditation()">瞑想モード</button>
+        </div>
+
+        <div class="prayer-display" id="prayerDisplay">
+            ここにあなたの祈りが表示されます...
+        </div>
+
+        <div class="preset-prayers">
+            <h3>プリセット祈り（クリックして選択）</h3>
+            
+            <div class="preset-prayer" onclick="selectPreset('gratitude')">
+                <h3>🙏 感謝の祈り</h3>
+                <p>今日という日に感謝し、周りの人々の幸せを願います</p>
+            </div>
+            
+            <div class="preset-prayer" onclick="selectPreset('peace')">
+                <h3>☮️ 平和の祈り</h3>
+                <p>世界の平和と調和、すべての生命の尊重を祈ります</p>
+            </div>
+            
+            <div class="preset-prayer" onclick="selectPreset('healing')">
+                <h3>💚 癒しの祈り</h3>
+                <p>心と体の健康、苦しみからの解放を祈ります</p>
+            </div>
+            
+            <div class="preset-prayer" onclick="selectPreset('wisdom')">
+                <h3>✨ 智慧の祈り</h3>
+                <p>正しい判断力と内なる平静を求めます</p>
+            </div>
+        </div>
+
+        <div class="timer-section">
+            <h3>瞑想タイマー</h3>
+            <div class="timer-display" id="timerDisplay">00:00</div>
+            <div class="button-group">
+                <button class="btn btn-secondary" onclick="setTimer(300)">5分</button>
+                <button class="btn btn-secondary" onclick="setTimer(600)">10分</button>
+                <button class="btn btn-secondary" onclick="setTimer(900)">15分</button>
+                <button class="btn btn-tertiary" onclick="stopTimer()">停止</button>
+            </div>
+        </div>
+
+        <div class="breathing-guide">
+            <h3>呼吸ガイド</h3>
+            <div class="breathing-circle" id="breathingCircle"></div>
+            <div class="breathing-text" id="breathingText">リラックス</div>
+            <button class="btn btn-primary" onclick="startBreathingGuide()" id="breathingBtn">呼吸開始</button>
+        </div>
+
+        <div class="sound-controls">
+            <label>🔊 環境音:</label>
+            <select id="ambientSound" onchange="changeAmbientSound()">
+                <option value="">無音</option>
+                <option value="rain">雨音</option>
+                <option value="ocean">波音</option>
+                <option value="forest">森の音</option>
+                <option value="bell">鈴の音</option>
+            </select>
+            <input type="range" class="volume-control" id="volumeControl" min="0" max="100" value="30" onchange="changeVolume()">
+        </div>
+    </div>
+
+    <audio id="ambientAudio" loop></audio>
+
+    <script>
+        let meditationTimer;
+        let breathingInterval;
+        let isBreathingActive = false;
+        let currentAmbientSound = null;
+
+        const presetPrayers = {
+            gratitude: "今日という素晴らしい日に心から感謝いたします。\n\n家族、友人、そして私の周りにいるすべての人々の健康と幸福を願います。\n\n困難な時も支えてくれる人々がいることに感謝し、\n私も他の人の力になれるよう努めます。\n\n今日出会うすべての経験から学び、\n成長していけますように。",
+            
+            peace: "この世界に平和が訪れますように。\n\n争いや憎しみが消え去り、\nすべての人が互いを理解し、尊重し合えますように。\n\n自然と調和し、すべての生命が大切にされ、\n地球が美しく保たれますように。\n\n私の心にも平静が宿り、\n周りの人々にも安らぎをもたらせますように。",
+            
+            healing: "心身の健康と癒しを祈ります。\n\n病気や痛みに苦しむすべての人に、\n回復の力が与えられますように。\n\n心の傷や悲しみが癒され、\n希望の光が差し込みますように。\n\n疲れた魂に安らぎが訪れ、\n新しい活力が湧いてきますように。",
+            
+            wisdom: "正しい判断力と深い洞察力を求めます。\n\n困難な状況にあっても冷静さを保ち、\n最善の選択ができますように。\n\n他者への思いやりを忘れず、\n謙虚さと感謝の心を持ち続けられますように。\n\n内なる平静と智慧の光に導かれ、\n真の幸福への道を歩めますように。"
+        };
+
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            setInterval(() => {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.width = particle.style.height = Math.random() * 10 + 5 + 'px';
+                particle.style.animationDelay = Math.random() * 2 + 's';
+                particle.style.animationDuration = (Math.random() * 3 + 4) + 's';
+                
+                particlesContainer.appendChild(particle);
+                
+                setTimeout(() => {
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                }, 8000);
+            }, 800);
+        }
+
+        function displayPrayer() {
+            const input = document.getElementById('prayerInput').value.trim();
+            const display = document.getElementById('prayerDisplay');
+            
+            if (input) {
+                display.innerHTML = input.replace(/\n/g, '<br>');
+                display.style.textAlign = 'left';
+                
+                // 祈りを表示する際のエフェクト
+                display.style.opacity = '0';
+                display.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    display.style.transition = 'all 1s ease';
+                    display.style.opacity = '1';
+                    display.style.transform = 'translateY(0)';
+                }, 100);
+                
+                // 鐘の音を鳴らす（シンプルな音）
+                playBellSound();
+            } else {
+                alert('祈りの言葉を入力してください。');
+            }
+        }
+
+        function clearPrayer() {
+            document.getElementById('prayerInput').value = '';
+            document.getElementById('prayerDisplay').innerHTML = 'ここにあなたの祈りが表示されます...';
+            document.getElementById('prayerDisplay').style.textAlign = 'center';
+        }
+
+        function selectPreset(type) {
+            const input = document.getElementById('prayerInput');
+            input.value = presetPrayers[type];
+            displayPrayer();
+        }
+
+        function startMeditation() {
+            const display = document.getElementById('prayerDisplay');
+            const meditationText = "深く息を吸って...ゆっくりと息を吐いて...\n\n今この瞬間に集中し、心を静めてください。\n\nあなたの祈りが心の奥深くに響いていることを感じてください。\n\n愛と平和があなたの心を満たしますように...";
+            
+            display.innerHTML = meditationText.replace(/\n/g, '<br>');
+            display.style.textAlign = 'center';
+            display.style.background = 'linear-gradient(135deg, #e6fffa 0%, #f0fff4 100%)';
+            
+            // 瞑想用の環境音を開始
+            if (!currentAmbientSound) {
+                changeAmbientSound('forest');
+                document.getElementById('ambientSound').value = 'forest';
+            }
+        }
+
+        function setTimer(seconds) {
+            clearInterval(meditationTimer);
+            let timeLeft = seconds;
+            
+            updateTimerDisplay(timeLeft);
+            
+            meditationTimer = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay(timeLeft);
+                
+                if (timeLeft <= 0) {
+                    clearInterval(meditationTimer);
+                    alert('瞑想時間が終了しました。お疲れ様でした。');
+                    playBellSound();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(meditationTimer);
+            document.getElementById('timerDisplay').textContent = '00:00';
+        }
+
+        function updateTimerDisplay(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            document.getElementById('timerDisplay').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function startBreathingGuide() {
+            const circle = document.getElementById('breathingCircle');
+            const text = document.getElementById('breathingText');
+            const btn = document.getElementById('breathingBtn');
+            
+            if (!isBreathingActive) {
+                isBreathingActive = true;
+                btn.textContent = '呼吸停止';
+                
+                let phase = 'inhale'; // inhale, hold, exhale, pause
+                let phaseTime = 0;
+                const phaseDurations = { inhale: 4, hold: 2, exhale: 6, pause: 2 };
+                
+                breathingInterval = setInterval(() => {
+                    phaseTime++;
+                    
+                    switch(phase) {
+                        case 'inhale':
+                            if (phaseTime === 1) {
+                                text.textContent = '息を吸って...';
+                                circle.className = 'breathing-circle inhale';
+                            }
+                            if (phaseTime >= phaseDurations.inhale) {
+                                phase = 'hold';
+                                phaseTime = 0;
+                            }
+                            break;
+                            
+                        case 'hold':
+                            if (phaseTime === 1) {
+                                text.textContent = '息を止めて...';
+                            }
+                            if (phaseTime >= phaseDurations.hold) {
+                                phase = 'exhale';
+                                phaseTime = 0;
+                            }
+                            break;
+                            
+                        case 'exhale':
+                            if (phaseTime === 1) {
+                                text.textContent = '息をゆっくり吐いて...';
+                                circle.className = 'breathing-circle exhale';
+                            }
+                            if (phaseTime >= phaseDurations.exhale) {
+                                phase = 'pause';
+                                phaseTime = 0;
+                            }
+                            break;
+                            
+                        case 'pause':
+                            if (phaseTime === 1) {
+                                text.textContent = '少し休んで...';
+                            }
+                            if (phaseTime >= phaseDurations.pause) {
+                                phase = 'inhale';
+                                phaseTime = 0;
+                            }
+                            break;
+                    }
+                }, 1000);
+            } else {
+                stopBreathingGuide();
+            }
+        }
+
+        function stopBreathingGuide() {
+            isBreathingActive = false;
+            clearInterval(breathingInterval);
+            document.getElementById('breathingText').textContent = 'リラックス';
+            document.getElementById('breathingCircle').className = 'breathing-circle';
+            document.getElementById('breathingBtn').textContent = '呼吸開始';
+        }
+
+        function changeAmbientSound() {
+            const select = document.getElementById('ambientSound');
+            const audio = document.getElementById('ambientAudio');
+            
+            if (currentAmbientSound) {
+                audio.pause();
+                currentAmbientSound = null;
+            }
+            
+            if (select.value) {
+                currentAmbientSound = select.value;
+                // 実際の音声ファイルの代わりに、Web Audio APIで簡単な音を生成
+                generateAmbientSound(select.value);
+            }
+        }
+
+        function generateAmbientSound(type) {
+            // Web Audio APIを使用して環境音を生成
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            let oscillator, gainNode;
+            
+            switch(type) {
+                case 'rain':
+                    // 雨音をホワイトノイズで模擬
+                    createWhiteNoise(audioContext);
+                    break;
+                case 'ocean':
+                    // 波音を低周波の正弦波で模擬
+                    createOceanSound(audioContext);
+                    break;
+                case 'forest':
+                    // 森の音を複数の周波数で模擬
+                    createForestSound(audioContext);
+                    break;
+                case 'bell':
+                    // 定期的に鐘の音
+                    createBellSound(audioContext);
+                    break;
+            }
+        }
+
+        function createWhiteNoise(audioContext) {
+            const bufferSize = 4096;
+            const whiteNoise = audioContext.createScriptProcessor(bufferSize, 1, 1);
+            
+            whiteNoise.onaudioprocess = function(e) {
+                const output = e.outputBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+            };
+            
+            const gainNode = audioContext.createGain();
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            
+            whiteNoise.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+        }
+
+        function createOceanSound(audioContext) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(0.5, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.start();
+        }
+
+        function createForestSound(audioContext) {
+            for (let i = 0; i < 3; i++) {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(200 + Math.random() * 400, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.start();
+                
+                // 周波数を徐々に変化させる
+                oscillator.frequency.exponentialRampToValueAtTime(
+                    200 + Math.random() * 400, 
+                    audioContext.currentTime + 5
+                );
+            }
+        }
+
+        function createBellSound(audioContext) {
+            setInterval(() => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 2);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 2);
+            }, 8000);
+        }
+
+        function changeVolume() {
+            const volume = document.getElementById('volumeControl').value / 100;
+            const audio = document.getElementById('ambientAudio');
+            audio.volume = volume;
+        }
+
+        function playBellSound() {
+            // 簡単な鐘の音をWeb Audio APIで生成
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 1);
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 1);
+        }
+
+        // 初期化
+        window.addEventListener('load', () => {
+            createParticles();
+            
+            // ユーザーがページを操作した後にAudio Contextを初期化
+            document.body.addEventListener('click', () => {
+                if (!window.audioContextInitialized) {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    window.audioContextInitialized = true;
+                }
+            }, { once: true });
+        });
+    </script>
+</body>
+</html>
