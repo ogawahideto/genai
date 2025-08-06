@@ -172,6 +172,9 @@ AI・チャットアプリケーション
 #### [Test Application](test-app/) (2025-07-27)
 実験的アプリケーション
 
+#### [Test](test-project/) (2025-08-06)
+実験的アプリケーション
+
 #### [Prayer Time - 祈りの時間](universal-prayer/) (2025-08-06)
 実験的アプリケーション
 
