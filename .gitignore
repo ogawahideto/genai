@@ -1,5 +1,8 @@
-# Note.com用記事（Gitに登録しない）
-uchimizu_game_article.md
+# 記事ディレクトリ（Gitに登録しない）
+articles/
+
+# Claude Code設定ファイル（Gitに登録しない）
+.claude/
 
 # その他のプライベートファイル
 *.local.md

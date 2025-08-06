@@ -123,3 +123,174 @@ Implementation Intent: Educational game demonstrating basic game programming con
 2. **Remove references to unpushed apps** - Delete entries for applications that exist locally but haven't been pushed
 3. **Verify with git status** - Ensure applications are not in untracked files before adding to README
 4. **Maintain chronological order** - Keep applications sorted by development date where possible
+
+## Article Creation and Management
+
+### Article Directory Structure
+All blog articles and documentation for external platforms (note.com, Qiita, etc.) should be stored in the `articles/` directory:
+
+```
+/articles/
+  README.md                    # Directory documentation and rules
+  {project_name}_article.md    # Main project articles
+  {topic}_note.md             # Topic-specific notes
+  {feature}_tutorial.md       # Tutorial content
+```
+
+### Article Creation Rules
+1. **Directory Placement** - Always create articles in `articles/` directory
+2. **Git Exclusion** - The entire `articles/` directory is excluded from Git via `.gitignore`
+3. **Naming Convention** - Use descriptive names: `{project_name}_article.md`, `{topic}_note.md`
+4. **Content Types**:
+   - Technical deep-dive articles for blog platforms
+   - Development diary entries
+   - Tutorial and how-to guides
+   - Project retrospectives and learnings
+
+### Article Content Structure
+When creating articles, include:
+
+1. **Project Introduction** - Brief overview and motivation
+2. **Technical Implementation** - Key technologies and approaches used
+3. **Code Examples** - Relevant code snippets with explanations
+4. **Challenges and Solutions** - Problems encountered and how they were solved
+5. **Learnings and Insights** - What was learned from the development process
+6. **Future Improvements** - Potential enhancements and next steps
+
+**Example Article Template**:
+```markdown
+# {Project Title} - {Brief Description}
+
+## Introduction
+[Project motivation and goals]
+
+## Technical Implementation
+[Key technologies and approaches]
+
+## Code Highlights
+[Important code snippets with explanations]
+
+## Challenges and Solutions
+[Problems and solutions]
+
+## Learnings
+[Key insights and takeaways]
+
+## Future Work
+[Potential improvements]
+```
+
+### Workflow for Article Creation
+1. Create article file in `articles/` directory
+2. Write comprehensive content covering technical aspects
+3. Include code examples and explanations
+4. Review and refine content
+5. Publish manually to target platform (note.com, etc.)
+6. Articles remain private in local repository only
+
+## Project Completion Automation
+
+### Complete Project Script
+A custom automation script `scripts/complete-project.bat` is available to streamline the project completion workflow.
+
+**Usage**:
+```bash
+scripts/complete-project.bat [project-directory]
+```
+
+**Example**:
+```bash
+scripts/complete-project.bat uchimizu-game
+```
+
+### Automated Workflow Steps
+The script performs the following operations:
+
+1. **Article Creation** - Generates a structured article template in `articles/` directory
+2. **Git Operations** - Adds files, creates commit with standard format
+3. **GitHub Push** - Pushes changes to remote repository
+4. **GitHub Pages** - Opens the deployed GitHub Pages URL in browser
+
+### Script Features
+- **Error Handling** - Validates project directory and required files
+- **Automatic Article Generation** - Creates template with project details and URLs
+- **Standard Commit Messages** - Uses consistent commit message format
+- **GitHub Pages Integration** - Automatically generates and opens project URL
+- **Progress Feedback** - Shows clear progress indicators throughout process
+
+### Manual Override
+If the automated script doesn't meet specific needs, you can still:
+- Create articles manually in `articles/` directory
+- Use standard git commands for commits and pushes  
+- Access GitHub Pages manually at `https://ogawahideto.github.io/genai/[project-name]/`
+
+### Script Requirements
+- Project must have `index.html` file
+- Project directory must exist in repository root
+- Git repository must be properly configured
+- Internet connection required for GitHub operations
+
+## Claude Code Custom Commands
+
+Custom commands are defined in `.claude/commands.json` to streamline common development workflows.
+
+**Note**: The `.claude/` directory is excluded from Git via `.gitignore` to keep configuration private.
+
+### Available Commands
+
+#### `/complete [project-directory]`
+Complete project development workflow:
+1. Create structured article in `articles/` directory
+2. Update README.md with new project entry (if committed to Git)
+3. Commit changes with standard message format
+4. Push to GitHub repository
+5. Open GitHub Pages URL in browser
+
+**Example**: `/complete uchimizu-game`
+
+#### `/article [project-name] [platform]`
+Create a structured article for blog platforms (note.com, Qiita, etc.)
+- Generates article template in `articles/` directory
+- Customized content structure for different platforms
+
+**Example**: `/article uchimizu-game note`
+
+#### `/deploy [project-directory]`
+Deploy project to GitHub Pages:
+1. Update README.md if new project exists (verify committed to Git)
+2. Commit and push current changes
+3. Open deployed project URL in browser
+
+**Example**: `/deploy uchimizu-game`
+
+#### `/newproject [project-name] [description]`
+Set up new project with standard structure:
+1. Create project directory
+2. Generate HTML template with AI documentation
+3. Ensure proper Git configuration
+
+**Example**: `/newproject my-game "A fun web game"`
+
+### Command Configuration
+Commands are configured in `.claude/commands.json` with:
+- **Command definitions** - Name, description, and steps
+- **Templates** - Article and content templates
+- **Settings** - GitHub configuration and defaults
+
+### Template Variables
+Templates support variable substitution:
+- `{project_name}` - Project directory name
+- `{current_date}` - Current date (YYYY-MM-DD)
+- `{github_pages_base}` - Base GitHub Pages URL
+- `{brief_description}` - Project description
+
+### Usage Notes
+- Commands automatically handle Git operations
+- Articles are created in `articles/` directory (Git-ignored)
+- GitHub Pages URLs are automatically generated
+- Standard commit message format is applied consistently
+- **README.md Update**: Automatically updates README.md with new project entries
+  - Only includes projects committed to Git (`git ls-tree` verification)
+  - Auto-categorizes projects based on content and naming
+  - Maintains chronological order within categories
+  - Uses current date in YYYY-MM-DD format
