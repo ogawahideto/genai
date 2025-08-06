@@ -36,10 +36,10 @@ for /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') do set "d
 set "YY=%dt:~2,2%" & set "YYYY=%dt:~0,4%" & set "MM=%dt:~4,2%" & set "DD=%dt:~6,2%"
 set CURRENT_DATE=%YYYY%-%MM%-%DD%
 
-REM Create article template - use PowerShell for proper UTF-8 encoding
+REM Create article template - use PowerShell script for proper UTF-8 encoding
 set ARTICLE_PATH=articles\%PROJECT_NAME%_article.md
 
-powershell -Command "& { $projectName = '%PROJECT_NAME%'; $currentDate = '%CURRENT_DATE%'; $content = '# ' + $projectName + ' - Web Application Development Record`n`n## Project Overview`n`n' + $projectName + ' is a web application developed using HTML5 and JavaScript.`n`n**Development Date**: ' + $currentDate + '`n**Technology Stack**: HTML5, CSS3, JavaScript`n**Features**:`n- Single file architecture`n- No external dependencies`n- Responsive design`n`n## Technical Implementation`n`n### Key Features`n[Describe specific features here]`n`n### Code Structure`n[Describe code structure here]`n`n## Lessons Learned`n`n[Describe insights gained during development]`n`n## Future Improvements`n`n[Describe future feature enhancements and improvements]`n`n## Summary`n`nThrough the development of ' + $projectName + ', [describe learnings and thoughts here].`n`n**🎮 Demo Site**: https://ogawahideto.github.io/genai/' + $projectName + '/`n**💻 Source Code**: https://github.com/ogawahideto/genai/tree/main/' + $projectName; $content | Out-File -FilePath '%ARTICLE_PATH%' -Encoding UTF8 }"
+powershell -ExecutionPolicy Bypass -File create_article.ps1 -ProjectName "%PROJECT_NAME%" -CurrentDate "%CURRENT_DATE%"
 
 echo ✅ Article created: %ARTICLE_PATH%
 echo.
