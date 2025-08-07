@@ -1,0 +1,190 @@
+<!--
+AI Model: Gemini
+User Prompt: 新しいディレクトリを作り、そこに渋滞回避ゲームを作ってください (Create a new directory and make a traffic jam avoidance game in it.)
+AI Approach: HTML5 Canvas with a game loop for a single-file, dependency-free game. The player controls a car with arrow keys to dodge oncoming traffic. The game's difficulty increases as the score goes up.
+Implementation Intent: To create a simple, educational, and fun browser game that demonstrates basic game programming concepts like rendering, game loops, user input handling, and collision detection.
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>渋滞回避ゲーム</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: 'Arial', sans-serif;
+        }
+        h1 {
+            color: #333;
+        }
+        canvas {
+            border: 2px solid #333;
+            background-color: #666;
+        }
+        #score {
+            font-size: 1.5em;
+            margin-top: 10px;
+        }
+        #instructions {
+            margin-top: 10px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>渋滞回避ゲーム</h1>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <div id="score">スコア: 0</div>
+    <div id="instructions">左右の矢印キーで車を操作</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+
+        const player = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 70,
+            width: 50,
+            height: 50,
+            speed: 10,
+            color: 'blue'
+        };
+
+        let obstacles = [];
+        let score = 0;
+        let gameOver = false;
+        let obstacleSpeed = 3;
+        let obstacleSpawnRate = 2000; // ms
+
+        function drawPlayer() {
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+        }
+
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            });
+        }
+
+        function updateObstacles() {
+            obstacles.forEach(obstacle => {
+                obstacle.y += obstacleSpeed;
+            });
+            obstacles = obstacles.filter(obstacle => obstacle.y < canvas.height);
+        }
+
+        function spawnObstacle() {
+            if (gameOver) return;
+            const width = 50;
+            const height = 50;
+            const x = Math.random() * (canvas.width - width);
+            obstacles.push({ x, y: -height, width, height });
+            setTimeout(spawnObstacle, obstacleSpawnRate);
+        }
+
+        function collisionDetection() {
+            for (let obstacle of obstacles) {
+                if (
+                    player.x < obstacle.x + obstacle.width &&
+                    player.x + player.width > obstacle.x &&
+                    player.y < obstacle.y + obstacle.height &&
+                    player.y + player.height > obstacle.y
+                ) {
+                    gameOver = true;
+                }
+            }
+        }
+
+        function updateScore() {
+            if (!gameOver) {
+                score++;
+                scoreElement.textContent = `スコア: ${score}`;
+                // Increase difficulty
+                if (score % 500 === 0) {
+                    obstacleSpeed += 0.5;
+                    if (obstacleSpawnRate > 500) {
+                        obstacleSpawnRate -= 200;
+                    }
+                }
+            }
+        }
+        
+        function drawRoadLines() {
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 5;
+            ctx.setLineDash([20, 20]);
+            
+            const lineX1 = canvas.width / 3;
+            const lineX2 = canvas.width * 2 / 3;
+            const lineOffset = (Date.now() / 10) % 40;
+
+            ctx.beginPath();
+            ctx.moveTo(lineX1, -40 + lineOffset);
+            for(let y = -40 + lineOffset; y < canvas.height; y += 40) {
+                ctx.lineTo(lineX1, y);
+            }
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(lineX2, -40 + lineOffset);
+            for(let y = -40 + lineOffset; y < canvas.height; y += 40) {
+                ctx.lineTo(lineX2, y);
+            }
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+        }
+
+
+        function gameLoop() {
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '40px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('ゲームオーバー', canvas.width / 2, canvas.height / 2 - 20);
+                ctx.font = '20px Arial';
+                ctx.fillText(`最終スコア: ${score}`, canvas.width / 2, canvas.height / 2 + 20);
+                ctx.fillText('リフレッシュしてリトライ', canvas.width / 2, canvas.height / 2 + 50);
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawRoadLines();
+            drawPlayer();
+            drawObstacles();
+            
+            updateObstacles();
+            collisionDetection();
+            updateScore();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' && player.x > 0) {
+                player.x -= player.speed;
+            }
+            if (e.key === 'ArrowRight' && player.x < canvas.width - player.width) {
+                player.x += player.speed;
+            }
+        });
+
+        // Start game
+        spawnObstacle();
+        gameLoop();
+    </script>
+</body>
+</html>
