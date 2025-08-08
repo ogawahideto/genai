@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>50回記念ゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+            position: relative;
+        }
+
+        .title {
+            font-size: 2.5em;
+            color: #333;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .score-display {
+            font-size: 3em;
+            font-weight: bold;
+            color: #4a90e2;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .click-area {
+            position: relative;
+            height: 300px;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            border-radius: 15px;
+            margin: 20px 0;
+            cursor: pointer;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .moving-target {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        .moving-target:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .click-area:hover {
+            transform: scale(1.02);
+        }
+
+        .click-area:active {
+            transform: scale(0.98);
+        }
+
+        .floating-number {
+            position: absolute;
+            font-size: 2em;
+            font-weight: bold;
+            color: #fff;
+            pointer-events: none;
+            animation: float-up 1s ease-out forwards;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        @keyframes float-up {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px) scale(1.2);
+            }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%);
+            animation: shine 2s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .celebration {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #ff6b6b;
+            animation: confetti-fall 3s linear forwards;
+        }
+
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .message {
+            font-size: 1.3em;
+            color: #333;
+            margin: 20px 0;
+            min-height: 30px;
+        }
+
+        .reset-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin-top: 20px;
+        }
+
+        .reset-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .firework {
+            position: absolute;
+            border-radius: 50%;
+            animation: firework 1s ease-out forwards;
+        }
+
+        @keyframes firework {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="title">🎉 50回記念ゲーム 🎉</h1>
+        <p class="subtitle">50を集めて記念を祝おう！</p>
+        
+        <div class="score-display" id="score">0</div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+        
+        <div class="click-area" id="clickArea">
+            <div class="moving-target" id="movingTarget">50</div>
+        </div>
+        
+        <div class="message" id="message">50を捕まえて記念ポイントを集めよう！</div>
+        
+        <button class="reset-btn" onclick="resetGame()">ゲームリセット</button>
+    </div>
+    
+    <div class="celebration" id="celebration"></div>
+
+    <script>
+        let score = 0;
+        let clickPower = 1;
+        let isGameComplete = false;
+        let moveSpeed = 2000; // 移動間隔（ミリ秒）
+        let moveInterval;
+        const targetScore = 2500; // 50 × 50
+
+        const scoreElement = document.getElementById('score');
+        const messageElement = document.getElementById('message');
+        const clickArea = document.getElementById('clickArea');
+        const movingTarget = document.getElementById('movingTarget');
+        const progressFill = document.getElementById('progressFill');
+        const celebration = document.getElementById('celebration');
+
+        const messages = [
+            "50を捕まえよう！",
+            "いい調子！50が逃げ回ってる！",
+            "記念まであと少し！50を狙って！",
+            "頑張って！逃げる50を捕まえろ！",
+            "もうすぐゴール！最後の50を捕獲！"
+        ];
+
+        const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dda0dd', '#98d8c8'];
+
+        // 50を動かす関数
+        function moveTarget() {
+            if (isGameComplete) return;
+            
+            const areaRect = clickArea.getBoundingClientRect();
+            const targetSize = 80;
+            const maxX = clickArea.offsetWidth - targetSize;
+            const maxY = clickArea.offsetHeight - targetSize;
+            
+            const newX = Math.random() * maxX;
+            const newY = Math.random() * maxY;
+            
+            movingTarget.style.left = newX + 'px';
+            movingTarget.style.top = newY + 'px';
+        }
+
+        // 初期位置設定
+        function initializeTarget() {
+            moveTarget();
+            // 定期的に移動
+            moveInterval = setInterval(moveTarget, moveSpeed);
+        }
+
+        movingTarget.addEventListener('click', function(e) {
+            e.stopPropagation(); // バブリング防止
+            if (isGameComplete) return;
+
+            score += 50 * clickPower;
+            scoreElement.textContent = score;
+
+            // プログレスバー更新
+            const progress = Math.min((score / targetScore) * 100, 100);
+            progressFill.style.width = progress + '%';
+
+            // フローティング数字エフェクト
+            const rect = movingTarget.getBoundingClientRect();
+            const areaRect = clickArea.getBoundingClientRect();
+            createFloatingNumber(rect.left - areaRect.left + 40, rect.top - areaRect.top + 40);
+
+            // 花火エフェクト
+            createFirework(rect.left - areaRect.left + 40, rect.top - areaRect.top + 40);
+
+            // すぐに新しい位置に移動
+            moveTarget();
+            
+            // 移動速度を少し早くする（最小500ms）
+            if (moveSpeed > 500) {
+                moveSpeed -= 50;
+                clearInterval(moveInterval);
+                moveInterval = setInterval(moveTarget, moveSpeed);
+            }
+
+            // メッセージ更新
+            updateMessage();
+
+            // ゲーム完了チェック
+            if (score >= targetScore && !isGameComplete) {
+                completeGame();
+            }
+        });
+
+        clickArea.addEventListener('click', function(e) {
+            // 空のエリアをクリックした場合の処理（必要に応じて）
+        });
+
+        function createFloatingNumber(x, y) {
+            const floatingNum = document.createElement('div');
+            floatingNum.className = 'floating-number';
+            floatingNum.textContent = '+' + (50 * clickPower);
+            floatingNum.style.left = x + 'px';
+            floatingNum.style.top = y + 'px';
+            clickArea.appendChild(floatingNum);
+
+            setTimeout(() => {
+                if (floatingNum.parentNode) {
+                    floatingNum.parentNode.removeChild(floatingNum);
+                }
+            }, 1000);
+        }
+
+        function createFirework(x, y) {
+            const firework = document.createElement('div');
+            firework.className = 'firework';
+            firework.style.left = x + 'px';
+            firework.style.top = y + 'px';
+            firework.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            firework.style.width = '20px';
+            firework.style.height = '20px';
+            clickArea.appendChild(firework);
+
+            setTimeout(() => {
+                if (firework.parentNode) {
+                    firework.parentNode.removeChild(firework);
+                }
+            }, 1000);
+        }
+
+        function updateMessage() {
+            const progress = score / targetScore;
+            if (progress < 0.2) {
+                messageElement.textContent = messages[0];
+            } else if (progress < 0.4) {
+                messageElement.textContent = messages[1];
+            } else if (progress < 0.6) {
+                messageElement.textContent = messages[2];
+            } else if (progress < 0.8) {
+                messageElement.textContent = messages[3];
+            } else if (progress < 1.0) {
+                messageElement.textContent = messages[4];
+            }
+        }
+
+        function completeGame() {
+            isGameComplete = true;
+            clearInterval(moveInterval);
+            messageElement.innerHTML = "🎊 おめでとうございます！50回記念達成！ 🎊";
+            movingTarget.style.background = "linear-gradient(45deg, #ff9a56, #ffad56)";
+            movingTarget.textContent = "🎉";
+            
+            // 紙吹雪エフェクト
+            createConfetti();
+            
+            // クリックパワーアップ
+            clickPower = 5;
+        }
+
+        function createConfetti() {
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() * 3 + 's';
+                    celebration.appendChild(confetti);
+
+                    setTimeout(() => {
+                        if (confetti.parentNode) {
+                            confetti.parentNode.removeChild(confetti);
+                        }
+                    }, 3000);
+                }, i * 50);
+            }
+        }
+
+        function resetGame() {
+            score = 0;
+            clickPower = 1;
+            isGameComplete = false;
+            moveSpeed = 2000;
+            scoreElement.textContent = '0';
+            progressFill.style.width = '0%';
+            messageElement.textContent = '50を捕まえて記念ポイントを集めよう！';
+            clickArea.style.background = 'linear-gradient(45deg, #ff6b6b, #ffd93d)';
+            movingTarget.style.background = 'linear-gradient(45deg, #4CAF50, #8BC34A)';
+            movingTarget.textContent = '50';
+            celebration.innerHTML = '';
+            
+            // 移動を再開
+            clearInterval(moveInterval);
+            initializeTarget();
+        }
+
+        // ゲーム開始時に初期化
+        initializeTarget();
+
+        // 初期アニメーション
+        setTimeout(() => {
+            clickArea.style.animation = 'none';
+        }, 1000);
+    </script>
+</body>
+</html>
