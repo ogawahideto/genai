@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>究極ラーメンカスタマイズ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            text-align: center;
+            padding: 30px;
+            position: relative;
+        }
+
+        .header::before {
+            content: '🍜';
+            font-size: 60px;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .form-section {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border-left: 5px solid #e74c3c;
+        }
+
+        .section-title {
+            color: #2c3e50;
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .option-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .option-card {
+            background: white;
+            border: 2px solid #e0e6ed;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .option-card:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .option-card.selected {
+            border-color: #e74c3c;
+            background: #fff5f5;
+        }
+
+        .option-card input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+        }
+
+        .option-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .option-desc {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .checkbox-item {
+            background: white;
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .checkbox-item:hover {
+            border-color: #3498db;
+            background: #f0f8ff;
+        }
+
+        .checkbox-item.checked {
+            border-color: #27ae60;
+            background: #f0fff4;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            display: none;
+        }
+
+        .slider-container {
+            margin: 20px 0;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e0e6ed;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #e74c3c;
+            cursor: pointer;
+        }
+
+        .ratio-slider-container {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e0e6ed;
+        }
+
+        .ratio-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .ratio-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e6ed;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .ratio-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+        }
+
+        .soup-preview {
+            margin-top: 15px;
+            padding: 15px;
+            background: #fff9e6;
+            border-radius: 10px;
+            border-left: 4px solid #f39c12;
+        }
+
+        .soup-preview h5 {
+            margin-bottom: 10px;
+            color: #e67e22;
+        }
+
+        .soup-blend-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            font-size: 0.9rem;
+        }
+
+        .special-options {
+            background: #fff9e6;
+            border-left-color: #f39c12;
+        }
+
+        .order-summary {
+            background: #e8f5e8;
+            border-left-color: #27ae60;
+            margin-top: 30px;
+        }
+
+        .summary-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .price-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #e74c3c;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .order-button {
+            width: 100%;
+            padding: 18px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .order-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
+        }
+
+        .note-input {
+            width: 100%;
+            min-height: 80px;
+            padding: 15px;
+            border: 2px solid #e0e6ed;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+        }
+
+        .note-input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        li {
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        li:last-child {
+            border-bottom: none;
+        }
+        
+        ul ul {
+            padding-left: 20px;
+            margin-top: 5px;
+        }
+        
+        ul ul li {
+            padding: 2px 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .option-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .checkbox-group {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .form-section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>究極ラーメンカスタマイズ</h1>
+            <p class="subtitle">あなただけのオリジナルラーメンを作ろう</p>
+        </div>
+
+        <div class="form-section">
+            <!-- スープベース -->
+            <div class="section">
+                <h2 class="section-title">🍲 スープベース</h2>
+                <p style="margin-bottom: 15px; color: #666; font-size: 0.9rem;">
+                    ✨ 複数選択でオリジナルブレンドスープを作れます！
+                </p>
+                <div class="checkbox-group" id="soup-options">
+                    <div class="checkbox-item" data-soup="tonkotsu" data-price="0">
+                        <input type="checkbox" id="soup-tonkotsu">
+                        <div class="option-title">豚骨</div>
+                        <div class="option-desc">濃厚でクリーミーな豚骨の旨味</div>
+                    </div>
+                    <div class="checkbox-item" data-soup="shoyu" data-price="0">
+                        <input type="checkbox" id="soup-shoyu">
+                        <div class="option-title">醤油</div>
+                        <div class="option-desc">澄んだ醤油の上品な味わい</div>
+                    </div>
+                    <div class="checkbox-item" data-soup="miso" data-price="50">
+                        <input type="checkbox" id="soup-miso">
+                        <div class="option-title">味噌</div>
+                        <div class="option-desc">コクのある味噌の深い風味</div>
+                    </div>
+                    <div class="checkbox-item" data-soup="shio" data-price="0">
+                        <input type="checkbox" id="soup-shio">
+                        <div class="option-title">塩</div>
+                        <div class="option-desc">さっぱりとした塩味のスープ</div>
+                    </div>
+                    <div class="checkbox-item" data-soup="tsukemen" data-price="100">
+                        <input type="checkbox" id="soup-tsukemen">
+                        <div class="option-title">つけ麺</div>
+                        <div class="option-desc">濃厚なつけダレでいただく</div>
+                    </div>
+                    <div class="checkbox-item" data-soup="tantanmen" data-price="150">
+                        <input type="checkbox" id="soup-tantanmen">
+                        <div class="option-title">担々麺</div>
+                        <div class="option-desc">ピリ辛ごまの担々スープ</div>
+                    </div>
+                    <div class="checkbox-item" data-soup="chicken" data-price="80">
+                        <input type="checkbox" id="soup-chicken">
+                        <div class="option-title">鶏白湯</div>
+                        <div class="option-desc">濃厚な鶏の旨味たっぷり</div>
+                    </div>
+                    <div class="checkbox-item" data-soup="seafood" data-price="120">
+                        <input type="checkbox" id="soup-seafood">
+                        <div class="option-title">魚介</div>
+                        <div class="option-desc">海の幸が香る上品な味</div>
+                    </div>
+                </div>
+                
+                <!-- ミックス時の比率調整 -->
+                <div id="soup-ratio-section" style="display: none; margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 10px;">
+                    <h4 style="margin-bottom: 15px; color: #2c3e50;">🎯 スープの配合比率</h4>
+                    <div id="soup-ratios"></div>
+                </div>
+            </div>
+
+            <!-- 麺の種類・太さ -->
+            <div class="section">
+                <h2 class="section-title">🍝 麺の太さ・種類</h2>
+                <div class="option-grid" id="noodle-options">
+                    <div class="option-card" data-option="hosomen" data-price="0">
+                        <input type="radio" name="noodle" value="hosomen" id="noodle-hosomen">
+                        <div class="option-title">細麺</div>
+                        <div class="option-desc">スープがよく絡む細めの麺</div>
+                    </div>
+                    <div class="option-card" data-option="futomen" data-price="0">
+                        <input type="radio" name="noodle" value="futomen" id="noodle-futomen">
+                        <div class="option-title">太麺</div>
+                        <div class="option-desc">食べ応えのある太めの麺</div>
+                    </div>
+                    <div class="option-card" data-option="chijiremen" data-price="50">
+                        <input type="radio" name="noodle" value="chijiremen" id="noodle-chijiremen">
+                        <div class="option-title">縮れ麺</div>
+                        <div class="option-desc">スープがしっかり絡む縮れ麺</div>
+                    </div>
+                    <div class="option-card" data-option="hiyamugi" data-price="100">
+                        <input type="radio" name="noodle" value="hiyamugi" id="noodle-hiyamugi">
+                        <div class="option-title">ひやむぎ麺</div>
+                        <div class="option-desc">つるつるとした食感の極細麺</div>
+                    </div>
+                </div>
+
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>麺の固さ</span>
+                        <span id="hardness-value">普通</span>
+                    </div>
+                    <input type="range" class="slider" id="noodle-hardness" min="1" max="7" value="4">
+                </div>
+            </div>
+
+            <!-- 基本トッピング -->
+            <div class="section">
+                <h2 class="section-title">🥚 基本トッピング</h2>
+                <div class="checkbox-group" id="basic-toppings">
+                    <div class="checkbox-item" data-topping="chashu" data-price="200">
+                        <input type="checkbox" id="topping-chashu">
+                        <label for="topping-chashu">チャーシュー</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="ajitsuke-tamago" data-price="100">
+                        <input type="checkbox" id="topping-ajitsuke-tamago">
+                        <label for="topping-ajitsuke-tamago">味玉</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="menma" data-price="80">
+                        <input type="checkbox" id="topping-menma">
+                        <label for="topping-menma">メンマ</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="nori" data-price="50">
+                        <input type="checkbox" id="topping-nori">
+                        <label for="topping-nori">海苔</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="negi" data-price="50">
+                        <input type="checkbox" id="topping-negi">
+                        <label for="topping-negi">ネギ</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="moyashi" data-price="50">
+                        <input type="checkbox" id="topping-moyashi">
+                        <label for="topping-moyashi">もやし</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- プレミアムトッピング -->
+            <div class="section special-options">
+                <h2 class="section-title">⭐ プレミアムトッピング</h2>
+                <div class="checkbox-group" id="premium-toppings">
+                    <div class="checkbox-item" data-topping="premium-chashu" data-price="400">
+                        <input type="checkbox" id="topping-premium-chashu">
+                        <label for="topping-premium-chashu">厚切りチャーシュー</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="kakuni" data-price="350">
+                        <input type="checkbox" id="topping-kakuni">
+                        <label for="topping-kakuni">角煮</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="chicken-chashu" data-price="250">
+                        <input type="checkbox" id="topping-chicken-chashu">
+                        <label for="topping-chicken-chashu">鶏チャーシュー</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="soft-shell-turtle" data-price="600">
+                        <input type="checkbox" id="topping-soft-shell-turtle">
+                        <label for="topping-soft-shell-turtle">すっぽん</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="truffle" data-price="800">
+                        <input type="checkbox" id="topping-truffle">
+                        <label for="topping-truffle">トリュフ</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="wagyu" data-price="1000">
+                        <input type="checkbox" id="topping-wagyu">
+                        <label for="topping-wagyu">和牛</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 野菜トッピング -->
+            <div class="section">
+                <h2 class="section-title">🥬 野菜トッピング</h2>
+                <div class="checkbox-group" id="vegetable-toppings">
+                    <div class="checkbox-item" data-topping="yasai-mashi" data-price="100">
+                        <input type="checkbox" id="topping-yasai-mashi">
+                        <label for="topping-yasai-mashi">野菜マシ</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="corn" data-price="80">
+                        <input type="checkbox" id="topping-corn">
+                        <label for="topping-corn">コーン</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="spinach" data-price="70">
+                        <input type="checkbox" id="topping-spinach">
+                        <label for="topping-spinach">ほうれん草</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="cabbage" data-price="60">
+                        <input type="checkbox" id="topping-cabbage">
+                        <label for="topping-cabbage">キャベツ</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="wakame" data-price="60">
+                        <input type="checkbox" id="topping-wakame">
+                        <label for="topping-wakame">わかめ</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="kimchi" data-price="100">
+                        <input type="checkbox" id="topping-kimchi">
+                        <label for="topping-kimchi">キムチ</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 特殊オプション -->
+            <div class="section special-options">
+                <h2 class="section-title">🌶️ 特殊オプション</h2>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>辛さレベル</span>
+                        <span id="spice-value">普通</span>
+                    </div>
+                    <input type="range" class="slider" id="spice-level" min="0" max="10" value="2">
+                </div>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>油の量</span>
+                        <span id="oil-value">普通</span>
+                    </div>
+                    <input type="range" class="slider" id="oil-level" min="0" max="5" value="2">
+                </div>
+
+                <div class="checkbox-group" style="margin-top: 20px;">
+                    <div class="checkbox-item" data-topping="extra-garlic" data-price="50">
+                        <input type="checkbox" id="topping-extra-garlic">
+                        <label for="topping-extra-garlic">ニンニク</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="extra-ginger" data-price="50">
+                        <input type="checkbox" id="topping-extra-ginger">
+                        <label for="topping-extra-ginger">生姜</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="rayu" data-price="30">
+                        <input type="checkbox" id="topping-rayu">
+                        <label for="topping-rayu">ラー油</label>
+                    </div>
+                    <div class="checkbox-item" data-topping="black-pepper" data-price="30">
+                        <input type="checkbox" id="topping-black-pepper">
+                        <label for="topping-black-pepper">黒胡椒</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 特別な要望 -->
+            <div class="section">
+                <h2 class="section-title">📝 特別な要望・メモ</h2>
+                <textarea class="note-input" id="special-notes" placeholder="アレルギーや特別な要望があればご記入ください..."></textarea>
+            </div>
+
+            <!-- 注文サマリー -->
+            <div class="section order-summary">
+                <h2 class="section-title">📋 ご注文内容</h2>
+                <div class="summary-content" id="order-summary"></div>
+                <div class="price-display">
+                    合計: ¥<span id="total-price">800</span>
+                </div>
+                <button class="order-button" onclick="placeOrder()">この内容で注文する 🍜</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const basePrice = 800;
+        let currentOrder = {
+            soups: [],
+            soupRatios: {},
+            noodle: '',
+            noodleHardness: '普通',
+            toppings: [],
+            spiceLevel: '普通',
+            oilLevel: '普通',
+            specialNotes: ''
+        };
+
+        const hardnessLevels = ['バリカタ', 'カタ', 'やや硬', '普通', 'やや柔', '柔らか', 'バリやわ'];
+        const spiceLevels = ['なし', '少し', '普通', '中辛', '辛口', '大辛', '激辛', '地獄', '死神', '悪魔', '宇宙級'];
+        const oilLevels = ['なし', '少なめ', '普通', '多め', 'ギトギト', '超ギトギト'];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // スープチェックボックスのクリックイベント
+            document.querySelectorAll('#soup-options .checkbox-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const checkbox = this.querySelector('input[type="checkbox"]');
+                    if (checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                        updateSoupSelection();
+                        updateSelection();
+                    }
+                });
+            });
+
+            // 麺のラジオボタンのクリックイベント
+            document.querySelectorAll('#noodle-options .option-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const radio = this.querySelector('input[type="radio"]');
+                    if (radio) {
+                        radio.checked = true;
+                        updateSelection();
+                    }
+                });
+            });
+
+            // トッピングのチェックボックスのクリックイベント
+            document.querySelectorAll('.checkbox-item:not(#soup-options .checkbox-item)').forEach(item => {
+                item.addEventListener('click', function() {
+                    const checkbox = this.querySelector('input[type="checkbox"]');
+                    if (checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                        updateSelection();
+                    }
+                });
+            });
+
+            // スライダーのイベント
+            document.getElementById('noodle-hardness').addEventListener('input', function() {
+                document.getElementById('hardness-value').textContent = hardnessLevels[this.value - 1];
+                updateSelection();
+            });
+
+            document.getElementById('spice-level').addEventListener('input', function() {
+                document.getElementById('spice-value').textContent = spiceLevels[this.value];
+                updateSelection();
+            });
+
+            document.getElementById('oil-level').addEventListener('input', function() {
+                document.getElementById('oil-value').textContent = oilLevels[this.value];
+                updateSelection();
+            });
+
+            document.getElementById('special-notes').addEventListener('input', updateSelection);
+
+            updateSelection();
+        });
+
+        function updateSoupSelection() {
+            const selectedSoups = document.querySelectorAll('#soup-options input[type="checkbox"]:checked');
+            const ratioSection = document.getElementById('soup-ratio-section');
+            const ratiosContainer = document.getElementById('soup-ratios');
+            
+            if (selectedSoups.length > 1) {
+                ratioSection.style.display = 'block';
+                ratiosContainer.innerHTML = '';
+                
+                selectedSoups.forEach((soup) => {
+                    const soupName = soup.closest('.checkbox-item').querySelector('.option-title').textContent;
+                    const soupId = soup.id.replace('soup-', '');
+                    
+                    if (!currentOrder.soupRatios[soupId]) {
+                        currentOrder.soupRatios[soupId] = Math.round(100 / selectedSoups.length);
+                    }
+                    
+                    const ratioDiv = document.createElement('div');
+                    ratioDiv.className = 'ratio-slider-container';
+                    ratioDiv.innerHTML = `
+                        <div class="ratio-label">
+                            <span>${soupName}</span>
+                            <span id="ratio-${soupId}-value">${currentOrder.soupRatios[soupId]}%</span>
+                        </div>
+                        <input type="range" class="ratio-slider" id="ratio-${soupId}" 
+                               min="10" max="80" value="${currentOrder.soupRatios[soupId]}">
+                    `;
+                    ratiosContainer.appendChild(ratioDiv);
+                    
+                    document.getElementById(`ratio-${soupId}`).addEventListener('input', function() {
+                        updateSoupRatio(soupId, this.value);
+                    });
+                });
+                
+                updateSoupPreview();
+            } else {
+                ratioSection.style.display = 'none';
+                currentOrder.soupRatios = {};
+            }
+        }
+
+        function updateSoupRatio(soupId, value) {
+            currentOrder.soupRatios[soupId] = parseInt(value);
+            document.getElementById(`ratio-${soupId}-value`).textContent = value + '%';
+            
+            autoAdjustRatios(soupId);
+            updateSoupPreview();
+            updateSelection();
+        }
+
+        function autoAdjustRatios(changedSoupId) {
+            const allSoupIds = Object.keys(currentOrder.soupRatios);
+            const changedValue = currentOrder.soupRatios[changedSoupId];
+            const remainingValue = 100 - changedValue;
+            const otherSoups = allSoupIds.filter(id => id !== changedSoupId);
+            
+            if (otherSoups.length > 0) {
+                const equalShare = Math.round(remainingValue / otherSoups.length);
+                let totalAssigned = changedValue;
+                
+                otherSoups.forEach((soupId, index) => {
+                    if (index === otherSoups.length - 1) {
+                        currentOrder.soupRatios[soupId] = 100 - totalAssigned;
+                    } else {
+                        currentOrder.soupRatios[soupId] = equalShare;
+                        totalAssigned += equalShare;
+                    }
+                    
+                    const slider = document.getElementById(`ratio-${soupId}`);
+                    const valueDisplay = document.getElementById(`ratio-${soupId}-value`);
+                    if (slider && valueDisplay) {
+                        slider.value = currentOrder.soupRatios[soupId];
+                        valueDisplay.textContent = currentOrder.soupRatios[soupId] + '%';
+                    }
+                });
+            }
+        }
+
+        function updateSoupPreview() {
+            const ratiosContainer = document.getElementById('soup-ratios');
+            const existingPreview = document.querySelector('.soup-preview');
+            if (existingPreview) {
+                existingPreview.remove();
+            }
+            
+            const selectedSoups = document.querySelectorAll('#soup-options input[type="checkbox"]:checked');
+            if (selectedSoups.length > 1) {
+                const previewDiv = document.createElement('div');
+                previewDiv.className = 'soup-preview';
+                previewDiv.innerHTML = '<h5>🍲 あなたのオリジナルブレンド</h5>';
+                
+                selectedSoups.forEach(soup => {
+                    const soupName = soup.closest('.checkbox-item').querySelector('.option-title').textContent;
+                    const soupId = soup.id.replace('soup-', '');
+                    const ratio = currentOrder.soupRatios[soupId] || 0;
+                    const blendItem = document.createElement('div');
+                    blendItem.className = 'soup-blend-item';
+                    blendItem.innerHTML = `<span>${soupName}</span><span>${ratio}%</span>`;
+                    previewDiv.appendChild(blendItem);
+                });
+                
+                ratiosContainer.parentNode.appendChild(previewDiv);
+            }
+        }
+
+        function updateSelection() {
+            // 選択状態の視覚的更新
+            document.querySelectorAll('.option-card').forEach(card => {
+                const radio = card.querySelector('input[type="radio"]');
+                if (radio && radio.checked) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+
+            document.querySelectorAll('.checkbox-item').forEach(item => {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                    item.classList.add('checked');
+                } else {
+                    item.classList.remove('checked');
+                }
+            });
+
+            updateOrderSummary();
+        }
+
+        function updateOrderSummary() {
+            let totalPrice = basePrice;
+            let summaryHTML = '<h3>📝 選択内容</h3><ul>';
+
+            // スープ
+            const selectedSoups = document.querySelectorAll('#soup-options input[type="checkbox"]:checked');
+            if (selectedSoups.length > 0) {
+                let soupNames = [];
+                let soupTotalPrice = 0;
+                
+                selectedSoups.forEach(soup => {
+                    const soupCard = soup.closest('.checkbox-item');
+                    const soupName = soupCard.querySelector('.option-title').textContent;
+                    const soupPrice = parseInt(soupCard.dataset.price);
+                    const soupId = soup.id.replace('soup-', '');
+                    
+                    if (selectedSoups.length > 1 && currentOrder.soupRatios[soupId]) {
+                        soupNames.push(`${soupName}(${currentOrder.soupRatios[soupId]}%)`);
+                        soupTotalPrice += soupPrice * (currentOrder.soupRatios[soupId] / 100);
+                    } else {
+                        soupNames.push(soupName);
+                        soupTotalPrice += soupPrice;
+                    }
+                });
+                
+                const soupDisplay = selectedSoups.length > 1 ? 
+                    `${soupNames.join(' + ')} ブレンド` : soupNames[0];
+                summaryHTML += `<li><strong>スープ:</strong> ${soupDisplay} (+¥${Math.round(soupTotalPrice)})</li>`;
+                totalPrice += Math.round(soupTotalPrice);
+                currentOrder.soups = soupNames;
+            }
+
+            // 麺
+            const selectedNoodle = document.querySelector('input[name="noodle"]:checked');
+            if (selectedNoodle) {
+                const noodleCard = selectedNoodle.closest('.option-card');
+                const noodleName = noodleCard.querySelector('.option-title').textContent;
+                const noodlePrice = parseInt(noodleCard.dataset.price);
+                const hardness = document.getElementById('hardness-value').textContent;
+                summaryHTML += `<li><strong>麺:</strong> ${noodleName} (${hardness}) (+¥${noodlePrice})</li>`;
+                totalPrice += noodlePrice;
+                currentOrder.noodle = noodleName;
+                currentOrder.noodleHardness = hardness;
+            }
+
+            // トッピング
+            const selectedToppings = document.querySelectorAll('.checkbox-item.checked:not(#soup-options .checkbox-item)');
+            let toppingsArray = [];
+            if (selectedToppings.length > 0) {
+                summaryHTML += '<li><strong>トッピング:</strong><ul>';
+                selectedToppings.forEach(topping => {
+                    const toppingName = topping.querySelector('label').textContent;
+                    const toppingPrice = parseInt(topping.dataset.price);
+                    summaryHTML += `<li>${toppingName} (+¥${toppingPrice})</li>`;
+                    totalPrice += toppingPrice;
+                    toppingsArray.push(toppingName);
+                });
+                summaryHTML += '</ul></li>';
+            }
+            currentOrder.toppings = toppingsArray;
+
+            // 特殊オプション
+            const spiceLevel = document.getElementById('spice-value').textContent;
+            const oilLevel = document.getElementById('oil-value').textContent;
+            summaryHTML += `<li><strong>辛さ:</strong> ${spiceLevel}</li>`;
+            summaryHTML += `<li><strong>油の量:</strong> ${oilLevel}</li>`;
+            currentOrder.spiceLevel = spiceLevel;
+            currentOrder.oilLevel = oilLevel;
+
+            // 特別な要望
+            const specialNotes = document.getElementById('special-notes').value.trim();
+            if (specialNotes) {
+                summaryHTML += `<li><strong>特別な要望:</strong> ${specialNotes}</li>`;
+                currentOrder.specialNotes = specialNotes;
+            }
+
+            summaryHTML += '</ul>';
+
+            document.getElementById('order-summary').innerHTML = summaryHTML;
+            document.getElementById('total-price').textContent = totalPrice.toLocaleString();
+        }
+
+        function placeOrder() {
+            const selectedSoups = document.querySelectorAll('#soup-options input[type="checkbox"]:checked');
+            if (selectedSoups.length === 0 || !currentOrder.noodle) {
+                alert('スープベースと麺の種類を選択してください。');
+                return;
+            }
+
+            let orderText = '🍜 ご注文ありがとうございます！\n\n';
+            
+            if (selectedSoups.length > 1) {
+                orderText += `スープ: ${currentOrder.soups.join(' + ')} ブレンド\n`;
+                orderText += '配合比率:\n';
+                selectedSoups.forEach(soup => {
+                    const soupName = soup.closest('.checkbox-item').querySelector('.option-title').textContent;
+                    const soupId = soup.id.replace('soup-', '');
+                    if (currentOrder.soupRatios[soupId]) {
+                        orderText += `  • ${soupName}: ${currentOrder.soupRatios[soupId]}%\n`;
+                    }
+                });
+            } else {
+                orderText += `スープ: ${currentOrder.soups[0]}\n`;
+            }
+            
+            orderText += `麺: ${currentOrder.noodle} (${currentOrder.noodleHardness})\n`;
+            orderText += `辛さ: ${currentOrder.spiceLevel}\n`;
+            orderText += `油の量: ${currentOrder.oilLevel}\n`;
+            
+            if (currentOrder.toppings.length > 0) {
+                orderText += `トッピング: ${currentOrder.toppings.join(', ')}\n`;
+            }
+            
+            if (currentOrder.specialNotes) {
+                orderText += `特別な要望: ${currentOrder.specialNotes}\n`;
+            }
+            
+            orderText += `\n合計金額: ¥${document.getElementById('total-price').textContent}\n\n`;
+            
+            if (selectedSoups.length > 1) {
+                orderText += '🎨 オリジナルブレンドの調理には少し時間がかかります。\n';
+                orderText += '調理時間は約15-20分です。お待ちください！';
+            } else {
+                orderText += '調理時間は約10-15分です。お待ちください！';
+            }
+
+            alert(orderText);
+        }
+    </script>
+</body>
+</html>
