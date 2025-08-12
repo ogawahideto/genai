@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBQ炭起こしシミュレーター</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 15px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-value {
+            font-size: 1.5em;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .grill-area {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: #2c2c2c;
+            border-radius: 15px;
+            margin: 20px 0;
+            overflow: hidden;
+            box-shadow: inset 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .grill-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 30%;
+            background: repeating-linear-gradient(
+                90deg,
+                #888,
+                #888 3px,
+                transparent 3px,
+                transparent 15px
+            ),
+            repeating-linear-gradient(
+                0deg,
+                #888,
+                #888 3px,
+                transparent 3px,
+                transparent 15px
+            );
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .charcoal {
+            position: absolute;
+            width: 40px;
+            height: 30px;
+            background: #1a1a1a;
+            border-radius: 40%;
+            cursor: move;
+            transition: all 0.3s ease;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .charcoal.heating {
+            animation: heating 2s infinite;
+        }
+
+        .charcoal.hot {
+            background: radial-gradient(circle, #ff6b6b, #ff4444, #cc0000);
+            box-shadow: 0 0 20px rgba(255, 100, 100, 0.8);
+            animation: glow 1s infinite alternate;
+        }
+
+        @keyframes heating {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes glow {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.3); }
+        }
+
+        .fire-starter {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, #fff5e6, #ffcc80);
+            border-radius: 5px;
+            cursor: move;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .fire-starter.burning {
+            animation: burn 1s infinite;
+            background: linear-gradient(135deg, #ff9800, #ff5722);
+        }
+
+        @keyframes burn {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.1) rotate(-2deg); }
+            75% { transform: scale(1.1) rotate(2deg); }
+        }
+
+        .flame {
+            position: absolute;
+            width: 20px;
+            height: 30px;
+            background: radial-gradient(ellipse at bottom, #fff, #ff9800, #ff5722);
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            opacity: 0.9;
+            animation: flicker 0.5s infinite alternate;
+            pointer-events: none;
+        }
+
+        @keyframes flicker {
+            0% { transform: scaleY(1) translateY(0); opacity: 0.9; }
+            100% { transform: scaleY(1.1) translateY(-2px); opacity: 0.7; }
+        }
+
+        .smoke {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle, rgba(150, 150, 150, 0.4), transparent);
+            border-radius: 50%;
+            animation: rise 3s infinite;
+            pointer-events: none;
+        }
+
+        @keyframes rise {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(-100px) scale(2);
+                opacity: 0;
+            }
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(240, 147, 251, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #ff4444);
+            color: white;
+        }
+
+        .instructions {
+            background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #00acc1;
+        }
+
+        .instructions h3 {
+            color: #00838f;
+            margin-bottom: 10px;
+        }
+
+        .step {
+            margin: 5px 0;
+            padding-left: 20px;
+            position: relative;
+            color: #555;
+        }
+
+        .step.completed {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+
+        .step.completed::before {
+            content: "✓ ";
+            position: absolute;
+            left: 0;
+            color: #2e7d32;
+        }
+
+        .message {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-weight: bold;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .message.success {
+            background: linear-gradient(135deg, #84fab0, #8fd3f4);
+            color: #1b5e20;
+        }
+
+        .message.warning {
+            background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+            color: #f57c00;
+        }
+
+        .message.error {
+            background: linear-gradient(135deg, #ff9ff3, #ff6b9d);
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🔥 BBQ炭起こしシミュレーター 🔥</h1>
+        
+        <div class="status-bar">
+            <div class="status-item">
+                <span>温度</span>
+                <span class="status-value" id="temperature">20°C</span>
+            </div>
+            <div class="status-item">
+                <span>火力</span>
+                <span class="status-value" id="fireLevel">0%</span>
+            </div>
+            <div class="status-item">
+                <span>経過時間</span>
+                <span class="status-value" id="timer">0:00</span>
+            </div>
+            <div class="status-item">
+                <span>スコア</span>
+                <span class="status-value" id="score">0</span>
+            </div>
+        </div>
+
+        <div id="message"></div>
+
+        <div class="grill-area" id="grillArea">
+            <div class="grill-grid"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-primary" onclick="addFireStarter()">着火剤を追加</button>
+            <button class="btn-primary" onclick="addCharcoal()">炭を追加</button>
+            <button class="btn-secondary" onclick="igniteFire()">着火する</button>
+            <button class="btn-secondary" onclick="blowAir()">うちわで扇ぐ</button>
+            <button class="btn-danger" onclick="resetGame()">リセット</button>
+        </div>
+
+        <div class="instructions">
+            <h3>炭起こしの手順：</h3>
+            <div class="step" id="step1">1. 着火剤を中央に配置する</div>
+            <div class="step" id="step2">2. 炭を着火剤の周りに積む（煙突状に）</div>
+            <div class="step" id="step3">3. 着火剤に火をつける</div>
+            <div class="step" id="step4">4. うちわで適度に扇いで空気を送る</div>
+            <div class="step" id="step5">5. 炭全体が赤くなるまで待つ（完成！）</div>
+        </div>
+    </div>
+
+    <script>
+        let gameState = {
+            temperature: 20,
+            fireLevel: 0,
+            time: 0,
+            score: 0,
+            fireStarters: [],
+            charcoals: [],
+            isIgnited: false,
+            isComplete: false,
+            steps: {
+                step1: false,
+                step2: false,
+                step3: false,
+                step4: false,
+                step5: false
+            }
+        };
+
+        let timerInterval;
+        let gameInterval;
+
+        function startTimer() {
+            if (!timerInterval) {
+                timerInterval = setInterval(() => {
+                    gameState.time++;
+                    updateTimer();
+                }, 1000);
+            }
+        }
+
+        function updateTimer() {
+            const minutes = Math.floor(gameState.time / 60);
+            const seconds = gameState.time % 60;
+            document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function addFireStarter() {
+            if (gameState.fireStarters.length >= 3) {
+                showMessage('着火剤は3個までです！', 'warning');
+                return;
+            }
+
+            const grillArea = document.getElementById('grillArea');
+            const fireStarter = document.createElement('div');
+            fireStarter.className = 'fire-starter';
+            fireStarter.style.left = '45%';
+            fireStarter.style.bottom = '20%';
+            
+            makeDraggable(fireStarter);
+            grillArea.appendChild(fireStarter);
+            gameState.fireStarters.push(fireStarter);
+
+            if (gameState.fireStarters.length >= 1) {
+                gameState.steps.step1 = true;
+                document.getElementById('step1').classList.add('completed');
+                showMessage('着火剤を配置しました！次は炭を積みましょう', 'success');
+            }
+
+            startTimer();
+            updateScore(10);
+        }
+
+        function addCharcoal() {
+            if (gameState.charcoals.length >= 12) {
+                showMessage('炭は12個までです！', 'warning');
+                return;
+            }
+
+            const grillArea = document.getElementById('grillArea');
+            const charcoal = document.createElement('div');
+            charcoal.className = 'charcoal';
+            charcoal.style.left = Math.random() * 80 + 10 + '%';
+            charcoal.style.bottom = Math.random() * 30 + 20 + '%';
+            
+            makeDraggable(charcoal);
+            grillArea.appendChild(charcoal);
+            gameState.charcoals.push(charcoal);
+
+            if (gameState.charcoals.length >= 4 && gameState.fireStarters.length >= 1) {
+                gameState.steps.step2 = true;
+                document.getElementById('step2').classList.add('completed');
+                showMessage('炭を配置しました！着火の準備ができました', 'success');
+            }
+
+            startTimer();
+            updateScore(5);
+        }
+
+        function makeDraggable(element) {
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+
+            element.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                initialLeft = element.offsetLeft;
+                initialTop = element.offsetTop;
+                element.style.zIndex = 1000;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+                
+                element.style.left = initialLeft + deltaX + 'px';
+                element.style.top = initialTop + deltaY + 'px';
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                element.style.zIndex = '';
+            });
+        }
+
+        function igniteFire() {
+            if (gameState.fireStarters.length === 0) {
+                showMessage('先に着火剤を配置してください！', 'error');
+                return;
+            }
+
+            if (gameState.isIgnited) {
+                showMessage('すでに着火しています！', 'warning');
+                return;
+            }
+
+            gameState.isIgnited = true;
+            gameState.steps.step3 = true;
+            document.getElementById('step3').classList.add('completed');
+
+            gameState.fireStarters.forEach(starter => {
+                starter.classList.add('burning');
+                createFlame(starter);
+            });
+
+            showMessage('着火しました！うちわで空気を送りましょう', 'success');
+            updateScore(20);
+
+            if (!gameInterval) {
+                gameInterval = setInterval(updateGame, 1000);
+            }
+        }
+
+        function createFlame(element) {
+            const flame = document.createElement('div');
+            flame.className = 'flame';
+            flame.style.left = element.offsetLeft + element.offsetWidth / 2 - 10 + 'px';
+            flame.style.top = element.offsetTop - 20 + 'px';
+            element.parentNode.appendChild(flame);
+
+            setTimeout(() => flame.remove(), 3000);
+        }
+
+        function createSmoke(element) {
+            const smoke = document.createElement('div');
+            smoke.className = 'smoke';
+            smoke.style.left = element.offsetLeft + element.offsetWidth / 2 - 15 + 'px';
+            smoke.style.top = element.offsetTop - 10 + 'px';
+            element.parentNode.appendChild(smoke);
+
+            setTimeout(() => smoke.remove(), 3000);
+        }
+
+        function blowAir() {
+            if (!gameState.isIgnited) {
+                showMessage('まず着火してください！', 'error');
+                return;
+            }
+
+            if (!gameState.steps.step4) {
+                gameState.steps.step4 = true;
+                document.getElementById('step4').classList.add('completed');
+            }
+
+            gameState.fireLevel = Math.min(100, gameState.fireLevel + 15);
+            gameState.temperature = Math.min(300, gameState.temperature + 20);
+
+            gameState.charcoals.forEach(charcoal => {
+                if (Math.random() > 0.5) {
+                    createSmoke(charcoal);
+                }
+            });
+
+            showMessage('空気を送りました！火力が上がっています', 'success');
+            updateScore(10);
+            updateDisplay();
+        }
+
+        function updateGame() {
+            if (!gameState.isIgnited || gameState.isComplete) return;
+
+            // 自然に温度が下がる
+            gameState.temperature = Math.max(20, gameState.temperature - 2);
+            gameState.fireLevel = Math.max(0, gameState.fireLevel - 3);
+
+            // 炭の状態を更新
+            gameState.charcoals.forEach(charcoal => {
+                if (gameState.temperature > 100) {
+                    charcoal.classList.add('heating');
+                }
+                if (gameState.temperature > 200) {
+                    charcoal.classList.remove('heating');
+                    charcoal.classList.add('hot');
+                }
+            });
+
+            // 完成チェック
+            if (gameState.temperature > 250 && gameState.fireLevel > 80) {
+                if (!gameState.isComplete) {
+                    gameState.isComplete = true;
+                    gameState.steps.step5 = true;
+                    document.getElementById('step5').classList.add('completed');
+                    
+                    const finalScore = gameState.score + Math.max(0, 500 - gameState.time * 2);
+                    gameState.score = finalScore;
+                    
+                    showMessage(`🎉 完璧な炭起こしです！スコア: ${finalScore}点`, 'success');
+                    clearInterval(gameInterval);
+                    clearInterval(timerInterval);
+                }
+            }
+
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            document.getElementById('temperature').textContent = Math.round(gameState.temperature) + '°C';
+            document.getElementById('fireLevel').textContent = Math.round(gameState.fireLevel) + '%';
+            document.getElementById('score').textContent = gameState.score;
+        }
+
+        function updateScore(points) {
+            gameState.score += points;
+            updateDisplay();
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.className = 'message';
+            }, 3000);
+        }
+
+        function resetGame() {
+            clearInterval(gameInterval);
+            clearInterval(timerInterval);
+            
+            gameState = {
+                temperature: 20,
+                fireLevel: 0,
+                time: 0,
+                score: 0,
+                fireStarters: [],
+                charcoals: [],
+                isIgnited: false,
+                isComplete: false,
+                steps: {
+                    step1: false,
+                    step2: false,
+                    step3: false,
+                    step4: false,
+                    step5: false
+                }
+            };
+
+            document.getElementById('grillArea').innerHTML = '<div class="grill-grid"></div>';
+            
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`step${i}`).classList.remove('completed');
+            }
+
+            timerInterval = null;
+            gameInterval = null;
+            
+            updateDisplay();
+            updateTimer();
+            showMessage('ゲームをリセットしました', 'warning');
+        }
+
+        // 初期表示の更新
+        updateDisplay();
+    </script>
+</body>
+</html>
