@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ja">
+<!--
+AI Model: Claude 3.5 Sonnet
+User Prompt: 日本の旧国名を使ったカードゲームを考えて、新しいディレクトリを作り、HTML
+AI Approach: 旧国名マッチングゲーム - プレイヤーに旧国名を表示し、現在の都道府県/地域から4択で正解を選ばせるクイズ形式
+Implementation Intent: 日本の歴史と地理を楽しく学べる教育ゲーム。旧国名と現在の位置の関係を理解促進
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旧国名カードゲーム</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            max-width: 800px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .title {
+            font-size: 2.5em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        .score-board {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #3498db;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .score-item {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .card-area {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .current-card {
+            background: linear-gradient(45deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 20px auto;
+            max-width: 400px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            transform: scale(1);
+            transition: transform 0.3s ease;
+        }
+
+        .current-card:hover {
+            transform: scale(1.02);
+        }
+
+        .card-title {
+            font-size: 2em;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .card-reading {
+            font-size: 1.2em;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        .card-era {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .option-button {
+            background: linear-gradient(45deg, #56ccf2 0%, #2f80ed 100%);
+            border: none;
+            border-radius: 15px;
+            padding: 20px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .option-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .option-button:active {
+            transform: translateY(0);
+        }
+
+        .option-button.correct {
+            background: linear-gradient(45deg, #4CAF50 0%, #45a049 100%);
+            animation: correct-pulse 0.6s ease-in-out;
+        }
+
+        .option-button.incorrect {
+            background: linear-gradient(45deg, #f44336 0%, #d32f2f 100%);
+            animation: incorrect-shake 0.6s ease-in-out;
+        }
+
+        @keyframes correct-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes incorrect-shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .feedback {
+            text-align: center;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .feedback.show {
+            opacity: 1;
+        }
+
+        .feedback.correct {
+            background: linear-gradient(45deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .feedback.incorrect {
+            background: linear-gradient(45deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .control-buttons {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .next-button, .restart-button {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+
+        .next-button:hover, .restart-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .game-complete {
+            text-align: center;
+            padding: 40px;
+            background: linear-gradient(45deg, #ffd89b 0%, #19547b 100%);
+            border-radius: 20px;
+            color: white;
+            display: none;
+        }
+
+        .final-score {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        .completion-message {
+            font-size: 1.3em;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 600px) {
+            .title {
+                font-size: 2em;
+            }
+
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .game-container {
+                padding: 20px;
+            }
+
+            .current-card {
+                padding: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1 class="title">旧国名カードゲーム</h1>
+            <p class="subtitle">日本の古い国名と現在の地域をマッチさせよう！</p>
+        </div>
+
+        <div class="score-board">
+            <div class="score-item">問題: <span id="current-question">1</span> / <span id="total-questions">20</span></div>
+            <div class="score-item">正解: <span id="correct-count">0</span></div>
+            <div class="score-item">スコア: <span id="score-percentage">0</span>%</div>
+        </div>
+
+        <div class="card-area">
+            <div class="current-card">
+                <div class="card-title" id="old-province-name">武蔵</div>
+                <div class="card-reading" id="old-province-reading">むさし</div>
+                <div class="card-era">令制国時代の呼び名</div>
+            </div>
+        </div>
+
+        <div class="options-grid" id="options-grid">
+            <!-- オプションボタンがJavaScriptで動的に生成される -->
+        </div>
+
+        <div class="feedback" id="feedback"></div>
+
+        <div class="control-buttons">
+            <button class="next-button" id="next-button" onclick="nextQuestion()" style="display: none;">次の問題</button>
+        </div>
+
+        <div class="game-complete" id="game-complete">
+            <div class="final-score" id="final-score">0%</div>
+            <div class="completion-message" id="completion-message">お疲れ様でした！</div>
+            <button class="restart-button" onclick="restartGame()">もう一度プレイ</button>
+        </div>
+    </div>
+
+    <script>
+        // 旧国名データベース
+        const oldProvinces = [
+            { name: '武蔵', reading: 'むさし', modernLocation: '東京都・埼玉県' },
+            { name: '相模', reading: 'さがみ', modernLocation: '神奈川県' },
+            { name: '上野', reading: 'こうずけ', modernLocation: '群馬県' },
+            { name: '下野', reading: 'しもつけ', modernLocation: '栃木県' },
+            { name: '常陸', reading: 'ひたち', modernLocation: '茨城県' },
+            { name: '甲斐', reading: 'かい', modernLocation: '山梨県' },
+            { name: '信濃', reading: 'しなの', modernLocation: '長野県' },
+            { name: '駿河', reading: 'するが', modernLocation: '静岡県東部' },
+            { name: '遠江', reading: 'とおとうみ', modernLocation: '静岡県西部' },
+            { name: '大和', reading: 'やまと', modernLocation: '奈良県' },
+            { name: '山城', reading: 'やましろ', modernLocation: '京都府南部' },
+            { name: '摂津', reading: 'せっつ', modernLocation: '大阪府北部・兵庫県南東部' },
+            { name: '河内', reading: 'かわち', modernLocation: '大阪府東部' },
+            { name: '和泉', reading: 'いずみ', modernLocation: '大阪府南部' },
+            { name: '近江', reading: 'おうみ', modernLocation: '滋賀県' },
+            { name: '越前', reading: 'えちぜん', modernLocation: '福井県北部' },
+            { name: '越中', reading: 'えっちゅう', modernLocation: '富山県' },
+            { name: '越後', reading: 'えちご', modernLocation: '新潟県' },
+            { name: '飛騨', reading: 'ひだ', modernLocation: '岐阜県北部' },
+            { name: '美濃', reading: 'みの', modernLocation: '岐阜県南部' },
+            { name: '備前', reading: 'びぜん', modernLocation: '岡山県東部' },
+            { name: '備中', reading: 'びっちゅう', modernLocation: '岡山県西部' },
+            { name: '安芸', reading: 'あき', modernLocation: '広島県西部' },
+            { name: '周防', reading: 'すおう', modernLocation: '山口県東部' },
+            { name: '長門', reading: 'ながと', modernLocation: '山口県西部' },
+            { name: '讃岐', reading: 'さぬき', modernLocation: '香川県' },
+            { name: '阿波', reading: 'あわ', modernLocation: '徳島県' },
+            { name: '土佐', reading: 'とさ', modernLocation: '高知県' },
+            { name: '伊予', reading: 'いよ', modernLocation: '愛媛県' },
+            { name: '筑前', reading: 'ちくぜん', modernLocation: '福岡県西部' },
+            { name: '筑後', reading: 'ちくご', modernLocation: '福岡県南部' },
+            { name: '肥前', reading: 'ひぜん', modernLocation: '佐賀県・長崎県' },
+            { name: '肥後', reading: 'ひご', modernLocation: '熊本県' },
+            { name: '豊前', reading: 'ぶぜん', modernLocation: '福岡県東部・大分県北部' },
+            { name: '豊後', reading: 'ぶんご', modernLocation: '大分県南部' },
+            { name: '日向', reading: 'ひゅうが', modernLocation: '宮崎県' },
+            { name: '大隅', reading: 'おおすみ', modernLocation: '鹿児島県東部' },
+            { name: '薩摩', reading: 'さつま', modernLocation: '鹿児島県西部' }
+        ];
+
+        let currentQuestionIndex = 0;
+        let correctAnswers = 0;
+        let totalQuestions = 20;
+        let gameQuestions = [];
+        let isAnswerSelected = false;
+
+        // ゲームの初期化
+        function initializeGame() {
+            // ランダムに問題を選択
+            gameQuestions = selectRandomQuestions(totalQuestions);
+            currentQuestionIndex = 0;
+            correctAnswers = 0;
+            isAnswerSelected = false;
+            
+            updateScoreBoard();
+            showQuestion();
+            
+            document.getElementById('game-complete').style.display = 'none';
+            document.getElementById('next-button').style.display = 'none';
+            document.getElementById('feedback').classList.remove('show');
+        }
+
+        // ランダムに問題を選択
+        function selectRandomQuestions(count) {
+            const shuffled = [...oldProvinces].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+
+        // 問題を表示
+        function showQuestion() {
+            if (currentQuestionIndex >= gameQuestions.length) {
+                showGameComplete();
+                return;
+            }
+
+            const currentQuestion = gameQuestions[currentQuestionIndex];
+            
+            document.getElementById('old-province-name').textContent = currentQuestion.name;
+            document.getElementById('old-province-reading').textContent = currentQuestion.reading;
+            
+            // 4択のオプションを生成
+            const options = generateOptions(currentQuestion);
+            displayOptions(options, currentQuestion.modernLocation);
+            
+            document.getElementById('next-button').style.display = 'none';
+            document.getElementById('feedback').classList.remove('show');
+            isAnswerSelected = false;
+        }
+
+        // 4択のオプションを生成
+        function generateOptions(correctAnswer) {
+            const options = [correctAnswer.modernLocation];
+            const otherProvinces = oldProvinces.filter(p => p.name !== correctAnswer.name);
+            
+            // ランダムに3つの間違った選択肢を追加
+            const shuffledOthers = otherProvinces.sort(() => 0.5 - Math.random());
+            for (let i = 0; i < 3 && i < shuffledOthers.length; i++) {
+                options.push(shuffledOthers[i].modernLocation);
+            }
+            
+            // オプションをシャッフル
+            return options.sort(() => 0.5 - Math.random());
+        }
+
+        // オプションボタンを表示
+        function displayOptions(options, correctAnswer) {
+            const optionsGrid = document.getElementById('options-grid');
+            optionsGrid.innerHTML = '';
+            
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.className = 'option-button';
+                button.textContent = option;
+                button.onclick = () => selectAnswer(option, correctAnswer);
+                optionsGrid.appendChild(button);
+            });
+        }
+
+        // 答えを選択
+        function selectAnswer(selectedAnswer, correctAnswer) {
+            if (isAnswerSelected) return;
+            
+            isAnswerSelected = true;
+            const buttons = document.querySelectorAll('.option-button');
+            
+            buttons.forEach(button => {
+                button.disabled = true;
+                if (button.textContent === correctAnswer) {
+                    button.classList.add('correct');
+                } else if (button.textContent === selectedAnswer && selectedAnswer !== correctAnswer) {
+                    button.classList.add('incorrect');
+                }
+            });
+
+            const feedback = document.getElementById('feedback');
+            
+            if (selectedAnswer === correctAnswer) {
+                correctAnswers++;
+                feedback.textContent = '正解！素晴らしいです！';
+                feedback.className = 'feedback correct show';
+            } else {
+                feedback.textContent = `不正解。正解は「${correctAnswer}」でした。`;
+                feedback.className = 'feedback incorrect show';
+            }
+
+            updateScoreBoard();
+            
+            setTimeout(() => {
+                document.getElementById('next-button').style.display = 'inline-block';
+            }, 1000);
+        }
+
+        // スコアボードを更新
+        function updateScoreBoard() {
+            document.getElementById('current-question').textContent = currentQuestionIndex + 1;
+            document.getElementById('total-questions').textContent = totalQuestions;
+            document.getElementById('correct-count').textContent = correctAnswers;
+            
+            const answeredQuestions = currentQuestionIndex + 1;
+            const percentage = Math.round((correctAnswers / answeredQuestions) * 100);
+            document.getElementById('score-percentage').textContent = percentage;
+        }
+
+        // 次の問題
+        function nextQuestion() {
+            currentQuestionIndex++;
+            showQuestion();
+        }
+
+        // ゲーム完了を表示
+        function showGameComplete() {
+            const finalPercentage = Math.round((correctAnswers / totalQuestions) * 100);
+            document.getElementById('final-score').textContent = finalPercentage + '%';
+            
+            let message = '';
+            if (finalPercentage >= 90) {
+                message = '素晴らしい！旧国名マスターです！';
+            } else if (finalPercentage >= 70) {
+                message = 'よくできました！歴史の知識が豊富ですね！';
+            } else if (finalPercentage >= 50) {
+                message = 'まずまずの結果です。もう少し勉強してみましょう！';
+            } else {
+                message = '頑張りましょう！日本の歴史は奥深いですよ！';
+            }
+            
+            document.getElementById('completion-message').textContent = message;
+            document.getElementById('game-complete').style.display = 'block';
+            
+            // ゲーム画面を隠す
+            document.querySelector('.card-area').style.display = 'none';
+            document.querySelector('.options-grid').style.display = 'none';
+            document.querySelector('.control-buttons').style.display = 'none';
+        }
+
+        // ゲームを再開
+        function restartGame() {
+            document.querySelector('.card-area').style.display = 'block';
+            document.querySelector('.options-grid').style.display = 'grid';
+            document.querySelector('.control-buttons').style.display = 'block';
+            initializeGame();
+        }
+
+        // ゲーム開始
+        window.onload = function() {
+            initializeGame();
+        };
+    </script>
+</body>
+</html>
