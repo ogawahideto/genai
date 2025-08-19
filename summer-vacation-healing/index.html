@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>お疲れさま - 夏休み明けの癒しサイト</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shimmer 3s infinite;
+            pointer-events: none;
+        }
+
+        @keyframes shimmer {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #4a4a4a;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .message-box {
+            background: linear-gradient(135deg, #ffeaa7, #fab1a0);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .message {
+            font-size: 1.1em;
+            color: #2d3436;
+            line-height: 1.8;
+            font-weight: 500;
+        }
+
+        .encouragement-btn {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 15px 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .encouragement-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .floating-elements {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .floating-element {
+            position: absolute;
+            font-size: 2em;
+            animation: float 6s ease-in-out infinite;
+            opacity: 0.7;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        .relaxation-tips {
+            background: rgba(116, 185, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 25px 0;
+            text-align: left;
+        }
+
+        .relaxation-tips h3 {
+            color: #0984e3;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .relaxation-tips ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .relaxation-tips li {
+            margin: 10px 0;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            border-left: 4px solid #74b9ff;
+        }
+
+        .breath-guide {
+            background: linear-gradient(135deg, #a8e6cf, #88d8a3);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .breath-guide:hover {
+            transform: scale(1.02);
+        }
+
+        .breath-circle {
+            width: 100px;
+            height: 100px;
+            border: 4px solid #00b894;
+            border-radius: 50%;
+            margin: 15px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #00b894;
+            animation: breathe 4s infinite;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .weekend-countdown {
+            background: linear-gradient(135deg, #fd79a8, #e84393);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .countdown-number {
+            font-size: 3em;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+                margin: 20px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .encouragement-btn {
+                display: block;
+                width: 100%;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-elements">
+        <div class="floating-element" style="top: 10%; left: 10%; animation-delay: 0s;">🌸</div>
+        <div class="floating-element" style="top: 20%; right: 10%; animation-delay: 1s;">☀️</div>
+        <div class="floating-element" style="top: 70%; left: 5%; animation-delay: 2s;">🌺</div>
+        <div class="floating-element" style="top: 80%; right: 20%; animation-delay: 3s;">🦋</div>
+        <div class="floating-element" style="top: 50%; left: 80%; animation-delay: 4s;">🌿</div>
+        <div class="floating-element" style="top: 30%; left: 70%; animation-delay: 5s;">☁️</div>
+    </div>
+
+    <div class="container">
+        <h1>お疲れさまでした 💫</h1>
+        <div class="subtitle">
+            夏休みが終わって、お仕事再開。<br>
+            少し憂鬱な気持ちになるのは、みんな同じです。
+        </div>
+
+        <div class="message-box">
+            <div class="message" id="encouragement-message">
+                夏の思い出を胸に、今日からまた新しいスタートです。<br>
+                あなたのペースで大丈夫。一歩ずつ前に進んでいきましょう。
+            </div>
+        </div>
+
+        <button class="encouragement-btn" onclick="showEncouragement()">励ましの言葉をもらう</button>
+        <button class="encouragement-btn" onclick="toggleBreathGuide()">深呼吸する</button>
+
+        <div class="weekend-countdown">
+            <div>次の週末まで</div>
+            <div class="countdown-number" id="days-to-weekend">-</div>
+            <div>日</div>
+        </div>
+
+        <div class="breath-guide" id="breath-guide" style="display: none;" onclick="startBreathing()">
+            <h3>深呼吸ガイド</h3>
+            <div class="breath-circle" id="breath-circle">呼吸</div>
+            <div>円の動きに合わせて、ゆっくりと呼吸してください</div>
+        </div>
+
+        <div class="relaxation-tips">
+            <h3>🌱 心を軽くするコツ</h3>
+            <ul>
+                <li>💧 こまめに水分補給をして、体をいたわりましょう</li>
+                <li>🚶‍♀️ 昼休みには短い散歩で気分転換を</li>
+                <li>📱 SNSを見る時間を減らして、心の平穏を保ちましょう</li>
+                <li>🛁 帰宅後は温かいお風呂でリラックス</li>
+                <li>📚 好きな本や音楽で、自分だけの時間を大切に</li>
+                <li>😴 十分な睡眠で、明日への活力をチャージ</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const encouragementMessages = [
+            "あなたは素晴らしい人です。今日一日を乗り切った自分を褒めてあげてください。",
+            "夏休みの楽しい思い出は、あなたの心の宝物です。辛い時にはその思い出に支えてもらいましょう。",
+            "完璧である必要はありません。今日できることを一つずつ、丁寧にやっていけばいいのです。",
+            "仕事は人生の一部であって、全てではありません。あなたにはもっと大切なものがたくさんあります。",
+            "今の頑張りは、未来のあなたへの贈り物です。今は見えなくても、きっと実を結びます。",
+            "休憩することも、立派な仕事の一部です。疲れた時は無理せず、自分を労わってください。",
+            "あなたのことを大切に思っている人がいます。一人じゃないことを忘れずに。",
+            "小さな進歩も、確実に前に進んでいる証拠です。自分を信じて進み続けましょう。"
+        ];
+
+        function showEncouragement() {
+            const messageElement = document.getElementById('encouragement-message');
+            const randomMessage = encouragementMessages[Math.floor(Math.random() * encouragementMessages.length)];
+            messageElement.innerHTML = randomMessage;
+            messageElement.parentElement.style.animation = 'none';
+            messageElement.parentElement.offsetHeight;
+            messageElement.parentElement.style.animation = 'shimmer 1s ease-in-out';
+        }
+
+        function toggleBreathGuide() {
+            const breathGuide = document.getElementById('breath-guide');
+            if (breathGuide.style.display === 'none' || breathGuide.style.display === '') {
+                breathGuide.style.display = 'block';
+                startBreathing();
+            } else {
+                breathGuide.style.display = 'none';
+                stopBreathing();
+            }
+        }
+
+        let breathingInterval;
+
+        function startBreathing() {
+            const breathCircle = document.getElementById('breath-circle');
+            let isInhaling = true;
+            
+            clearInterval(breathingInterval);
+            
+            breathingInterval = setInterval(() => {
+                if (isInhaling) {
+                    breathCircle.textContent = '吸って';
+                    breathCircle.style.background = 'linear-gradient(135deg, #a8e6cf, #88d8a3)';
+                } else {
+                    breathCircle.textContent = '吐いて';
+                    breathCircle.style.background = 'linear-gradient(135deg, #fab1a0, #e17055)';
+                }
+                isInhaling = !isInhaling;
+            }, 2000);
+        }
+
+        function stopBreathing() {
+            clearInterval(breathingInterval);
+            const breathCircle = document.getElementById('breath-circle');
+            breathCircle.textContent = '呼吸';
+            breathCircle.style.background = 'transparent';
+        }
+
+        function calculateDaysToWeekend() {
+            const now = new Date();
+            const currentDay = now.getDay();
+            let daysToWeekend;
+            
+            if (currentDay === 0) {
+                daysToWeekend = 6;
+            } else if (currentDay === 6) {
+                daysToWeekend = 7;
+            } else {
+                daysToWeekend = 6 - currentDay;
+            }
+            
+            if (daysToWeekend === 0) {
+                document.getElementById('days-to-weekend').textContent = '今日は';
+                document.querySelector('.weekend-countdown div:last-child').textContent = '週末！';
+            } else {
+                document.getElementById('days-to-weekend').textContent = daysToWeekend;
+            }
+        }
+
+        calculateDaysToWeekend();
+
+        setInterval(() => {
+            const elements = document.querySelectorAll('.floating-element');
+            elements.forEach(element => {
+                if (Math.random() < 0.1) {
+                    element.style.transform = `translateX(${Math.random() * 20 - 10}px) translateY(${Math.random() * 20 - 10}px)`;
+                    setTimeout(() => {
+                        element.style.transform = '';
+                    }, 1000);
+                }
+            });
+        }, 3000);
+    </script>
+</body>
+</html>
