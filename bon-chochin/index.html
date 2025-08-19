@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>盆提灯 - Bon Chōchin</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>盆提灯</h1>
+      <p class="sub">やさしい灯りに想いを込めて</p>
+    </header>
+    <main class="app">
+      <section class="controls" aria-label="設定">
+        <div class="field">
+          <label for="nameInput">お名前・戒名</label>
+          <input id="nameInput" type="text" placeholder="ご先祖さま" maxlength="20" />
+        </div>
+
+        <div class="field">
+          <label for="verticalToggle">縦書き</label>
+          <input id="verticalToggle" type="checkbox" checked />
+        </div>
+
+        <div class="field">
+          <label for="paperColor">紙の色</label>
+          <input id="paperColor" type="color" value="#fff3d6" />
+        </div>
+
+        <div class="field">
+          <label for="flameIntensity">灯りの明るさ</label>
+          <input id="flameIntensity" type="range" min="0" max="1" step="0.01" value="0.75" />
+        </div>
+
+        <div class="field">
+          <label for="flameAnimationSelect">炎のアニメーション</label>
+          <select id="flameAnimationSelect">
+            <option value="flame-animation">自然な揺らぎ</option>
+            <option value="flame-animation-2">色彩変化</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="backgroundSelect">背景</label>
+          <select id="backgroundSelect">
+            <option value="room">和室</option>
+            <option value="night" selected>夜空</option>
+            <option value="plain">無地</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="soundToggle">環境音</label>
+          <input id="soundToggle" type="checkbox" />
+        </div>
+
+        <div class="field">
+          <label for="soundVolume">音量</label>
+          <input id="soundVolume" type="range" min="0" max="1" step="0.1" value="0.3" />
+        </div>
+
+        <details class="field">
+          <summary>家紋（任意で重ねる）</summary>
+          <input id="crestInput" type="file" accept="image/*" />
+          <div class="row">
+            <label for="crestSize">サイズ</label>
+            <input id="crestSize" type="range" min="40" max="180" value="100" />
+          </div>
+        </details>
+
+        <details class="field">
+          <summary>祈り・瞑想モード</summary>
+          <div class="row">
+            <label for="timerMinutes">時間（分）</label>
+            <input id="timerMinutes" type="number" min="1" max="60" value="5" style="width: 60px;" />
+          </div>
+          <div class="timer-controls">
+            <button id="startTimerBtn" type="button">開始</button>
+            <button id="stopTimerBtn" type="button" disabled>停止</button>
+          </div>
+          <div id="timerDisplay" class="timer-display">00:00</div>
+        </details>
+
+        <div class="actions">
+          <button id="fullscreenBtn" type="button">全画面表示</button>
+          <button id="resetBtn" type="button">初期化</button>
+        </div>
+      </section>
+
+      <section class="preview" aria-label="プレビュー">
+        <div id="stage" class="stage bg-night">
+          <div class="lantern-wrap">
+            <!-- Lantern SVG -->
+            <svg id="lantern" viewBox="0 0 300 520" role="img" aria-label="盆提灯">
+              <defs>
+                <radialGradient id="paperGlow" cx="50%" cy="50%" r="60%">
+                  <stop id="glowStop0" offset="0%" stop-color="#ffffff" stop-opacity="0.75" />
+                  <stop id="glowStop1" offset="60%" stop-color="#ffffff" stop-opacity="0.35" />
+                  <stop id="glowStop2" offset="100%" stop-color="#ffffff" stop-opacity="0.15" />
+                </radialGradient>
+
+                <linearGradient id="paperShade" x1="0" y1="0" x2="0" y2="1">
+                  <stop id="shadeTop" offset="0%" stop-color="#fff3d6" />
+                  <stop id="shadeMid" offset="50%" stop-color="#ffe9be" />
+                  <stop id="shadeBot" offset="100%" stop-color="#ffe0a6" />
+                </linearGradient>
+
+                <pattern id="ribbing" width="8" height="8" patternUnits="userSpaceOnUse">
+                  <rect width="8" height="8" fill="#ffffff" opacity="0" />
+                  <rect y="6.5" width="8" height="1.5" fill="#000" opacity="0.085" />
+                </pattern>
+
+                <clipPath id="bodyClip">
+                  <ellipse cx="150" cy="260" rx="118" ry="170" />
+                </clipPath>
+              </defs>
+
+              <!-- Hook / handle -->
+              <g class="hook" stroke="#4b4b4b" stroke-width="4" fill="none" stroke-linecap="round">
+                <path d="M150 30 q-30 10 -16 34" />
+              </g>
+
+              <!-- Top cap -->
+              <g class="cap">
+                <rect x="85" y="58" width="130" height="20" rx="8" fill="#3c3c3c" />
+                <rect x="90" y="76" width="120" height="10" rx="5" fill="#2f2f2f" />
+              </g>
+
+              <!-- Body -->
+              <g class="body">
+                <ellipse class="paper" cx="150" cy="260" rx="120" ry="175" fill="url(#paperShade)" />
+                <g clip-path="url(#bodyClip)">
+                  <rect x="30" y="85" width="240" height="350" fill="url(#ribbing)" />
+                  <ellipse class="glow" cx="150" cy="260" rx="122" ry="178" fill="url(#paperGlow)" opacity="0.75" />
+                </g>
+
+                <!-- Candle & flame -->
+                <g class="candle">
+                  <rect x="146" y="320" width="8" height="55" rx="3" fill="#6e6e6e" />
+                  <g class="flame" transform="translate(150,315)">
+                    <ellipse class="flame-outer" cx="0" cy="0" rx="10" ry="16" fill="#ff9f1a" opacity="0.85" />
+                    <ellipse class="flame-inner" cx="0" cy="2" rx="5.5" ry="9" fill="#fff3b0" opacity="0.95" />
+                  </g>
+                </g>
+              </g>
+
+              <!-- Bottom cap & tassels -->
+              <g class="base">
+                <rect x="100" y="420" width="100" height="12" rx="6" fill="#2f2f2f" />
+                <rect x="95" y="432" width="110" height="10" rx="5" fill="#3c3c3c" />
+                <g class="tassels" stroke="#8b5a2b" stroke-width="3" stroke-linecap="round">
+                  <line x1="130" y1="442" x2="130" y2="490" />
+                  <line x1="150" y1="442" x2="150" y2="500" />
+                  <line x1="170" y1="442" x2="170" y2="490" />
+                </g>
+              </g>
+            </svg>
+
+            <!-- Vertical memorial text overlay -->
+            <div id="memorialText" class="memorial" aria-hidden="true">ご先祖さま</div>
+            <img id="crest" class="crest" alt="家紋" />
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <small>このアプリはデバイス内で完結し、データは送信されません。</small>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+  </html>
+

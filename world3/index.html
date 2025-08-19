@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>世界三大〇〇クイズ - 3番目を当てよう！</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            animation: slideIn 0.8s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .game-area {
+            padding: 40px;
+        }
+        
+        .question-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-left: 5px solid #ff6b6b;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .question-title {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .known-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .item {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            box-shadow: 0 3px 10px rgba(116, 185, 255, 0.3);
+            transform: scale(1);
+            transition: transform 0.2s ease;
+        }
+        
+        .item:hover {
+            transform: scale(1.05);
+        }
+        
+        .question-mark {
+            background: linear-gradient(135deg, #fd79a8, #e84393);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.2em;
+            box-shadow: 0 3px 10px rgba(253, 121, 168, 0.3);
+        }
+        
+        .choices-area {
+            margin: 25px 0;
+        }
+        
+        .choice-button {
+            width: 100%;
+            padding: 18px 25px;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: 3px solid #e9ecef;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .choice-button:hover {
+            border-color: #74b9ff;
+            background: #f8f9fa;
+            transform: translateX(5px);
+        }
+        
+        .choice-button.selected {
+            border-color: #00b894;
+            background: linear-gradient(135deg, #00b894, #55a3ff);
+            color: white;
+            transform: scale(1.02);
+        }
+        
+        .choice-button.correct {
+            border-color: #00b894;
+            background: linear-gradient(135deg, #00b894, #55a3ff);
+            color: white;
+            animation: pulse 0.6s ease;
+        }
+        
+        .choice-button.incorrect {
+            border-color: #e17055;
+            background: linear-gradient(135deg, #e17055, #fd79a8);
+            color: white;
+            animation: shake 0.5s ease;
+        }
+        
+        .choice-button.disabled {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .choice-letter {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background: #74b9ff;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+        
+        .choice-button.selected .choice-letter,
+        .choice-button.correct .choice-letter {
+            background: white;
+            color: #00b894;
+        }
+        
+        .choice-button.incorrect .choice-letter {
+            background: white;
+            color: #e17055;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 15px 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-submit {
+            background: linear-gradient(135deg, #00b894, #00a085);
+            color: white;
+        }
+        
+        .btn-submit:hover:not(:disabled) {
+            background: linear-gradient(135deg, #00a085, #00b894);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 184, 148, 0.3);
+        }
+        
+        .btn-submit:disabled {
+            background: #ddd;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-next {
+            background: linear-gradient(135deg, #fdcb6e, #e17055);
+            color: white;
+            display: none;
+        }
+        
+        .btn-next:hover {
+            background: linear-gradient(135deg, #e17055, #fdcb6e);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(225, 112, 85, 0.3);
+        }
+        
+        .btn-skip {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+        }
+        
+        .btn-skip:hover {
+            background: linear-gradient(135deg, #0984e3, #74b9ff);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(116, 185, 255, 0.3);
+        }
+        
+        .feedback {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            text-align: center;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .feedback.correct {
+            background: linear-gradient(135deg, #00b894, #55a3ff);
+            color: white;
+        }
+        
+        .feedback.incorrect {
+            background: linear-gradient(135deg, #e17055, #fd79a8);
+            color: white;
+        }
+        
+        .progress {
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #00b894, #74b9ff);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        
+        .score {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #ddd6fe, #c7d2fe);
+            border-radius: 10px;
+            font-weight: bold;
+            color: #4c1d95;
+        }
+        
+        .final-result {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .final-score {
+            font-size: 3em;
+            color: #00b894;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .restart-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .restart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .game-area {
+                padding: 20px;
+            }
+            
+            .question-card {
+                padding: 20px;
+            }
+            
+            .buttons {
+                flex-direction: column;
+            }
+            
+            .known-items {
+                flex-direction: column;
+            }
+            
+            .choice-button {
+                padding: 15px 20px;
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌍 世界三大〇〇クイズ</h1>
+            <p>3番目を選んで世界の知識を試そう！</p>
+        </div>
+        
+        <div class="game-area">
+            <div class="score">
+                <div>問題 <span id="currentQuestion">1</span> / 30</div>
+                <div>正解: <span id="correctCount">0</span></div>
+                <div>スコア: <span id="scorePercentage">0</span>%</div>
+            </div>
+            
+            <div class="progress">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            
+            <div class="question-card" id="questionCard">
+                <div class="question-title" id="questionTitle"></div>
+                <div class="known-items" id="knownItems"></div>
+                <div class="choices-area" id="choicesArea"></div>
+                <div class="buttons">
+                    <button class="btn btn-submit" id="submitBtn" disabled>回答</button>
+                    <button class="btn btn-next" id="nextBtn">次の問題</button>
+                    <button class="btn btn-skip" id="skipBtn">スキップ</button>
+                </div>
+                <div class="feedback" id="feedback" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                category: "世界三大瀑布",
+                items: ["イグアスの滝", "ヴィクトリアの滝"],
+                answer: "ナイアガラの滝",
+                choices: ["ナイアガラの滝", "エンジェルフォール", "グランドキャニオン", "マチュピチュ"],
+                hint: "カナダとアメリカの国境にある有名な滝"
+            },
+            {
+                category: "世界三大美術館",
+                items: ["ルーヴル美術館", "エルミタージュ美術館"],
+                answer: "メトロポリタン美術館",
+                choices: ["メトロポリタン美術館", "大英博物館", "プラド美術館", "ウフィツィ美術館"],
+                hint: "ニューヨークにある世界最大級の私立美術館"
+            },
+            {
+                category: "世界三大歌劇場",
+                items: ["ウィーン国立歌劇場", "ミラノ・スカラ座"],
+                answer: "メトロポリタン歌劇場",
+                choices: ["メトロポリタン歌劇場", "パリ・オペラ座", "コヴェントガーデン", "バイロイト祝祭劇場"],
+                hint: "ニューヨークにある世界最大級の歌劇場"
+            },
+            {
+                category: "世界三大料理",
+                items: ["フランス料理", "中華料理"],
+                answer: "トルコ料理",
+                choices: ["トルコ料理", "イタリア料理", "日本料理", "インド料理"],
+                hint: "オスマン帝国の宮廷料理が起源"
+            },
+            {
+                category: "世界三大珍味",
+                items: ["キャビア", "トリュフ"],
+                answer: "フォアグラ",
+                choices: ["フォアグラ", "雲丹", "燕の巣", "アワビ"],
+                hint: "ガチョウの肝臓を使った高級食材"
+            },
+            {
+                category: "世界三大スープ",
+                items: ["ブイヤベース", "ふかひれスープ"],
+                answer: "ボルシチ",
+                choices: ["ボルシチ", "トムヤムクン", "コンソメ", "味噌汁"],
+                hint: "ビーツを使った赤いスープ（※トムヤムクンとも言われる）"
+            },
+            {
+                category: "世界三大河川",
+                items: ["アマゾン川", "ナイル川"],
+                answer: "ミシシッピ川",
+                choices: ["ミシシッピ川", "長江", "ガンジス川", "ドナウ川"],
+                hint: "アメリカを代表する大河"
+            },
+            {
+                category: "世界三大夜景",
+                items: ["ナポリ", "函館"],
+                answer: "香港",
+                choices: ["香港", "ニューヨーク", "シンガポール", "東京"],
+                hint: "100万ドルの夜景として有名"
+            },
+            {
+                category: "世界三大銘茶",
+                items: ["ダージリン", "ウバ"],
+                answer: "キーマン",
+                choices: ["キーマン", "アールグレイ", "セイロン", "ジャスミン茶"],
+                hint: "中国安徽省祁門県産の紅茶"
+            },
+            {
+                category: "世界三大コーヒー",
+                items: ["ブルーマウンテン", "キリマンジャロ"],
+                answer: "コナ",
+                choices: ["コナ", "モカ", "グアテマラ", "エスプレッソ"],
+                hint: "ハワイ島で栽培される高級コーヒー"
+            },
+            {
+                category: "世界三大ピアノ",
+                items: ["スタインウェイ", "ベーゼンドルファー"],
+                answer: "ベヒシュタイン",
+                choices: ["ベヒシュタイン", "ヤマハ", "カワイ", "ファツィオリ"],
+                hint: "ピアノのストラディバリウスと呼ばれるドイツのブランド"
+            },
+            {
+                category: "世界三大宗教",
+                items: ["キリスト教", "イスラム教"],
+                answer: "仏教",
+                choices: ["仏教", "ヒンドゥー教", "ユダヤ教", "神道"],
+                hint: "釈迦によって開かれた宗教"
+            },
+            {
+                category: "世界三大穀物",
+                items: ["小麦", "米"],
+                answer: "トウモロコシ",
+                choices: ["トウモロコシ", "大豆", "じゃがいも", "大麦"],
+                hint: "アメリカで最も多く生産される穀物"
+            },
+            {
+                category: "世界三大流星群",
+                items: ["ペルセウス座流星群", "ふたご座流星群"],
+                answer: "しぶんぎ座流星群",
+                choices: ["しぶんぎ座流星群", "しし座流星群", "オリオン座流星群", "みずがめ座流星群"],
+                hint: "1月上旬に観測される流星群"
+            },
+            {
+                category: "世界三大SF作家",
+                items: ["アイザック・アシモフ", "アーサー・C・クラーク"],
+                answer: "ロバート・A・ハインライン",
+                choices: ["ロバート・A・ハインライン", "フィリップ・K・ディック", "レイ・ブラッドベリ", "ウィリアム・ギブソン"],
+                hint: "『宇宙の戦士』や『月は無慈悲な夜の女王』の作者"
+            },
+            {
+                category: "世界三大北壁",
+                items: ["アイガー", "グランド・ジョラス"],
+                answer: "マッターホルン",
+                choices: ["マッターホルン", "モンブラン", "キリマンジャロ", "富士山"],
+                hint: "スイスとイタリアの国境にある有名な山"
+            },
+            {
+                category: "世界三大土柱",
+                items: ["阿波の土柱", "チロルの土柱"],
+                answer: "ロッキー山脈の土柱",
+                choices: ["ロッキー山脈の土柱", "カッパドキア", "ブライスキャニオン", "グランドキャニオン"],
+                hint: "アメリカの山脈にある自然現象"
+            },
+            {
+                category: "世界三大花木",
+                items: ["カエンボク", "ジャカランダ"],
+                answer: "ホウオウボク",
+                choices: ["ホウオウボク", "サクラ", "バオバブ", "セコイア"],
+                hint: "鳳凰の羽のような赤い花を咲かせる木"
+            },
+            {
+                category: "世界三大銘木",
+                items: ["ウォールナット", "チーク"],
+                answer: "マホガニー",
+                choices: ["マホガニー", "オーク", "メープル", "バンブー"],
+                hint: "高級家具材として珍重される赤褐色の木材"
+            },
+            {
+                category: "世界三大漁場",
+                items: ["北西太平洋漁場", "北東大西洋漁場"],
+                answer: "北西大西洋漁場",
+                choices: ["北西大西洋漁場", "地中海漁場", "インド洋漁場", "南太平洋漁場"],
+                hint: "ニューファンドランド島周辺の海域"
+            },
+            {
+                category: "世界三大カードゲーム",
+                items: ["コントラクトブリッジ", "ポーカー"],
+                answer: "ジン・ラミー",
+                choices: ["ジン・ラミー", "ブラックジャック", "バカラ", "ソリティア"],
+                hint: "2人用のラミー系カードゲーム"
+            },
+            {
+                category: "世界三大棋類",
+                items: ["チェス", "シャンチー"],
+                answer: "囲碁",
+                choices: ["囲碁", "将棋", "チェッカー", "バックギャモン"],
+                hint: "白石と黒石で陣地を争う東洋のボードゲーム"
+            },
+            {
+                category: "世界三大ロードレース",
+                items: ["ジロ・デ・イタリア", "ツール・ド・フランス"],
+                answer: "ブエルタ・ア・エスパーニャ",
+                choices: ["ブエルタ・ア・エスパーニャ", "パリ～ルーベ", "ツール・ド・スイス", "世界選手権"],
+                hint: "スペインで開催される自転車レース"
+            },
+            {
+                category: "世界三大モータースポーツレース",
+                items: ["インディ500", "モナコグランプリ"],
+                answer: "ル・マン24時間レース",
+                choices: ["ル・マン24時間レース", "F1日本GP", "デイトナ500", "鈴鹿8耐"],
+                hint: "フランスで開催される耐久レース"
+            },
+            {
+                category: "世界三大交響曲",
+                items: ["運命（ベートーヴェン）", "未完成（シューベルト）"],
+                answer: "新世界より（ドヴォルザーク）",
+                choices: ["新世界より（ドヴォルザーク）", "田園（ベートーヴェン）", "惑星（ホルスト）", "悲愴（チャイコフスキー）"],
+                hint: "アメリカ滞在中に作曲された名曲"
+            },
+            {
+                category: "世界三大ヴァイオリン協奏曲",
+                items: ["ベートーヴェン作品61", "メンデルスゾーン作品64"],
+                answer: "ブラームス作品77",
+                choices: ["ブラームス作品77", "チャイコフスキー", "モーツァルト", "バッハ"],
+                hint: "ドイツの作曲家による唯一のヴァイオリン協奏曲"
+            },
+            {
+                category: "世界三大ホラー小説",
+                items: ["フランケンシュタイン", "ドラキュラ"],
+                answer: "ジキル博士とハイド氏",
+                choices: ["ジキル博士とハイド氏", "シャイニング", "エクソシスト", "ゾンビ"],
+                hint: "二重人格をテーマにしたスティーヴンソンの作品"
+            },
+            {
+                category: "世界三大貴腐ワイン",
+                items: ["ソーテルヌ", "トロッケンベーレンアウスレーゼ"],
+                answer: "トカイ・アスー",
+                choices: ["トカイ・アスー", "アイスワイン", "ポートワイン", "シェリー"],
+                hint: "ハンガリーの世界遺産地域で作られる甘口ワイン"
+            },
+            {
+                category: "世界三大学術誌",
+                items: ["Cell", "Nature"],
+                answer: "Science",
+                choices: ["Science", "Journal", "Research", "Medical"],
+                hint: "アメリカの著名な科学雑誌"
+            },
+            {
+                category: "世界三大美港",
+                items: ["ポート・ジャクソン湾（シドニー）", "リオデジャネイロ"],
+                answer: "ナポリ",
+                choices: ["ナポリ", "サンフランシスコ", "横浜", "マルセイユ"],
+                hint: "「ナポリを見て死ね」で有名なイタリアの港"
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let correctAnswers = 0;
+        let selectedChoice = null;
+        let answered = false;
+
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        let shuffledQuestions = shuffleArray(questions);
+
+        function displayQuestion() {
+            if (currentQuestionIndex >= shuffledQuestions.length) {
+                showFinalResult();
+                return;
+            }
+
+            const question = shuffledQuestions[currentQuestionIndex];
+            selectedChoice = null;
+            answered = false;
+            
+            document.getElementById('questionTitle').textContent = question.category;
+            document.getElementById('currentQuestion').textContent = currentQuestionIndex + 1;
+            document.getElementById('correctCount').textContent = correctAnswers;
+            document.getElementById('scorePercentage').textContent = Math.round((correctAnswers / Math.max(1, currentQuestionIndex)) * 100);
+            
+            const progressPercentage = ((currentQuestionIndex + 1) / shuffledQuestions.length) * 100;
+            document.getElementById('progressBar').style.width = progressPercentage + '%';
+
+            const knownItemsContainer = document.getElementById('knownItems');
+            knownItemsContainer.innerHTML = '';
+            
+            question.items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.textContent = item;
+                knownItemsContainer.appendChild(div);
+            });
+
+            const questionMark = document.createElement('div');
+            questionMark.className = 'question-mark';
+            questionMark.textContent = '？';
+            knownItemsContainer.appendChild(questionMark);
+
+            // 選択肢を表示
+            const choicesContainer = document.getElementById('choicesArea');
+            choicesContainer.innerHTML = '';
+            
+            const shuffledChoices = shuffleArray(question.choices);
+            const letters = ['A', 'B', 'C', 'D'];
+            
+            shuffledChoices.forEach((choice, index) => {
+                const button = document.createElement('button');
+                button.className = 'choice-button';
+                button.innerHTML = `<span class="choice-letter">${letters[index]}</span>${choice}`;
+                button.addEventListener('click', () => selectChoice(button, choice));
+                choicesContainer.appendChild(button);
+            });
+
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').style.display = 'inline-block';
+            document.getElementById('nextBtn').style.display = 'none';
+            document.getElementById('feedback').style.display = 'none';
+        }
+
+        function selectChoice(button, choice) {
+            if (answered) return;
+            
+            // 全ての選択肢をリセット
+            document.querySelectorAll('.choice-button').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            // 選択された選択肢をハイライト
+            button.classList.add('selected');
+            selectedChoice = choice;
+            document.getElementById('submitBtn').disabled = false;
+        }
+
+        function checkAnswer() {
+            if (!selectedChoice || answered) return;
+            
+            answered = true;
+            const question = shuffledQuestions[currentQuestionIndex];
+            const isCorrect = selectedChoice === question.answer;
+            
+            // 全ての選択肢を無効化
+            document.querySelectorAll('.choice-button').forEach(btn => {
+                btn.classList.add('disabled');
+                if (btn.textContent.includes(question.answer)) {
+                    btn.classList.add('correct');
+                } else if (btn.classList.contains('selected') && !isCorrect) {
+                    btn.classList.add('incorrect');
+                }
+            });
+
+            const feedback = document.getElementById('feedback');
+            feedback.style.display = 'block';
+
+            if (isCorrect) {
+                correctAnswers++;
+                feedback.className = 'feedback correct';
+                feedback.innerHTML = `🎉 正解！ <br><strong>${question.answer}</strong><br>${question.hint}`;
+            } else {
+                feedback.className = 'feedback incorrect';
+                feedback.innerHTML = `❌ 不正解... <br>正解は <strong>${question.answer}</strong><br>${question.hint}`;
+            }
+
+            document.getElementById('submitBtn').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'inline-block';
+            document.getElementById('skipBtn').style.display = 'none';
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            document.getElementById('skipBtn').style.display = 'inline-block';
+            displayQuestion();
+        }
+
+        function skipQuestion() {
+            if (answered) return;
+            
+            answered = true;
+            const question = shuffledQuestions[currentQuestionIndex];
+            
+            // 正解を表示
+            document.querySelectorAll('.choice-button').forEach(btn => {
+                btn.classList.add('disabled');
+                if (btn.textContent.includes(question.answer)) {
+                    btn.classList.add('correct');
+                }
+            });
+            
+            const feedback = document.getElementById('feedback');
+            feedback.style.display = 'block';
+            feedback.className = 'feedback incorrect';
+            feedback.innerHTML = `⏭️ スキップしました<br>答えは <strong>${question.answer}</strong><br>${question.hint}`;
+            
+            document.getElementById('submitBtn').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'inline-block';
+            document.getElementById('skipBtn').style.display = 'none';
+        }
+
+        function showFinalResult() {
+            const gameArea = document.querySelector('.game-area');
+            const finalScore = Math.round((correctAnswers / shuffledQuestions.length) * 100);
+            
+            let message = '';
+            let emoji = '';
+            if (finalScore >= 90) {
+                message = '素晴らしい！世界三大マスター！';
+                emoji = '🏆';
+            } else if (finalScore >= 70) {
+                message = 'よくできました！知識豊富ですね！';
+                emoji = '🎖️';
+            } else if (finalScore >= 50) {
+                message = 'なかなか良い成績です！';
+                emoji = '🥉';
+            } else {
+                message = 'もう少し勉強が必要かも！';
+                emoji = '📚';
+            }
+
+            gameArea.innerHTML = `
+                <div class="final-result">
+                    <div style="font-size: 4em; margin-bottom: 20px;">${emoji}</div>
+                    <div class="final-score">${finalScore}%</div>
+                    <h2>${message}</h2>
+                    <p style="font-size: 1.2em; margin: 20px 0;">正解数: ${correctAnswers} / ${shuffledQuestions.length}</p>
+                    <button class="restart-btn" onclick="restartGame()">もう一度挑戦</button>
+                </div>
+            `;
+        }
+
+        function restartGame() {
+            currentQuestionIndex = 0;
+            correctAnswers = 0;
+            selectedChoice = null;
+            answered = false;
+            shuffledQuestions = shuffleArray(questions);
+            
+            const gameArea = document.querySelector('.game-area');
+            gameArea.innerHTML = `
+                <div class="score">
+                    <div>問題 <span id="currentQuestion">1</span> / 30</div>
+                    <div>正解: <span id="correctCount">0</span></div>
+                    <div>スコア: <span id="scorePercentage">0</span>%</div>
+                </div>
+                
+                <div class="progress">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                
+                <div class="question-card" id="questionCard">
+                    <div class="question-title" id="questionTitle"></div>
+                    <div class="known-items" id="knownItems"></div>
+                    <div class="choices-area" id="choicesArea"></div>
+                    <div class="buttons">
+                        <button class="btn btn-submit" id="submitBtn" disabled>回答</button>
+                        <button class="btn btn-next" id="nextBtn">次の問題</button>
+                        <button class="btn btn-skip" id="skipBtn">スキップ</button>
+                    </div>
+                    <div class="feedback" id="feedback" style="display: none;"></div>
+                </div>
+            `;
+            
+            setupEventListeners();
+            displayQuestion();
+        }
+
+        function setupEventListeners() {
+            document.getElementById('submitBtn').addEventListener('click', checkAnswer);
+            document.getElementById('nextBtn').addEventListener('click', nextQuestion);
+            document.getElementById('skipBtn').addEventListener('click', skipQuestion);
+        }
+
+        // ゲーム開始
+        setupEventListeners();
+        displayQuestion();
+    </script>
+</body>
+</html>
