@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本の特急列車クイズ</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            padding: 30px;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '🚄';
+            position: absolute;
+            font-size: 60px;
+            opacity: 0.2;
+            animation: trainMove 10s linear infinite;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        @keyframes trainMove {
+            0% { left: -100px; }
+            100% { left: calc(100% + 100px); }
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            animation: titleGlow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes titleGlow {
+            0% { text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+            100% { text-shadow: 2px 2px 20px rgba(255,255,255,0.5); }
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .progress-bar {
+            background: #f0f0f0;
+            height: 10px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 5px;
+        }
+        
+        .quiz-container {
+            margin-bottom: 25px;
+            border: 2px solid #e0e0e0;
+            padding: 25px;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .quiz-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s;
+        }
+        
+        .quiz-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+            border-color: #2196F3;
+        }
+        
+        .quiz-container:hover::before {
+            left: 100%;
+        }
+        
+        .question {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+        }
+        
+        .question::before {
+            content: '🚆';
+            margin-right: 10px;
+            font-size: 1.5rem;
+        }
+        
+        .options {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .option {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #ffffff;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .option:hover {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border-color: #2196F3;
+            transform: translateX(5px);
+        }
+        
+        .option input[type="radio"] {
+            margin-right: 12px;
+            transform: scale(1.2);
+            accent-color: #2196F3;
+        }
+        
+        .option.correct {
+            background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+            border-color: #4CAF50;
+            animation: correctPulse 0.6s ease;
+        }
+        
+        .option.incorrect {
+            background: linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%);
+            border-color: #f44336;
+            animation: incorrectShake 0.6s ease;
+        }
+        
+        @keyframes correctPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        @keyframes incorrectShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .controls {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+            border-radius: 15px;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+            margin: 0 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(33, 150, 243, 0.6);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: linear-gradient(45deg, #ccc, #ddd);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            font-weight: bold;
+            font-size: 1.3rem;
+            text-align: center;
+            border-radius: 15px;
+            animation: resultSlideIn 0.5s ease;
+        }
+        
+        @keyframes resultSlideIn {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        
+        .result.excellent {
+            background: linear-gradient(135deg, #c8e6c9 0%, #4CAF50 100%);
+            color: white;
+        }
+        
+        .result.good {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffc107 100%);
+            color: #856404;
+        }
+        
+        .result.poor {
+            background: linear-gradient(135deg, #f8d7da 0%, #f44336 100%);
+            color: white;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2196F3;
+        }
+        
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .celebration {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #f44336;
+            animation: confettiFall 3s linear infinite;
+        }
+        
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .quiz-container {
+                padding: 20px;
+            }
+            
+            .options {
+                gap: 10px;
+            }
+            
+            .option {
+                padding: 12px;
+            }
+            
+            button {
+                padding: 12px 24px;
+                font-size: 1rem;
+                margin: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚄 日本の特急列車クイズ</h1>
+            <p>特急列車の名前と主な運行区間の正しい組み合わせを当ててください</p>
+        </div>
+        
+        <div class="content">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            
+            <div id="quiz-area"></div>
+            
+            <div class="controls">
+                <button id="submit-btn" onclick="submitQuiz()">🎯 採点する</button>
+                <button id="restart-btn" onclick="restartQuiz()" style="display: none;">🔄 もう一度挑戦</button>
+            </div>
+            
+            <div id="results-area" class="result"></div>
+        </div>
+    </div>
+    
+    <div id="celebration" class="celebration"></div>
+
+    <script>
+        const quizData = [
+            { question: "特急「ひのとり」の主な運行区間は？", answers: { a: "大阪難波 - 近鉄名古屋", b: "新宿 - 箱根湯本", c: "東京 - 博多" }, correctAnswer: "a" },
+            { question: "特急「ロマンスカー」の主な運行区間は？", answers: { a: "池袋 - 西武秩父", b: "新宿 - 箱根湯本", c: "大阪 - 札幌" }, correctAnswer: "b" },
+            { question: "特急「サンダーバード」の主な運行区間は？", answers: { a: "大阪 - 敦賀", b: "名古屋 - 長野", c: "東京 - 成田空港" }, correctAnswer: "a" },
+            { question: "特急「スペーシアX」の主な運行区間は？", answers: { a: "浅草 - 東武日光・鬼怒川温泉", b: "上野 - 札幌", c: "博多 - 鹿児島中央" }, correctAnswer: "a" },
+            { question: "特急「はやぶさ」の主な運行区間は？", answers: { a: "東京 - 金沢", b: "東京 - 新函館北斗", c: "新大阪 - 博多" }, correctAnswer: "b" },
+            { question: "特急「のぞみ」の主な運行区間は？", answers: { a: "東京 - 博多", b: "上野 - 青森", c: "大阪 - 金沢" }, correctAnswer: "a" },
+            { question: "特急「ひかり」の主な運行区間は？", answers: { a: "東京 - 新大阪", b: "新宿 - 松本", c: "名古屋 - 高山" }, correctAnswer: "a" },
+            { question: "特急「こだま」の主な運行区間は？", answers: { a: "東京 - 新大阪間各駅停車", b: "東京 - 盛岡", c: "博多 - 熊本" }, correctAnswer: "a" },
+            { question: "特急「つばめ」の主な運行区間は？", answers: { a: "博多 - 鹿児島中央", b: "東京 - 仙台", c: "大阪 - 和歌山" }, correctAnswer: "a" },
+            { question: "特急「みずほ」の主な運行区間は？", answers: { a: "新大阪 - 鹿児島中央", b: "東京 - 長野", c: "名古屋 - 富山" }, correctAnswer: "a" },
+            { question: "特急「かがやき」の主な運行区間は？", answers: { a: "東京 - 金沢", b: "新宿 - 甲府", c: "大阪 - 城崎温泉" }, correctAnswer: "a" },
+            { question: "特急「はくたか」の主な運行区間は？", answers: { a: "東京 - 金沢", b: "上野 - 直江津", c: "新潟 - 秋田" }, correctAnswer: "a" },
+            { question: "特急「つるぎ」の主な運行区間は？", answers: { a: "富山 - 金沢", b: "東京 - 高崎", c: "大阪 - 京都" }, correctAnswer: "a" },
+            { question: "特急「あさま」の主な運行区間は？", answers: { a: "東京 - 長野", b: "名古屋 - 松本", c: "新潟 - 長岡" }, correctAnswer: "a" },
+            { question: "特急「やまびこ」の主な運行区間は？", answers: { a: "東京 - 盛岡", b: "新宿 - 河口湖", c: "仙台 - 青森" }, correctAnswer: "a" },
+            { question: "特急「なすの」の主な運行区間は？", answers: { a: "東京 - 郡山", b: "上野 - 水戸", c: "大宮 - 宇都宮" }, correctAnswer: "a" },
+            { question: "特急「こまち」の主な運行区間は？", answers: { a: "東京 - 秋田", b: "仙台 - 山形", c: "盛岡 - 青森" }, correctAnswer: "a" },
+            { question: "特急「つばさ」の主な運行区間は？", answers: { a: "東京 - 新庄", b: "仙台 - 秋田", c: "福島 - 会津若松" }, correctAnswer: "a" },
+            { question: "特急「ひたち」の主な運行区間は？", answers: { a: "上野 - いわき", b: "東京 - 水戸", c: "大宮 - 日立" }, correctAnswer: "a" },
+            { question: "特急「ときわ」の主な運行区間は？", answers: { a: "上野 - 土浦", b: "東京 - 高萩", c: "品川 - 勝田" }, correctAnswer: "a" },
+            { question: "特急「あずさ」の主な運行区間は？", answers: { a: "新宿 - 松本", b: "東京 - 甲府", c: "立川 - 諏訪" }, correctAnswer: "a" },
+            { question: "特急「かいじ」の主な運行区間は？", answers: { a: "新宿 - 甲府", b: "東京 - 河口湖", c: "八王子 - 大月" }, correctAnswer: "a" },
+            { question: "特急「踊り子」の主な運行区間は？", answers: { a: "東京 - 伊豆急下田", b: "新宿 - 熱海", c: "品川 - 沼津" }, correctAnswer: "a" },
+            { question: "特急「草津」の主な運行区間は？", answers: { a: "上野 - 万座・鹿沢口", b: "大宮 - 高崎", c: "東京 - 前橋" }, correctAnswer: "a" },
+            { question: "特急「四万」の主な運行区間は？", answers: { a: "上野 - 中之条", b: "新宿 - 渋川", c: "池袋 - 沼田" }, correctAnswer: "a" },
+            { question: "特急「しらゆき」の主な運行区間は？", answers: { a: "新潟 - 上越妙高", b: "長岡 - 直江津", c: "高崎 - 新潟" }, correctAnswer: "a" },
+            { question: "特急「いなほ」の主な運行区間は？", answers: { a: "新潟 - 秋田", b: "長岡 - 酒田", c: "山形 - 鶴岡" }, correctAnswer: "a" },
+            { question: "特急「北越」の主な運行区間は？", answers: { a: "上野 - 新潟", b: "東京 - 長岡", c: "高崎 - 直江津" }, correctAnswer: "a" },
+            { question: "特急「ひだ」の主な運行区間は？", answers: { a: "名古屋 - 高山", b: "岐阜 - 下呂", c: "富山 - 飛騨古川" }, correctAnswer: "a" },
+            { question: "特急「南風」の主な運行区間は？", answers: { a: "岡山 - 中村", b: "高松 - 徳島", c: "松山 - 宇和島" }, correctAnswer: "a" }
+        ];
+
+        class TrainQuizGame {
+            constructor() {
+                this.quizArea = document.getElementById('quiz-area');
+                this.resultsArea = document.getElementById('results-area');
+                this.progressFill = document.getElementById('progress-fill');
+                this.submitBtn = document.getElementById('submit-btn');
+                this.restartBtn = document.getElementById('restart-btn');
+                this.celebration = document.getElementById('celebration');
+                
+                this.currentQuestions = this.shuffleArray([...quizData]).slice(0, 10);
+                this.userAnswers = {};
+                this.score = 0;
+                this.isSubmitted = false;
+                
+                this.audioContext = null;
+                this.initAudio();
+                this.renderQuiz();
+                this.updateProgress();
+            }
+            
+            initAudio() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.log('Audio not supported');
+                }
+            }
+            
+            playSound(frequency, duration, type = 'sine') {
+                if (!this.audioContext) return;
+                
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                oscillator.type = type;
+                
+                gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + duration);
+            }
+            
+            playCorrectSound() {
+                this.playSound(523.25, 0.2); // C5
+                setTimeout(() => this.playSound(659.25, 0.2), 100); // E5
+                setTimeout(() => this.playSound(783.99, 0.3), 200); // G5
+            }
+            
+            playIncorrectSound() {
+                this.playSound(220, 0.15); // A3
+                setTimeout(() => this.playSound(196, 0.15), 100); // G3
+                setTimeout(() => this.playSound(174.61, 0.3), 200); // F3
+            }
+            
+            playCelebrationSound() {
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((note, index) => {
+                    setTimeout(() => this.playSound(note, 0.3), index * 150);
+                });
+            }
+            
+            shuffleArray(array) {
+                const shuffled = [...array];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                return shuffled;
+            }
+            
+            renderQuiz() {
+                this.quizArea.innerHTML = '';
+                
+                this.currentQuestions.forEach((quizItem, index) => {
+                    const questionContainer = document.createElement('div');
+                    questionContainer.className = 'quiz-container';
+                    questionContainer.id = `question-${index}`;
+
+                    const question = document.createElement('div');
+                    question.className = 'question';
+                    question.textContent = `${index + 1}. ${quizItem.question}`;
+                    questionContainer.appendChild(question);
+
+                    const optionsContainer = document.createElement('div');
+                    optionsContainer.className = 'options';
+
+                    for (const option in quizItem.answers) {
+                        const optionElement = document.createElement('label');
+                        optionElement.className = 'option';
+                        
+                        const input = document.createElement('input');
+                        input.type = 'radio';
+                        input.name = `question${index}`;
+                        input.value = option;
+                        input.addEventListener('change', () => {
+                            this.userAnswers[index] = option;
+                            this.updateProgress();
+                            if (!this.isSubmitted) {
+                                this.playSound(440, 0.1);
+                            }
+                        });
+                        
+                        optionElement.appendChild(input);
+                        optionElement.appendChild(document.createTextNode(`${option.toUpperCase()}: ${quizItem.answers[option]}`));
+                        optionsContainer.appendChild(optionElement);
+                    }
+                    
+                    questionContainer.appendChild(optionsContainer);
+                    this.quizArea.appendChild(questionContainer);
+                });
+            }
+            
+            updateProgress() {
+                const answeredCount = Object.keys(this.userAnswers).length;
+                const progressPercent = (answeredCount / this.currentQuestions.length) * 100;
+                this.progressFill.style.width = `${progressPercent}%`;
+                
+                this.submitBtn.disabled = answeredCount < this.currentQuestions.length;
+            }
+            
+            submitQuiz() {
+                if (this.isSubmitted) return;
+                
+                this.isSubmitted = true;
+                this.score = 0;
+                
+                this.currentQuestions.forEach((quizItem, index) => {
+                    const questionContainer = document.getElementById(`question-${index}`);
+                    const options = questionContainer.querySelectorAll('.option');
+                    const selectedOption = this.userAnswers[index];
+                    const correctAnswer = quizItem.correctAnswer;
+                    
+                    options.forEach(option => {
+                        const input = option.querySelector('input');
+                        const value = input.value;
+                        
+                        if (value === correctAnswer) {
+                            option.classList.add('correct');
+                            if (selectedOption === correctAnswer) {
+                                this.score++;
+                            }
+                        } else if (value === selectedOption && selectedOption !== correctAnswer) {
+                            option.classList.add('incorrect');
+                        }
+                        
+                        input.disabled = true;
+                    });
+                });
+                
+                setTimeout(() => {
+                    this.showResults();
+                    if (this.score >= this.currentQuestions.length * 0.8) {
+                        this.createCelebration();
+                        this.playCelebrationSound();
+                    } else if (this.score >= this.currentQuestions.length * 0.6) {
+                        this.playCorrectSound();
+                    } else {
+                        this.playIncorrectSound();
+                    }
+                }, 1000);
+                
+                this.submitBtn.style.display = 'none';
+                this.restartBtn.style.display = 'inline-block';
+            }
+            
+            showResults() {
+                const percentage = Math.round((this.score / this.currentQuestions.length) * 100);
+                let resultClass = 'poor';
+                let message = '';
+                let emoji = '';
+                
+                if (percentage >= 80) {
+                    resultClass = 'excellent';
+                    message = '素晴らしい！鉄道博士レベルです！';
+                    emoji = '🏆';
+                } else if (percentage >= 60) {
+                    resultClass = 'good';
+                    message = 'よくできました！もう少しで完璧です！';
+                    emoji = '👏';
+                } else {
+                    resultClass = 'poor';
+                    message = 'もう一度挑戦してみましょう！';
+                    emoji = '📚';
+                }
+                
+                this.resultsArea.className = `result ${resultClass}`;
+                this.resultsArea.innerHTML = `
+                    <div style="font-size: 3rem; margin-bottom: 10px;">${emoji}</div>
+                    <div>${message}</div>
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-number">${this.score}</div>
+                            <div class="stat-label">正解数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${this.currentQuestions.length}</div>
+                            <div class="stat-label">問題数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${percentage}%</div>
+                            <div class="stat-label">正答率</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            createCelebration() {
+                this.celebration.innerHTML = '';
+                const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
+                
+                for (let i = 0; i < 50; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() * 3 + 's';
+                    confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                    this.celebration.appendChild(confetti);
+                }
+                
+                setTimeout(() => {
+                    this.celebration.innerHTML = '';
+                }, 5000);
+            }
+            
+            restart() {
+                this.currentQuestions = this.shuffleArray([...quizData]).slice(0, 10);
+                this.userAnswers = {};
+                this.score = 0;
+                this.isSubmitted = false;
+                
+                this.renderQuiz();
+                this.updateProgress();
+                this.resultsArea.innerHTML = '';
+                this.submitBtn.style.display = 'inline-block';
+                this.restartBtn.style.display = 'none';
+                this.celebration.innerHTML = '';
+                
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+        
+        let game;
+        
+        function initGame() {
+            game = new TrainQuizGame();
+        }
+        
+        function submitQuiz() {
+            if (game) game.submitQuiz();
+        }
+        
+        function restartQuiz() {
+            if (game) game.restart();
+        }
+        
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+
+</body>
+</html>
