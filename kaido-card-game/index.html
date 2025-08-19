@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>江戸街道旅路カードゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #f4e4bc, #d4af37);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-title {
+            text-align: center;
+            font-size: 2.5em;
+            color: #8B4513;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-subtitle {
+            text-align: center;
+            font-size: 1.2em;
+            color: #654321;
+            margin-bottom: 30px;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f9f5dc;
+            border-radius: 10px;
+            border: 2px solid #8B4513;
+        }
+
+        .score, .current-road, .status {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #8B4513;
+        }
+
+        .roads-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .road {
+            background: #fff8dc;
+            border: 3px solid #8B4513;
+            border-radius: 15px;
+            padding: 15px;
+            transition: transform 0.3s ease;
+        }
+
+        .road:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .road-title {
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #8B4513;
+            margin-bottom: 15px;
+            padding: 8px;
+            background: linear-gradient(45deg, #daa520, #ffd700);
+            border-radius: 8px;
+        }
+
+        .stations {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .station-card {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 0.95em;
+            position: relative;
+        }
+
+        .station-card:hover {
+            background: #fffacd;
+            border-color: #ffd700;
+            transform: scale(1.02);
+        }
+
+        .station-card.correct {
+            background: #90EE90;
+            border-color: #228B22;
+            color: #006400;
+        }
+
+        .station-card.visited {
+            background: #f0f0f0;
+            border-color: #999;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .station-card.error {
+            background: #FFB6C1;
+            border-color: #DC143C;
+            color: #8B0000;
+            animation: shake 0.5s ease-in-out;
+        }
+
+
+        .controls {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #8B4513;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #654321;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #daa520;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #b8860b;
+            transform: translateY(-2px);
+        }
+
+        .rules {
+            background: #f9f5dc;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 5px solid #8B4513;
+        }
+
+        .rules h3 {
+            color: #8B4513;
+            margin-bottom: 10px;
+        }
+
+        .rules ul {
+            margin-left: 20px;
+            color: #654321;
+        }
+
+        .completed-road {
+            opacity: 0.7;
+            background: #e8f5e8 !important;
+        }
+
+        .completed-road .road-title {
+            background: linear-gradient(45deg, #90EE90, #98FB98);
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .victory-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            border: 5px solid #8B4513;
+            text-align: center;
+            z-index: 1000;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
+            display: none;
+        }
+
+        .victory-message h2 {
+            color: #8B4513;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        .victory-message p {
+            font-size: 1.3em;
+            color: #654321;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .game-title {
+                font-size: 2em;
+            }
+            
+            .roads-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .game-info {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!--
+    AI Model: Claude Sonnet 4
+    User Prompt: 日本の旧街道を使ったカードゲームを考えて、新しいディレクトリを作り、HTMLで実装してください
+    AI Approach: 江戸時代の5大街道（東海道、中山道、甲州街道、日光街道、奥州街道）を使ったカードゲーム。プレイヤーは正しい順序で宿場町を訪問して街道を制覇する
+    Implementation Intent: 日本の歴史と文化を学びながら楽しめる教育的なカードゲーム。実際の宿場町データを使用し、江戸時代の旅路を体験できる
+    -->
+
+    <div class="game-container">
+        <h1 class="game-title">🏮 江戸街道旅路 🏮</h1>
+        <p class="game-subtitle">五大街道を制覇せよ！正しい順序で宿場町を巡る旅路カードゲーム</p>
+
+        <div class="game-info">
+            <div class="score">得点: <span id="score">0</span></div>
+            <div class="current-road">制覇済み: <span id="completed">0</span>/5街道</div>
+            <div class="status">次の宿場: <span id="next-station">品川宿</span></div>
+        </div>
+
+        <div class="roads-container" id="roads-container">
+            <!-- 街道はJavaScriptで動的生成 -->
+        </div>
+
+        <div class="controls">
+            <div style="margin-bottom: 15px;">
+                <label for="difficulty" style="font-weight: bold; margin-right: 10px; color: #8B4513;">難易度:</label>
+                <select id="difficulty" onchange="changeDifficulty()" style="padding: 5px 10px; border-radius: 5px; border: 2px solid #8B4513;">
+                    <option value="easy">簡単 (6宿場)</option>
+                    <option value="medium">普通 (8宿場)</option>
+                    <option value="hard">困難 (10宿場)</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="resetGame()">🔄 ゲームリセット</button>
+            <button class="btn btn-secondary" onclick="showHint()">💡 ヒント</button>
+            <button class="btn btn-secondary" onclick="showRules()">📚 詳細ルール</button>
+        </div>
+
+        <div class="rules">
+            <h3>🎯 ゲームルール</h3>
+            <ul>
+                <li>江戸時代の旅人となり、5つの街道を順番に巡ります</li>
+                <li>各街道の宿場町カードは<strong>シャッフル</strong>されています</li>
+                <li>江戸から順番に<strong>正しい順序</strong>でクリックしてください</li>
+                <li>正解だと +150点、間違った順序だと -50点です</li>
+                <li>各街道完了で+500点ボーナス！全街道制覇で勝利です</li>
+                <li>難易度で宿場数とシャッフル度が変わります</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="victory-message" id="victory-message">
+        <h2>🎉 街道制覇達成！ 🎉</h2>
+        <p>お疲れさまでした！<br>江戸時代の街道旅路を見事に制覇されました。</p>
+        <p>最終得点: <span id="final-score">0</span>点</p>
+        <button class="btn btn-primary" onclick="resetGame(); hideVictory();">もう一度挑戦</button>
+    </div>
+
+    <script>
+        // 街道データ（江戸から順番）
+        const ROADS_DATA = {
+            '東海道': ['江戸', '品川', '川崎', '神奈川', '保土ヶ谷', '戸塚', '藤沢', '平塚', '小田原', '箱根', '三島', '沼津', '吉原', '府中', '丸子', '岡部', '島田', '掛川', '浜松', '舞阪', '新居', '吉田', '御油', '岡崎', '知立', '宮', '桑名', '四日市', '亀山', '関', '土山', '水口', '石部', '草津', '大津', '京都'],
+            '中山道': ['江戸', '板橋', '蕨', '浦和', '大宮', '上尾', '桶川', '鴻巣', '熊谷', '深谷', '本庄', '新町', '倉賀野', '高崎', '板鼻', '安中', '松井田', '坂本', '軽井沢', '沓掛', '追分', '小田井', '岩村田', '塩名田', '八幡', '望月', '蕪木', '茂田井', '芦田', '長窪', '和田', '下諏訪', '塩尻', '洗馬', '本山', '贄川', '奈良井', '薮原', '宮ノ越', '福島', '上松', '須原', '野尻', '三留野', '妻籠', '馬籠', '落合', '中津川', '大井', '大湫', '細久手', '御嶽', '伏見', '太田', '鵜沼', '加納', '河渡', '美江寺', '赤坂', '垂井', '関ヶ原', '今須', '柏原', '醒井', '番場', '鳥居本', '高宮', '愛知川', '武佐', '守山', '草津', '大津', '京都'],
+            '甲州街道': ['江戸', '内藤新宿', '下高井戸', '上高井戸', '布田', '府中', '日野', '八王子', '駒木野', '小仏', '小原', '与瀬', '吉野', '関野', '上野原', '鶴川', '野田尻', '犬目', '下鳥沢', '上鳥沢', '猿橋', '駒橋', '大月', '下花咲', '上花咲', '下初狩', '中初狩', '白野', '阿弥陀海道', '黒野田', '駒飼', '鶴瀬', '勝沼', '栗原', '石和', '甲府'],
+            '日光街道': ['江戸', '千住', '草加', '越ヶ谷', '粕壁', '杉戸', '幸手', '栗橋', '中田', '古河', '野木', '間々田', '小山', '新田', '小金井', '石橋', '雀宮', '宇都宮', '徳次郎', '大沢', '今市', '鉢石', '日光'],
+            '奥州街道': ['江戸', '千住', '草加', '越ヶ谷', '粕壁', '杉戸', '幸手', '栗橋', '中田', '古河', '野木', '間々田', '小山', '新田', '小金井', '石橋', '雀宮', '宇都宮', '白沢', '氏家', '喜連川', '佐久山', '大田原', '鍋掛', '越堀', '芦野', '白坂', '白河']
+        };
+
+        // ゲーム状態
+        let gameState = {
+            score: 0,
+            selectedRoad: null,
+            selectedStations: {},
+            completedRoads: new Set(),
+            roadProgress: {},
+            difficultyLevel: 'easy',
+            maxStationsPerRoad: 8
+        };
+
+        // 難易度設定
+        const DIFFICULTY_SETTINGS = {
+            easy: { maxStations: 6, shuffleIntensity: 0.3 },
+            medium: { maxStations: 8, shuffleIntensity: 0.6 },
+            hard: { maxStations: 10, shuffleIntensity: 1.0 }
+        };
+
+        // 配列をシャッフルする関数
+        function shuffleArray(array, intensity = 1.0) {
+            const shuffled = [...array];
+            const shuffleCount = Math.floor(array.length * intensity);
+            
+            for (let i = 0; i < shuffleCount; i++) {
+                const j = Math.floor(Math.random() * shuffled.length);
+                const k = Math.floor(Math.random() * shuffled.length);
+                [shuffled[j], shuffled[k]] = [shuffled[k], shuffled[j]];
+            }
+            return shuffled;
+        }
+
+        // ゲーム初期化
+        function initGame() {
+            const difficulty = DIFFICULTY_SETTINGS[gameState.difficultyLevel];
+            
+            gameState = {
+                ...gameState,
+                score: 0,
+                selectedRoad: null,
+                selectedStations: {},
+                completedRoads: new Set(),
+                roadProgress: {},
+                maxStationsPerRoad: difficulty.maxStations
+            };
+            
+            // 各街道の進行状況と選択状況を初期化
+            Object.keys(ROADS_DATA).forEach(road => {
+                gameState.roadProgress[road] = 0;
+                gameState.selectedStations[road] = [];
+            });
+            
+            renderRoads();
+            updateGameInfo();
+        }
+
+        // 街道表示
+        function renderRoads() {
+            const container = document.getElementById('roads-container');
+            container.innerHTML = '';
+            const difficulty = DIFFICULTY_SETTINGS[gameState.difficultyLevel];
+
+            Object.entries(ROADS_DATA).forEach(([roadName, stations]) => {
+                const roadDiv = document.createElement('div');
+                roadDiv.className = `road ${gameState.completedRoads.has(roadName) ? 'completed-road' : ''}`;
+
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'road-title';
+                titleDiv.textContent = `${roadName} (${gameState.roadProgress[roadName]}/${gameState.maxStationsPerRoad}完了)`;
+                roadDiv.appendChild(titleDiv);
+
+                const stationsDiv = document.createElement('div');
+                stationsDiv.className = 'stations';
+
+                // 指定された数の宿場町を取得してシャッフル
+                const gameStations = stations.slice(0, gameState.maxStationsPerRoad);
+                const shuffledStations = shuffleArray(gameStations, difficulty.shuffleIntensity);
+                
+                shuffledStations.forEach((station, displayIndex) => {
+                    const stationDiv = document.createElement('div');
+                    stationDiv.className = 'station-card';
+                    
+                    const originalIndex = stations.indexOf(station);
+                    const isSelected = gameState.selectedStations[roadName].includes(station);
+                    const selectionOrder = gameState.selectedStations[roadName].indexOf(station) + 1;
+                    
+                    // 状態に応じてクラスを設定
+                    if (isSelected) {
+                        const correctIndex = gameState.selectedStations[roadName].indexOf(station);
+                        const isCorrectOrder = gameState.selectedStations[roadName].slice(0, correctIndex + 1)
+                            .every((s, i) => stations.indexOf(s) <= stations.indexOf(gameState.selectedStations[roadName][i])) &&
+                            stations.indexOf(station) === stations.indexOf(gameState.selectedStations[roadName][correctIndex]);
+                        
+                        stationDiv.classList.add(isCorrectOrder ? 'correct' : 'error');
+                    }
+                    
+                    stationDiv.innerHTML = `
+                        ${station}${station === '江戸' || station === '京都' ? '' : '宿'}
+                        ${isSelected ? `<div style="position: absolute; top: 2px; right: 5px; font-size: 0.8em; font-weight: bold; color: #8B4513;">${selectionOrder}</div>` : ''}
+                    `;
+                    
+                    stationDiv.onclick = () => selectStation(roadName, station);
+                    stationsDiv.appendChild(stationDiv);
+                });
+
+                // リセットボタン
+                const resetBtn = document.createElement('button');
+                resetBtn.textContent = '🔄 この街道をリセット';
+                resetBtn.className = 'btn btn-secondary';
+                resetBtn.style.width = '100%';
+                resetBtn.style.marginTop = '10px';
+                resetBtn.onclick = () => resetRoad(roadName);
+                roadDiv.appendChild(resetBtn);
+
+                roadDiv.appendChild(stationsDiv);
+                container.appendChild(roadDiv);
+            });
+        }
+
+        // 宿場選択処理
+        function selectStation(roadName, stationName) {
+            const stations = ROADS_DATA[roadName];
+            
+            // 既に選択済みの宿場は再選択不可
+            if (gameState.selectedStations[roadName].includes(stationName)) {
+                return;
+            }
+
+            // 宿場を選択リストに追加
+            gameState.selectedStations[roadName].push(stationName);
+            
+            // 正解判定：選択された宿場が正しい順序かチェック
+            const selectedStations = gameState.selectedStations[roadName];
+            const isCorrectOrder = checkStationOrder(roadName, selectedStations);
+            
+            if (isCorrectOrder) {
+                // 正解
+                gameState.score += 150;
+                gameState.roadProgress[roadName] = selectedStations.length;
+                
+                // 街道完成チェック
+                if (selectedStations.length >= gameState.maxStationsPerRoad) {
+                    gameState.completedRoads.add(roadName);
+                    gameState.score += 500; // ボーナス点
+                    
+                    setTimeout(() => {
+                        alert(`🎉 ${roadName}制覇！ボーナス500点獲得！`);
+                    }, 500);
+                }
+            } else {
+                // 不正解
+                gameState.score -= 50;
+            }
+            
+            updateGameInfo();
+            renderRoads();
+            
+            // 全街道制覇判定
+            if (gameState.completedRoads.size === 5) {
+                setTimeout(() => {
+                    showVictory();
+                }, 1000);
+            }
+        }
+
+        // 宿場順序チェック
+        function checkStationOrder(roadName, selectedStations) {
+            const stations = ROADS_DATA[roadName];
+            
+            for (let i = 0; i < selectedStations.length; i++) {
+                for (let j = i + 1; j < selectedStations.length; j++) {
+                    const indexI = stations.indexOf(selectedStations[i]);
+                    const indexJ = stations.indexOf(selectedStations[j]);
+                    
+                    // 後から選択した宿場が前の順序にある場合は間違い
+                    if (indexI > indexJ) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // 街道リセット
+        function resetRoad(roadName) {
+            gameState.selectedStations[roadName] = [];
+            gameState.roadProgress[roadName] = 0;
+            gameState.completedRoads.delete(roadName);
+            renderRoads();
+            updateGameInfo();
+        }
+
+        // ゲーム情報更新
+        function updateGameInfo() {
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('completed').textContent = gameState.completedRoads.size;
+            
+            // 進行中の街道情報を表示
+            let statusText = '';
+            const inProgressRoads = Object.keys(ROADS_DATA).filter(road => 
+                !gameState.completedRoads.has(road) && gameState.selectedStations[road].length < gameState.maxStationsPerRoad
+            );
+            
+            if (inProgressRoads.length > 0) {
+                const roadName = inProgressRoads[0];
+                const progress = gameState.selectedStations[roadName].length;
+                statusText = `${roadName} (${progress}/${gameState.maxStationsPerRoad})`;
+            } else if (gameState.completedRoads.size === 5) {
+                statusText = '全街道制覇！';
+            } else {
+                statusText = '街道を選択してください';
+            }
+            
+            document.getElementById('next-station').textContent = statusText;
+        }
+
+        // ヒント表示
+        function showHint() {
+            let hintMessage = '💡 ヒント:\n\n';
+            
+            for (const [roadName, stations] of Object.entries(ROADS_DATA)) {
+                if (gameState.completedRoads.has(roadName)) {
+                    hintMessage += `${roadName}: ✅ 制覇済み\n`;
+                } else {
+                    const selectedCount = gameState.selectedStations[roadName].length;
+                    const nextIndex = selectedCount;
+                    
+                    if (nextIndex < gameState.maxStationsPerRoad) {
+                        const nextStation = stations[nextIndex];
+                        hintMessage += `${roadName}: 次は「${nextStation}${nextStation === '江戸' || nextStation === '京都' ? '' : '宿'}」です (${selectedCount}/${gameState.maxStationsPerRoad}完了)\n`;
+                    }
+                }
+            }
+            
+            alert(hintMessage);
+        }
+
+        // 勝利画面表示
+        function showVictory() {
+            document.getElementById('final-score').textContent = gameState.score;
+            document.getElementById('victory-message').style.display = 'block';
+        }
+
+        // 勝利画面非表示
+        function hideVictory() {
+            document.getElementById('victory-message').style.display = 'none';
+        }
+
+        // 難易度変更
+        function changeDifficulty() {
+            const difficulty = document.getElementById('difficulty').value;
+            gameState.difficultyLevel = difficulty;
+            initGame();
+        }
+
+        // 詳細ルール表示
+        function showRules() {
+            const rulesText = `
+📚 江戸街道旅路カードゲーム - 詳細ルール
+
+🎯 ゲームの目的:
+江戸時代の5大街道すべてを制覇することです。
+
+🏮 街道について:
+・東海道: 江戸〜京都の太平洋ルート
+・中山道: 江戸〜京都の山間ルート  
+・甲州街道: 江戸〜甲府への西方ルート
+・日光街道: 江戸〜日光への北方ルート
+・奥州街道: 江戸から東北への長距離ルート
+
+🎮 遊び方:
+1. 各街道の宿場町カードがシャッフルされて表示されます
+2. 江戸から順番に、正しい順序で宿場町をクリックしてください
+3. 間違った順序で選択すると減点されますが、ゲーム続行可能です
+4. 街道リセットボタンで個別の街道をやり直せます
+
+⚔️ 難易度:
+・簡単: 6宿場、軽いシャッフル
+・普通: 8宿場、中程度シャッフル
+・困難: 10宿場、完全シャッフル
+
+🏆 得点システム:
+・正解: +150点
+・間違い: -50点  
+・街道制覇: +500点ボーナス
+・全街道制覇で勝利！
+
+💡 カードの見方:
+・右上の数字: あなたの選択順序
+・緑色: 正しい順序で選択済み
+・赤色: 間違った順序で選択
+・宿場町名のみ表示（順序は推理してください！）
+            `;
+            alert(rulesText);
+        }
+
+        // ゲームリセット
+        function resetGame() {
+            initGame();
+        }
+
+        // ゲーム開始
+        initGame();
+    </script>
+</body>
+</html>
