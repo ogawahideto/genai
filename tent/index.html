@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>テント設営シミュレーター</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98D8C8 50%, #7FD157 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                padding: 15px;
+                border-radius: 15px;
+            }
+            
+            h1 {
+                font-size: 1.5em;
+            }
+            
+            .campsite {
+                height: 350px;
+            }
+            
+            .status-bar {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+                padding: 10px;
+            }
+            
+            .status-item {
+                padding: 8px;
+            }
+            
+            .status-value {
+                font-size: 1.2em;
+            }
+            
+            .controls {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            button {
+                padding: 10px 15px;
+                font-size: 13px;
+            }
+            
+            .tent-sheet {
+                width: 150px;
+                height: 120px;
+            }
+            
+            .pole.main {
+                height: 140px;
+            }
+            
+            .instructions {
+                padding: 15px;
+            }
+            
+            .instructions h3 {
+                font-size: 1.1em;
+            }
+            
+            .step {
+                font-size: 0.9em;
+                padding: 8px;
+                padding-left: 25px;
+            }
+            
+            .wind-indicator {
+                width: 50px;
+                height: 50px;
+                font-size: 25px;
+            }
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c5f2d;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            color: white;
+        }
+
+        .status-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .status-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .campsite {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            background: linear-gradient(to bottom, #8BC34A 0%, #689F38 100%);
+            border-radius: 15px;
+            margin: 20px 0;
+            overflow: hidden;
+            box-shadow: inset 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .ground-texture {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0.3;
+            background-image: 
+                repeating-linear-gradient(90deg, transparent, transparent 35px, rgba(255,255,255,.1) 35px, rgba(255,255,255,.1) 70px),
+                repeating-linear-gradient(0deg, transparent, transparent 35px, rgba(255,255,255,.1) 35px, rgba(255,255,255,.1) 70px);
+        }
+
+        .tent-sheet {
+            position: absolute;
+            width: 200px;
+            height: 150px;
+            background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            left: 50%;
+            bottom: 30%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: all 0.5s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .tent-sheet.placed {
+            opacity: 0.3;
+        }
+
+        .tent-sheet.erected {
+            opacity: 1;
+            animation: tentWave 3s ease-in-out infinite;
+        }
+
+        @keyframes tentWave {
+            0%, 100% { transform: translateX(-50%) skewX(0deg); }
+            50% { transform: translateX(-50%) skewX(2deg); }
+        }
+
+        .pole {
+            position: absolute;
+            width: 8px;
+            background: linear-gradient(to bottom, #8B4513, #654321);
+            border-radius: 4px;
+            transform-origin: bottom;
+            transition: all 0.5s ease;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .pole.main {
+            height: 180px;
+            left: 50%;
+            bottom: 30%;
+            transform: translateX(-50%) scaleY(0);
+        }
+
+        .pole.main.erected {
+            transform: translateX(-50%) scaleY(1);
+        }
+
+        .peg {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #FFD700, #FFA500);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .peg.placed {
+            background: radial-gradient(circle, #4CAF50, #45a049);
+            animation: pegPulse 2s infinite;
+        }
+
+        @keyframes pegPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .rope {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(to right, #8B4513, #D2691E);
+            transform-origin: left;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .rope.connected {
+            opacity: 1;
+            animation: ropeTension 2s ease-in-out infinite;
+        }
+
+        @keyframes ropeTension {
+            0%, 100% { transform: scaleX(1); }
+            50% { transform: scaleX(0.98); }
+        }
+
+        .wind-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            animation: windRotate 10s linear infinite;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        @keyframes windRotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 15px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #F2994A, #F2C94C);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #EB5757, #FF6B6B);
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .instructions {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .instructions h3 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            padding-left: 30px;
+            position: relative;
+            color: #555;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .step::before {
+            content: '○';
+            position: absolute;
+            left: 10px;
+            color: #999;
+        }
+
+        .step.completed {
+            background: rgba(76, 175, 80, 0.2);
+            color: #2e7d32;
+            font-weight: bold;
+            transform: translateX(5px);
+        }
+
+        .step.completed::before {
+            content: '✓';
+            color: #2e7d32;
+        }
+
+        .message {
+            text-align: center;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 10px;
+            font-weight: bold;
+            animation: slideIn 0.5s ease;
+            font-size: 1.1em;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .message.success {
+            background: linear-gradient(135deg, #84fab0, #8fd3f4);
+            color: #1b5e20;
+        }
+
+        .message.warning {
+            background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+            color: #f57c00;
+        }
+
+        .message.error {
+            background: linear-gradient(135deg, #ff9ff3, #ff6b9d);
+            color: #c62828;
+        }
+
+        .weather-effects {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .cloud {
+            position: absolute;
+            width: 100px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 100px;
+            opacity: 0.8;
+            animation: cloudMove 20s linear infinite;
+        }
+
+        .cloud::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+        }
+
+        @keyframes cloudMove {
+            from { transform: translateX(-100px); }
+            to { transform: translateX(calc(100% + 100px)); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            border-radius: 15px;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .item-counter {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+
+        .counter-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .counter-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .completion-animation {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5em;
+            color: gold;
+            animation: completionBurst 2s ease-out;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        @keyframes completionBurst {
+            0% {
+                transform: translate(-50%, -50%) scale(0) rotate(0deg);
+                opacity: 1;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.5) rotate(180deg);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(2) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>⛺ テント設営シミュレーター ⛺</h1>
+        
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-label">進捗</span>
+                <span class="status-value" id="progress">0%</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">安定性</span>
+                <span class="status-value" id="stability">0%</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">風速</span>
+                <span class="status-value" id="windSpeed">弱</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">時間</span>
+                <span class="status-value" id="timer">0:00</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">スコア</span>
+                <span class="status-value" id="score">0</span>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar" style="width: 0%">
+                <span id="progressText">0%</span>
+            </div>
+        </div>
+
+        <div id="message"></div>
+
+        <div class="campsite" id="campsite">
+            <div class="ground-texture"></div>
+            <div class="weather-effects">
+                <div class="cloud" style="top: 20px; animation-delay: 0s;"></div>
+                <div class="cloud" style="top: 60px; animation-delay: 7s;"></div>
+                <div class="cloud" style="top: 40px; animation-delay: 14s;"></div>
+            </div>
+            <div class="wind-indicator">🍃</div>
+            <div class="tent-sheet" id="tentSheet"></div>
+            <div class="pole main" id="mainPole"></div>
+        </div>
+
+        <div class="item-counter">
+            <div class="counter-item">
+                <div class="counter-icon" style="background: #FFD700;">📍</div>
+                <span>ペグ: <span id="pegCount">0</span>/4</span>
+            </div>
+            <div class="counter-item">
+                <div class="counter-icon" style="background: #8B4513;">🪵</div>
+                <span>ポール: <span id="poleCount">0</span>/1</span>
+            </div>
+            <div class="counter-item">
+                <div class="counter-icon" style="background: #D2691E;">🪢</div>
+                <span>ロープ: <span id="ropeCount">0</span>/4</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-primary" onclick="spreadSheet()">シートを広げる</button>
+            <button class="btn-primary" onclick="setupPole()">ポールを立てる</button>
+            <button class="btn-secondary" onclick="placePeg()">ペグを打つ</button>
+            <button class="btn-secondary" onclick="attachRope()">ロープを張る</button>
+            <button class="btn-warning" onclick="checkStability()">安定性チェック</button>
+            <button class="btn-danger" onclick="resetGame()">やり直す</button>
+        </div>
+
+        <div class="instructions">
+            <h3>📋 テント設営の手順：</h3>
+            <div class="step" id="step1">1. テントシートを地面に広げる</div>
+            <div class="step" id="step2">2. メインポールを立てる</div>
+            <div class="step" id="step3">3. 四隅にペグを打つ（風上から）</div>
+            <div class="step" id="step4">4. ロープを張って固定する</div>
+            <div class="step" id="step5">5. 全体の安定性を確認する</div>
+            <div class="step" id="step6">6. 設営完了！</div>
+        </div>
+    </div>
+
+    <script>
+        let gameState = {
+            progress: 0,
+            stability: 0,
+            windSpeed: 1,
+            time: 0,
+            score: 0,
+            sheetPlaced: false,
+            poleErected: false,
+            pegs: [],
+            ropes: [],
+            isComplete: false,
+            steps: {
+                step1: false,
+                step2: false,
+                step3: false,
+                step4: false,
+                step5: false,
+                step6: false
+            }
+        };
+
+        let timerInterval;
+        let windInterval;
+
+        function startTimer() {
+            if (!timerInterval) {
+                timerInterval = setInterval(() => {
+                    gameState.time++;
+                    updateTimer();
+                }, 1000);
+            }
+        }
+
+        function updateTimer() {
+            const minutes = Math.floor(gameState.time / 60);
+            const seconds = gameState.time % 60;
+            document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function startWindSimulation() {
+            if (!windInterval) {
+                windInterval = setInterval(() => {
+                    gameState.windSpeed = Math.random() * 3 + 1;
+                    updateWindDisplay();
+                    
+                    // 風が強いと安定性が下がる
+                    if (gameState.stability > 0 && gameState.windSpeed > 2.5) {
+                        gameState.stability = Math.max(0, gameState.stability - 5);
+                        updateDisplay();
+                        
+                        if (gameState.stability < 30 && gameState.poleErected) {
+                            showMessage('風が強い！テントが不安定です！', 'warning');
+                        }
+                    }
+                }, 3000);
+            }
+        }
+
+        function updateWindDisplay() {
+            const windElement = document.getElementById('windSpeed');
+            if (gameState.windSpeed < 1.5) {
+                windElement.textContent = '弱';
+            } else if (gameState.windSpeed < 2.5) {
+                windElement.textContent = '中';
+            } else {
+                windElement.textContent = '強';
+            }
+        }
+
+        function spreadSheet() {
+            if (gameState.sheetPlaced) {
+                showMessage('シートはすでに広げています！', 'warning');
+                return;
+            }
+
+            const tentSheet = document.getElementById('tentSheet');
+            tentSheet.classList.add('placed');
+            gameState.sheetPlaced = true;
+            gameState.progress += 15;
+            
+            gameState.steps.step1 = true;
+            document.getElementById('step1').classList.add('completed');
+            
+            showMessage('テントシートを広げました！次はポールを立てましょう', 'success');
+            updateScore(50);
+            updateDisplay();
+            startTimer();
+            startWindSimulation();
+        }
+
+        function setupPole() {
+            if (!gameState.sheetPlaced) {
+                showMessage('先にシートを広げてください！', 'error');
+                return;
+            }
+
+            if (gameState.poleErected) {
+                showMessage('ポールはすでに立っています！', 'warning');
+                return;
+            }
+
+            const mainPole = document.getElementById('mainPole');
+            const tentSheet = document.getElementById('tentSheet');
+            
+            mainPole.classList.add('erected');
+            tentSheet.classList.add('erected');
+            
+            gameState.poleErected = true;
+            gameState.progress += 25;
+            gameState.stability += 20;
+            
+            gameState.steps.step2 = true;
+            document.getElementById('step2').classList.add('completed');
+            document.getElementById('poleCount').textContent = '1';
+            
+            showMessage('メインポールを立てました！ペグで固定しましょう', 'success');
+            updateScore(100);
+            updateDisplay();
+        }
+
+        function placePeg() {
+            if (!gameState.poleErected) {
+                showMessage('先にポールを立ててください！', 'error');
+                return;
+            }
+
+            if (gameState.pegs.length >= 4) {
+                showMessage('すべてのペグを打ち終わりました！', 'warning');
+                return;
+            }
+
+            const campsite = document.getElementById('campsite');
+            const peg = document.createElement('div');
+            peg.className = 'peg placed';
+            
+            // ペグの位置を四隅に配置
+            const positions = [
+                { left: '20%', bottom: '20%' },
+                { left: '80%', bottom: '20%' },
+                { left: '20%', bottom: '50%' },
+                { left: '80%', bottom: '50%' }
+            ];
+            
+            const position = positions[gameState.pegs.length];
+            peg.style.left = position.left;
+            peg.style.bottom = position.bottom;
+            
+            campsite.appendChild(peg);
+            gameState.pegs.push(peg);
+            
+            gameState.progress += 10;
+            gameState.stability += 15;
+            
+            document.getElementById('pegCount').textContent = gameState.pegs.length;
+            
+            if (gameState.pegs.length === 4) {
+                gameState.steps.step3 = true;
+                document.getElementById('step3').classList.add('completed');
+                showMessage('すべてのペグを打ちました！ロープを張りましょう', 'success');
+            } else {
+                showMessage(`ペグを打ちました (${gameState.pegs.length}/4)`, 'success');
+            }
+            
+            updateScore(30);
+            updateDisplay();
+        }
+
+        function attachRope() {
+            if (gameState.pegs.length === 0) {
+                showMessage('先にペグを打ってください！', 'error');
+                return;
+            }
+
+            if (gameState.ropes.length >= gameState.pegs.length) {
+                showMessage('すべてのロープを張り終わりました！', 'warning');
+                return;
+            }
+
+            const campsite = document.getElementById('campsite');
+            const rope = document.createElement('div');
+            rope.className = 'rope connected';
+            
+            // テントの中心からペグへロープを張る
+            const pegIndex = gameState.ropes.length;
+            if (pegIndex < gameState.pegs.length) {
+                const peg = gameState.pegs[pegIndex];
+                const tentCenterX = campsite.offsetWidth / 2;
+                const tentCenterY = campsite.offsetHeight * 0.7;
+                
+                const pegX = peg.offsetLeft + 10;
+                const pegY = campsite.offsetHeight - peg.offsetTop - 10;
+                
+                const distance = Math.sqrt(Math.pow(pegX - tentCenterX, 2) + Math.pow(pegY - tentCenterY, 2));
+                const angle = Math.atan2(pegY - tentCenterY, pegX - tentCenterX) * 180 / Math.PI;
+                
+                rope.style.width = distance + 'px';
+                rope.style.left = tentCenterX + 'px';
+                rope.style.bottom = (campsite.offsetHeight - tentCenterY) + 'px';
+                rope.style.transform = `rotate(${angle}deg)`;
+                
+                campsite.appendChild(rope);
+                gameState.ropes.push(rope);
+                
+                gameState.progress += 5;
+                gameState.stability += 10;
+                
+                document.getElementById('ropeCount').textContent = gameState.ropes.length;
+                
+                if (gameState.ropes.length === 4) {
+                    gameState.steps.step4 = true;
+                    document.getElementById('step4').classList.add('completed');
+                    showMessage('すべてのロープを張りました！安定性をチェックしましょう', 'success');
+                } else {
+                    showMessage(`ロープを張りました (${gameState.ropes.length}/4)`, 'success');
+                }
+                
+                updateScore(25);
+                updateDisplay();
+            }
+        }
+
+        function checkStability() {
+            if (!gameState.poleErected) {
+                showMessage('テントがまだ立っていません！', 'error');
+                return;
+            }
+
+            const requiredStability = 80;
+            
+            if (gameState.stability >= requiredStability && gameState.pegs.length === 4 && gameState.ropes.length === 4) {
+                gameState.steps.step5 = true;
+                gameState.steps.step6 = true;
+                document.getElementById('step5').classList.add('completed');
+                document.getElementById('step6').classList.add('completed');
+                
+                gameState.progress = 100;
+                gameState.isComplete = true;
+                
+                const finalScore = gameState.score + Math.max(0, 1000 - gameState.time * 5);
+                gameState.score = finalScore;
+                
+                showMessage(`🎉 完璧なテント設営です！スコア: ${finalScore}点`, 'success');
+                
+                // 完成アニメーション
+                const completion = document.createElement('div');
+                completion.className = 'completion-animation';
+                completion.textContent = '🏆';
+                document.body.appendChild(completion);
+                setTimeout(() => completion.remove(), 2000);
+                
+                clearInterval(timerInterval);
+                clearInterval(windInterval);
+            } else if (gameState.stability < requiredStability) {
+                showMessage(`安定性が不足しています (${Math.round(gameState.stability)}%/${requiredStability}%)。ペグとロープを確認してください`, 'warning');
+            } else {
+                showMessage('ペグとロープをすべて設置してから確認してください', 'warning');
+                gameState.steps.step5 = true;
+                document.getElementById('step5').classList.add('completed');
+            }
+            
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            document.getElementById('progress').textContent = Math.round(gameState.progress) + '%';
+            document.getElementById('stability').textContent = Math.round(gameState.stability) + '%';
+            document.getElementById('score').textContent = gameState.score;
+            
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            progressBar.style.width = gameState.progress + '%';
+            progressText.textContent = Math.round(gameState.progress) + '%';
+        }
+
+        function updateScore(points) {
+            gameState.score += points;
+            updateDisplay();
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.className = 'message';
+            }, 3000);
+        }
+
+        function resetGame() {
+            clearInterval(timerInterval);
+            clearInterval(windInterval);
+            
+            // DOM要素をリセット
+            const campsite = document.getElementById('campsite');
+            const pegs = campsite.querySelectorAll('.peg');
+            const ropes = campsite.querySelectorAll('.rope');
+            pegs.forEach(peg => peg.remove());
+            ropes.forEach(rope => rope.remove());
+            
+            document.getElementById('tentSheet').classList.remove('placed', 'erected');
+            document.getElementById('mainPole').classList.remove('erected');
+            
+            // ゲーム状態をリセット
+            gameState = {
+                progress: 0,
+                stability: 0,
+                windSpeed: 1,
+                time: 0,
+                score: 0,
+                sheetPlaced: false,
+                poleErected: false,
+                pegs: [],
+                ropes: [],
+                isComplete: false,
+                steps: {
+                    step1: false,
+                    step2: false,
+                    step3: false,
+                    step4: false,
+                    step5: false,
+                    step6: false
+                }
+            };
+            
+            // カウンターをリセット
+            document.getElementById('pegCount').textContent = '0';
+            document.getElementById('poleCount').textContent = '0';
+            document.getElementById('ropeCount').textContent = '0';
+            
+            // ステップの完了状態をリセット
+            for (let i = 1; i <= 6; i++) {
+                document.getElementById(`step${i}`).classList.remove('completed');
+            }
+            
+            timerInterval = null;
+            windInterval = null;
+            
+            updateDisplay();
+            updateTimer();
+            updateWindDisplay();
+            showMessage('ゲームをリセットしました', 'warning');
+        }
+
+        // ヘルパー関数：テント設営のヒント
+        function showHint() {
+            if (!gameState.sheetPlaced) {
+                showMessage('💡 ヒント: まずはシートを広げましょう！', 'warning');
+            } else if (!gameState.poleErected) {
+                showMessage('💡 ヒント: 次はポールを立てましょう！', 'warning');
+            } else if (gameState.pegs.length < 4) {
+                showMessage('💡 ヒント: ペグを4本打って固定しましょう！', 'warning');
+            } else if (gameState.ropes.length < 4) {
+                showMessage('💡 ヒント: ロープを張って安定させましょう！', 'warning');
+            } else if (!gameState.isComplete) {
+                showMessage('💡 ヒント: 安定性をチェックして完成させましょう！', 'warning');
+            }
+        }
+
+        // タッチデバイス用のドラッグ機能（将来の拡張用）
+        function makeDraggable(element) {
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+
+            // タッチイベントとマウスイベントの両方に対応
+            const handleStart = (e) => {
+                isDragging = true;
+                const touch = e.touches ? e.touches[0] : e;
+                startX = touch.clientX;
+                startY = touch.clientY;
+                initialLeft = element.offsetLeft;
+                initialTop = element.offsetTop;
+                element.style.zIndex = 1000;
+                e.preventDefault();
+            };
+
+            const handleMove = (e) => {
+                if (!isDragging) return;
+                const touch = e.touches ? e.touches[0] : e;
+                const deltaX = touch.clientX - startX;
+                const deltaY = touch.clientY - startY;
+                
+                element.style.left = initialLeft + deltaX + 'px';
+                element.style.top = initialTop + deltaY + 'px';
+                e.preventDefault();
+            };
+
+            const handleEnd = () => {
+                isDragging = false;
+                element.style.zIndex = '';
+            };
+
+            // マウスイベント
+            element.addEventListener('mousedown', handleStart);
+            document.addEventListener('mousemove', handleMove);
+            document.addEventListener('mouseup', handleEnd);
+            
+            // タッチイベント
+            element.addEventListener('touchstart', handleStart, { passive: false });
+            document.addEventListener('touchmove', handleMove, { passive: false });
+            document.addEventListener('touchend', handleEnd);
+        }
+
+        // キーボードショートカット（PCのみ）
+        if (!('ontouchstart' in window)) {
+            document.addEventListener('keydown', (e) => {
+                switch(e.key) {
+                    case '1':
+                        spreadSheet();
+                        break;
+                    case '2':
+                        setupPole();
+                        break;
+                    case '3':
+                        placePeg();
+                        break;
+                    case '4':
+                        attachRope();
+                        break;
+                    case '5':
+                        checkStability();
+                        break;
+                    case 'r':
+                    case 'R':
+                        if (confirm('ゲームをリセットしますか？')) {
+                            resetGame();
+                        }
+                        break;
+                    case 'h':
+                    case 'H':
+                        showHint();
+                        break;
+                }
+            });
+        }
+
+        // タッチデバイス検出とメッセージ
+        if ('ontouchstart' in window) {
+            setTimeout(() => {
+                showMessage('📱 タッチ操作対応！ボタンをタップして進めましょう', 'success');
+            }, 1000);
+        }
+
+        // 初期表示の更新
+        updateDisplay();
+        updateWindDisplay();
+        
+        // ウェルカムメッセージ
+        setTimeout(() => {
+            showMessage('テント設営を始めましょう！まずはシートを広げてください', 'success');
+        }, 500);
+    </script>
+</body>
+</html>
