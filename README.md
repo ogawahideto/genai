@@ -33,6 +33,9 @@ This repository contains a collection of small, self-contained web applications 
 #### [江戸街道旅路カードゲーム](kaido-card-game/) (2025-08-20)
 ゲームアプリケーション
 
+#### [旧国名カードゲーム](kyukoku-card-game/) (2025-08-20)
+ゲームアプリケーション
+
 #### [スタジアム・ネーミングライツ マッチングゲーム](naming_rights/) (2025-08-04)
 ゲームアプリケーション
 
