@@ -57,6 +57,9 @@ This repository contains a collection of small, self-contained web applications 
 #### [地下鉄路線距離順番当てゲーム](subwaylength/) (2025-07-25)
 ゲームアプリケーション
 
+#### [東海道五十三次すごろくゲーム](tokaido-53-game/) (2025-08-20)
+ゲームアプリケーション
+
 #### [渋滞回避ゲーム](traffic-jam-game/) (2025-08-06)
 ゲームアプリケーション
 
