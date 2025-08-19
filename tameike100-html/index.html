@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ため池百選クイズ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #f0fdf4 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 32rem;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #f0f9ff 0%, #f0fdf4 100%);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .note {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-bottom: 12px;
+        }
+
+        .score-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 8px 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .score-text {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .question-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            margin-bottom: 24px;
+        }
+
+        .question-image {
+            width: 100%;
+            height: 16rem;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .question-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .location {
+            font-size: 0.875rem;
+            color: #2563eb;
+            margin-bottom: 8px;
+        }
+
+        .description {
+            color: #6b7280;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .question {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .option {
+            padding: 16px;
+            border-radius: 12px;
+            border: 2px solid;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #f9fafb;
+            border-color: #d1d5db;
+            color: #374151;
+        }
+
+        .option:hover {
+            background: #f3f4f6;
+        }
+
+        .option.selected {
+            background: #dbeafe;
+            border-color: #3b82f6;
+            color: #1e40af;
+        }
+
+        .option.correct {
+            background: #d1fae5;
+            border-color: #10b981;
+            color: #065f46;
+        }
+
+        .option.incorrect {
+            background: #fee2e2;
+            border-color: #ef4444;
+            color: #991b1b;
+        }
+
+        .option.disabled {
+            background: #f3f4f6;
+            border-color: #d1d5db;
+            color: #6b7280;
+            cursor: not-allowed;
+        }
+
+        .result {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            border: 1px solid;
+        }
+
+        .result.correct {
+            background: #d1fae5;
+            border-color: #10b981;
+        }
+
+        .result.incorrect {
+            background: #fee2e2;
+            border-color: #ef4444;
+        }
+
+        .result-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .result-text {
+            font-size: 0.875rem;
+            color: #374151;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            margin: 0 auto;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-disabled {
+            background: #d1d5db;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .progress-bar {
+            background: #e5e7eb;
+            border-radius: 9999px;
+            height: 8px;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            background: #2563eb;
+            height: 8px;
+            border-radius: 9999px;
+            transition: width 0.3s;
+        }
+
+        .disclaimer {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            text-align: center;
+        }
+
+        .completion-screen {
+            text-align: center;
+        }
+
+        .trophy {
+            font-size: 4rem;
+            margin-bottom: 16px;
+        }
+
+        .completion-title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        .score-display {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .score-number {
+            font-size: 3.75rem;
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 8px;
+        }
+
+        .score-fraction {
+            font-size: 1.25rem;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+
+        .score-message {
+            font-size: 1.125rem;
+            color: #374151;
+            margin-bottom: 16px;
+        }
+
+        .info-box {
+            font-size: 0.875rem;
+            color: #6b7280;
+            background: #f0f9ff;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .info-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 1.125rem;
+            color: #6b7280;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container" id="loadingScreen">
+            <div class="loading">
+                <p>問題を準備中...</p>
+            </div>
+        </div>
+
+        <div class="container hidden" id="gameScreen">
+            <div class="header">
+                <h1 class="title">🏞️ ため池百選クイズ</h1>
+                <p class="subtitle">農林水産省選定「ため池百選」から出題</p>
+                <p class="note">ため池百選全100問からランダムに<span id="totalQuestions">50</span>問出題</p>
+                <div class="score-bar">
+                    <span class="score-text">問題 <span id="currentQuestionNum">1</span> / <span id="totalQuestionsDisplay">50</span></span>
+                    <span class="score-text">スコア: <span id="currentScore">0</span> / <span id="totalQuestionsScore">50</span></span>
+                </div>
+            </div>
+
+            <div class="question-card">
+                <img id="questionImage" class="question-image" src="" alt="ため池の風景">
+                <h2 class="question-title">
+                    📍 <span id="questionName"></span>
+                </h2>
+                <p class="location">📍 <span id="questionLocation"></span></p>
+                <p class="description" id="questionDescription"></p>
+                <p class="question">このため池はどの都道府県にあるでしょうか？</p>
+
+                <div class="options" id="optionsContainer">
+                </div>
+
+                <div id="resultContainer" class="hidden">
+                </div>
+
+                <div class="btn-container">
+                    <button id="submitBtn" class="btn btn-disabled">答える</button>
+                    <button id="nextBtn" class="btn btn-success hidden">次の問題 →</button>
+                </div>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 3.33%"></div>
+            </div>
+            
+            <div class="disclaimer">
+                ※ 写真はイメージです。実際のため池とは異なる場合があります。
+            </div>
+        </div>
+
+        <div class="container hidden" id="completionScreen">
+            <div class="completion-screen">
+                <div class="trophy">🏆</div>
+                <h2 class="completion-title">ゲーム完了！</h2>
+                <div class="score-display">
+                    <p class="score-number" id="finalScore">0</p>
+                    <p class="score-fraction">/ <span id="finalTotal">50</span> 問正解</p>
+                    <p class="score-message" id="scoreMessage"></p>
+                    <div class="info-box">
+                        <p class="info-title">📚 ため池百選について</p>
+                        <p>農林水産省が平成22年3月に選定した、全国の優れたため池100箇所です。農業への貢献、歴史・文化的価値、景観の美しさ、生物多様性、地域との関わりなどが評価基準となっています。</p>
+                    </div>
+                </div>
+                <button id="resetBtn" class="btn btn-primary">🔄 もう一度挑戦</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ゲーム状態
+        let currentQuestion = 0;
+        let score = 0;
+        let selectedAnswer = '';
+        let answerRevealed = false;
+        let shuffledQuestions = [];
+        const totalQuestions = 50;
+
+        // ため池データ（100問完全版）
+        const questions = [
+            {
+                id: 1,
+                name: "満濃池",
+                prefecture: "香川県",
+                location: "まんのう町",
+                description: "農林水産省ため池百選に選定。日本最大の灌漑用ため池（貯水量1540万t）。弘法大師（空海）が821年に改修工事を行った歴史あるため池です。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["香川県", "愛媛県", "岡山県", "徳島県"]
+            },
+            {
+                id: 2,
+                name: "廻堰大溜池（津軽富士見湖）",
+                prefecture: "青森県",
+                location: "鶴田町",
+                description: "ため池百選選定。堤長4.2kmで日本一の長さを誇る。万治3年（1660年）に津軽藩主が築造。鶴の舞橋（全長300m）で有名です。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["青森県", "秋田県", "岩手県", "山形県"]
+            },
+            {
+                id: 3,
+                name: "美幌温水溜池",
+                prefecture: "北海道",
+                location: "美幌町",
+                description: "ため池百選選定。最北端の選定ため池。温水を利用した農業用ため池として、寒冷地農業の発展に貢献しています。",
+                image: "https://images.unsplash.com/photo-1551818255-e6e10975bc17?w=400&h=250&fit=crop",
+                options: ["北海道", "青森県", "岩手県", "秋田県"]
+            },
+            {
+                id: 4,
+                name: "千貫石ため池",
+                prefecture: "岩手県",
+                location: "金ケ崎町",
+                description: "ため池百選選定。東北地方南部に位置し、地域の農業を支える重要な水源となっています。美しい田園風景の中にあります。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["宮城県", "岩手県", "福島県", "山形県"]
+            },
+            {
+                id: 5,
+                name: "加瀬沼ため池",
+                prefecture: "宮城県",
+                location: "多賀城市・塩竃市・利府町",
+                description: "ため池百選選定。複数の市町にまたがる大規模ため池。古くから地域の農業と暮らしを支えてきました。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["福島県", "宮城県", "岩手県", "山形県"]
+            },
+            {
+                id: 6,
+                name: "一丈木ため池",
+                prefecture: "秋田県",
+                location: "美郷町",
+                description: "ため池百選選定。美しい田園地帯にある歴史的なため池。地域農業の発展に大きく貢献してきました。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["秋田県", "山形県", "青森県", "岩手県"]
+            },
+            {
+                id: 7,
+                name: "大山上池・下池",
+                prefecture: "山形県",
+                location: "鶴岡市",
+                description: "ため池百選選定。庄内地方の代表的なため池群。上池と下池が一体となって地域の稲作を支えています。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["新潟県", "山形県", "宮城県", "福島県"]
+            },
+            {
+                id: 8,
+                name: "徳良池（徳良湖）",
+                prefecture: "山形県",
+                location: "尾花沢市",
+                description: "ため池百選選定。内陸部の美しい湖。周囲の景観と一体となった美しいため池として知られています。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["宮城県", "福島県", "山形県", "新潟県"]
+            },
+            {
+                id: 9,
+                name: "狭山池",
+                prefecture: "大阪府",
+                location: "大阪狭山市",
+                description: "ため池百選選定。日本最古のダム式ため池（616年頃築造）。行基、重源、片桐且元らが改修に携わった歴史ある池です。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["大阪府", "奈良県", "京都府", "兵庫県"]
+            },
+            {
+                id: 10,
+                name: "久米田池",
+                prefecture: "大阪府",
+                location: "岸和田市",
+                description: "ため池百選選定。泉州地域の代表的なため池。楠木正成の伝説が残る歴史的な池として知られています。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["大阪府", "和歌山県", "兵庫県", "奈良県"]
+            },
+            {
+                id: 11,
+                name: "天満大池",
+                prefecture: "兵庫県",
+                location: "稲美町",
+                description: "ため池百選選定。播磨地域の代表的なため池の一つ。印南野台地の農業を支える重要な水源です。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["兵庫県", "岡山県", "大阪府", "京都府"]
+            },
+            {
+                id: 12,
+                name: "寺田池",
+                prefecture: "兵庫県",
+                location: "加古川市",
+                description: "ため池百選選定。東播磨地域の農業を支える歴史あるため池。地域の水利システムの中核を担っています。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["兵庫県", "大阪府", "岡山県", "京都府"]
+            },
+            {
+                id: 13,
+                name: "長池オアシス（長池、下池）",
+                prefecture: "大阪府",
+                location: "熊取町",
+                description: "ため池百選選定。南大阪地域の自然豊かなため池群。地域住民の憩いの場としても親しまれています。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["大阪府", "和歌山県", "奈良県", "兵庫県"]
+            },
+            {
+                id: 14,
+                name: "いなみ野ため池ミュージアム",
+                prefecture: "兵庫県", 
+                location: "明石市・加古川市・高砂市・稲美町・播磨町",
+                description: "ため池百選選定。複数市町にまたがるため池群。ため池の文化と歴史を学べる地域として整備されています。",
+                image: "https://images.unsplash.com/photo-1551818255-e6e10975bc17?w=400&h=250&fit=crop",
+                options: ["兵庫県", "大阪府", "岡山県", "京都府"]
+            },
+            {
+                id: 15,
+                name: "南湖",
+                prefecture: "福島県",
+                location: "白河市",
+                description: "ため池百選選定。白河藩主松平定信が築造。日本最古の公園と言われる南湖公園の中央にある歴史的な湖です。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["福島県", "栃木県", "新潟県", "群馬県"]
+            },
+            {
+                id: 16,
+                name: "雄蛇ヶ池",
+                prefecture: "千葉県",
+                location: "東金市",
+                description: "ため池百選選定。慶長19年（1614年）完成の歴史ある灌漑用貯水池。房総の十和田湖とも呼ばれる美しい池です。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["千葉県", "茨城県", "埼玉県", "神奈川県"]
+            },
+            {
+                id: 17,
+                name: "豊稔池",
+                prefecture: "香川県",
+                location: "観音寺市",
+                description: "ため池百選選定。日本最古のマルチプルアーチ式ダム。中世ヨーロッパの古城を思わせる威容で知られています。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["香川県", "愛媛県", "徳島県", "高知県"]
+            },
+            {
+                id: 18,
+                name: "雄池雌池",
+                prefecture: "岡山県",
+                location: "備前市",
+                description: "ため池百選選定。備前焼の里にある美しい二つの池。雄池と雌池が並んで地域の農業を支えています。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["岡山県", "広島県", "兵庫県", "鳥取県"]
+            },
+            {
+                id: 19,
+                name: "内場池",
+                prefecture: "愛媛県",
+                location: "今治市",
+                description: "ため池百選選定。瀬戸内海を望む美しいロケーション。しまなみ海道の島々を背景にした風光明媚なため池です。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["愛媛県", "広島県", "香川県", "山口県"]
+            },
+            {
+                id: 20,
+                name: "大切畑ため池",
+                prefecture: "熊本県",
+                location: "西原村",
+                description: "ため池百選選定。阿蘇地域の農業を支える重要な水源。標高の高い場所にある美しい山間のため池です。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["熊本県", "宮崎県", "大分県", "鹿児島県"]
+            },
+            {
+                id: 21,
+                name: "蛇の鼻ため池群",
+                prefecture: "福島県",
+                location: "本宮市",
+                description: "ため池百選選定。複数のため池群で構成される美しい水辺空間。四季を通じて多様な水鳥が飛来します。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["福島県", "栃木県", "山形県", "新潟県"]
+            },
+            {
+                id: 22,
+                name: "七ツ池",
+                prefecture: "石川県",
+                location: "加賀市",
+                description: "ため池百選選定。加賀平野の水田を潤す歴史ある池群。七つの池が連なる美しい水辺景観で知られています。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["石川県", "富山県", "福井県", "新潟県"]
+            },
+            {
+                id: 23,
+                name: "半田山水源地",
+                prefecture: "岡山県",
+                location: "岡山市",
+                description: "ため池百選選定。明治時代に築造された近代水道発祥の地。桜の名所としても市民に愛されています。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["岡山県", "広島県", "兵庫県", "鳥取県"]
+            },
+            {
+                id: 24,
+                name: "片田・野田のため池群",
+                prefecture: "三重県",
+                location: "津市",
+                description: "ため池百選選定。東海地方の代表的なため池群。地域の伝統的な農業と一体となった美しい田園風景を形成しています。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["三重県", "愛知県", "岐阜県", "滋賀県"]
+            },
+            {
+                id: 25,
+                name: "楠根ため池",
+                prefecture: "三重県",
+                location: "菰野町",
+                description: "ため池百選選定。鈴鹿山脈の麓にある美しいため池。山間部の農業を支える重要な水源として機能しています。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["三重県", "滋賀県", "岐阜県", "愛知県"]
+            },
+            {
+                id: 26,
+                name: "神田池",
+                prefecture: "茨城県",
+                location: "阿見町",
+                description: "ため池百選選定。霞ヶ浦に近い台地にある美しいため池。関東地方の農業発展に貢献してきました。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["茨城県", "千葉県", "栃木県", "埼玉県"]
+            },
+            {
+                id: 27,
+                name: "大沼",
+                prefecture: "栃木県",
+                location: "小山市",
+                description: "ため池百選選定。関東平野の水田地帯にある代表的なため池。古くから地域農業の発展を支えています。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["栃木県", "群馬県", "茨城県", "埼玉県"]
+            },
+            {
+                id: 28,
+                name: "唐桶溜",
+                prefecture: "栃木県",
+                location: "芳賀町",
+                description: "ため池百選選定。益子焼で有名な地域にあるため池。伝統的な農業と工芸の里を水で支えています。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["栃木県", "茨城県", "群馬県", "福島県"]
+            },
+            {
+                id: 29,
+                name: "妙参寺沼",
+                prefecture: "群馬県",
+                location: "太田市",
+                description: "ため池百選選定。関東平野北部の農業地帯を潤すため池。上州の肥沃な大地を支える重要な水源です。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["群馬県", "栃木県", "埼玉県", "茨城県"]
+            },
+            {
+                id: 30,
+                name: "間瀬湖",
+                prefecture: "埼玉県",
+                location: "本庄市",
+                description: "ため池百選選定。利根川流域の農業を支える歴史的なため池。関東平野の穀倉地帯を潤しています。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["埼玉県", "群馬県", "栃木県", "茨城県"]
+            },
+            {
+                id: 31,
+                name: "小中池",
+                prefecture: "千葉県",
+                location: "大網白里市",
+                description: "ため池百選選定。房総半島の農業を支える代表的なため池。九十九里平野の稲作地帯を潤しています。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["千葉県", "茨城県", "神奈川県", "東京都"]
+            },
+            {
+                id: 32,
+                name: "月見が池",
+                prefecture: "山梨県",
+                location: "上野原市",
+                description: "ため池百選選定。甲斐の山間部にある美しいため池。富士山を望む風光明媚な立地で知られています。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["山梨県", "長野県", "神奈川県", "静岡県"]
+            },
+            {
+                id: 33,
+                name: "御射鹿池",
+                prefecture: "長野県",
+                location: "茅野市",
+                description: "ため池百選選定。八ヶ岳の麓にある神秘的な池。CM撮影地としても有名な美しい水面を持つため池です。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["長野県", "山梨県", "群馬県", "新潟県"]
+            },
+            {
+                id: 34,
+                name: "あやめ公園池（菅大平温水ため池）",
+                prefecture: "長野県",
+                location: "木祖村",
+                description: "ため池百選選定。木曽谷の美しい山間にある温水ため池。あやめの花で有名な風景の美しいため池です。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["長野県", "岐阜県", "愛知県", "山梨県"]
+            },
+            {
+                id: 35,
+                name: "千人塚城ヶ池",
+                prefecture: "長野県",
+                location: "飯島町",
+                description: "ため池百選選定。中央アルプスを望む美しいロケーション。伊那谷の農業を支える歴史ある池です。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["長野県", "山梨県", "岐阜県", "静岡県"]
+            },
+            {
+                id: 36,
+                name: "塩田平のため池群",
+                prefecture: "長野県",
+                location: "上田市",
+                description: "ため池百選選定。信州の古い農業地帯にある歴史的なため池群。塩田平の美しい田園風景を形成しています。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["長野県", "群馬県", "新潟県", "山梨県"]
+            },
+            {
+                id: 37,
+                name: "荒神山ため池（たつの海）",
+                prefecture: "長野県",
+                location: "辰野町",
+                description: "ため池百選選定。天竜川流域の農業を支える重要なため池。諏訪盆地南部の美しい景観を持つ池です。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["長野県", "山梨県", "静岡県", "岐阜県"]
+            },
+            {
+                id: 38,
+                name: "境野沢ため池",
+                prefecture: "青森県",
+                location: "五所川原市",
+                description: "ため池百選選定。津軽平野の農業を支える代表的なため池の一つ。りんご園に囲まれた美しい池です。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["青森県", "秋田県", "岩手県", "山形県"]
+            },
+            {
+                id: 39,
+                name: "藤枝ため池",
+                prefecture: "青森県",
+                location: "五所川原市",
+                description: "ため池百選選定。津軽地方の農業発展に貢献してきた歴史あるため池。豊かな自然に囲まれています。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["青森県", "秋田県", "岩手県", "宮城県"]
+            },
+            {
+                id: 40,
+                name: "小友沼",
+                prefecture: "秋田県",
+                location: "能代市",
+                description: "ため池百選選定。白神山地に近い美しい自然環境にあるため池。多様な生態系を育む貴重な水辺です。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["秋田県", "青森県", "山形県", "岩手県"]
+            },
+            {
+                id: 41,
+                name: "十二湖",
+                prefecture: "青森県",
+                location: "深浦町",
+                description: "ため池百選選定。白神山地の一角にある美しい湖沼群。青色の美しさで知られる青池が有名です。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["青森県", "秋田県", "岩手県", "北海道"]
+            },
+            {
+                id: 42,
+                name: "沼沢湖",
+                prefecture: "福島県",
+                location: "金山町",
+                description: "ため池百選選定。カルデラ湖として知られ、周囲を美しい自然に囲まれた神秘的な湖です。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["福島県", "山形県", "新潟県", "栃木県"]
+            },
+            {
+                id: 43,
+                name: "甲子高原の池",
+                prefecture: "福島県",
+                location: "西郷村",
+                description: "ため池百選選定。標高の高い高原地帯にある美しい池群。四季を通じて美しい景観を楽しめます。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["福島県", "栃木県", "群馬県", "新潟県"]
+            },
+            {
+                id: 44,
+                name: "曲沢沼",
+                prefecture: "福島県",
+                location: "北塩原村",
+                description: "ため池百選選定。裏磐梯の美しい自然に囲まれた湖沼。磐梯朝日国立公園内に位置しています。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["福島県", "山形県", "新潟県", "宮城県"]
+            },
+            {
+                id: 45,
+                name: "青木湖",
+                prefecture: "新潟県",
+                location: "糸魚川市",
+                description: "ため池百選選定。日本海に近い山間地にある美しい湖。透明度の高さで知られています。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["新潟県", "富山県", "長野県", "石川県"]
+            },
+            {
+                id: 46,
+                name: "青沼",
+                prefecture: "新潟県",
+                location: "妙高市",
+                description: "ため池百選選定。妙高山系の美しい自然環境の中にある神秘的な池。高原の清涼な空気に包まれています。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["新潟県", "長野県", "群馬県", "富山県"]
+            },
+            {
+                id: 47,
+                name: "朝日ため池",
+                prefecture: "新潟県",
+                location: "村上市",
+                description: "ため池百選選定。日本海側の農業地帯を支える重要な水源。朝日連峰を望む美しいロケーションにあります。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["新潟県", "山形県", "福島県", "富山県"]
+            },
+            {
+                id: 48,
+                name: "坊ヶ谷ため池",
+                prefecture: "新潟県",
+                location: "上越市",
+                description: "ため池百選選定。上越地方の農業を支える歴史ある池。周囲の田園風景と調和した美しい景観です。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["新潟県", "富山県", "長野県", "石川県"]
+            },
+            {
+                id: 49,
+                name: "三方湖",
+                prefecture: "福井県",
+                location: "若狭町",
+                description: "ため池百選選定。三方五湖の一つで、若狭湾国定公園の中心的な湖。ラムサール条約登録地でもあります。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["福井県", "滋賀県", "京都府", "石川県"]
+            },
+            {
+                id: 50,
+                name: "九頭竜湖",
+                prefecture: "福井県",
+                location: "大野市",
+                description: "ため池百選選定。奥越地方の代表的な人造湖。美しい山々に囲まれた壮大な景観を誇ります。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["福井県", "石川県", "岐阜県", "滋賀県"]
+            },
+            {
+                id: 51,
+                name: "木場潟",
+                prefecture: "石川県",
+                location: "小松市",
+                description: "ため池百選選定。加賀平野南部の代表的な潟湖。白山を背景とした美しい景観で知られています。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["石川県", "福井県", "富山県", "岐阜県"]
+            },
+            {
+                id: 52,
+                name: "河北潟",
+                prefecture: "石川県",
+                location: "津幡町、内灘町",
+                description: "ため池百選選定。金沢平野北部の大規模な干拓地。現在は農業用地として活用されています。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["石川県", "富山県", "新潟県", "福井県"]
+            },
+            {
+                id: 53,
+                name: "刀利ダム",
+                prefecture: "富山県",
+                location: "沼田町",
+                description: "ため池百選選定。庄川水系の美しいダム湖。四季を通じて美しい自然景観を楽しむことができます。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["富山県", "石川県", "岐阜県", "新潟県"]
+            },
+            {
+                id: 54,
+                name: "有峰湖",
+                prefecture: "富山県",
+                location: "富山市",
+                description: "ため池百選選定。北アルプスの山懐に抱かれた美しい人造湖。エメラルドグリーンの湖面が印象的です。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["富山県", "石川県", "岐阜県", "長野県"]
+            },
+            {
+                id: 55,
+                name: "真名川ダム湖",
+                prefecture: "福井県",
+                location: "大野市",
+                description: "ため池百選選定。奥越高原の美しい自然に囲まれたダム湖。レクリエーション拠点としても親しまれています。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["福井県", "岐阜県", "滋賀県", "石川県"]
+            },
+            {
+                id: 56,
+                name: "琵琶湖",
+                prefecture: "滋賀県",
+                location: "大津市、草津市、守山市他",
+                description: "ため池百選選定。日本最大の湖として知られ、関西地方の重要な水源。古くから文化や歴史の舞台でもあります。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["滋賀県", "京都府", "大阪府", "奈良県"]
+            },
+            {
+                id: 57,
+                name: "伊庭内湖",
+                prefecture: "滋賀県",
+                location: "東近江市",
+                description: "ため池百選選定。琵琶湖に隣接する内湖の一つ。伝統的な淡水真珠養殖が行われています。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["滋賀県", "京都府", "三重県", "奈良県"]
+            },
+            {
+                id: 58,
+                name: "余呉湖",
+                prefecture: "滋賀県",
+                location: "長浜市",
+                description: "ため池百選選定。琵琶湖の北部に位置する美しい湖。天女の羽衣伝説で知られる神秘的な湖です。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["滋賀県", "岐阜県", "福井県", "京都府"]
+            },
+            {
+                id: 59,
+                name: "深泥池",
+                prefecture: "京都府",
+                location: "京都市",
+                description: "ため池百選選定。京都市北部にある天然の池。貴重な動植物が生息する学術的に重要な池です。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["京都府", "滋賀県", "大阪府", "奈良県"]
+            },
+            {
+                id: 60,
+                name: "広沢池",
+                prefecture: "京都府",
+                location: "京都市",
+                description: "ため池百選選定。嵯峨野の代表的な風景の一つ。平安時代から続く歴史ある池で、観月の名所としても有名です。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["京都府", "滋賀県", "大阪府", "奈良県"]
+            },
+            {
+                id: 61,
+                name: "津風呂湖",
+                prefecture: "奈良県",
+                location: "吉野町",
+                description: "ため池百選選定。吉野川上流部の美しいダム湖。桜の名所吉野山の近くに位置し、四季折々の美しさを楽しめます。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["奈良県", "和歌山県", "三重県", "京都府"]
+            },
+            {
+                id: 62,
+                name: "蛇谷ヶ池",
+                prefecture: "奈良県",
+                location: "奈良市",
+                description: "ため池百選選定。奈良公園内にある歴史的な池。興福寺五重塔を望む美しい景観で知られています。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["奈良県", "京都府", "大阪府", "三重県"]
+            },
+            {
+                id: 63,
+                name: "猿沢池",
+                prefecture: "奈良県",
+                location: "奈良市",
+                description: "ため池百選選定。興福寺の五重塔を映す美しい池として有名。奈良の代表的な観光スポットの一つです。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["奈良県", "京都府", "大阪府", "和歌山県"]
+            },
+            {
+                id: 64,
+                name: "丹生川上神社の池",
+                prefecture: "奈良県",
+                location: "川上村",
+                description: "ため池百選選定。吉野川の源流域にある神聖な池。古代から雨乞いの神として崇められています。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["奈良県", "和歌山県", "三重県", "京都府"]
+            },
+            {
+                id: 65,
+                name: "平池",
+                prefecture: "和歌山県",
+                location: "岩出市",
+                description: "ため池百選選定。紀の川流域の農業を支える重要な池。古くから地域の農業発展に貢献してきました。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["和歌山県", "奈良県", "大阪府", "三重県"]
+            },
+            {
+                id: 66,
+                name: "紀の川大堰湖",
+                prefecture: "和歌山県",
+                location: "和歌山市",
+                description: "ため池百選選定。紀の川下流部の重要な水利施設。治水と利水の両面で地域に貢献しています。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["和歌山県", "大阪府", "奈良県", "三重県"]
+            },
+            {
+                id: 67,
+                name: "新宮ダム湖",
+                prefecture: "和歌山県",
+                location: "新宮市",
+                description: "ため池百選選定。熊野川水系の美しいダム湖。熊野古道の玄関口として知られる地域にあります。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["和歌山県", "奈良県", "三重県", "大阪府"]
+            },
+            {
+                id: 68,
+                name: "小田池",
+                prefecture: "鳥取県",
+                location: "米子市",
+                description: "ため池百選選定。弓ヶ浜半島の農業を支える重要な池。中海に近い立地で、独特の生態系を育んでいます。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["鳥取県", "島根県", "岡山県", "兵庫県"]
+            },
+            {
+                id: 69,
+                name: "東郷湖",
+                prefecture: "鳥取県",
+                location: "湯梨浜町",
+                description: "ため池百選選定。汽水湖として知られ、温泉地としても有名。シジミの産地としても知られています。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["鳥取県", "島根県", "兵庫県", "岡山県"]
+            },
+            {
+                id: 70,
+                name: "神西湖",
+                prefecture: "島根県",
+                location: "出雲市",
+                description: "ため池百選選定。出雲平野の代表的な湖沼。古代から続く歴史ある湖で、多様な水鳥の生息地です。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["島根県", "鳥取県", "広島県", "山口県"]
+            },
+            {
+                id: 71,
+                name: "宍道湖",
+                prefecture: "島根県",
+                location: "松江市、出雲市",
+                description: "ため池百選選定。日本で7番目に大きい湖。夕日の美しさで全国的に有名で、シジミの産地としても知られています。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["島根県", "鳥取県", "広島県", "岡山県"]
+            },
+            {
+                id: 72,
+                name: "中海",
+                prefecture: "島根県",
+                location: "松江市、安来市",
+                description: "ため池百選選定。日本で5番目に大きい湖。汽水湖として多様な生物相を持ち、ラムサール条約登録地でもあります。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["島根県", "鳥取県", "広島県", "岡山県"]
+            },
+            {
+                id: 73,
+                name: "児島湖",
+                prefecture: "岡山県",
+                location: "岡山市、倉敷市",
+                description: "ため池百選選定。日本最大級の淡水人造湖。干拓事業により誕生し、現在は重要な農業用水源となっています。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["岡山県", "広島県", "兵庫県", "香川県"]
+            },
+            {
+                id: 74,
+                name: "旭川ダム湖",
+                prefecture: "岡山県",
+                location: "岡山市",
+                description: "ため池百選選定。旭川水系の重要なダム湖。岡山市の水道水源としても利用されています。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["岡山県", "広島県", "鳥取県", "兵庫県"]
+            },
+            {
+                id: 75,
+                name: "湯田ダム湖",
+                prefecture: "広島県",
+                location: "三次市",
+                description: "ため池百選選定。中国山地の美しい自然に囲まれたダム湖。江の川水系の重要な水源です。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["広島県", "島根県", "岡山県", "山口県"]
+            },
+            {
+                id: 76,
+                name: "八田原ダム湖",
+                prefecture: "広島県",
+                location: "世羅町",
+                description: "ため池百選選定。芦田川水系の代表的なダム湖。周辺は自然豊かで、レクリエーション拠点としても活用されています。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["広島県", "岡山県", "島根県", "山口県"]
+            },
+            {
+                id: 77,
+                name: "弥栄湖",
+                prefecture: "広島県",
+                location: "廿日市市",
+                description: "ため池百選選定。小瀬川水系の美しいダム湖。中国自動車道沿いの景勝地として親しまれています。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["広島県", "山口県", "島根県", "岡山県"]
+            },
+            {
+                id: 78,
+                name: "菅野湖",
+                prefecture: "山口県",
+                location: "下松市",
+                description: "ため池百選選定。瀬戸内海に注ぐ末武川水系のダム湖。工業地帯の水源として重要な役割を果たしています。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["山口県", "広島県", "島根県", "福岡県"]
+            },
+            {
+                id: 79,
+                name: "中山湖",
+                prefecture: "山口県",
+                location: "周南市",
+                description: "ため池百選選定。錦川水系の美しいダム湖。中国山地の自然豊かな環境に位置しています。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["山口県", "広島県", "島根県", "岡山県"]
+            },
+            {
+                id: 80,
+                name: "今切湖",
+                prefecture: "徳島県",
+                location: "鳴門市",
+                description: "ため池百選選定。瀬戸内海に面した汽水湖。鳴門海峡に近く、潮の干満の影響を受ける独特の環境です。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["徳島県", "香川県", "兵庫県", "和歌山県"]
+            },
+            {
+                id: 81,
+                name: "旧吉野川河口堰湖",
+                prefecture: "徳島県",
+                location: "徳島市",
+                description: "ため池百選選定。吉野川下流部の重要な水利施設。徳島平野の農業を支える基盤施設です。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["徳島県", "香川県", "愛媛県", "高知県"]
+            },
+            {
+                id: 82,
+                name: "早明浦ダム湖",
+                prefecture: "高知県",
+                location: "大川村",
+                description: "ため池百選選定。四国最大のダム湖。四国の水がめとして重要な役割を果たしています。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["高知県", "愛媛県", "徳島県", "香川県"]
+            },
+            {
+                id: 83,
+                name: "中筋川ダム湖",
+                prefecture: "高知県",
+                location: "四万十市",
+                description: "ため池百選選定。四万十川水系の重要なダム湖。清流四万十川の水質保全にも貢献しています。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["高知県", "愛媛県", "徳島県", "宮崎県"]
+            },
+            {
+                id: 84,
+                name: "鹿野川ダム湖",
+                prefecture: "愛媛県",
+                location: "大洲市",
+                description: "ため池百選選定。肱川水系の美しいダム湖。周辺は自然豊かで、四季を通じて美しい景観を楽しめます。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["愛媛県", "高知県", "香川県", "広島県"]
+            },
+            {
+                id: 85,
+                name: "石手川ダム湖",
+                prefecture: "愛媛県",
+                location: "松山市",
+                description: "ため池百選選定。松山市の重要な水源。道後温泉にも近く、都市近郊の貴重な自然環境を保っています。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["愛媛県", "香川県", "高知県", "広島県"]
+            },
+            {
+                id: 86,
+                name: "遠賀川河口堰湖",
+                prefecture: "福岡県",
+                location: "遠賀町",
+                description: "ため池百選選定。筑豊地方を流れる遠賀川の河口部。工業用水や農業用水として重要な役割を果たしています。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["福岡県", "佐賀県", "長崎県", "大分県"]
+            },
+            {
+                id: 87,
+                name: "筑後川下流堰湖",
+                prefecture: "福岡県",
+                location: "久留米市",
+                description: "ため池百選選定。筑後川下流部の重要な水利施設。筑後平野の農業を支える基盤となっています。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["福岡県", "佐賀県", "大分県", "熊本県"]
+            },
+            {
+                id: 88,
+                name: "嘉瀬川ダム湖",
+                prefecture: "佐賀県",
+                location: "佐賀市",
+                description: "ため池百選選定。脊振山系の美しい自然に囲まれたダム湖。佐賀平野の重要な水源となっています。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["佐賀県", "福岡県", "長崎県", "熊本県"]
+            },
+            {
+                id: 89,
+                name: "本明川ダム湖",
+                prefecture: "長崎県",
+                location: "諫早市",
+                description: "ため池百選選定。諫早平野の農業と都市用水を支える重要なダム湖。有明海に注ぐ本明川水系にあります。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["長崎県", "佐賀県", "熊本県", "福岡県"]
+            },
+            {
+                id: 90,
+                name: "大村湾",
+                prefecture: "長崎県",
+                location: "大村市、諫早市",
+                description: "ため池百選選定。閉鎖性内湾として独特の生態系を持つ。琴の海とも呼ばれる美しい湾です。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["長崎県", "佐賀県", "熊本県", "福岡県"]
+            },
+            {
+                id: 91,
+                name: "白川ダム湖",
+                prefecture: "熊本県",
+                location: "南阿蘇村",
+                description: "ため池百選選定。阿蘇外輪山の美しい自然に囲まれたダム湖。阿蘇の雄大な景観を楽しめます。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["熊本県", "大分県", "宮崎県", "鹿児島県"]
+            },
+            {
+                id: 92,
+                name: "緑川ダム湖",
+                prefecture: "熊本県",
+                location: "山都町",
+                description: "ため池百選選定。九州山地の美しい自然環境にあるダム湖。清らかな水と豊かな森林に囲まれています。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["熊本県", "大分県", "宮崎県", "福岡県"]
+            },
+            {
+                id: 93,
+                name: "大分川ダム湖",
+                prefecture: "大分県",
+                location: "大分市",
+                description: "ため池百選選定。大分市の重要な水源。九州東部の山間地にある美しいダム湖です。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["大分県", "熊本県", "宮崎県", "福岡県"]
+            },
+            {
+                id: 94,
+                name: "津江ダム湖",
+                prefecture: "大分県",
+                location: "日田市",
+                description: "ため池百選選定。筑後川水系上流部の美しいダム湖。九州北部山間地の豊かな自然に囲まれています。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["大分県", "熊本県", "福岡県", "佐賀県"]
+            },
+            {
+                id: 95,
+                name: "一ツ瀬ダム湖",
+                prefecture: "宮崎県",
+                location: "西都市",
+                description: "ため池百選選定。一ツ瀬川水系の美しいダム湖。宮崎平野の農業と電力供給を支えています。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["宮崎県", "大分県", "熊本県", "鹿児島県"]
+            },
+            {
+                id: 96,
+                name: "日南ダム湖",
+                prefecture: "宮崎県",
+                location: "日南市",
+                description: "ため池百選選定。日南海岸近くの美しいダム湖。亜熱帯の植生に囲まれた南国らしい景観を持ちます。",
+                image: "https://images.unsplash.com/photo-1544966503-7e5a3f0d1d6f?w=400&h=250&fit=crop",
+                options: ["宮崎県", "鹿児島県", "大分県", "熊本県"]
+            },
+            {
+                id: 97,
+                name: "鶴田ダム湖",
+                prefecture: "鹿児島県",
+                location: "さつま町",
+                description: "ため池百選選定。川内川水系の重要なダム湖。九州最大級のロックフィルダムとして知られています。",
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop",
+                options: ["鹿児島県", "宮崎県", "熊本県", "大分県"]
+            },
+            {
+                id: 98,
+                name: "大隅湖",
+                prefecture: "鹿児島県",
+                location: "鹿屋市",
+                description: "ため池百選選定。大隅半島の代表的なダム湖。シラス台地の農業を支える重要な水源です。",
+                image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=250&fit=crop",
+                options: ["鹿児島県", "宮崎県", "熊本県", "大分県"]
+            },
+            {
+                id: 99,
+                name: "倉久ダム湖",
+                prefecture: "沖縄県",
+                location: "国頭村",
+                description: "ため池百選選定。沖縄本島北部の美しい自然に囲まれたダム湖。亜熱帯の豊かな森林に囲まれています。",
+                image: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=400&h=250&fit=crop",
+                options: ["沖縄県", "鹿児島県", "宮崎県", "熊本県"]
+            },
+            {
+                id: 100,
+                name: "漢那ダム湖",
+                prefecture: "沖縄県",
+                location: "宜野座村",
+                description: "ため池百選選定。沖縄本島中部の重要な水源。亜熱帯の美しい自然環境の中にあり、地域の生活を支えています。",
+                image: "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=250&fit=crop",
+                options: ["沖縄県", "鹿児島県", "宮崎県", "大分県"]
+            }
+        ];
+
+        // DOM要素取得
+        const loadingScreen = document.getElementById('loadingScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const completionScreen = document.getElementById('completionScreen');
+        const submitBtn = document.getElementById('submitBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const resultContainer = document.getElementById('resultContainer');
+
+        // 配列シャッフル関数
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        // ゲーム初期化
+        function initGame() {
+            shuffledQuestions = shuffleArray(questions).slice(0, totalQuestions);
+            currentQuestion = 0;
+            score = 0;
+            selectedAnswer = '';
+            answerRevealed = false;
+            
+            setTimeout(() => {
+                loadingScreen.classList.add('hidden');
+                gameScreen.classList.remove('hidden');
+                displayQuestion();
+            }, 1000);
+        }
+
+        // 問題表示
+        function displayQuestion() {
+            const q = shuffledQuestions[currentQuestion];
+            
+            document.getElementById('questionName').textContent = q.name;
+            document.getElementById('questionLocation').textContent = q.location;
+            document.getElementById('questionDescription').textContent = q.description;
+            document.getElementById('questionImage').src = q.image;
+            
+            document.getElementById('currentQuestionNum').textContent = currentQuestion + 1;
+            document.getElementById('currentScore').textContent = score;
+            
+            const progressPercent = ((currentQuestion + 1) / totalQuestions) * 100;
+            document.getElementById('progressFill').style.width = progressPercent + '%';
+            
+            // 選択肢表示
+            optionsContainer.innerHTML = '';
+            q.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'option';
+                button.textContent = option;
+                button.onclick = () => selectAnswer(option);
+                optionsContainer.appendChild(button);
+            });
+            
+            // UI初期化
+            resultContainer.classList.add('hidden');
+            submitBtn.classList.remove('hidden');
+            nextBtn.classList.add('hidden');
+            updateSubmitButton();
+        }
+
+        // 回答選択
+        function selectAnswer(answer) {
+            if (answerRevealed) return;
+            
+            selectedAnswer = answer;
+            
+            // 選択肢の見た目更新
+            const options = optionsContainer.querySelectorAll('.option');
+            options.forEach(option => {
+                option.classList.remove('selected');
+                if (option.textContent === answer) {
+                    option.classList.add('selected');
+                }
+            });
+            
+            updateSubmitButton();
+        }
+
+        // 送信ボタン更新
+        function updateSubmitButton() {
+            if (selectedAnswer && !answerRevealed) {
+                submitBtn.className = 'btn btn-primary';
+            } else {
+                submitBtn.className = 'btn btn-disabled';
+            }
+        }
+
+        // 回答送信
+        function submitAnswer() {
+            if (!selectedAnswer || answerRevealed) return;
+            
+            answerRevealed = true;
+            const q = shuffledQuestions[currentQuestion];
+            const isCorrect = selectedAnswer === q.prefecture;
+            
+            if (isCorrect) {
+                score++;
+                document.getElementById('currentScore').textContent = score;
+            }
+            
+            // 選択肢の色分け
+            const options = optionsContainer.querySelectorAll('.option');
+            options.forEach(option => {
+                option.classList.add('disabled');
+                if (option.textContent === q.prefecture) {
+                    option.classList.add('correct');
+                } else if (option.textContent === selectedAnswer) {
+                    option.classList.add('incorrect');
+                } else {
+                    option.classList.add('disabled');
+                }
+            });
+            
+            // 結果表示
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${isCorrect ? 'correct' : 'incorrect'}`;
+            resultDiv.innerHTML = `
+                <p class="result-title">${isCorrect ? '🎉 正解！' : '❌ 不正解'}</p>
+                <p class="result-text">正解は「${q.prefecture}」でした。</p>
+            `;
+            
+            resultContainer.innerHTML = '';
+            resultContainer.appendChild(resultDiv);
+            resultContainer.classList.remove('hidden');
+            
+            // ボタン切り替え
+            submitBtn.classList.add('hidden');
+            nextBtn.classList.remove('hidden');
+            nextBtn.textContent = currentQuestion < totalQuestions - 1 ? '次の問題 →' : '結果を見る →';
+        }
+
+        // 次の問題
+        function nextQuestion() {
+            if (currentQuestion < totalQuestions - 1) {
+                currentQuestion++;
+                selectedAnswer = '';
+                answerRevealed = false;
+                displayQuestion();
+            } else {
+                showCompletion();
+            }
+        }
+
+        // 完了画面
+        function showCompletion() {
+            gameScreen.classList.add('hidden');
+            completionScreen.classList.remove('hidden');
+            
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalTotal').textContent = totalQuestions;
+            
+            const percentage = (score / totalQuestions) * 100;
+            let message = '';
+            if (percentage >= 80) message = "素晴らしい！ため池博士ですね！";
+            else if (percentage >= 60) message = "よくできました！ため池百選についてよく知っていますね。";
+            else if (percentage >= 40) message = "もう少し！日本のため池を探検してみませんか？";
+            else message = "まだまだこれから！ため池百選の魅力を発見していきましょう。";
+            
+            document.getElementById('scoreMessage').textContent = message;
+        }
+
+        // リセット
+        function resetGame() {
+            completionScreen.classList.add('hidden');
+            loadingScreen.classList.remove('hidden');
+            initGame();
+        }
+
+        // イベントリスナー
+        submitBtn.addEventListener('click', submitAnswer);
+        nextBtn.addEventListener('click', nextQuestion);
+        resetBtn.addEventListener('click', resetGame);
+
+        // ゲーム開始
+        initGame();
+    </script>
+</body>
+</html>
