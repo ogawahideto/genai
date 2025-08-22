@@ -123,9 +123,20 @@
             border-color: #228B22;
         }
 
-        .station.special {
-            background: linear-gradient(45deg, #FFB6C1, #FFC0CB);
-            border-color: #DC143C;
+        .station.event-station::after {
+            content: '🎪';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            font-size: 1.2em;
+        }
+        
+        .station.market-station::before {
+            content: '💰';
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            font-size: 1.2em;
         }
 
         .station-number {
@@ -211,6 +222,11 @@
             transition: all 0.3s ease;
             font-weight: bold;
         }
+        
+        .btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
 
         .btn-primary {
             background: linear-gradient(45deg, #8B4513, #A0522D);
@@ -218,7 +234,7 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: linear-gradient(45deg, #654321, #8B4513);
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
@@ -230,38 +246,70 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
-        .btn-secondary:hover {
+        .btn-secondary:hover:not(:disabled) {
             background: linear-gradient(45deg, #B8860B, #DAA520);
             transform: translateY(-2px);
         }
 
-        .event-popup {
+        .modal {
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            display: none;
+        }
+
+        .modal-content {
             background: white;
             padding: 30px;
             border-radius: 20px;
             border: 4px solid #8B4513;
             box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
             z-index: 1000;
-            max-width: 400px;
+            max-width: 500px;
+            width: 90%;
             text-align: center;
-            display: none;
         }
 
-        .event-popup h3 {
+        .modal-content h3 {
             color: #8B0000;
             margin-bottom: 15px;
             font-size: 1.5em;
         }
 
-        .event-popup p {
+        .modal-content p {
             color: #333;
             margin-bottom: 20px;
             line-height: 1.5;
         }
+        
+        #modal-choices {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .shop-item, .inventory-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .item-info {
+            text-align: left;
+        }
+
 
         .progress-bar {
             background: #ddd;
@@ -332,10 +380,11 @@
 </head>
 <body>
     <!--
-    AI Model: Claude Sonnet 4
-    User Prompt: 別のディレクトリを作り、東海道53次に関するゲームを新たに作ってください
-    AI Approach: 東海道五十三次をテーマにしたすごろく形式のゲーム。歌川広重の浮世絵で有名な53の宿場町を江戸から京都まで旅する
-    Implementation Intent: 日本の歴史・文化を学びながら楽しめる教育的すごろくゲーム。実際の宿場町データと特別イベントで江戸時代の旅路を体験
+    AI Model: Gemini
+    User Prompt: tokaido-53-gameをもっと面白くしてください (A&C), 戻ってしまうイベントも加えてください, 宿場の特徴を活かした設定にしてください
+    AI Approach: 既存のすごろくゲームに、案A「アイテム屋と『使う』アイテムの導入」と案C「宿場ごとのユニークイベント」を実装。さらに、宿場の特徴に合わせた「後退イベント」を追加。
+    JavaScriptのデータ構造を大幅に変更し、イベントとアイテムの管理を強化。プレイヤーの選択肢と、予期せぬ後退のリスクを加えて戦略性を高める。
+    Implementation Intent: ゲームの単調さをなくし、リプレイ性を向上させる。お金の使い道、アイテム使用、イベント選択の重要性を高め、よりスリリングなゲーム体験を提供する。
     -->
 
     <div class="game-container">
@@ -382,8 +431,8 @@
 
         <div class="controls">
             <button class="btn btn-secondary" onclick="showStationInfo()">🗾 宿場情報</button>
+            <button class="btn btn-secondary" id="shop-btn" onclick="showShop()" style="display: none;">💰 アイテム屋</button>
             <button class="btn btn-secondary" onclick="showInventory()">🎒 持ち物</button>
-            <button class="btn btn-secondary" onclick="showProgress()">📊 進行状況</button>
             <button class="btn btn-primary" onclick="resetGame()">🔄 新しい旅</button>
         </div>
 
@@ -391,124 +440,191 @@
             <h3>🎯 ゲームルール</h3>
             <ul>
                 <li>🎲 サイコロを振って東海道を進みます</li>
-                <li>🏨 宿場町では休憩や買い物ができます</li>
+                <li>🏨 宿場町ではアイテムの売買ができます</li>
                 <li>💰 お金を管理しながら京都を目指します</li>
-                <li>🎪 特別な宿場ではイベントが発生します</li>
-                <li>⛩️ 全55地点（江戸・宿場53・京都）制覇で勝利！</li>
-                <li>📚 実際の歴史と地理を学べる教育ゲームです</li>
+                <li>🎪 特定の宿場ではユニークなイベントが発生します</li>
+                <li>⛩️ 全55地点制覇で勝利！</li>
             </ul>
         </div>
     </div>
 
-    <!-- イベントポップアップ -->
-    <div class="event-popup" id="event-popup">
-        <h3 id="event-title">イベント</h3>
-        <p id="event-description">説明</p>
-        <button class="btn btn-primary" onclick="closeEvent()">続ける</button>
+    <!-- 汎用モーダル -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h3 id="modal-title">タイトル</h3>
+            <p id="modal-description">説明</p>
+            <div id="modal-list"></div>
+            <div id="modal-choices"></div>
+        </div>
     </div>
 
     <script>
-        // 東海道五十三次データ（江戸から京都まで55地点）
         const TOKAIDO_STATIONS = [
-            { name: "江戸・日本橋", description: "旅の出発点", special: true },
-            { name: "品川宿", description: "江戸四宿の一つ", special: false },
-            { name: "川崎宿", description: "多摩川の渡し場", special: false },
-            { name: "神奈川宿", description: "横浜港に近い宿場", special: true },
-            { name: "保土ヶ谷宿", description: "坂道の多い宿場", special: false },
-            { name: "戸塚宿", description: "箱根路への分岐点", special: false },
-            { name: "藤沢宿", description: "遊行寺で有名", special: true },
-            { name: "平塚宿", description: "七夕まつりの街", special: false },
-            { name: "大磯宿", description: "海沿いの美しい宿場", special: false },
-            { name: "小田原宿", description: "小田原城の城下町", special: true },
-            { name: "箱根宿", description: "険しい山道の宿場", special: true },
-            { name: "三島宿", description: "伊豆国の玄関口", special: false },
-            { name: "沼津宿", description: "駿河湾に面した宿場", special: false },
-            { name: "原宿", description: "富士山がよく見える", special: false },
-            { name: "吉原宿", description: "富士山の絶景スポット", special: true },
-            { name: "蒲原宿", description: "雪景色で有名", special: false },
-            { name: "由比宿", description: "薩埵峠の難所", special: false },
-            { name: "興津宿", description: "清見寺で有名", special: false },
-            { name: "江尻宿", description: "清水港に近い", special: false },
-            { name: "府中宿", description: "駿府城の城下町", special: true },
-            { name: "鞠子宿", description: "とろろ汁で有名", special: false },
-            { name: "岡部宿", description: "宇津ノ谷峠越え", special: false },
-            { name: "藤枝宿", description: "田中城に近い", special: false },
-            { name: "島田宿", description: "大井川の川越し", special: true },
-            { name: "金谷宿", description: "牧ノ原台地の入口", special: false },
-            { name: "日坂宿", description: "小夜の中山越え", special: false },
-            { name: "掛川宿", description: "掛川城の城下町", special: true },
-            { name: "袋井宿", description: "東海道の真ん中", special: true },
-            { name: "見付宿", description: "天竜川に近い", special: false },
-            { name: "浜松宿", description: "浜松城の城下町", special: true },
-            { name: "舞坂宿", description: "浜名湖畔の宿場", special: false },
-            { name: "新居宿", description: "新居関所で有名", special: true },
-            { name: "白須賀宿", description: "潮見坂の絶景", special: false },
-            { name: "二川宿", description: "本陣が現存", special: false },
-            { name: "吉田宿", description: "吉田城の城下町", special: false },
-            { name: "御油宿", description: "松並木が美しい", special: false },
-            { name: "赤坂宿", description: "杉並木の宿場", special: false },
-            { name: "藤川宿", description: "むらさき麦で有名", special: false },
-            { name: "岡崎宿", description: "徳川家康生誕の地", special: true },
-            { name: "池鯉鮒宿", description: "馬市で賑わう", special: false },
-            { name: "鳴海宿", description: "有松絞りで有名", special: false },
-            { name: "宮宿", description: "熱田神宮の門前町", special: true },
-            { name: "桑名宿", description: "七里の渡し", special: true },
-            { name: "四日市宿", description: "港町として栄える", special: false },
-            { name: "石薬師宿", description: "薬師如来で有名", special: false },
-            { name: "庄野宿", description: "白雨の名所", special: false },
-            { name: "亀山宿", description: "亀山城の城下町", special: false },
-            { name: "関宿", description: "東海道の関所", special: true },
-            { name: "坂下宿", description: "鈴鹿峠の麓", special: false },
-            { name: "土山宿", description: "鈴鹿峠越えの宿場", special: true },
-            { name: "水口宿", description: "水口城の城下町", special: false },
-            { name: "石部宿", description: "田楽で有名", special: false },
-            { name: "草津宿", description: "中山道との合流点", special: true },
-            { name: "大津宿", description: "琵琶湖畔の宿場", special: true },
-            { name: "京都・三条大橋", description: "旅の終着点", special: true }
+            { name: "江戸・日本橋", description: "旅の出発点", market: true, event: 'start' },
+            { name: "品川宿", description: "江戸四宿の一つ" },
+            { name: "川崎宿", description: "多摩川の渡し場", event: 'kawasaki_ferry' },
+            { name: "神奈川宿", description: "横浜港に近い宿場", market: true },
+            { name: "保土ヶ谷宿", description: "坂道の多い宿場", event: 'hodogaya_slope' },
+            { name: "戸塚宿", description: "箱根路への分岐点" },
+            { name: "藤沢宿", description: "遊行寺で有名", market: true },
+            { name: "平塚宿", description: "七夕まつりの街" },
+            { name: "大磯宿", description: "海沿いの美しい宿場" },
+            { name: "小田原宿", description: "小田原城の城下町", market: true, event: 'castle' },
+            { name: "箱根宿", description: "天下の険、箱根八里", event: 'hakone' },
+            { name: "三島宿", description: "伊豆国の玄関口" },
+            { name: "沼津宿", description: "駿河湾に面した宿場" },
+            { name: "原宿", description: "富士山がよく見える", event: 'fuji' },
+            { name: "吉原宿", description: "富士山の絶景スポット", market: true },
+            { name: "蒲原宿", description: "雪景色で有名" },
+            { name: "由比宿", description: "薩埵峠の難所" },
+            { name: "興津宿", description: "清見寺で有名" },
+            { name: "江尻宿", description: "清水港に近い" },
+            { name: "府中宿", description: "駿府城の城下町", market: true, event: 'castle' },
+            { name: "鞠子宿", description: "とろろ汁で有名", event: 'food' },
+            { name: "岡部宿", description: "宇津ノ谷峠越え" },
+            { name: "藤枝宿", description: "田中城に近い" },
+            { name: "島田宿", description: "大井川の川越し", event: 'ooi_river' },
+            { name: "金谷宿", description: "牧ノ原台地の入口" },
+            { name: "日坂宿", description: "小夜の中山越え", event: 'nissaka_pass' },
+            { name: "掛川宿", description: "掛川城の城下町", market: true },
+            { name: "袋井宿", description: "東海道のど真ん中" },
+            { name: "見付宿", description: "天竜川に近い", event: 'river' },
+            { name: "浜松宿", description: "浜松城の城下町", market: true, event: 'castle' },
+            { name: "舞坂宿", description: "浜名湖畔の宿場" },
+            { name: "新居宿", description: "新居関所で有名", event: 'sekisho' },
+            { name: "白須賀宿", description: "潮見坂の絶景" },
+            { name: "二川宿", description: "本陣が現存" },
+            { name: "吉田宿", description: "吉田城の城下町" },
+            { name: "御油宿", description: "松並木が美しい" },
+            { name: "赤坂宿", description: "杉並木の宿場" },
+            { name: "藤川宿", description: "むらさき麦で有名" },
+            { name: "岡崎宿", description: "徳川家康生誕の地", market: true, event: 'ieyasu' },
+            { name: "池鯉鮒宿", description: "馬市で賑わう" },
+            { name: "鳴海宿", description: "有松絞りで有名", event: 'narumi_shibori' },
+            { name: "宮宿", description: "熱田神宮の門前町", event: 'miya' },
+            { name: "桑名宿", description: "七里の渡し", market: true },
+            { name: "四日市宿", description: "港町として栄える" },
+            { name: "石薬師宿", description: "薬師如来で有名" },
+            { name: "庄野宿", description: "白雨の名所" },
+            { name: "亀山宿", description: "亀山城の城下町" },
+            { name: "関宿", description: "東海道の関所", event: 'sekisho' },
+            { name: "坂下宿", description: "鈴鹿峠の麓" },
+            { name: "土山宿", description: "鈴鹿峠越えの宿場", event: 'suzuka' },
+            { name: "水口宿", description: "水口城の城下町" },
+            { name: "石部宿", description: "田楽で有名", event: 'food' },
+            { name: "草津宿", description: "中山道との合流点", market: true, event: 'kusatsu_junction' },
+            { name: "大津宿", description: "琵琶湖畔の宿場" },
+            { name: "京都・三条大橋", description: "旅の終着点", event: 'goal' }
         ];
 
-        // ゲーム状態
-        let gameState = {
-            currentPosition: 0,
-            money: 1000,
-            days: 0,
-            inventory: ['道中手形', '草鞋'],
-            visitedStations: [0],
-            isRolling: false
+        const ITEMS = {
+            'dango': { name: '名物の団子', cost: 50, description: '次のサイコロの目を+1する。' },
+            'waraji': { name: '丈夫な草鞋', cost: 100, description: '3ターンの間、移動コスト(両)が半額になる。' },
+            'omamori': { name: 'お守り', cost: 200, description: '悪いイベントの結果を1回だけ回避できる。' },
+            'map': { name: '古地図', cost: 300, description: '次の移動で1～3の好きな数だけ進める。' },
+            'shibori': { name: '有松絞', cost: 0, description: '鳴海宿の美しい特産品。旅の評価に影響するかもしれない。' }
         };
-
-        // イベントデータ
+        
         const EVENTS = {
-            positive: [
-                { title: "商人との出会い", description: "親切な商人から100両もらいました！", effect: { money: 100 } },
-                { title: "良い天気", description: "快晴で足取りも軽やか！1日得しました", effect: { days: -1 } },
-                { title: "名物料理", description: "美味しい名物料理で元気回復！", effect: { money: -50, item: "名物料理" } },
-                { title: "旅仲間", description: "頼もしい旅仲間ができました！", effect: { item: "旅仲間" } }
-            ],
-            negative: [
-                { title: "盗賊", description: "盗賊に遭い、200両取られました...", effect: { money: -200 } },
-                { title: "悪天候", description: "大雨で足止め、2日遅れました", effect: { days: 2 } },
-                { title: "病気", description: "風邪をひいて薬代150両", effect: { money: -150 } },
-                { title: "道に迷う", description: "道に迷って1日余計にかかりました", effect: { days: 1 } }
-            ]
+            'hodogaya_slope': {
+                title: "権太坂の悲劇",
+                description: "権太坂の急な下り坂で足を滑らせ、荷物を落としてしまった！ 荷物を拾うため、1つ手前の神奈川宿まで戻る羽目になった。",
+                choices: [
+                    { text: "仕方ない、戻ろう (-1マス)", effect: { steps: -1 } }
+                ]
+            },
+            'nissaka_pass': {
+                title: "小夜の中山の迷い道",
+                description: "小夜の中山で不気味な雰囲気を感じ、道を間違えてしまった！ 気づけば2つ手前の金谷宿まで戻ってきてしまった。",
+                choices: [
+                    { text: "道を間違えたか… (-2マス, +1日)", effect: { steps: -2, days: 1 } }
+                ]
+            },
+            'kawasaki_ferry': {
+                title: "多摩川の渡し",
+                description: "多摩川を渡る渡し船だ。船頭が料金(50両)を提示している。",
+                choices: [
+                    { text: "正規料金を払う (-50両)", effect: { money: -50 }, cost: 50 },
+                    { text: "値切り交渉する", type: 'haggle', success: { text: "交渉成功！(-30両)", effect: { money: -30 } }, failure: { text: "交渉失敗…(+1日)", effect: { days: 1 } }, cost: 0 }
+                ]
+            },
+            'narumi_shibori': {
+                title: "有松絞りの誘惑",
+                description: "美しい有松絞りの店が目に入った。見事な布だが、かなり高価だ。",
+                choices: [
+                    { text: "記念に購入する (-250両)", effect: { item: 'shibori' }, cost: 250 },
+                    { text: "高すぎるので諦める", effect: {} }
+                ]
+            },
+            'kusatsu_junction': {
+                title: "中山道との合流点",
+                description: "中山道から来たという旅人と出会った。何か情報を交換しないか、と持ちかけられた。",
+                choices: [
+                    { text: "情報交換する", type: 'gamble', success: { text: "近道発見！(-1日)", effect: { days: -1 } }, failure: { text: "ほら話だった…(-50両)", effect: { money: -50 } } },
+                    { text: "関わらずに先を急ぐ", effect: {} }
+                ]
+            },
+            'hakone': {
+                title: "天下の険、箱根八里",
+                description: "険しい山道が目の前に！どうやって越えますか？",
+                choices: [
+                    { text: "自力で越える (+2日)", effect: { days: 2 } },
+                    { text: "駕籠を雇う (-150両)", effect: { money: -150 }, cost: 150 },
+                    { text: "丈夫な草鞋を使う", effect: { days: 1 }, requiredItem: 'waraji' }
+                ]
+            },
+            'ooi_river': {
+                title: "大井川の川留め",
+                description: "川が増水して渡れません！どうしますか？",
+                choices: [
+                    { text: "数日待つ (+3日)", effect: { days: 3 } },
+                    { text: "川越人足を雇う (-200両)", effect: { money: -200 }, cost: 200 },
+                    { text: "古地図の裏道を行く", effect: { days: 1, money: -50 }, requiredItem: 'map', cost: 50 }
+                ]
+            },
+            'ieyasu': {
+                title: "徳川家康生誕の地",
+                description: "岡崎城下で将軍家ゆかりの品を発見！幸運が舞い込んだ！",
+                choices: [
+                    { text: "ありがたく頂戴する (+200両)", effect: { money: 200 } }
+                ]
+            },
+            'food': {
+                title: "名物料理",
+                description: "美味しそうな名物料理があります。食べていきますか？",
+                choices: [
+                    { text: "食べる (-50両, +1日)", effect: { money: -50, days: 1 }, cost: 50 },
+                    { text: "先を急ぐ", effect: {} }
+                ]
+            },
+             'sekisho': {
+                title: "関所での検問",
+                description: "関所で役人による厳しい検問が行われています。",
+                choices: [
+                    { text: "素直に通る (-20両, +1日)", effect: { money: -20, days: 1 }, cost: 20 },
+                    { text: "袖の下を使う (-100両)", effect: { money: -100 }, cost: 100 }
+                ]
+            }
         };
 
-        // ゲーム初期化
+        let gameState;
+
         function initGame() {
             gameState = {
                 currentPosition: 0,
                 money: 1000,
                 days: 0,
-                inventory: ['道中手形', '草鞋'],
+                inventory: [],
                 visitedStations: [0],
-                isRolling: false
+                isGameBlocked: false,
+                activeEffects: {} // { 'waraji': 3, 'dice_bonus': 1 }
             };
             
             renderStations();
             updateGameInfo();
+            updateControls();
         }
 
-        // 宿場町表示
         function renderStations() {
             const grid = document.getElementById('stations-grid');
             grid.innerHTML = '';
@@ -524,9 +640,8 @@
                     stationDiv.classList.add('visited');
                 }
                 
-                if (station.special) {
-                    stationDiv.classList.add('special');
-                }
+                if (station.event) stationDiv.classList.add('event-station');
+                if (station.market) stationDiv.classList.add('market-station');
                 
                 stationDiv.innerHTML += `
                     <div class="station-number">${index + 1}</div>
@@ -538,19 +653,15 @@
             });
         }
 
-        // サイコロを振る
         function rollDice() {
-            if (gameState.isRolling) return;
+            if (gameState.isGameBlocked) return;
             
-            gameState.isRolling = true;
+            gameState.isGameBlocked = true;
             const dice = document.getElementById('dice');
-            const rollBtn = document.getElementById('roll-btn');
             
             dice.classList.add('rolling');
-            rollBtn.disabled = true;
-            rollBtn.textContent = '振っています...';
+            updateControls();
             
-            // サイコロアニメーション
             let animationCount = 0;
             const animationInterval = setInterval(() => {
                 dice.textContent = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][Math.floor(Math.random() * 6)];
@@ -559,84 +670,285 @@
                 if (animationCount > 10) {
                     clearInterval(animationInterval);
                     
-                    const result = Math.floor(Math.random() * 6) + 1;
-                    dice.textContent = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][result - 1];
+                    let result = Math.floor(Math.random() * 6) + 1;
+                    
+                    if (gameState.activeEffects['dice_bonus']) {
+                        result += gameState.activeEffects['dice_bonus'];
+                        delete gameState.activeEffects['dice_bonus'];
+                        showModal("アイテム効果！", `名物の団子のおかげでサイコロの目が+1された！`);
+                    }
+
+                    dice.textContent = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][Math.min(5, result - 1)];
                     
                     setTimeout(() => {
-                        movePlayer(result);
                         dice.classList.remove('rolling');
-                        rollBtn.disabled = false;
-                        rollBtn.textContent = '🎲 サイコロを振る';
-                        gameState.isRolling = false;
+                        movePlayer(result);
                     }, 500);
                 }
             }, 100);
         }
 
-        // プレイヤー移動
         function movePlayer(steps) {
-            const newPosition = Math.min(gameState.currentPosition + steps, TOKAIDO_STATIONS.length - 1);
+            gameState.isGameBlocked = true;
+            updateControls();
+
+            let newPosition = gameState.currentPosition + steps;
+            newPosition = Math.max(0, newPosition);
+            newPosition = Math.min(newPosition, TOKAIDO_STATIONS.length - 1);
+
+            if (steps > 0) {
+                let moveCost = steps * 10;
+                if (gameState.activeEffects['cost_reduction']) {
+                    moveCost /= 2;
+                }
+                gameState.money -= moveCost;
+                gameState.days += Math.ceil(steps / 2);
+            }
             
             gameState.currentPosition = newPosition;
-            gameState.days += Math.ceil(steps / 2);
-            gameState.visitedStations.push(newPosition);
-            
-            // 移動コスト
-            gameState.money -= steps * 10;
+            if (!gameState.visitedStations.includes(newPosition)) {
+                gameState.visitedStations.push(newPosition);
+            }
+
+            Object.keys(gameState.activeEffects).forEach(effect => {
+                if (effect === 'cost_reduction') {
+                    gameState.activeEffects[effect]--;
+                    if (gameState.activeEffects[effect] <= 0) {
+                        delete gameState.activeEffects[effect];
+                    }
+                }
+            });
             
             renderStations();
             updateGameInfo();
             
-            // 特別な宿場でのイベント
             const currentStation = TOKAIDO_STATIONS[newPosition];
-            if (currentStation.special && Math.random() < 0.7) {
-                setTimeout(() => {
-                    triggerEvent();
-                }, 1000);
+            if (currentStation.event && EVENTS[currentStation.event] && steps > 0) {
+                setTimeout(() => triggerEvent(currentStation.event), 500);
+            } else {
+                 gameState.isGameBlocked = false;
+                 updateControls();
             }
             
-            // 勝利判定
             if (newPosition === TOKAIDO_STATIONS.length - 1) {
-                setTimeout(() => {
-                    showVictory();
-                }, 1500);
+                setTimeout(showVictory, 1500);
             }
         }
 
-        // イベント発生
-        function triggerEvent() {
-            const isPositive = Math.random() < 0.6;
-            const events = isPositive ? EVENTS.positive : EVENTS.negative;
-            const event = events[Math.floor(Math.random() * events.length)];
+        function triggerEvent(eventType) {
+            const event = EVENTS[eventType];
+            if (!event) {
+                gameState.isGameBlocked = false;
+                updateControls();
+                return;
+            }
+            showModal(event.title, event.description, event.choices);
+        }
+        
+        function resolveChoice(choice) {
+            // Handle special choice types first
+            if (choice.type === 'haggle' || choice.type === 'gamble') {
+                const isSuccess = Math.random() < 0.5; // 50% chance
+                const outcome = isSuccess ? choice.success : choice.failure;
+                showModal(isSuccess ? "成功！" : "失敗…", outcome.text);
+                choice = { effect: outcome.effect }; // Overwrite choice with the outcome
+            }
+
+            const isBadEvent = (choice.effect.money && choice.effect.money < 0) || (choice.effect.days && choice.effect.days > 0) || (choice.effect.steps && choice.effect.steps < 0);
+            if (isBadEvent) {
+                const omamoriIndex = gameState.inventory.findIndex(item => item === 'omamori');
+                if (omamoriIndex !== -1) {
+                    if (confirm("お守りを使いますか？悪い結果を打ち消せます。")) {
+                        gameState.inventory.splice(omamoriIndex, 1);
+                        showModal("お守りの効果", "お守りが悪い出来事からあなたを守った！");
+                        return;
+                    }
+                }
+            }
+
+            if (choice.effect.money) gameState.money += choice.effect.money;
+            if (choice.effect.days) gameState.days += choice.effect.days;
+            if (choice.effect.item) gameState.inventory.push(choice.effect.item);
             
-            // イベント効果適用
-            if (event.effect.money) {
-                gameState.money += event.effect.money;
+            if (choice.requiredItem) {
+                const itemIndex = gameState.inventory.findIndex(item => item === choice.requiredItem);
+                if (itemIndex > -1) {
+                    gameState.inventory.splice(itemIndex, 1);
+                }
             }
-            if (event.effect.days) {
-                gameState.days += event.effect.days;
-            }
-            if (event.effect.item) {
-                gameState.inventory.push(event.effect.item);
-            }
-            
-            showEventPopup(event.title, event.description);
+
             updateGameInfo();
+
+            if (choice.effect.steps) {
+                const stepsToMove = choice.effect.steps;
+                // Do not close modal here, let the following modal call handle it
+                setTimeout(() => movePlayer(stepsToMove), 500);
+            } else {
+                // For non-movement effects, we might have already shown a result modal
+                if (!choice.type) {
+                    closeModal();
+                }
+            }
         }
 
-        // イベントポップアップ表示
-        function showEventPopup(title, description) {
-            document.getElementById('event-title').textContent = title;
-            document.getElementById('event-description').textContent = description;
-            document.getElementById('event-popup').style.display = 'block';
+        function showModal(title, description, choices = []) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-description').innerHTML = description;
+            
+            const choicesDiv = document.getElementById('modal-choices');
+            const listDiv = document.getElementById('modal-list');
+            choicesDiv.innerHTML = '';
+            listDiv.innerHTML = '';
+
+            if (choices.length > 0) {
+                choices.forEach(choice => {
+                    const button = document.createElement('button');
+                    button.className = 'btn btn-primary';
+                    button.textContent = choice.text;
+                    
+                    const hasItem = choice.requiredItem ? gameState.inventory.includes(choice.requiredItem) : true;
+                    const hasMoney = choice.cost ? gameState.money >= choice.cost : true;
+
+                    if (hasItem && hasMoney) {
+                        button.onclick = () => resolveChoice(choice);
+                    } else {
+                        button.disabled = true;
+                        let reason = [];
+                        if (!hasMoney) reason.push("お金が足りない");
+                        if (!hasItem) reason.push(`${ITEMS[choice.requiredItem].name}がない`);
+                        button.textContent += ` (${reason.join(', ')})`;
+                    }
+                    choicesDiv.appendChild(button);
+                });
+            } else {
+                 const button = document.createElement('button');
+                 button.className = 'btn btn-primary';
+                 button.textContent = '続ける';
+                 button.onclick = closeModal;
+                 choicesDiv.appendChild(button);
+            }
+
+            document.getElementById('modal').style.display = 'flex';
+            gameState.isGameBlocked = true;
+            updateControls();
         }
 
-        // イベントポップアップ閉じる
-        function closeEvent() {
-            document.getElementById('event-popup').style.display = 'none';
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+            gameState.isGameBlocked = false;
+            updateControls();
+        }
+        
+        function showShop() {
+            const station = TOKAIDO_STATIONS[gameState.currentPosition];
+            if (!station.market) return;
+
+            document.getElementById('modal-title').textContent = '💰 アイテム屋';
+            document.getElementById('modal-description').textContent = 'いらっしゃい！旅の助けになるものがあるよ。';
+            
+            const listDiv = document.getElementById('modal-list');
+            listDiv.innerHTML = '';
+
+            Object.keys(ITEMS).forEach(id => {
+                const item = ITEMS[id];
+                if (id === 'shibori') return; // Don't sell special items
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'shop-item';
+                itemDiv.innerHTML = `
+                    <div class="item-info">
+                        <strong>${item.name}</strong> (${item.cost}両)<br>
+                        <small>${item.description}</small>
+                    </div>
+                    <button class="btn btn-secondary" onclick="buyItem('${id}')" ${gameState.money < item.cost ? 'disabled' : ''}>買う</button>
+                `;
+                listDiv.appendChild(itemDiv);
+            });
+
+            const choicesDiv = document.getElementById('modal-choices');
+            choicesDiv.innerHTML = `<button class="btn btn-primary" onclick="closeModal()">店を出る</button>`;
+
+            document.getElementById('modal').style.display = 'flex';
+            gameState.isGameBlocked = true;
+            updateControls();
+        }
+        
+        function buyItem(itemId) {
+            const item = ITEMS[itemId];
+            if (gameState.money >= item.cost) {
+                gameState.money -= item.cost;
+                gameState.inventory.push(itemId);
+                updateGameInfo();
+                showShop(); // Refresh shop view
+            }
         }
 
-        // ゲーム情報更新
+        function showInventory() {
+            document.getElementById('modal-title').textContent = '🎒 持ち物';
+            document.getElementById('modal-description').textContent = '持っているアイテムを確認・使用します。';
+            
+            const listDiv = document.getElementById('modal-list');
+            listDiv.innerHTML = '';
+
+            if (gameState.inventory.length === 0) {
+                listDiv.innerHTML = '<p>持ち物はありません。</p>';
+            } else {
+                gameState.inventory.forEach((itemId, index) => {
+                    const item = ITEMS[itemId];
+                    if (!item) return;
+                    
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'inventory-item';
+                    let useButton = '<button class="btn btn-secondary" onclick="useItem(\'${itemId}\', ${index})">使う</button>';
+                    if (itemId === 'shibori' || itemId === 'omamori') {
+                        useButton = ''; // Cannot be used directly
+                    }
+
+                    itemDiv.innerHTML = `
+                        <div class="item-info">
+                            <strong>${item.name}</strong><br>
+                            <small>${item.description}</small>
+                        </div>
+                        ${useButton}
+                    `;
+                    listDiv.appendChild(itemDiv);
+                });
+            }
+
+            const choicesDiv = document.getElementById('modal-choices');
+            choicesDiv.innerHTML = `<button class="btn btn-primary" onclick="closeModal()">閉じる</button>`;
+
+            document.getElementById('modal').style.display = 'flex';
+            gameState.isGameBlocked = true;
+            updateControls();
+        }
+        
+        function useItem(itemId, index) {
+            const item = ITEMS[itemId];
+            
+            switch(itemId) {
+                case 'dango':
+                    gameState.activeEffects['dice_bonus'] = (gameState.activeEffects['dice_bonus'] || 0) + 1;
+                    break;
+                case 'waraji':
+                    gameState.activeEffects['cost_reduction'] = (gameState.activeEffects['cost_reduction'] || 0) + 3;
+                    break;
+                case 'map':
+                     const move = prompt("1～3の好きな数を入力してください", "1");
+                     const steps = parseInt(move, 10);
+                     if (!isNaN(steps) && steps >= 1 && steps <= 3) {
+                         closeModal();
+                         setTimeout(() => movePlayer(steps), 300);
+                     } else {
+                         alert("無効な入力です");
+                         return;
+                     }
+                    break;
+            }
+            
+            gameState.inventory.splice(index, 1);
+            showInventory();
+        }
+
         function updateGameInfo() {
             const currentStation = TOKAIDO_STATIONS[gameState.currentPosition];
             document.getElementById('current-station').textContent = currentStation.name;
@@ -644,72 +956,73 @@
             document.getElementById('money').textContent = `${gameState.money}両`;
             document.getElementById('days').textContent = `${gameState.days}日`;
             
-            // 進行度バー更新
             const progress = (gameState.currentPosition / (TOKAIDO_STATIONS.length - 1)) * 100;
             document.getElementById('progress').style.width = `${progress}%`;
         }
+        
+        function updateControls() {
+            const rollBtn = document.getElementById('roll-btn');
+            const shopBtn = document.getElementById('shop-btn');
+            
+            rollBtn.disabled = gameState.isGameBlocked;
+            rollBtn.textContent = gameState.isGameBlocked ? 'イベント中...' : '🎲 サイコロを振る';
 
-        // 宿場詳細表示
-        function showStationDetail(index) {
-            const station = TOKAIDO_STATIONS[index];
-            alert(`${station.name}\n\n${station.description}\n${station.special ? '\n🎪 特別な宿場です' : ''}`);
+            const station = TOKAIDO_STATIONS[gameState.currentPosition];
+            shopBtn.style.display = station.market && !gameState.isGameBlocked ? 'inline-block' : 'none';
         }
 
-        // 宿場情報表示
         function showStationInfo() {
+            if(gameState.isGameBlocked) return;
             const currentStation = TOKAIDO_STATIONS[gameState.currentPosition];
-            let info = `📍 現在地: ${currentStation.name}\n\n`;
-            info += `📝 説明: ${currentStation.description}\n\n`;
-            info += `🏨 宿場タイプ: ${currentStation.special ? '特別な宿場' : '一般の宿場'}\n\n`;
+            let info = `📍 現在地: ${currentStation.name}
+
+`;
+            info += `📝 説明: ${currentStation.description}
+
+`;
+            let type = [];
+            if(currentStation.market) type.push('アイテム屋あり');
+            if(currentStation.event) type.push('イベントあり');
+            if(type.length === 0) type.push('普通の宿場');
+            info += `🏨 宿場タイプ: ${type.join(', ')}
+
+`;
             info += `📊 進行度: ${gameState.currentPosition + 1}/${TOKAIDO_STATIONS.length} (${Math.round((gameState.currentPosition / (TOKAIDO_STATIONS.length - 1)) * 100)}%)`;
             alert(info);
         }
 
-        // 持ち物表示
-        function showInventory() {
-            let inventory = '🎒 持ち物:\n\n';
-            gameState.inventory.forEach(item => {
-                inventory += `• ${item}\n`;
-            });
-            inventory += `\n💰 所持金: ${gameState.money}両`;
-            alert(inventory);
-        }
-
-        // 進行状況表示
-        function showProgress() {
-            let progress = '📊 旅の記録:\n\n';
-            progress += `🚶 現在地: ${TOKAIDO_STATIONS[gameState.currentPosition].name}\n`;
-            progress += `📍 訪問済み宿場数: ${gameState.visitedStations.length}/${TOKAIDO_STATIONS.length}\n`;
-            progress += `📅 旅行日数: ${gameState.days}日\n`;
-            progress += `💰 所持金: ${gameState.money}両\n`;
-            progress += `🎒 持ち物: ${gameState.inventory.length}個\n\n`;
-            progress += `🏁 残り距離: ${TOKAIDO_STATIONS.length - 1 - gameState.currentPosition}宿場`;
-            alert(progress);
-        }
-
-        // 勝利表示
         function showVictory() {
-            let message = '🎉 東海道五十三次制覇おめでとうございます！ 🎉\n\n';
-            message += `📅 旅行期間: ${gameState.days}日\n`;
-            message += `💰 残り所持金: ${gameState.money}両\n`;
-            message += `🎒 収集アイテム: ${gameState.inventory.length}個\n\n`;
+            let message = '🎉 東海道五十三次制覇おめでとうございます！ 🎉
+
+';
+            message += `📅 旅行期間: ${gameState.days}日
+`;
+            message += `💰 残り所持金: ${gameState.money}両
+`;
             
+            let score = gameState.money - (gameState.days * 10);
+            if (gameState.inventory.includes('shibori')) {
+                message += "旅の記念に買った有松絞りは、素晴らしい思い出となった。
+";
+                score += 300; // Bonus for the special item
+            }
+
             let rank = '';
-            if (gameState.days <= 30 && gameState.money >= 500) {
+            if (score >= 1000) {
                 rank = '🏆 旅の達人';
-            } else if (gameState.days <= 45 && gameState.money >= 200) {
+            } else if (score >= 500) {
                 rank = '🥉 熟練旅人';
-            } else if (gameState.days <= 60) {
+            } else if (score >= 100) {
                 rank = '🥈 普通の旅人';
             } else {
                 rank = '🥇 のんびり旅人';
             }
             
-            message += `評価: ${rank}`;
-            alert(message);
+            message += `
+総合評価: ${rank}`;
+            showModal("旅の終わり", message);
         }
 
-        // ゲームリセット
         function resetGame() {
             if (confirm('新しい旅を始めますか？')) {
                 initGame();
