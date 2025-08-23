@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>チェス - Chess by Quen3b</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .game-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .game-title {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .current-player {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .game-status {
+            font-size: 1.1em;
+            color: #666;
+        }
+
+        .chess-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 480px;
+            height: 480px;
+            margin: 0 auto;
+            border: 3px solid #8B4513;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .square {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .square.light {
+            background-color: #f0d9b5;
+        }
+
+        .square.dark {
+            background-color: #b58863;
+        }
+
+        .square:hover {
+            box-shadow: inset 0 0 0 3px #ffeb3b;
+        }
+
+        .square.selected {
+            box-shadow: inset 0 0 0 4px #4caf50;
+            background-color: #81c784 !important;
+        }
+
+        .square.possible-move {
+            box-shadow: inset 0 0 0 3px #2196f3;
+        }
+
+        .square.possible-move::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #2196f3;
+            border-radius: 50%;
+            opacity: 0.7;
+        }
+
+        .square.capture-move {
+            box-shadow: inset 0 0 0 4px #f44336;
+        }
+
+        .square.king-in-check {
+            box-shadow: inset 0 0 0 5px #ff5722;
+            background-color: #ffcdd2 !important;
+            animation: checkPulse 1s infinite;
+        }
+
+        @keyframes checkPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .piece {
+            user-select: none;
+            transition: transform 0.1s ease;
+        }
+
+        .piece:hover {
+            transform: scale(1.1);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #4caf50, #45a049);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #2196f3, #1976d2);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .move-history {
+            margin-top: 20px;
+            max-height: 150px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .move-history h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .move-list {
+            font-family: monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+            color: #666;
+        }
+
+        @media (max-width: 600px) {
+            .chess-board {
+                width: 320px;
+                height: 320px;
+            }
+            
+            .square {
+                width: 40px;
+                height: 40px;
+                font-size: 1.8em;
+            }
+            
+            .game-title {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1 class="game-title">♔ チェス ♛</h1>
+        </div>
+        
+        <div class="game-info">
+            <div class="current-player">
+                現在のプレイヤー: <span id="current-player">白</span>
+            </div>
+            <div class="game-status" id="game-status">
+                ゲーム進行中
+            </div>
+        </div>
+
+        <div class="chess-board" id="chess-board">
+            <!-- チェス盤のマスは JavaScript で生成 -->
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="newGame()">新しいゲーム</button>
+            <button class="btn btn-secondary" onclick="undoMove()">手を戻す</button>
+        </div>
+
+        <div class="move-history">
+            <h3>手の履歴</h3>
+            <div class="move-list" id="move-history"></div>
+        </div>
+    </div>
+
+    <script>
+        // チェスの駒の Unicode 文字
+        const pieces = {
+            white: {
+                king: '♔',
+                queen: '♕',
+                rook: '♖',
+                bishop: '♗',
+                knight: '♘',
+                pawn: '♙'
+            },
+            black: {
+                king: '♚',
+                queen: '♛',
+                rook: '♜',
+                bishop: '♝',
+                knight: '♞',
+                pawn: '♟'
+            }
+        };
+
+        // ゲーム状態
+        let gameState = {
+            board: [],
+            currentPlayer: 'white',
+            selectedSquare: null,
+            gameOver: false,
+            moveHistory: [],
+            kings: { white: null, black: null }
+        };
+
+        // 初期盤面の設定
+        function initializeBoard() {
+            const initialBoard = [
+                ['♜', '♞', '♝', '♛', '♚', '♝', '♞', '♜'],
+                ['♟', '♟', '♟', '♟', '♟', '♟', '♟', '♟'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'],
+                ['♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖']
+            ];
+
+            gameState.board = initialBoard.map(row => [...row]);
+            gameState.kings = { white: [7, 4], black: [0, 4] };
+        }
+
+        // 盤面の描画
+        function renderBoard() {
+            const boardElement = document.getElementById('chess-board');
+            boardElement.innerHTML = '';
+
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(row + col) % 2 === 0 ? 'light' : 'dark'}`;
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    
+                    const piece = gameState.board[row][col];
+                    if (piece) {
+                        square.innerHTML = `<span class="piece">${piece}</span>`;
+                    }
+
+                    square.addEventListener('click', () => handleSquareClick(row, col));
+                    boardElement.appendChild(square);
+                }
+            }
+        }
+
+        // 駒の色を判定
+        function getPieceColor(piece) {
+            if (!piece) return null;
+            const whitePieces = Object.values(pieces.white);
+            return whitePieces.includes(piece) ? 'white' : 'black';
+        }
+
+        // 駒の種類を判定
+        function getPieceType(piece) {
+            if (!piece) return null;
+            
+            for (const color of ['white', 'black']) {
+                for (const [type, symbol] of Object.entries(pieces[color])) {
+                    if (symbol === piece) return type;
+                }
+            }
+            return null;
+        }
+
+        // 有効な手を計算
+        function getValidMoves(row, col) {
+            const piece = gameState.board[row][col];
+            if (!piece) return [];
+
+            const pieceColor = getPieceColor(piece);
+            const pieceType = getPieceType(piece);
+            const moves = [];
+
+            switch (pieceType) {
+                case 'pawn':
+                    moves.push(...getPawnMoves(row, col, pieceColor));
+                    break;
+                case 'rook':
+                    moves.push(...getRookMoves(row, col, pieceColor));
+                    break;
+                case 'bishop':
+                    moves.push(...getBishopMoves(row, col, pieceColor));
+                    break;
+                case 'queen':
+                    moves.push(...getQueenMoves(row, col, pieceColor));
+                    break;
+                case 'king':
+                    moves.push(...getKingMoves(row, col, pieceColor));
+                    break;
+                case 'knight':
+                    moves.push(...getKnightMoves(row, col, pieceColor));
+                    break;
+            }
+
+            return moves.filter(move => isValidMove(row, col, move[0], move[1]));
+        }
+
+        // ポーンの動き
+        function getPawnMoves(row, col, color) {
+            const moves = [];
+            const direction = color === 'white' ? -1 : 1;
+            const startRow = color === 'white' ? 6 : 1;
+
+            // 前進
+            if (row + direction >= 0 && row + direction < 8 && !gameState.board[row + direction][col]) {
+                moves.push([row + direction, col]);
+                
+                // 初期位置からの2マス前進
+                if (row === startRow && !gameState.board[row + 2 * direction][col]) {
+                    moves.push([row + 2 * direction, col]);
+                }
+            }
+
+            // 斜め攻撃
+            for (const dcol of [-1, 1]) {
+                const newRow = row + direction;
+                const newCol = col + dcol;
+                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                    const targetPiece = gameState.board[newRow][newCol];
+                    if (targetPiece && getPieceColor(targetPiece) !== color) {
+                        moves.push([newRow, newCol]);
+                    }
+                }
+            }
+
+            return moves;
+        }
+
+        // ルークの動き
+        function getRookMoves(row, col, color) {
+            const moves = [];
+            const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+
+            for (const [drow, dcol] of directions) {
+                for (let i = 1; i < 8; i++) {
+                    const newRow = row + drow * i;
+                    const newCol = col + dcol * i;
+
+                    if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) break;
+
+                    const targetPiece = gameState.board[newRow][newCol];
+                    if (!targetPiece) {
+                        moves.push([newRow, newCol]);
+                    } else {
+                        if (getPieceColor(targetPiece) !== color) {
+                            moves.push([newRow, newCol]);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            return moves;
+        }
+
+        // ビショップの動き
+        function getBishopMoves(row, col, color) {
+            const moves = [];
+            const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+
+            for (const [drow, dcol] of directions) {
+                for (let i = 1; i < 8; i++) {
+                    const newRow = row + drow * i;
+                    const newCol = col + dcol * i;
+
+                    if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) break;
+
+                    const targetPiece = gameState.board[newRow][newCol];
+                    if (!targetPiece) {
+                        moves.push([newRow, newCol]);
+                    } else {
+                        if (getPieceColor(targetPiece) !== color) {
+                            moves.push([newRow, newCol]);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            return moves;
+        }
+
+        // クイーンの動き
+        function getQueenMoves(row, col, color) {
+            return [...getRookMoves(row, col, color), ...getBishopMoves(row, col, color)];
+        }
+
+        // キングの動き
+        function getKingMoves(row, col, color) {
+            const moves = [];
+            const directions = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+
+            for (const [drow, dcol] of directions) {
+                const newRow = row + drow;
+                const newCol = col + dcol;
+
+                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                    const targetPiece = gameState.board[newRow][newCol];
+                    if (!targetPiece || getPieceColor(targetPiece) !== color) {
+                        moves.push([newRow, newCol]);
+                    }
+                }
+            }
+
+            return moves;
+        }
+
+        // ナイトの動き
+        function getKnightMoves(row, col, color) {
+            const moves = [];
+            const knightMoves = [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]];
+
+            for (const [drow, dcol] of knightMoves) {
+                const newRow = row + drow;
+                const newCol = col + dcol;
+
+                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                    const targetPiece = gameState.board[newRow][newCol];
+                    if (!targetPiece || getPieceColor(targetPiece) !== color) {
+                        moves.push([newRow, newCol]);
+                    }
+                }
+            }
+
+            return moves;
+        }
+
+        // 手が有効かチェック（チェック状態も考慮）
+        function isValidMove(fromRow, fromCol, toRow, toCol) {
+            // 基本的な境界チェック
+            if (toRow < 0 || toRow >= 8 || toCol < 0 || toCol >= 8) return false;
+
+            const piece = gameState.board[fromRow][fromCol];
+            const targetPiece = gameState.board[toRow][toCol];
+            const pieceColor = getPieceColor(piece);
+
+            // 自分の駒を取ることはできない
+            if (targetPiece && getPieceColor(targetPiece) === pieceColor) return false;
+
+            // この手を打った後にキングがチェックされるかどうかをチェック
+            return !wouldBeInCheckAfterMove(fromRow, fromCol, toRow, toCol, pieceColor);
+        }
+
+        // 指定した手を打った後にキングがチェックされるかチェック
+        function wouldBeInCheckAfterMove(fromRow, fromCol, toRow, toCol, color) {
+            // 一時的に手を実行
+            const originalPiece = gameState.board[toRow][toCol];
+            const movingPiece = gameState.board[fromRow][fromCol];
+            
+            gameState.board[toRow][toCol] = movingPiece;
+            gameState.board[fromRow][fromCol] = null;
+
+            // キングの位置を更新（キングが動いた場合）
+            let kingPos = gameState.kings[color];
+            if (getPieceType(movingPiece) === 'king') {
+                kingPos = [toRow, toCol];
+            }
+
+            // チェック状態をチェック
+            const inCheck = isKingInCheck(color, kingPos);
+
+            // 手を元に戻す
+            gameState.board[fromRow][fromCol] = movingPiece;
+            gameState.board[toRow][toCol] = originalPiece;
+
+            return inCheck;
+        }
+
+        // キングがチェックされているかチェック
+        function isKingInCheck(color, kingPosition = null) {
+            if (!kingPosition) {
+                kingPosition = gameState.kings[color];
+            }
+            
+            if (!kingPosition) return false;
+
+            const [kingRow, kingCol] = kingPosition;
+            const opponentColor = color === 'white' ? 'black' : 'white';
+
+            // 相手の全ての駒をチェックして、キングを攻撃できるかどうか確認
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = gameState.board[row][col];
+                    if (piece && getPieceColor(piece) === opponentColor) {
+                        const attacks = getPieceAttacks(row, col);
+                        if (attacks.some(([r, c]) => r === kingRow && c === kingCol)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // 駒が攻撃できるマスを取得（チェック判定用）
+        function getPieceAttacks(row, col) {
+            const piece = gameState.board[row][col];
+            if (!piece) return [];
+
+            const pieceColor = getPieceColor(piece);
+            const pieceType = getPieceType(piece);
+            const attacks = [];
+
+            switch (pieceType) {
+                case 'pawn':
+                    attacks.push(...getPawnAttacks(row, col, pieceColor));
+                    break;
+                case 'rook':
+                    attacks.push(...getRookMoves(row, col, pieceColor));
+                    break;
+                case 'bishop':
+                    attacks.push(...getBishopMoves(row, col, pieceColor));
+                    break;
+                case 'queen':
+                    attacks.push(...getQueenMoves(row, col, pieceColor));
+                    break;
+                case 'king':
+                    attacks.push(...getKingMoves(row, col, pieceColor));
+                    break;
+                case 'knight':
+                    attacks.push(...getKnightMoves(row, col, pieceColor));
+                    break;
+            }
+
+            return attacks.filter(([r, c]) => r >= 0 && r < 8 && c >= 0 && c < 8);
+        }
+
+        // ポーンの攻撃範囲（移動とは異なる）
+        function getPawnAttacks(row, col, color) {
+            const attacks = [];
+            const direction = color === 'white' ? -1 : 1;
+
+            // 斜め攻撃のみ
+            for (const dcol of [-1, 1]) {
+                const newRow = row + direction;
+                const newCol = col + dcol;
+                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                    attacks.push([newRow, newCol]);
+                }
+            }
+
+            return attacks;
+        }
+
+        // チェックメイトかどうかをチェック
+        function isCheckmate(color) {
+            // キングがチェックされていない場合はチェックメイトではない
+            if (!isKingInCheck(color)) {
+                return false;
+            }
+
+            // その色の全ての駒について、有効な手があるかチェック
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = gameState.board[row][col];
+                    if (piece && getPieceColor(piece) === color) {
+                        const moves = getValidMoves(row, col);
+                        if (moves.length > 0) {
+                            return false; // 有効な手が見つかった
+                        }
+                    }
+                }
+            }
+
+            return true; // 有効な手がない = チェックメイト
+        }
+
+        // ステイルメイト（引き分け）かどうかをチェック
+        function isStalemate(color) {
+            // キングがチェックされている場合はステイルメイトではない
+            if (isKingInCheck(color)) {
+                return false;
+            }
+
+            // その色の全ての駒について、有効な手があるかチェック
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = gameState.board[row][col];
+                    if (piece && getPieceColor(piece) === color) {
+                        const moves = getValidMoves(row, col);
+                        if (moves.length > 0) {
+                            return false; // 有効な手が見つかった
+                        }
+                    }
+                }
+            }
+
+            return true; // 有効な手がない = ステイルメイト
+        }
+
+        // マスクリック処理
+        function handleSquareClick(row, col) {
+            if (gameState.gameOver) return;
+
+            const clickedPiece = gameState.board[row][col];
+            const clickedPieceColor = getPieceColor(clickedPiece);
+
+            // 選択中の駒がない場合
+            if (!gameState.selectedSquare) {
+                if (clickedPiece && clickedPieceColor === gameState.currentPlayer) {
+                    selectSquare(row, col);
+                }
+                return;
+            }
+
+            const [selectedRow, selectedCol] = gameState.selectedSquare;
+
+            // 同じマスをクリックした場合
+            if (selectedRow === row && selectedCol === col) {
+                deselectSquare();
+                return;
+            }
+
+            // 自分の他の駒をクリックした場合
+            if (clickedPiece && clickedPieceColor === gameState.currentPlayer) {
+                selectSquare(row, col);
+                return;
+            }
+
+            // 移動を試行
+            const validMoves = getValidMoves(selectedRow, selectedCol);
+            const isValidMove = validMoves.some(([r, c]) => r === row && c === col);
+
+            if (isValidMove) {
+                makeMove(selectedRow, selectedCol, row, col);
+            } else {
+                deselectSquare();
+            }
+        }
+
+        // マス選択
+        function selectSquare(row, col) {
+            deselectSquare();
+            gameState.selectedSquare = [row, col];
+            
+            const square = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            square.classList.add('selected');
+
+            // 可能な手をハイライト
+            const validMoves = getValidMoves(row, col);
+            validMoves.forEach(([r, c]) => {
+                const moveSquare = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+                const targetPiece = gameState.board[r][c];
+                if (targetPiece) {
+                    moveSquare.classList.add('capture-move');
+                } else {
+                    moveSquare.classList.add('possible-move');
+                }
+            });
+        }
+
+        // マス選択解除
+        function deselectSquare() {
+            document.querySelectorAll('.square').forEach(square => {
+                square.classList.remove('selected', 'possible-move', 'capture-move');
+            });
+            gameState.selectedSquare = null;
+        }
+
+        // 手を実行
+        function makeMove(fromRow, fromCol, toRow, toCol) {
+            const piece = gameState.board[fromRow][fromCol];
+            const capturedPiece = gameState.board[toRow][toCol];
+
+            // 手の記録
+            const moveNotation = `${String.fromCharCode(97 + fromCol)}${8 - fromRow}-${String.fromCharCode(97 + toCol)}${8 - toRow}`;
+            gameState.moveHistory.push({
+                from: [fromRow, fromCol],
+                to: [toRow, toCol],
+                piece: piece,
+                captured: capturedPiece,
+                notation: moveNotation
+            });
+
+            // 駒を移動
+            gameState.board[toRow][toCol] = piece;
+            gameState.board[fromRow][fromCol] = null;
+
+            // キングの位置を更新
+            if (getPieceType(piece) === 'king') {
+                gameState.kings[gameState.currentPlayer] = [toRow, toCol];
+            }
+
+            // プレイヤー交代
+            gameState.currentPlayer = gameState.currentPlayer === 'white' ? 'black' : 'white';
+
+            // UI更新
+            deselectSquare();
+            renderBoard();
+            updateGameInfo();
+            updateMoveHistory();
+
+            // ゲーム終了チェック
+            checkGameEnd();
+        }
+
+        // ゲーム情報更新
+        function updateGameInfo() {
+            document.getElementById('current-player').textContent = gameState.currentPlayer === 'white' ? '白' : '黒';
+        }
+
+        // 手の履歴更新
+        function updateMoveHistory() {
+            const historyElement = document.getElementById('move-history');
+            const moves = gameState.moveHistory.map((move, index) => {
+                const moveNumber = Math.floor(index / 2) + 1;
+                const isWhiteMove = index % 2 === 0;
+                return isWhiteMove ? `${moveNumber}. ${move.notation}` : `${move.notation}`;
+            });
+            
+            historyElement.textContent = moves.join(' ');
+        }
+
+        // ゲーム終了チェック
+        function checkGameEnd() {
+            const currentColor = gameState.currentPlayer;
+            
+            // チェックメイトをチェック
+            if (isCheckmate(currentColor)) {
+                gameState.gameOver = true;
+                const winner = currentColor === 'white' ? '黒' : '白';
+                document.getElementById('game-status').textContent = `チェックメイト！${winner}の勝利！`;
+                return;
+            }
+            
+            // ステイルメイトをチェック
+            if (isStalemate(currentColor)) {
+                gameState.gameOver = true;
+                document.getElementById('game-status').textContent = 'ステイルメイト！引き分け';
+                return;
+            }
+            
+            // チェック状態をチェック
+            if (isKingInCheck(currentColor)) {
+                const playerName = currentColor === 'white' ? '白' : '黒';
+                document.getElementById('game-status').textContent = `${playerName}のキングがチェック中！`;
+                highlightKingInCheck(currentColor);
+            } else {
+                document.getElementById('game-status').textContent = 'ゲーム進行中';
+                clearCheckHighlight();
+            }
+        }
+
+        // チェック中のキングをハイライト
+        function highlightKingInCheck(color) {
+            clearCheckHighlight();
+            const kingPos = gameState.kings[color];
+            if (kingPos) {
+                const [row, col] = kingPos;
+                const square = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                if (square) {
+                    square.classList.add('king-in-check');
+                }
+            }
+        }
+
+        // チェックハイライトをクリア
+        function clearCheckHighlight() {
+            document.querySelectorAll('.king-in-check').forEach(square => {
+                square.classList.remove('king-in-check');
+            });
+        }
+
+        // 新しいゲーム
+        function newGame() {
+            gameState = {
+                board: [],
+                currentPlayer: 'white',
+                selectedSquare: null,
+                gameOver: false,
+                moveHistory: [],
+                kings: { white: null, black: null }
+            };
+            
+            initializeBoard();
+            renderBoard();
+            updateGameInfo();
+            document.getElementById('game-status').textContent = 'ゲーム進行中';
+            document.getElementById('move-history').textContent = '';
+        }
+
+        // 手を戻す
+        function undoMove() {
+            if (gameState.moveHistory.length === 0) return;
+
+            const lastMove = gameState.moveHistory.pop();
+            const { from, to, piece, captured } = lastMove;
+
+            // 駒を元の位置に戻す
+            gameState.board[from[0]][from[1]] = piece;
+            gameState.board[to[0]][to[1]] = captured;
+
+            // キングの位置を更新
+            if (getPieceType(piece) === 'king') {
+                gameState.kings[getPieceColor(piece)] = from;
+            }
+
+            // プレイヤーを戻す
+            gameState.currentPlayer = gameState.currentPlayer === 'white' ? 'black' : 'white';
+            gameState.gameOver = false;
+
+            // UI更新
+            deselectSquare();
+            renderBoard();
+            updateGameInfo();
+            updateMoveHistory();
+            document.getElementById('game-status').textContent = 'ゲーム進行中';
+        }
+
+        // ゲーム初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            newGame();
+        });
+    </script>
+</body>
+</html>
