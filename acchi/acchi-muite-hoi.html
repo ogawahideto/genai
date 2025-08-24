@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>あっちむいてほい</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .game-container {
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            padding: 10px;
+        }
+
+        .title {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            animation: bounce 2s infinite;
+        }
+
+        @media (max-width: 480px) {
+            .title {
+                font-size: 2em;
+                margin-bottom: 15px;
+            }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        .ai-face {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: #ffeb3b;
+            margin: 0 auto 20px;
+            position: relative;
+            border: 5px solid #fff;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        @media (max-width: 480px) {
+            .ai-face {
+                width: 150px;
+                height: 150px;
+                margin: 0 auto 15px;
+            }
+        }
+
+        .ai-face::before {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: #333;
+            border-radius: 50%;
+            top: 60px;
+            left: 50px;
+        }
+
+        .ai-face::after {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: #333;
+            border-radius: 50%;
+            top: 60px;
+            right: 50px;
+        }
+
+        @media (max-width: 480px) {
+            .ai-face::before {
+                width: 22px;
+                height: 22px;
+                top: 45px;
+                left: 37px;
+            }
+            
+            .ai-face::after {
+                width: 22px;
+                height: 22px;
+                top: 45px;
+                right: 37px;
+            }
+        }
+
+        .ai-mouth {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 30px;
+            background: #333;
+            border-radius: 0 0 60px 60px;
+            transition: all 0.3s ease;
+        }
+
+        @media (max-width: 480px) {
+            .ai-mouth {
+                bottom: 45px;
+                width: 45px;
+                height: 22px;
+            }
+        }
+
+        .ai-pointer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3em;
+            transition: all 0.5s ease;
+            opacity: 0;
+        }
+
+        @media (max-width: 480px) {
+            .ai-pointer {
+                font-size: 2.5em;
+            }
+        }
+
+        .direction-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 10px;
+            max-width: 300px;
+            margin: 0 auto 20px;
+        }
+
+        @media (max-width: 480px) {
+            .direction-buttons {
+                max-width: 280px;
+                gap: 8px;
+                margin: 0 auto 15px;
+            }
+        }
+
+        .direction-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.5);
+            color: white;
+            font-size: 2em;
+            padding: 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        @media (max-width: 480px) {
+            .direction-btn {
+                font-size: 1.8em;
+                padding: 15px;
+                border-radius: 12px;
+            }
+        }
+
+        .direction-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+
+        .direction-btn:active {
+            transform: scale(0.95);
+            background: rgba(255,255,255,0.4);
+        }
+
+        @media (hover: none) {
+            .direction-btn:hover {
+                background: rgba(255,255,255,0.2);
+                transform: none;
+            }
+        }
+
+        .direction-btn:nth-child(1) {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .direction-btn:nth-child(2) {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .direction-btn:nth-child(3) {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        .direction-btn:nth-child(4) {
+            grid-column: 2;
+            grid-row: 3;
+        }
+
+        .result-message {
+            font-size: 1.8em;
+            margin: 15px 0;
+            min-height: 60px;
+            animation: pulse 1s infinite;
+            line-height: 1.2;
+        }
+
+        @media (max-width: 480px) {
+            .result-message {
+                font-size: 1.4em;
+                margin: 10px 0;
+                min-height: 50px;
+            }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .play-again-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        @media (max-width: 480px) {
+            .play-again-btn {
+                padding: 12px 25px;
+                font-size: 1.1em;
+                margin-top: 10px;
+            }
+        }
+
+        .play-again-btn:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+
+        .play-again-btn:active {
+            transform: scale(0.95);
+            background: #3d8b40;
+        }
+
+        @media (hover: none) {
+            .play-again-btn:hover {
+                background: #4CAF50;
+                transform: none;
+            }
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #f39c12;
+            animation: confetti-fall 3s linear infinite;
+        }
+
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .score {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 480px) {
+            .score {
+                font-size: 1.1em;
+                margin-bottom: 10px;
+            }
+        }
+
+        .janken-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 0 auto 20px;
+            flex-wrap: wrap;
+        }
+
+        .janken-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.5);
+            color: white;
+            font-size: 3em;
+            padding: 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
+            min-width: 80px;
+        }
+
+        .janken-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+
+        .janken-btn:active {
+            transform: scale(0.95);
+            background: rgba(255,255,255,0.4);
+        }
+
+        @media (hover: none) {
+            .janken-btn:hover {
+                background: rgba(255,255,255,0.2);
+                transform: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .janken-buttons {
+                gap: 15px;
+                margin: 0 auto 15px;
+            }
+            
+            .janken-btn {
+                font-size: 2.5em;
+                padding: 15px;
+                min-width: 70px;
+            }
+        }
+
+        .janken-result {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 20px 0;
+            font-size: 1.5em;
+        }
+
+        .janken-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .janken-hand {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .janken-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 480px) {
+            .janken-result {
+                margin: 15px 0;
+                font-size: 1.2em;
+            }
+            
+            .janken-hand {
+                font-size: 2.5em;
+                margin-bottom: 5px;
+            }
+        }
+
+        .thinking {
+            animation: thinking 1s infinite;
+        }
+
+        @keyframes thinking {
+            0%, 100% { transform: rotate(-2deg); }
+            50% { transform: rotate(2deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="title">あっちむいてほい！</h1>
+        
+        <div class="score">
+            連続勝利: <span id="winStreak">0</span>回
+        </div>
+
+        <div class="ai-face" id="aiFace">
+            <div class="ai-mouth"></div>
+            <div class="ai-pointer" id="aiPointer"></div>
+        </div>
+
+        <div class="janken-buttons" id="jankenButtons">
+            <button class="janken-btn" data-janken="rock">✊</button>
+            <button class="janken-btn" data-janken="paper">✋</button>
+            <button class="janken-btn" data-janken="scissors">✌️</button>
+        </div>
+
+        <div class="direction-buttons hidden" id="directionButtons">
+            <button class="direction-btn" data-direction="up">↑</button>
+            <button class="direction-btn" data-direction="left">←</button>
+            <button class="direction-btn" data-direction="right">→</button>
+            <button class="direction-btn" data-direction="down">↓</button>
+        </div>
+
+        <div class="result-message" id="resultMessage">
+            じゃんけんで勝負！
+        </div>
+
+        <button class="play-again-btn hidden" id="playAgainBtn">もう一度遊ぶ</button>
+    </div>
+
+    <script>
+        class AcchiMuiteHoi {
+            constructor() {
+                this.winStreak = 0;
+                this.gameState = 'janken'; // janken, direction, result
+                this.playerJanken = null;
+                this.aiJanken = null;
+                this.playerDirection = null;
+                this.aiDirection = null;
+                this.jankenWinner = null;
+                
+                this.initializeGame();
+            }
+
+            initializeGame() {
+                this.jankenButtons = document.getElementById('jankenButtons');
+                this.directionButtons = document.getElementById('directionButtons');
+                this.resultMessage = document.getElementById('resultMessage');
+                this.playAgainBtn = document.getElementById('playAgainBtn');
+                this.aiFace = document.getElementById('aiFace');
+                this.aiPointer = document.getElementById('aiPointer');
+                this.winStreakDisplay = document.getElementById('winStreak');
+
+                this.addEventListeners();
+                this.updateWinStreak();
+            }
+
+            addEventListeners() {
+                this.jankenButtons.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('janken-btn') && this.gameState === 'janken') {
+                        this.handleJankenClick(e.target.dataset.janken);
+                    }
+                });
+
+                this.directionButtons.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('direction-btn') && this.gameState === 'direction') {
+                        this.handleDirectionClick(e.target.dataset.direction);
+                    }
+                });
+
+                this.playAgainBtn.addEventListener('click', () => {
+                    this.resetGame();
+                });
+            }
+
+            handleJankenClick(janken) {
+                this.playerJanken = janken;
+                this.gameState = 'playing';
+                this.resultMessage.textContent = 'AI がじゃんけん中...';
+                
+                // AI の顔を考え中のアニメーションに
+                this.aiFace.classList.add('thinking');
+                
+                // ボタンを無効化
+                this.disableJankenButtons();
+
+                // AI の応答を遅延させる（1-2秒）
+                setTimeout(() => {
+                    this.aiJankenRespond();
+                }, 1000 + Math.random() * 1000);
+            }
+
+            handleDirectionClick(direction) {
+                if (this.jankenWinner === 'player') {
+                    this.playerDirection = direction;
+                    this.gameState = 'playing';
+                    this.resultMessage.textContent = 'AI が顔を向けています...';
+                    
+                    // AI の顔を考え中のアニメーションに
+                    this.aiFace.classList.add('thinking');
+                    
+                    // ボタンを無効化
+                    this.disableDirectionButtons();
+
+                    // AI の応答を遅延させる（1-2秒）
+                    setTimeout(() => {
+                        this.aiDirectionRespond();
+                    }, 1000 + Math.random() * 1000);
+                }
+            }
+
+            aiJankenRespond() {
+                // じゃんけんの手をランダムに選ぶ（ユーザーが勝つように調整）
+                const jankenOptions = ['rock', 'paper', 'scissors'];
+                const winningMoves = {
+                    rock: 'scissors',
+                    paper: 'rock',
+                    scissors: 'paper'
+                };
+                
+                // ユーザーが勝つように、負ける手を選ぶ
+                this.aiJanken = winningMoves[this.playerJanken];
+                this.jankenWinner = 'player';
+
+                // じゃんけん結果を表示
+                this.showJankenResult();
+                
+                // 考え中のアニメーションを停止
+                this.aiFace.classList.remove('thinking');
+
+                // 方向選択フェーズに移行
+                setTimeout(() => {
+                    this.startDirectionPhase();
+                }, 2000);
+            }
+
+            aiDirectionRespond() {
+                // ユーザーが必ず勝つように、同じ方向を選ぶ
+                const directions = ['up', 'down', 'left', 'right'];
+                this.aiDirection = this.playerDirection;
+
+                // AI の顔の向きを表示
+                this.showAIDirection();
+                
+                // 考え中のアニメーションを停止
+                this.aiFace.classList.remove('thinking');
+
+                // 結果を表示
+                setTimeout(() => {
+                    this.showResult();
+                }, 500);
+            }
+
+            showJankenResult() {
+                const jankenSymbols = {
+                    rock: '✊',
+                    paper: '✋',
+                    scissors: '✌️'
+                };
+
+                const jankenNames = {
+                    rock: 'グー',
+                    paper: 'パー',
+                    scissors: 'チョキ'
+                };
+
+                this.resultMessage.innerHTML = `
+                    <div class="janken-result">
+                        <div class="janken-display">
+                            <div class="janken-hand">${jankenSymbols[this.playerJanken]}</div>
+                            <div class="janken-label">あなた: ${jankenNames[this.playerJanken]}</div>
+                        </div>
+                        <div style="font-size: 1.2em; margin: 0 20px;">VS</div>
+                        <div class="janken-display">
+                            <div class="janken-hand">${jankenSymbols[this.aiJanken]}</div>
+                            <div class="janken-label">AI: ${jankenNames[this.aiJanken]}</div>
+                        </div>
+                    </div>
+                    <div>🎉 あなたの勝ち！方向を指してください！</div>
+                `;
+            }
+
+            showAIDirection() {
+                // AI の顔の向きを表示（顔が向く方向）
+                this.aiFace.style.transform = 'rotate(0deg)';
+                
+                switch(this.aiDirection) {
+                    case 'up':
+                        this.aiFace.style.transform = 'rotate(0deg)';
+                        break;
+                    case 'down':
+                        this.aiFace.style.transform = 'rotate(180deg)';
+                        break;
+                    case 'left':
+                        this.aiFace.style.transform = 'rotate(-90deg)';
+                        break;
+                    case 'right':
+                        this.aiFace.style.transform = 'rotate(90deg)';
+                        break;
+                }
+            }
+
+            startDirectionPhase() {
+                this.gameState = 'direction';
+                this.jankenButtons.classList.add('hidden');
+                this.directionButtons.classList.remove('hidden');
+                this.resultMessage.textContent = '方向を選んでください！';
+                this.enableDirectionButtons();
+            }
+
+            showResult() {
+                this.winStreak++;
+                this.gameState = 'result';
+                
+                // 勝利メッセージを表示
+                this.showVictoryMessage();
+                
+                // 紙吹雪効果
+                this.createConfetti();
+                
+                // もう一度遊ぶボタンを表示
+                this.playAgainBtn.classList.remove('hidden');
+                
+                // 勝利数を更新
+                this.updateWinStreak();
+            }
+
+            showVictoryMessage() {
+                const victoryMessages = [
+                    '🎉 やったー！君の勝ちだ！',
+                    '✨ 素晴らしい！完璧な読みだ！',
+                    '🌟 すごい！君は天才だ！',
+                    '🎊 見事な勝利！感動的だ！',
+                    '🏆 圧倒的な強さ！尊敬する！',
+                    '⭐ 信じられない！君は最強だ！',
+                    '🎯 完璧すぎる！プロ級だ！',
+                    '🚀 驚異的な実力！レジェンドだ！',
+                    '💎 輝かしい勝利！神業だ！',
+                    '🌈 奇跡的な強さ！感激だ！'
+                ];
+
+                const streakBonusMessages = [
+                    '🔥 連勝記録更新中！燃えるね！',
+                    '⚡ 止まらない快進撃！電光石火だ！',
+                    '💫 無敵モード発動！星になれる！',
+                    '🌪️ 嵐のような強さ！圧巻だ！',
+                    '🎪 奇跡の大連勝！サーカス級だ！'
+                ];
+
+                let message = victoryMessages[Math.floor(Math.random() * victoryMessages.length)];
+                
+                if (this.winStreak >= 5) {
+                    message += '\n' + streakBonusMessages[Math.floor(Math.random() * streakBonusMessages.length)];
+                }
+
+                this.resultMessage.innerHTML = message.replace('\n', '<br>');
+            }
+
+            createConfetti() {
+                const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#f1c40f'];
+                
+                for (let i = 0; i < 50; i++) {
+                    setTimeout(() => {
+                        const confetti = document.createElement('div');
+                        confetti.className = 'confetti';
+                        confetti.style.left = Math.random() * 100 + 'vw';
+                        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                        confetti.style.animationDelay = Math.random() * 3 + 's';
+                        confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                        
+                        document.body.appendChild(confetti);
+                        
+                        setTimeout(() => {
+                            confetti.remove();
+                        }, 5000);
+                    }, i * 50);
+                }
+            }
+
+            resetGame() {
+                this.gameState = 'janken';
+                this.playerJanken = null;
+                this.aiJanken = null;
+                this.playerDirection = null;
+                this.aiDirection = null;
+                this.jankenWinner = null;
+                
+                this.resultMessage.textContent = 'じゃんけんで勝負！';
+                this.playAgainBtn.classList.add('hidden');
+                this.aiPointer.style.opacity = '0';
+                this.aiFace.style.transform = 'rotate(0deg)';
+                
+                this.jankenButtons.classList.remove('hidden');
+                this.directionButtons.classList.add('hidden');
+                
+                this.enableJankenButtons();
+            }
+
+            disableJankenButtons() {
+                const buttons = this.jankenButtons.querySelectorAll('.janken-btn');
+                buttons.forEach(btn => {
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                });
+            }
+
+            enableJankenButtons() {
+                const buttons = this.jankenButtons.querySelectorAll('.janken-btn');
+                buttons.forEach(btn => {
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                });
+            }
+
+            disableDirectionButtons() {
+                const buttons = this.directionButtons.querySelectorAll('.direction-btn');
+                buttons.forEach(btn => {
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                });
+            }
+
+            enableDirectionButtons() {
+                const buttons = this.directionButtons.querySelectorAll('.direction-btn');
+                buttons.forEach(btn => {
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                });
+            }
+
+            updateWinStreak() {
+                this.winStreakDisplay.textContent = this.winStreak;
+            }
+        }
+
+        // ゲームを開始
+        document.addEventListener('DOMContentLoaded', () => {
+            new AcchiMuiteHoi();
+        });
+    </script>
+</body>
+</html>
+<!--
+AI Model: Claude 3.5 Sonnet
+User Prompt: あっちむいてほいWebアプリを作ってください。ユーザが必ず勝つようにタイミングを制御して、ユーザが勝ったら無茶苦茶褒めてください
+AI Approach: Single-file HTML app with embedded CSS/JavaScript, game logic ensures user always wins by making AI choose different direction, enthusiastic Japanese praise messages with confetti animations
+Implementation Intent: Educational game demonstrating rigged game mechanics for user enjoyment and confidence building
+-->

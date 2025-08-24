@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>季ノ輪（きのわ）- 72候カードゲーム</title>
+    <style>
+        /* Global Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        /* Navigation */
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(238, 90, 36, 0.3);
+            font-weight: bold;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(238, 90, 36, 0.4);
+        }
+
+        .nav-btn.secondary {
+            background: linear-gradient(45deg, #4834d4, #667eea);
+            box-shadow: 0 5px 15px rgba(72, 52, 212, 0.3);
+        }
+
+        .nav-btn.secondary:hover {
+            box-shadow: 0 10px 25px rgba(72, 52, 212, 0.4);
+        }
+
+        /* Screen Management */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* Game Screen */
+        .game-area {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .player-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .season-track {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .season-item {
+            padding: 10px 15px;
+            border-radius: 20px;
+            background: #e9ecef;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .season-item.active {
+            background: #28a745;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* Card Styles */
+        .field {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+
+        .field-side {
+            width: 48%;
+            min-height: 200px;
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+
+        .field-side h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .card {
+            width: 120px;
+            height: 160px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+            padding: 10px;
+            color: white;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+            z-index: 10;
+        }
+
+        .card.spring { background: linear-gradient(135deg, #ff9a9e, #fecfef); color: #333; }
+        .card.summer { background: linear-gradient(135deg, #a8edea, #fed6e3); color: #333; }
+        .card.autumn { background: linear-gradient(135deg, #ffecd2, #fcb69f); color: #333; }
+        .card.winter { background: linear-gradient(135deg, #a8caba, #5d4e75); color: white; }
+
+        .card-name {
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .card-reading {
+            font-size: 0.7rem;
+            text-align: center;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+
+        .card-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .card-effect {
+            font-size: 0.6rem;
+            text-align: center;
+            margin-top: 5px;
+            opacity: 0.9;
+        }
+
+        /* Hand Cards */
+        .hand {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .hand h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .hand .cards-container {
+            justify-content: flex-start;
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+
+        /* Game Controls */
+        .game-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        /* Rules Screen */
+        .rules-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            line-height: 1.8;
+        }
+
+        .rules-content h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .rules-content h3 {
+            color: #34495e;
+            margin: 25px 0 15px 0;
+        }
+
+        .rules-content ul {
+            margin-left: 20px;
+            margin-bottom: 20px;
+        }
+
+        .rules-content li {
+            margin-bottom: 10px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .nav-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .nav-btn {
+                width: 200px;
+            }
+
+            .game-info {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .field {
+                flex-direction: column;
+            }
+
+            .field-side {
+                width: 100%;
+                margin-bottom: 20px;
+            }
+
+            .card {
+                width: 100px;
+                height: 140px;
+                font-size: 0.7rem;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Message Display */
+        .message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: center;
+            display: none;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .message.info {
+            background: #cce7ff;
+            color: #004085;
+        }
+
+
+        /* Combat Preview */
+        .combat-preview {
+            background: rgba(255, 255, 255, 0.98);
+            border: 2px solid #007bff;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            display: none;
+            position: relative;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .combat-preview.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Effect Display */
+        .effect-display {
+            background: #f8f9fa;
+            border-left: 4px solid #28a745;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .effect-display.season-bonus {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+
+        .effect-display.season-penalty {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+
+        /* Card Cost Display */
+        .card-cost {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .card-cost.discounted {
+            background: #28a745;
+        }
+
+        .card-cost.increased {
+            background: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Main Menu Screen -->
+        <div id="menu-screen" class="screen active">
+            <div class="header">
+                <h1>季ノ輪</h1>
+                <p>きのわ - 日本の72候カードゲーム</p>
+                <div class="nav-buttons">
+                    <button class="nav-btn" onclick="showScreen('game-screen')">ゲーム開始</button>
+                    <button class="nav-btn secondary" onclick="showScreen('rules-screen')">ルールブック</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <div class="game-area">
+                <div class="game-info">
+                    <div class="player-info">
+                        <h3>あなた</h3>
+                        <p>生命力: <span id="player-life">20</span></p>
+                        <p>季節エネルギー: <span id="player-energy">2</span></p>
+                    </div>
+                    
+                    <div class="season-track">
+                        <div class="season-item active" data-season="spring">春</div>
+                        <div class="season-item" data-season="summer">夏</div>
+                        <div class="season-item" data-season="autumn">秋</div>
+                        <div class="season-item" data-season="winter">冬</div>
+                    </div>
+                    
+                    <div class="player-info">
+                        <h3>共通山札</h3>
+                        <p>残り: <span id="deck-remaining">72</span>枚</p>
+                    </div>
+                    
+                    <div class="player-info">
+                        <h3>コンピュータ</h3>
+                        <p>生命力: <span id="cpu-life">20</span></p>
+                        <p>季節エネルギー: <span id="cpu-energy">2</span></p>
+                    </div>
+                </div>
+
+                <div class="message" id="game-message"></div>
+                
+                <div class="combat-preview" id="combat-preview">
+                    <h4>戦闘プレビュー</h4>
+                    <div id="combat-details"></div>
+                </div>
+
+                <div class="field">
+                    <div class="field-side">
+                        <h3>あなたの場</h3>
+                        <div class="cards-container" id="player-field"></div>
+                    </div>
+                    <div class="field-side">
+                        <h3>コンピュータの場</h3>
+                        <div class="cards-container" id="cpu-field"></div>
+                    </div>
+                </div>
+
+                <div class="hand">
+                    <h3>手札</h3>
+                    <div class="cards-container" id="player-hand"></div>
+                </div>
+
+                <div class="game-controls">
+                    <button class="nav-btn" onclick="endTurn()" id="end-turn-btn">ターン終了</button>
+                    <button class="nav-btn secondary" onclick="showScreen('menu-screen')">メニューに戻る</button>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>コンピュータが思考中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rules Screen -->
+        <div id="rules-screen" class="screen">
+            <div class="rules-content">
+                <h2>季ノ輪（きのわ）ルールブック</h2>
+                
+                <h3>ゲーム概要</h3>
+                <p>季ノ輪は、日本の七十二候をテーマにした2人対戦カードゲームです。プレイヤーは季節の守護者となり、自然の循環を操りながら相手と戦います。</p>
+
+                <h3>勝利条件</h3>
+                <ul>
+                    <li>相手の生命力を0にする</li>
+                    <li>4つの季節すべてを同時に場に維持して「完全なる輪廻」を達成する</li>
+                </ul>
+
+                <h3>カードの種類</h3>
+                <ul>
+                    <li><strong>72候カード</strong>: 各72候に対応したカード（力・調和・季節タイプ・効果を持つ）</li>
+                    <li><strong>季節</strong>: 春（桃色）・夏（水色）・秋（橙色）・冬（紫色）</li>
+                </ul>
+
+                <h3>カードのステータス</h3>
+                <ul>
+                    <li><strong>力</strong>: 攻撃力（1-5）</li>
+                    <li><strong>調和</strong>: 防御力（1-5）</li>
+                    <li><strong>季節タイプ</strong>: そのカードが属する季節</li>
+                    <li><strong>効果</strong>: カード固有の特殊効果</li>
+                </ul>
+
+                <h3>ゲームの流れ</h3>
+                <ol>
+                    <li><strong>季節フェーズ</strong>: 季節が自動進行（3ターンごと）</li>
+                    <li><strong>ドローフェーズ</strong>: カードを1枚引く</li>
+                    <li><strong>メインフェーズ</strong>: カードをプレイ、攻撃宣言</li>
+                    <li><strong>終了フェーズ</strong>: ターン終了処理</li>
+                </ol>
+
+                <h3>リソース管理</h3>
+                <ul>
+                    <li><strong>季節エネルギー</strong>: カードをプレイするために必要（春2/夏3/秋2/冬1）</li>
+                    <li><strong>生命力</strong>: 初期値20、0になると敗北</li>
+                </ul>
+
+                <h3>特殊ルール</h3>
+                <ul>
+                    <li><strong>季節共鳴</strong>: 現在季節と同じカードは効果1.5倍</li>
+                    <li><strong>逆季節ペナルティ</strong>: 対極季節（春↔秋、夏↔冬）は効果半減</li>
+                    <li><strong>自然の摂理</strong>: 同じ候は場に1枚まで</li>
+                </ul>
+
+                <h3>戦闘システム</h3>
+                <p>攻撃時は自分のカードの「力」と相手のカードの「調和」を比較します。力が調和を上回った場合、差分だけ相手の生命力が減少します。</p>
+
+                <div class="nav-buttons">
+                    <button class="nav-btn" onclick="showScreen('menu-screen')">メニューに戻る</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        let gameState = {
+            currentSeason: 'spring',
+            turnCount: 1,
+            playerLife: 20,
+            cpuLife: 20,
+            playerEnergy: 2,
+            cpuEnergy: 2,
+            playerHand: [],
+            cpuHand: [],
+            playerField: [],
+            cpuField: [],
+            sharedDeck: [], // 共通山札
+            currentPlayer: 'player'
+        };
+
+        // Screen Management
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+            
+            if (screenId === 'game-screen') {
+                initializeGame();
+            }
+        }
+
+        // 72候カードデータ
+        const cards72kou = [
+            // 春の候
+            { id: 1, name: "立春", reading: "りっしゅん", season: "spring", power: 2, harmony: 2, cost: 1, effect: "ゲーム開始時効果" },
+            { id: 2, name: "雨水", reading: "うすい", season: "spring", power: 1, harmony: 3, cost: 1, effect: "水系カード強化" },
+            { id: 3, name: "啓蟄", reading: "けいちつ", season: "spring", power: 3, harmony: 1, cost: 2, effect: "虫系効果発動" },
+            { id: 4, name: "春分", reading: "しゅんぶん", season: "spring", power: 3, harmony: 3, cost: 2, effect: "季節バランス調整" },
+            { id: 5, name: "清明", reading: "せいめい", season: "spring", power: 2, harmony: 4, cost: 2, effect: "浄化効果" },
+            { id: 6, name: "穀雨", reading: "こくう", season: "spring", power: 1, harmony: 2, cost: 1, effect: "成長促進" },
+            { id: 7, name: "東風解凍", reading: "はるかぜこおりをとく", season: "spring", power: 2, harmony: 2, cost: 1, effect: "氷効果解除" },
+            { id: 8, name: "黄鶯睍睆", reading: "うぐいすなく", season: "spring", power: 1, harmony: 3, cost: 1, effect: "音系効果" },
+            { id: 9, name: "魚上氷", reading: "うおこおりをのぼる", season: "spring", power: 2, harmony: 1, cost: 1, effect: "水中効果" },
+            { id: 10, name: "土脉潤起", reading: "つちのしょううるおいおこる", season: "spring", power: 1, harmony: 4, cost: 2, effect: "土壌回復" },
+            { id: 11, name: "霞始靆", reading: "かすみはじめてたなびく", season: "spring", power: 2, harmony: 2, cost: 1, effect: "視界制限" },
+            { id: 12, name: "草木萌動", reading: "そうもくめばえいずる", season: "spring", power: 1, harmony: 2, cost: 1, effect: "植物成長" },
+            { id: 13, name: "蟄虫啓戸", reading: "すごもりむしとをひらく", season: "spring", power: 3, harmony: 1, cost: 2, effect: "覚醒効果" },
+            { id: 14, name: "桃始笑", reading: "ももはじめてさく", season: "spring", power: 2, harmony: 3, cost: 2, effect: "開花効果" },
+            { id: 15, name: "菜虫化蝶", reading: "なむしちょうとなる", season: "spring", power: 1, harmony: 1, cost: 1, effect: "変化効果" },
+            { id: 16, name: "雀始巣", reading: "すずめはじめてすくう", season: "spring", power: 2, harmony: 2, cost: 1, effect: "巣作り効果" },
+            { id: 17, name: "桜始開", reading: "さくらはじめてひらく", season: "spring", power: 2, harmony: 3, cost: 2, effect: "春カード検索" },
+            { id: 18, name: "雷乃発声", reading: "かみなりすなわちこえをはっす", season: "spring", power: 4, harmony: 1, cost: 2, effect: "調和2以下破壊" },
+
+            // 夏の候
+            { id: 19, name: "立夏", reading: "りっか", season: "summer", power: 3, harmony: 2, cost: 2, effect: "夏の始まり" },
+            { id: 20, name: "小満", reading: "しょうまん", season: "summer", power: 2, harmony: 3, cost: 2, effect: "満足効果" },
+            { id: 21, name: "芒種", reading: "ぼうしゅ", season: "summer", power: 1, harmony: 4, cost: 2, effect: "収穫準備" },
+            { id: 22, name: "夏至", reading: "げし", season: "summer", power: 4, harmony: 2, cost: 3, effect: "最大効果発動" },
+            { id: 23, name: "小暑", reading: "しょうしょ", season: "summer", power: 3, harmony: 1, cost: 2, effect: "暑さ効果" },
+            { id: 24, name: "大暑", reading: "たいしょ", season: "summer", power: 5, harmony: 1, cost: 3, effect: "最大暑さ" },
+            { id: 25, name: "蛙始鳴", reading: "かわずはじめてなく", season: "summer", power: 1, harmony: 4, cost: 2, effect: "毎ターン回復1" },
+            { id: 26, name: "蚯蚓出", reading: "みみずいずる", season: "summer", power: 1, harmony: 3, cost: 1, effect: "土壌改良" },
+            { id: 27, name: "竹笋生", reading: "たけのこしょうず", season: "summer", power: 2, harmony: 2, cost: 1, effect: "成長加速" },
+            { id: 28, name: "蚕起食桑", reading: "かいこおきてくわをはむ", season: "summer", power: 1, harmony: 2, cost: 1, effect: "変換効果" },
+            { id: 29, name: "紅花栄", reading: "べにばなさかう", season: "summer", power: 2, harmony: 3, cost: 2, effect: "美容効果" },
+            { id: 30, name: "麦秋至", reading: "むぎのときいたる", season: "summer", power: 3, harmony: 2, cost: 2, effect: "収穫効果" },
+            { id: 31, name: "螳螂生", reading: "かまきりしょうず", season: "summer", power: 4, harmony: 1, cost: 2, effect: "捕食効果" },
+            { id: 32, name: "腐草為蛍", reading: "くされたるくさほたるとなる", season: "summer", power: 1, harmony: 2, cost: 1, effect: "光効果" },
+            { id: 33, name: "梅子黄", reading: "うめのみきなり", season: "summer", power: 2, harmony: 3, cost: 2, effect: "実りの効果" },
+            { id: 34, name: "乃東枯", reading: "なつかれくさかるる", season: "summer", power: 1, harmony: 1, cost: 1, effect: "枯死効果" },
+            { id: 35, name: "菖蒲華", reading: "あやめはなさく", season: "summer", power: 2, harmony: 4, cost: 2, effect: "邪気払い" },
+            { id: 36, name: "蓮始華", reading: "はすはじめてはなさく", season: "summer", power: 3, harmony: 3, cost: 2, effect: "水系ダメージ軽減" },
+
+            // 秋の候
+            { id: 37, name: "立秋", reading: "りっしゅう", season: "autumn", power: 2, harmony: 3, cost: 2, effect: "秋の始まり" },
+            { id: 38, name: "処暑", reading: "しょしょ", season: "autumn", power: 3, harmony: 2, cost: 2, effect: "暑さ収束" },
+            { id: 39, name: "白露", reading: "はくろ", season: "autumn", power: 1, harmony: 4, cost: 2, effect: "露の恵み" },
+            { id: 40, name: "秋分", reading: "しゅうぶん", season: "autumn", power: 3, harmony: 3, cost: 2, effect: "昼夜平衡" },
+            { id: 41, name: "寒露", reading: "かんろ", season: "autumn", power: 2, harmony: 3, cost: 2, effect: "冷気効果" },
+            { id: 42, name: "霜降", reading: "そうこう", season: "autumn", power: 3, harmony: 2, cost: 2, effect: "霜の力" },
+            { id: 43, name: "涼風至", reading: "すずかぜいたる", season: "autumn", power: 2, harmony: 2, cost: 1, effect: "全体攻撃力-1" },
+            { id: 44, name: "白露降", reading: "はくろくだる", season: "autumn", power: 1, harmony: 3, cost: 1, effect: "水分補給" },
+            { id: 45, name: "寒蝉鳴", reading: "ひぐらしなく", season: "autumn", power: 2, harmony: 2, cost: 1, effect: "哀愁効果" },
+            { id: 46, name: "綿柎開", reading: "わたのはなしべひらく", season: "autumn", power: 1, harmony: 4, cost: 2, effect: "防御強化" },
+            { id: 47, name: "天地始粛", reading: "てんちはじめてさむし", season: "autumn", power: 2, harmony: 3, cost: 2, effect: "冷却効果" },
+            { id: 48, name: "禾乃登", reading: "こくものすなわちみのる", season: "autumn", power: 3, harmony: 2, cost: 2, effect: "収穫の喜び" },
+            { id: 49, name: "草露白", reading: "くさのつゆしろし", season: "autumn", power: 1, harmony: 3, cost: 1, effect: "浄化の露" },
+            { id: 50, name: "鶺鴒鳴", reading: "せきれいなく", season: "autumn", power: 2, harmony: 2, cost: 1, effect: "水辺効果" },
+            { id: 51, name: "玄鳥去", reading: "つばめさる", season: "autumn", power: 2, harmony: 1, cost: 1, effect: "別れの効果" },
+            { id: 52, name: "雷乃収声", reading: "かみなりすなわちこえをおさむ", season: "autumn", power: 1, harmony: 4, cost: 2, effect: "静寂効果" },
+            { id: 53, name: "蟄虫坏戸", reading: "むしかくれてとをふさぐ", season: "autumn", power: 1, harmony: 3, cost: 1, effect: "冬眠準備" },
+            { id: 54, name: "菊花開", reading: "きくのはなひらく", season: "autumn", power: 1, harmony: 5, cost: 2, effect: "破壊されても手札復帰" },
+
+            // 冬の候
+            { id: 55, name: "立冬", reading: "りっとう", season: "winter", power: 2, harmony: 4, cost: 1, effect: "冬の始まり" },
+            { id: 56, name: "小雪", reading: "しょうせつ", season: "winter", power: 1, harmony: 3, cost: 1, effect: "初雪効果" },
+            { id: 57, name: "大雪", reading: "たいせつ", season: "winter", power: 2, harmony: 5, cost: 1, effect: "大雪の守り" },
+            { id: 58, name: "冬至", reading: "とうじ", season: "winter", power: 1, harmony: 4, cost: 1, effect: "最短日効果" },
+            { id: 59, name: "小寒", reading: "しょうかん", season: "winter", power: 3, harmony: 2, cost: 1, effect: "寒気効果" },
+            { id: 60, name: "大寒", reading: "だいかん", season: "winter", power: 4, harmony: 1, cost: 1, effect: "最大寒気" },
+            { id: 61, name: "山茶始開", reading: "つばきはじめてひらく", season: "winter", power: 2, harmony: 3, cost: 1, effect: "冬の花" },
+            { id: 62, name: "地始凍", reading: "ちはじめてこおる", season: "winter", power: 1, harmony: 4, cost: 1, effect: "凍結効果" },
+            { id: 63, name: "金盞香", reading: "きんせんかさく", season: "winter", power: 1, harmony: 2, cost: 1, effect: "香り効果" },
+            { id: 64, name: "麋角解", reading: "さわしかのつのおつる", season: "winter", power: 2, harmony: 2, cost: 1, effect: "角の力" },
+            { id: 65, name: "水泉動", reading: "しみずあたたかをふくむ", season: "winter", power: 1, harmony: 3, cost: 1, effect: "温泉効果" },
+            { id: 66, name: "雉始雊", reading: "きじはじめてなく", season: "winter", power: 3, harmony: 1, cost: 1, effect: "威嚇効果" },
+            { id: 67, name: "款冬華", reading: "ふきのはなさく", season: "winter", power: 1, harmony: 4, cost: 1, effect: "春への準備" },
+            { id: 68, name: "水沢腹堅", reading: "さわみずこおりつめる", season: "winter", power: 2, harmony: 4, cost: 1, effect: "氷の盾" },
+            { id: 69, name: "雞始乳", reading: "にわとりはじめてとやにつく", season: "winter", power: 1, harmony: 2, cost: 1, effect: "家畜効果" },
+            { id: 70, name: "熊蟄穴", reading: "くまあなにこもる", season: "winter", power: 5, harmony: 1, cost: 1, effect: "1ターン後攻撃力2倍" },
+            { id: 71, name: "征鳥厲疾", reading: "たかすばやし", season: "winter", power: 4, harmony: 2, cost: 1, effect: "速攻効果" },
+            { id: 72, name: "雪下出麦", reading: "ゆきわたりてむぎのびる", season: "winter", power: 1, harmony: 1, cost: 1, effect: "春に力3調和3上昇" }
+        ];
+
+        // Initialize Game
+        function initializeGame() {
+            // Reset game state
+            gameState = {
+                currentSeason: 'spring',
+                turnCount: 1,
+                playerLife: 20,
+                cpuLife: 20,
+                playerEnergy: 2,
+                cpuEnergy: 2,
+                playerHand: [],
+                cpuHand: [],
+                playerField: [],
+                cpuField: [],
+                sharedDeck: [], // 共通山札
+                currentPlayer: 'player'
+            };
+
+            // Create shared deck and shuffle
+            gameState.sharedDeck = [...cards72kou].sort(() => Math.random() - 0.5);
+
+            // Initial hand - both players draw from shared deck
+            for (let i = 0; i < 5; i++) {
+                if (gameState.sharedDeck.length > 0) {
+                    gameState.playerHand.push(gameState.sharedDeck.pop());
+                }
+                if (gameState.sharedDeck.length > 0) {
+                    gameState.cpuHand.push(gameState.sharedDeck.pop());
+                }
+            }
+            
+
+            updateDisplay();
+            showMessage("ゲームを開始しました！あなたのターンです。", "info");
+        }
+
+        // Hand limit check function
+        function checkHandLimit(player) {
+            const maxHandSize = 7;
+            if (player === 'player' && gameState.playerHand.length > maxHandSize) {
+                // 手札が上限を超えた場合、ランダムに捨てる
+                const discardIndex = Math.floor(Math.random() * gameState.playerHand.length);
+                gameState.playerHand.splice(discardIndex, 1);
+                showMessage("手札上限のためカードを1枚捨てました", "info");
+            } else if (player === 'cpu' && gameState.cpuHand.length > maxHandSize) {
+                const discardIndex = Math.floor(Math.random() * gameState.cpuHand.length);
+                gameState.cpuHand.splice(discardIndex, 1);
+            }
+        }
+
+        // Update Display
+        function updateDisplay() {
+            // Update life and energy
+            document.getElementById('player-life').textContent = gameState.playerLife;
+            document.getElementById('cpu-life').textContent = gameState.cpuLife;
+            document.getElementById('player-energy').textContent = gameState.playerEnergy;
+            document.getElementById('cpu-energy').textContent = gameState.cpuEnergy;
+            
+            // Update shared deck remaining
+            document.getElementById('deck-remaining').textContent = gameState.sharedDeck.length;
+
+            // Update season track
+            document.querySelectorAll('.season-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.season === gameState.currentSeason) {
+                    item.classList.add('active');
+                }
+            });
+
+            // Update player hand
+            const handContainer = document.getElementById('player-hand');
+            handContainer.innerHTML = '';
+            gameState.playerHand.forEach((card, index) => {
+                const cardElement = createCardElement(card, true);
+                cardElement.onclick = () => playCard(index);
+                handContainer.appendChild(cardElement);
+            });
+
+            // Update fields
+            updateField('player-field', gameState.playerField);
+            updateField('cpu-field', gameState.cpuField);
+        }
+
+        // Create Card Element with detailed info
+        function createCardElement(card, isClickable = false) {
+            const cardDiv = document.createElement('div');
+            cardDiv.className = `card ${card.season}`;
+            if (isClickable) cardDiv.style.cursor = 'pointer';
+
+            const currentCost = getEnergyCost(card);
+            const baseCost = card.cost;
+            let costClass = '';
+            if (currentCost < baseCost) costClass = 'discounted';
+            else if (currentCost > baseCost) costClass = 'increased';
+
+            cardDiv.innerHTML = `
+                <div class="card-cost ${costClass}">${currentCost}</div>
+                <div class="card-name">${card.name}</div>
+                <div class="card-reading">${card.reading}</div>
+                <div class="card-stats">
+                    <span>力:${card.power}</span>
+                    <span>調:${card.harmony}</span>
+                </div>
+                <div class="card-effect">${card.effect}</div>
+            `;
+
+            // Add hover effects - only preview system
+            if (isClickable) {
+                cardDiv.addEventListener('mouseenter', () => showCardPreview(card));
+                cardDiv.addEventListener('mouseleave', () => hideCardPreview());
+            }
+
+            return cardDiv;
+        }
+
+
+        // Show card preview when hovering
+        function showCardPreview(card) {
+            const preview = document.getElementById('combat-preview');
+            const details = document.getElementById('combat-details');
+            
+            const currentCost = getEnergyCost(card);
+            const baseCost = card.cost;
+            const currentSeason = getSeason();
+            
+            let content = `<strong>${card.name}</strong> (${card.reading})<br>`;
+            content += `<small>力:${card.power} 調和:${card.harmony} 効果:${card.effect}</small><br><br>`;
+            
+            content += `<strong>プレイ情報:</strong><br>`;
+            content += `<div class="effect-display">基本コスト: ${baseCost} → 現在コスト: ${currentCost}</div>`;
+            
+            if (currentCost < baseCost) {
+                content += `<div class="effect-display season-bonus">季節共鳴で-1コスト</div>`;
+            } else if (currentCost > baseCost) {
+                content += `<div class="effect-display season-penalty">逆季節で+1コスト</div>`;
+            }
+            
+            content += `<div class="effect-display">現在エネルギー: ${gameState.playerEnergy}</div>`;
+            
+            if (gameState.playerEnergy >= currentCost) {
+                content += `<div class="effect-display">✓ プレイ可能</div>`;
+            } else {
+                content += `<div class="effect-display season-penalty">✗ エネルギー不足</div>`;
+            }
+            
+            // Check if same card exists on field
+            if (gameState.playerField.some(fieldCard => fieldCard.id === card.id)) {
+                content += `<div class="effect-display season-penalty">✗ 同じ候は場に1枚まで</div>`;
+            }
+            
+            // Show season effects
+            content += `<br><strong>戦闘時効果:</strong><br>`;
+            if (card.season === gameState.currentSeason) {
+                content += `<div class="effect-display season-bonus">季節共鳴: 攻撃力 ${card.power} → ${Math.floor(card.power * 1.5)}</div>`;
+            } else {
+                const opposites = {
+                    'spring': 'autumn', 'summer': 'winter',
+                    'autumn': 'spring', 'winter': 'summer'
+                };
+                if (card.season === opposites[gameState.currentSeason]) {
+                    content += `<div class="effect-display season-penalty">逆季節: 攻撃力 ${card.power} → ${Math.floor(card.power * 0.5)}</div>`;
+                } else {
+                    content += `<div class="effect-display">通常攻撃力: ${card.power}</div>`;
+                }
+            }
+            
+            details.innerHTML = content;
+            preview.classList.add('active');
+        }
+
+        // Hide card preview
+        function hideCardPreview() {
+            const preview = document.getElementById('combat-preview');
+            preview.classList.remove('active');
+        }
+
+
+        // Show attack preview when hovering over field cards
+        function showAttackPreview(attackCard) {
+            const preview = document.getElementById('combat-preview');
+            const details = document.getElementById('combat-details');
+            
+            let content = `<strong>${attackCard.name}</strong> で攻撃した場合:<br>`;
+            
+            const basePower = attackCard.power;
+            let actualPower = basePower;
+            
+            // Calculate season effects
+            if (attackCard.season === gameState.currentSeason) {
+                actualPower = Math.floor(basePower * 1.5);
+                content += `<div class="effect-display season-bonus">季節共鳴: 攻撃力 ${basePower} → ${actualPower}</div>`;
+            } else {
+                const opposites = {
+                    'spring': 'autumn', 'summer': 'winter',
+                    'autumn': 'spring', 'winter': 'summer'
+                };
+                
+                if (attackCard.season === opposites[gameState.currentSeason]) {
+                    actualPower = Math.floor(basePower * 0.5);
+                    content += `<div class="effect-display season-penalty">逆季節: 攻撃力 ${basePower} → ${actualPower}</div>`;
+                }
+            }
+            
+            if (gameState.cpuField.length === 0) {
+                // Direct attack
+                content += `<div class="effect-display">直接攻撃: ${actualPower} ダメージ</div>`;
+                content += `<div class="effect-display">相手生命力: ${gameState.cpuLife} → ${Math.max(0, gameState.cpuLife - actualPower)}</div>`;
+            } else {
+                // Show damage against each enemy card
+                content += `<strong>対象別ダメージ:</strong><br>`;
+                gameState.cpuField.forEach((targetCard, index) => {
+                    const damage = Math.max(0, actualPower - targetCard.harmony);
+                    content += `<div class="effect-display">vs ${targetCard.name} (調和:${targetCard.harmony}): ${damage} ダメージ</div>`;
+                });
+            }
+            
+            details.innerHTML = content;
+            preview.classList.add('active');
+        }
+
+        // Update Field
+        function updateField(fieldId, fieldCards) {
+            const fieldContainer = document.getElementById(fieldId);
+            fieldContainer.innerHTML = '';
+            fieldCards.forEach(card => {
+                const cardElement = createCardElement(card);
+                if (fieldId === 'player-field') {
+                    cardElement.onclick = () => attackWithCard(card);
+                    cardElement.style.cursor = 'pointer';
+                    
+                    // Add hover effect for combat preview
+                    cardElement.addEventListener('mouseenter', () => showAttackPreview(card));
+                    cardElement.addEventListener('mouseleave', () => hideCardPreview());
+                }
+                fieldContainer.appendChild(cardElement);
+            });
+        }
+
+        // Play Card
+        function playCard(handIndex) {
+            if (gameState.currentPlayer !== 'player') return;
+
+            const card = gameState.playerHand[handIndex];
+            const energyCost = getEnergyCost(card);
+
+            if (gameState.playerEnergy < energyCost) {
+                showMessage("エネルギーが足りません！", "error");
+                return;
+            }
+
+            // Check if same card already on field
+            if (gameState.playerField.some(fieldCard => fieldCard.id === card.id)) {
+                showMessage("同じ候は場に1枚までです！", "error");
+                return;
+            }
+
+            // Play the card
+            gameState.playerEnergy -= energyCost;
+            gameState.playerField.push(card);
+            gameState.playerHand.splice(handIndex, 1);
+
+            // Apply card effect
+            applyCardEffect(card, 'player');
+
+            // Show detailed play message
+            let message = `${card.name}を場に出しました！`;
+            if (card.season === gameState.currentSeason) {
+                message += ` (季節共鳴で効果1.5倍)`;
+            }
+            
+            const opposites = {
+                'spring': 'autumn', 'summer': 'winter',
+                'autumn': 'spring', 'winter': 'summer'
+            };
+            
+            if (card.season === opposites[gameState.currentSeason]) {
+                message += ` (逆季節で効果半減)`;
+            }
+
+            updateDisplay();
+            showMessage(message, "info");
+        }
+
+        // Get Energy Cost
+        function getEnergyCost(card) {
+            let baseCost = card.cost;
+            
+            // Season resonance
+            if (card.season === gameState.currentSeason) {
+                baseCost = Math.max(1, baseCost - 1);
+            }
+            
+            // Opposite season penalty
+            const opposites = {
+                'spring': 'autumn',
+                'summer': 'winter',
+                'autumn': 'spring',
+                'winter': 'summer'
+            };
+            
+            if (card.season === opposites[gameState.currentSeason]) {
+                baseCost += 1;
+            }
+            
+            return baseCost;
+        }
+
+        // Apply Card Effect
+        function applyCardEffect(card, player) {
+            // Simplified effects for demo
+            switch (card.effect) {
+                case "毎ターン回復1":
+                    if (player === 'player') {
+                        // Set up recurring effect (simplified)
+                        gameState.playerLife = Math.min(20, gameState.playerLife + 1);
+                    }
+                    break;
+                case "調和2以下破壊":
+                    const targetField = player === 'player' ? gameState.cpuField : gameState.playerField;
+                    for (let i = targetField.length - 1; i >= 0; i--) {
+                        if (targetField[i].harmony <= 2) {
+                            targetField.splice(i, 1);
+                            showMessage(`${targetField[i]?.name || 'カード'}が破壊されました！`, "info");
+                        }
+                    }
+                    break;
+                // Add more effects as needed
+            }
+        }
+
+        // Attack with Card
+        function attackWithCard(attackCard) {
+            if (gameState.currentPlayer !== 'player') return;
+
+            if (gameState.cpuField.length === 0) {
+                // Direct attack
+                const basePower = attackCard.power;
+                const damage = calculateDamage(attackCard, null);
+                let message = `${attackCard.name}の直接攻撃！`;
+                
+                if (attackCard.season === gameState.currentSeason) {
+                    message += ` (季節共鳴: ${basePower}→${Math.floor(basePower * 1.5)})`;
+                } else {
+                    const opposites = {
+                        'spring': 'autumn', 'summer': 'winter',
+                        'autumn': 'spring', 'winter': 'summer'
+                    };
+                    if (attackCard.season === opposites[gameState.currentSeason]) {
+                        message += ` (逆季節: ${basePower}→${Math.floor(basePower * 0.5)})`;
+                    }
+                }
+                
+                message += ` ${damage}ダメージ！`;
+                gameState.cpuLife -= damage;
+                showMessage(message, "info");
+            } else {
+                // Attack random enemy card
+                const targetIndex = Math.floor(Math.random() * gameState.cpuField.length);
+                const targetCard = gameState.cpuField[targetIndex];
+                const basePower = attackCard.power;
+                const damage = calculateDamage(attackCard, targetCard);
+                
+                let message = `${attackCard.name}が${targetCard.name}を攻撃！ `;
+                
+                if (attackCard.season === gameState.currentSeason) {
+                    message += `(攻撃力: ${basePower}→${Math.floor(basePower * 1.5)}) `;
+                } else {
+                    const opposites = {
+                        'spring': 'autumn', 'summer': 'winter',
+                        'autumn': 'spring', 'winter': 'summer'
+                    };
+                    if (attackCard.season === opposites[gameState.currentSeason]) {
+                        message += `(攻撃力: ${basePower}→${Math.floor(basePower * 0.5)}) `;
+                    }
+                }
+                
+                message += `vs 調和${targetCard.harmony} = `;
+                
+                if (damage > 0) {
+                    message += `${damage}ダメージ！`;
+                    gameState.cpuLife -= damage;
+                } else {
+                    message += `攻撃は防がれました！`;
+                }
+                
+                showMessage(message, "info");
+            }
+
+            updateDisplay();
+            checkWinCondition();
+        }
+
+        // Calculate Damage
+        function calculateDamage(attacker, defender) {
+            let attackPower = attacker.power;
+            let defensePower = defender ? defender.harmony : 0;
+
+            // Season resonance
+            if (attacker.season === gameState.currentSeason) {
+                attackPower = Math.floor(attackPower * 1.5);
+            }
+
+            // Opposite season penalty
+            const opposites = {
+                'spring': 'autumn',
+                'summer': 'winter',
+                'autumn': 'spring',
+                'winter': 'summer'
+            };
+            
+            if (attacker.season === opposites[gameState.currentSeason]) {
+                attackPower = Math.floor(attackPower * 0.5);
+            }
+
+            return Math.max(0, attackPower - defensePower);
+        }
+
+        // End Turn
+        function endTurn() {
+            if (gameState.currentPlayer === 'player') {
+                gameState.currentPlayer = 'cpu';
+                
+                // Draw card from shared deck
+                if (gameState.sharedDeck.length > 0) {
+                    gameState.playerHand.push(gameState.sharedDeck.pop());
+                    checkHandLimit('player');
+                }
+                
+                // Update season
+                if (gameState.turnCount % 3 === 0) {
+                    advanceSeason();
+                }
+                
+                updateDisplay();
+                showMessage("コンピュータのターンです", "info");
+                
+                // CPU turn
+                setTimeout(cpuTurn, 1000);
+            }
+        }
+
+        // Advance Season
+        function advanceSeason() {
+            const seasons = ['spring', 'summer', 'autumn', 'winter'];
+            const currentIndex = seasons.indexOf(gameState.currentSeason);
+            gameState.currentSeason = seasons[(currentIndex + 1) % 4];
+            
+            // Update energy based on season
+            const energyMap = { spring: 2, summer: 3, autumn: 2, winter: 1 };
+            gameState.playerEnergy = energyMap[gameState.currentSeason];
+            gameState.cpuEnergy = energyMap[gameState.currentSeason];
+            
+            showMessage(`季節が${getSeason()}になりました！`, "info");
+        }
+
+        // Get Season Japanese
+        function getSeason() {
+            const seasonMap = {
+                'spring': '春',
+                'summer': '夏',
+                'autumn': '秋',
+                'winter': '冬'
+            };
+            return seasonMap[gameState.currentSeason];
+        }
+
+        // CPU Turn
+        function cpuTurn() {
+            document.getElementById('loading').style.display = 'block';
+            
+            setTimeout(() => {
+                // Simple CPU AI
+                cpuPlayCard();
+                cpuAttack();
+                
+                // End CPU turn
+                gameState.currentPlayer = 'player';
+                gameState.turnCount++;
+                
+                // Draw card for CPU from shared deck
+                if (gameState.sharedDeck.length > 0) {
+                    gameState.cpuHand.push(gameState.sharedDeck.pop());
+                    checkHandLimit('cpu');
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+                updateDisplay();
+                showMessage("あなたのターンです", "info");
+                
+                checkWinCondition();
+            }, 2000);
+        }
+
+        // CPU Play Card
+        function cpuPlayCard() {
+            const playableCards = gameState.cpuHand.filter(card => {
+                const cost = getEnergyCost(card);
+                return gameState.cpuEnergy >= cost && 
+                       !gameState.cpuField.some(fieldCard => fieldCard.id === card.id);
+            });
+
+            if (playableCards.length > 0) {
+                const randomCard = playableCards[Math.floor(Math.random() * playableCards.length)];
+                const handIndex = gameState.cpuHand.indexOf(randomCard);
+                
+                gameState.cpuEnergy -= getEnergyCost(randomCard);
+                gameState.cpuField.push(randomCard);
+                gameState.cpuHand.splice(handIndex, 1);
+                
+                applyCardEffect(randomCard, 'cpu');
+                showMessage(`コンピュータが${randomCard.name}を場に出しました！`, "info");
+            }
+        }
+
+        // CPU Attack
+        function cpuAttack() {
+            if (gameState.cpuField.length === 0) return;
+
+            const attackCard = gameState.cpuField[Math.floor(Math.random() * gameState.cpuField.length)];
+            
+            if (gameState.playerField.length === 0) {
+                // Direct attack
+                const damage = calculateDamage(attackCard, null);
+                gameState.playerLife -= damage;
+                showMessage(`コンピュータの直接攻撃！${damage}ダメージ！`, "error");
+            } else {
+                // Attack random player card
+                const targetCard = gameState.playerField[Math.floor(Math.random() * gameState.playerField.length)];
+                const damage = calculateDamage(attackCard, targetCard);
+                
+                if (damage > 0) {
+                    gameState.playerLife -= damage;
+                    showMessage(`${attackCard.name}が${targetCard.name}を攻撃！${damage}ダメージ！`, "error");
+                }
+            }
+        }
+
+        // Check Win Condition
+        function checkWinCondition() {
+            if (gameState.playerLife <= 0) {
+                showMessage("敗北！コンピュータの勝利です。", "error");
+                setTimeout(() => showScreen('menu-screen'), 3000);
+            } else if (gameState.cpuLife <= 0) {
+                showMessage("勝利！おめでとうございます！", "info");
+                setTimeout(() => showScreen('menu-screen'), 3000);
+            }
+            
+            // Check for complete cycle (simplified)
+            const playerSeasons = new Set(gameState.playerField.map(card => card.season));
+            if (playerSeasons.size === 4) {
+                showMessage("完全なる輪廻達成！あなたの勝利です！", "info");
+                setTimeout(() => showScreen('menu-screen'), 3000);
+            }
+        }
+
+        // Show Message
+        function showMessage(message, type = "info") {
+            const messageDiv = document.getElementById('game-message');
+            messageDiv.textContent = message;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Game is ready
+        });
+    </script>
+</body>
+</html>

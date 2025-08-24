@@ -1,0 +1,136 @@
+<!--
+ai-model: Gemini
+user-prompt: 新しいディレクトリを作り、エアコンの仕組みの学習サイトをHTMLで作ってください
+ai-approach: ユーザーの指示に従い、エアコンの仕組みを解説する学習サイトを単一のHTMLファイルで作成します。まず、`air-conditioner-mechanism`というディレクトリを作成し、その中に`index.html`を配置します。HTMLファイルには、エアコンの基本的な仕組み（冷媒、圧縮機、凝縮器、膨張弁、蒸発器）を分かりやすく説明するコンテンツを記述します。また、簡単なCSSで見出しや本文のスタイルを整え、読みやすさを向上させます。
+implementation-intent: This file provides an educational explanation of how air conditioners work, structured within a single HTML document. It includes sections for the main components and the cooling cycle, styled with CSS for better readability.
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>エアコンの仕組み</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 2em;
+            background-color: #f0f8ff;
+        }
+        h1, h2 {
+            color: #333;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 0.5em;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 2em;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .component {
+            background-color: #f4f4f4;
+            padding: 1em;
+            margin-bottom: 1em;
+            border-left: 5px solid #007bff;
+        }
+        .ac-diagram {
+            width: 100%;
+            max-width: 700px;
+            margin: 2em auto;
+            display: block;
+        }
+        .ac-diagram text { font-family: sans-serif; }
+        .ac-diagram .label { font-size: 14px; font-weight: bold; }
+        .ac-diagram .sub-label { font-size: 12px; }
+        .ac-diagram .hot-gas { stroke: #e74c3c; stroke-width: 4; fill: none; }
+        .ac-diagram .hot-liquid { stroke: #c0392b; stroke-width: 4; fill: none; }
+        .ac-diagram .cold-liquid { stroke: #3498db; stroke-width: 4; fill: none; }
+        .ac-diagram .cold-gas { stroke: #5dade2; stroke-width: 4; fill: none; }
+        .ac-diagram .component-box { fill: #f2f2f2; stroke: #999; }
+        .ac-diagram .heat-arrow { fill: #f39c12; font-size: 24px; }
+        .ac-diagram .flow-arrow { fill: #555; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>エアコンはどうやって部屋を冷やすの？</h1>
+        <p>エアコンは、「冷媒（れいばい）」という特殊なガス（液体）を使い、室内の熱を室外に移動させることで部屋を涼しくします。下の図は、その仕組みを表したものです。</p>
+
+        <svg class="ac-diagram" viewBox="0 0 400 220">
+            <!-- Zones -->
+            <rect x="5" y="5" width="190" height="210" fill="#eaf4ff" stroke="#99ccee" stroke-dasharray="4" />
+            <text x="100" y="25" text-anchor="middle" class="label">室内</text>
+            <rect x="205" y="5" width="190" height="210" fill="#fff0e6" stroke="#ffccaa" stroke-dasharray="4" />
+            <text x="300" y="25" text-anchor="middle" class="label">室外</text>
+
+            <!-- Components -->
+            <rect x="250" y="100" width="100" height="50" class="component-box"/>
+            <text x="300" y="120" text-anchor="middle" class="label">圧縮機</text>
+            <text x="300" y="135" text-anchor="middle" class="sub-label">高温・高圧ガス</text>
+
+            <rect x="250" y="40" width="100" height="50" class="component-box"/>
+            <text x="300" y="60" text-anchor="middle" class="label">凝縮器</text>
+            <text x="300" y="75" text-anchor="middle" class="sub-label">高温・高圧液体</text>
+
+            <rect x="50" y="40" width="100" height="50" class="component-box"/>
+            <text x="100" y="60" text-anchor="middle" class="label">膨張弁</text>
+            <text x="100" y="75" text-anchor="middle" class="sub-label">低温・低圧液体</text>
+
+            <rect x="50" y="100" width="100" height="50" class="component-box"/>
+            <text x="100" y="120" text-anchor="middle" class="label">蒸発器</text>
+            <text x="100" y="135" text-anchor="middle" class="sub-label">低温・低圧ガス</text>
+
+            <!-- Pipes -->
+            <path d="M 150 125 C 200 125, 200 125, 250 125" class="cold-gas"/> <!-- Evaporator to Compressor -->
+            <path d="M 300 100 V 90" class="hot-gas"/> <!-- Compressor to Condenser -->
+            <path d="M 250 65 C 200 65, 200 65, 150 65" class="hot-liquid"/> <!-- Condenser to Expansion Valve -->
+            <path d="M 100 90 V 100" class="cold-liquid"/> <!-- Expansion to Evaporator -->
+
+            <!-- Flow Arrows -->
+            <polygon points="195,120 205,125 195,130" class="flow-arrow"/>
+            <polygon points="295,95 300,85 305,95" class="flow-arrow"/>
+            <polygon points="205,60 195,65 205,70" class="flow-arrow"/>
+            <polygon points="95,95 100,85 105,95" class="flow-arrow"/>
+
+            <!-- Heat Exchange Arrows -->
+            <text x="15" y="130" class="heat-arrow">🔥</text>
+            <text x="170" y="130" class="heat-arrow" style="transform: scaleX(-1);">❄️</text>
+            <text x="120" y="165" text-anchor="middle">部屋の熱を吸収</text>
+
+            <text x="215" y="65" class="heat-arrow">🔥</text>
+            <text x="370" y="65" class="heat-arrow">🔥</text>
+            <text x="295" y="30" text-anchor="middle">外へ熱を放出</text>
+        </svg>
+
+        <p>この熱の移動は、主に4つの部品が連携して行われます。</p>
+
+        <h2>エアコンの主要な部品</h2>
+
+        <div class="component">
+            <h3>1. 圧縮機（あっしゅくき） - 室外機</h3>
+            <p>室外機の中にあり、<strong>低温・低圧の冷媒ガス</strong>を圧縮して<strong>高温・高圧のガス</strong>にします。</p>
+        </div>
+
+        <div class="component">
+            <h3>2. 凝縮器（ぎょうしゅくき） - 室外機</h3>
+            <p>室外機の中にあり、ファンで外の空気を当てて、<strong>高温・高圧の冷媒ガス</strong>を冷やし、<strong>高温・高圧の液体</strong>にします。ここで室内の熱が外に放出されます。</p>
+        </div>
+
+        <div class="component">
+            <h3>3. 膨張弁（ぼうちょうべん） - 室内機へ</h3>
+            <p>室内機に向かう途中にあり、<strong>高温・高圧の冷媒液体</strong>の圧力を一気に下げ、<strong>低温・低圧の液体</strong>にします。</p>
+        </div>
+
+        <div class="component">
+            <h3>4. 蒸発器（じょうはつき） - 室内機</h3>
+            <p>室内機の中にあり、<strong>低温・低圧の冷媒液体</strong>が周りの空気から熱を奪って蒸発し、<strong>低温・低圧のガス</strong>になります。このとき、室内の空気が冷やされ、涼しい風が出てきます。</p>
+        </div>
+
+        <h2>冷房のサイクル</h2>
+        <p>この「圧縮 → 凝縮 → 膨張 → 蒸発」というサイクルを繰り返すことで、エアコンは部屋の熱をどんどん外に運び出し、室内を快適な温度に保つのです。</p>
+    </div>
+</body>
+</html>

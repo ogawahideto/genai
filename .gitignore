@@ -4,6 +4,15 @@ articles/
 # Claude Code設定ファイル（Gitに登録しない）
 .claude/
 
+# Codex CLI設定ファイル（Gitに登録しない）
+.codex/
+
+# 作業ログファイル（各サブディレクトリ内）
+*/work.log
+*/development.log
+*/progress.md
+*/notes.md
+
 # その他のプライベートファイル
 *.local.md
 .vscode/

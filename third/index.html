@@ -1,0 +1,434 @@
+import React, { useState, useEffect } from 'react';
+import { CheckCircle, XCircle, RefreshCw, ExternalLink } from 'lucide-react';
+
+const JapanSandaiQuiz = () => {
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [score, setScore] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState('');
+  const [gameFinished, setGameFinished] = useState(false);
+  const [userAnswers, setUserAnswers] = useState([]);
+
+  const questions = [
+    {
+      id: 1,
+      category: "日本三大夜景",
+      description: "函館山、稲佐山と並ぶ日本三大夜景の三番目は？",
+      options: ["摩耶山", "六甲山", "東京タワー", "スカイツリー"],
+      correct: "摩耶山",
+      explanation: "日本三大夜景は函館山（北海道）、稲佐山（長崎）、摩耶山（神戸）です。摩耶山の掬星台からの神戸・大阪の夜景は「1000万ドルの夜景」と呼ばれています。",
+      source: "一般社団法人夜景観光コンベンション・ビューロー認定",
+      sourceUrl: "https://www.yakei-cvb.or.jp/"
+    },
+    {
+      id: 2,
+      category: "日本三大祭り",
+      description: "祇園祭、天神祭と並ぶ日本三大祭りの三番目は？",
+      options: ["神田祭", "阿波踊り", "ねぶた祭り", "さっぽろ雪まつり"],
+      correct: "神田祭",
+      explanation: "日本三大祭りは祇園祭（京都）、天神祭（大阪）、神田祭（東京）です。神田祭は江戸三大祭りの一つでもあり、2年に1度の本祭りが行われます。",
+      source: "神田明神公式サイト・観光庁資料",
+      sourceUrl: "https://www.kandamyoujin.or.jp/"
+    },
+    {
+      id: 3,
+      category: "日本三大庭園",
+      description: "兼六園、後楽園と並ぶ日本三大庭園の三番目は？",
+      options: ["偕楽園", "栗林公園", "浜離宮恩賜庭園", "龍安寺"],
+      correct: "偕楽園",
+      explanation: "日本三大庭園は兼六園（金沢）、後楽園（岡山）、偕楽園（水戸）です。偕楽園は水戸藩第9代藩主徳川斉昭によって造園され、梅の名所として有名です。",
+      source: "文化庁・茨城県公式観光サイト",
+      sourceUrl: "https://www.ibarakiguide.jp/kairakuen/"
+    },
+    {
+      id: 4,
+      category: "日本三大急流",
+      description: "富士川、球磨川と並ぶ日本三大急流の三番目は？",
+      options: ["最上川", "天竜川", "木曽川", "利根川"],
+      correct: "最上川",
+      explanation: "日本三大急流は富士川（静岡）、球磨川（熊本）、最上川（山形）です。最上川は松尾芭蕉の句「五月雨を集めて早し最上川」でも有名です。",
+      source: "国土交通省河川局・山形県公式サイト",
+      sourceUrl: "https://www.pref.yamagata.jp/"
+    },
+    {
+      id: 5,
+      category: "日本三大温泉",
+      description: "草津温泉、有馬温泉と並ぶ日本三大温泉の三番目は？",
+      options: ["下呂温泉", "別府温泉", "熱海温泉", "道後温泉"],
+      correct: "下呂温泉",
+      explanation: "日本三大温泉は草津温泉（群馬）、有馬温泉（兵庫）、下呂温泉（岐阜）です。室町時代から「天下の三名泉」として親しまれてきました。",
+      source: "下呂市観光協会・日本温泉協会",
+      sourceUrl: "https://www.gero-spa.com/"
+    },
+    {
+      id: 6,
+      category: "日本三大桜",
+      description: "三春滝桜、山高神代桜と並ぶ日本三大桜の三番目は？",
+      options: ["根尾谷淡墨桜", "吉野千本桜", "弘前公園の桜", "醍醐桜"],
+      correct: "根尾谷淡墨桜",
+      explanation: "日本三大桜は三春滝桜（福島）、山高神代桜（山梨）、根尾谷淡墨桜（岐阜）です。すべて国の天然記念物に指定されている一本桜です。",
+      source: "文化庁天然記念物データベース・本巣市公式サイト",
+      sourceUrl: "https://www.city.motosu.lg.jp/tourism/usuzumi/"
+    },
+    {
+      id: 7,
+      category: "日本三大稲荷",
+      description: "伏見稲荷大社、豊川稲荷と並ぶ日本三大稲荷の三番目は？",
+      options: ["笠間稲荷神社", "太鼓谷稲成神社", "竹駒神社", "祐徳稲荷神社"],
+      correct: "笠間稲荷神社",
+      explanation: "日本三大稲荷は伏見稲荷大社（京都）、豊川稲荷（愛知）、笠間稲荷神社（茨城）です。ただし、地域により祐徳稲荷神社を含む場合もあります。",
+      source: "笠間稲荷神社公式サイト・茨城県神社庁",
+      sourceUrl: "https://www.kasama.or.jp/"
+    },
+    {
+      id: 8,
+      category: "日本三大うどん",
+      description: "讃岐うどん、稲庭うどんと並ぶ日本三大うどんの三番目は？",
+      options: ["水沢うどん", "五島うどん", "氷見うどん", "伊勢うどん"],
+      correct: "水沢うどん",
+      explanation: "日本三大うどんは讃岐うどん（香川）、稲庭うどん（秋田）、水沢うどん（群馬）です。水沢うどんは水澤寺の参拝客をもてなすために作られたのが始まりとされています。",
+      source: "水沢うどん商工組合・群馬県観光物産協会",
+      sourceUrl: "https://www.mizusawaudon.or.jp/"
+    },
+    {
+      id: 9,
+      category: "日本三大湖",
+      description: "琵琶湖、霞ヶ浦と並ぶ日本三大湖の三番目は？",
+      options: ["サロマ湖", "猪苗代湖", "中海", "浜名湖"],
+      correct: "サロマ湖",
+      explanation: "日本三大湖は琵琶湖（滋賀）、霞ヶ浦（茨城）、サロマ湖（北海道）です。面積順では琵琶湖が1位、霞ヶ浦が2位、サロマ湖が3位となっています。",
+      source: "国土地理院・北海道庁公式サイト",
+      sourceUrl: "https://www.pref.hokkaido.lg.jp/"
+    },
+    {
+      id: 10,
+      category: "日本三大鍾乳洞",
+      description: "秋芳洞、龍泉洞と並ぶ日本三大鍾乳洞の三番目は？",
+      options: ["龍河洞", "玉泉洞", "あぶくま洞", "石垣島鍾乳洞"],
+      correct: "龍河洞",
+      explanation: "日本三大鍾乳洞は秋芳洞（山口）、龍泉洞（岩手）、龍河洞（高知）です。すべて国の天然記念物に指定されている代表的な鍾乳洞です。",
+      source: "文化庁天然記念物データベース・龍河洞公式サイト",
+      sourceUrl: "https://ryugadou.or.jp/"
+    },
+    {
+      id: 11,
+      category: "日本三大そば",
+      description: "信州そば、出雲そばと並ぶ日本三大そばの三番目は？",
+      options: ["わんこそば", "へぎそば", "茶そば", "更科そば"],
+      correct: "わんこそば",
+      explanation: "日本三大そばは信州そば（長野）、出雲そば（島根）、わんこそば（岩手）です。わんこそばは岩手県の名物で、小さな椀に盛られたそばを次々と食べる独特の食文化です。",
+      source: "全国麺類組合・岩手県観光協会",
+      sourceUrl: "https://www.iwatetabi.jp/"
+    },
+    {
+      id: 12,
+      category: "日本三大松原",
+      description: "天橋立、気比の松原と並ぶ日本三大松原の三番目は？",
+      options: ["虹の松原", "三保松原", "慶野松原", "白良浜"],
+      correct: "虹の松原",
+      explanation: "日本三大松原は天橋立（京都）、気比の松原（福井）、虹の松原（佐賀）です。虹の松原は唐津湾に面した約5kmの松原で、約100万本の松が植えられています。",
+      source: "唐津市観光協会・佐賀県観光連盟",
+      sourceUrl: "https://www.karatsu-kankou.jp/"
+    },
+    {
+      id: 13,
+      category: "日本三大美林",
+      description: "青森ヒバ、秋田スギと並ぶ日本三大美林の三番目は？",
+      options: ["木曽ヒノキ", "屋久杉", "吉野杉", "北山杉"],
+      correct: "木曽ヒノキ",
+      explanation: "日本三大美林は青森ヒバ（青森）、秋田スギ（秋田）、木曽ヒノキ（長野）です。木曽ヒノキは建築材として最高級とされ、伊勢神宮の式年遷宮でも使用されています。",
+      source: "林野庁・木曽森林管理署",
+      sourceUrl: "https://www.rinya.maff.go.jp/"
+    },
+    {
+      id: 14,
+      category: "日本三大霊場",
+      description: "比叡山、高野山と並ぶ日本三大霊場の三番目は？",
+      options: ["恐山", "身延山", "立山", "出羽三山"],
+      correct: "恐山",
+      explanation: "日本三大霊場は比叡山（滋賀）、高野山（和歌山）、恐山（青森）です。恐山は死者の霊が集まる場所として信仰され、イタコの口寄せで有名です。",
+      source: "宗教法人恐山菩提寺・青森県観光協会",
+      sourceUrl: "https://www.aptinet.jp/"
+    },
+    {
+      id: 15,
+      category: "日本三大やきとり",
+      description: "今治やきとり、美唄やきとりと並ぶ日本三大やきとりの三番目は？",
+      options: ["東松山やきとり", "久留米やきとり", "長門やきとり", "室蘭やきとり"],
+      correct: "東松山やきとり",
+      explanation: "日本三大やきとりは今治やきとり（愛媛）、美唄やきとり（北海道）、東松山やきとり（埼玉）です。東松山やきとりは豚肉のカシラ（頬肉）を使用し、辛味噌で食べるのが特徴です。",
+      source: "東松山市観光協会・埼玉県観光連盟",
+      sourceUrl: "https://www.higashimatsuyama-kanko.com/"
+    },
+    {
+      id: 16,
+      category: "日本三大瀑布",
+      description: "華厳の滝、袋田の滝と並ぶ日本三大瀑布の三番目は？",
+      options: ["那智の滝", "白糸の滝", "称名滝", "秋保大滝"],
+      correct: "那智の滝",
+      explanation: "日本三大瀑布は華厳の滝（栃木）、袋田の滝（茨城）、那智の滝（和歌山）です。那智の滝は落差133mで、熊野那智大社の御神体として信仰されています。",
+      source: "熊野那智大社・和歌山県観光連盟",
+      sourceUrl: "https://www.kumanonachitaisha.or.jp/"
+    },
+    {
+      id: 17,
+      category: "日本三大カルスト",
+      description: "秋吉台、四国カルストと並ぶ日本三大カルストの三番目は？",
+      options: ["平尾台", "帝釈台", "阿哲台", "飛騨高原"],
+      correct: "平尾台",
+      explanation: "日本三大カルストは秋吉台（山口）、四国カルスト（愛媛・高知）、平尾台（福岡）です。平尾台は福岡県北九州市にある石灰岩台地で、羊の群れのような景観が特徴です。",
+      source: "北九州市・福岡県観光連盟",
+      sourceUrl: "https://www.city.kitakyushu.lg.jp/"
+    },
+    {
+      id: 18,
+      category: "日本三大港",
+      description: "横浜港、神戸港と並ぶ日本三大港の三番目は？",
+      options: ["長崎港", "清水港", "名古屋港", "大阪港"],
+      correct: "長崎港",
+      explanation: "日本三大港は横浜港（神奈川）、神戸港（兵庫）、長崎港（長崎）です。これらは明治時代の開港五港の中でも特に重要な港として発展しました。",
+      source: "国土交通省港湾局・長崎市公式サイト",
+      sourceUrl: "https://www.city.nagasaki.lg.jp/"
+    },
+    {
+      id: 19,
+      category: "日本三大和牛",
+      description: "松阪牛、近江牛と並ぶ日本三大和牛の三番目は？",
+      options: ["神戸牛", "飛騨牛", "前沢牛", "宮崎牛"],
+      correct: "神戸牛",
+      explanation: "日本三大和牛は松阪牛（三重）、近江牛（滋賀）、神戸牛（兵庫）です。神戸牛は但馬牛のうち厳格な基準を満たしたもので、世界的にも有名なブランド牛です。",
+      source: "神戸肉流通推進協議会・兵庫県畜産会",
+      sourceUrl: "https://www.kobe-niku.jp/"
+    },
+    {
+      id: 20,
+      category: "日本三大砂丘",
+      description: "鳥取砂丘、中田島砂丘と並ぶ日本三大砂丘の三番目は？",
+      options: ["吹上浜", "九十九里浜", "猿ヶ森砂丘", "白良浜"],
+      correct: "猿ヶ森砂丘",
+      explanation: "日本三大砂丘は鳥取砂丘（鳥取）、中田島砂丘（静岡）、猿ヶ森砂丘（青森）です。猿ヶ森砂丘は日本最大級の砂丘ですが、防衛装備庁の下北試験場があるため一般開放されていません。",
+      source: "青森県庁・下北半島観光協会",
+      sourceUrl: "https://www.pref.aomori.lg.jp/"
+    }
+  ];
+
+  const resetGame = () => {
+    setCurrentQuestion(0);
+    setScore(0);
+    setShowAnswer(false);
+    setSelectedAnswer('');
+    setGameFinished(false);
+    setUserAnswers([]);
+  };
+
+  const handleAnswerSelect = (answer) => {
+    if (showAnswer) return;
+    
+    setSelectedAnswer(answer);
+    setShowAnswer(true);
+    
+    const isCorrect = answer === questions[currentQuestion].correct;
+    const newAnswer = {
+      questionId: questions[currentQuestion].id,
+      selected: answer,
+      correct: questions[currentQuestion].correct,
+      isCorrect: isCorrect
+    };
+    
+    setUserAnswers([...userAnswers, newAnswer]);
+    
+    if (isCorrect) {
+      setScore(score + 1);
+    }
+  };
+
+  const nextQuestion = () => {
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+      setShowAnswer(false);
+      setSelectedAnswer('');
+    } else {
+      setGameFinished(true);
+    }
+  };
+
+  const getScoreMessage = () => {
+    const percentage = (score / questions.length) * 100;
+    if (percentage === 100) return "完璧です！日本の文化に詳しいですね！";
+    if (percentage >= 80) return "素晴らしい！とてもよく知っていますね。";
+    if (percentage >= 60) return "良い成績です！";
+    if (percentage >= 40) return "まずまずの成績ですね。";
+    return "次回はもっと頑張りましょう！";
+  };
+
+  if (gameFinished) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
+        <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-800 mb-4">ゲーム終了！</h1>
+            <div className="text-6xl font-bold text-blue-600 mb-2">
+              {score}/{questions.length}
+            </div>
+            <p className="text-xl text-gray-600 mb-4">{getScoreMessage()}</p>
+          </div>
+          
+          <div className="space-y-4 mb-8">
+            <h2 className="text-xl font-semibold text-gray-800">結果詳細</h2>
+            {questions.map((question, index) => {
+              const userAnswer = userAnswers[index];
+              return (
+                <div key={question.id} className={`p-4 rounded-lg border-2 ${
+                  userAnswer.isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+                }`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {userAnswer.isCorrect ? (
+                      <CheckCircle className="text-green-600" size={20} />
+                    ) : (
+                      <XCircle className="text-red-600" size={20} />
+                    )}
+                    <span className="font-semibold">{question.category}</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1">
+                    あなたの回答: <span className={userAnswer.isCorrect ? 'text-green-600 font-semibold' : 'text-red-600'}>{userAnswer.selected}</span>
+                  </p>
+                  {!userAnswer.isCorrect && (
+                    <p className="text-sm text-gray-600">
+                      正解: <span className="text-green-600 font-semibold">{question.correct}</span>
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          
+          <div className="text-center">
+            <button
+              onClick={resetGame}
+              className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <RefreshCw size={20} />
+              もう一度プレイ
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const question = questions[currentQuestion];
+
+  return (
+    <div className="max-w-4xl mx-auto p-6 bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
+      <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">日本三大○○クイズ</h1>
+          <div className="text-lg font-semibold text-blue-600">
+            問題 {currentQuestion + 1}/{questions.length}
+          </div>
+        </div>
+        
+        <div className="mb-6">
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              style={{width: `${((currentQuestion + 1) / questions.length) * 100}%`}}
+            ></div>
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <div className="bg-blue-50 p-4 rounded-lg mb-6">
+            <h2 className="text-xl font-semibold text-blue-800 mb-2">{question.category}</h2>
+            <p className="text-lg text-gray-700">{question.description}</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {question.options.map((option, index) => {
+              let buttonClass = "p-4 text-left border-2 rounded-lg transition-all duration-200 ";
+              
+              if (!showAnswer) {
+                buttonClass += "border-gray-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer";
+              } else {
+                if (option === question.correct) {
+                  buttonClass += "border-green-500 bg-green-100 text-green-800";
+                } else if (option === selectedAnswer && option !== question.correct) {
+                  buttonClass += "border-red-500 bg-red-100 text-red-800";
+                } else {
+                  buttonClass += "border-gray-200 bg-gray-50 text-gray-600";
+                }
+              }
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleAnswerSelect(option)}
+                  className={buttonClass}
+                  disabled={showAnswer}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{option}</span>
+                    {showAnswer && option === question.correct && (
+                      <CheckCircle className="text-green-600" size={20} />
+                    )}
+                    {showAnswer && option === selectedAnswer && option !== question.correct && (
+                      <XCircle className="text-red-600" size={20} />
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {showAnswer && (
+          <div className="bg-gray-50 p-6 rounded-lg mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              {selectedAnswer === question.correct ? (
+                <CheckCircle className="text-green-600" size={24} />
+              ) : (
+                <XCircle className="text-red-600" size={24} />
+              )}
+              <h3 className="text-lg font-semibold">
+                {selectedAnswer === question.correct ? "正解！" : "残念..."}
+              </h3>
+            </div>
+            
+            <p className="text-gray-700 mb-3">{question.explanation}</p>
+            
+            <div className="bg-white p-3 rounded border-l-4 border-blue-500">
+              <p className="text-sm text-gray-600 mb-1">
+                <strong>根拠:</strong> {question.source}
+              </p>
+              <a 
+                href={question.sourceUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm"
+              >
+                詳細を確認 <ExternalLink size={14} />
+              </a>
+            </div>
+          </div>
+        )}
+
+        {showAnswer && (
+          <div className="text-center">
+            <button
+              onClick={nextQuestion}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+            >
+              {currentQuestion < questions.length - 1 ? "次の問題" : "結果を見る"}
+            </button>
+          </div>
+        )}
+
+        <div className="mt-8 text-center text-sm text-gray-500">
+          現在のスコア: {score}/{currentQuestion + (showAnswer ? 1 : 0)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default JapanSandaiQuiz;

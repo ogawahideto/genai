@@ -1,0 +1,23 @@
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f0f0f0;
+    font-family: sans-serif;
+}
+
+canvas {
+    border: 1px solid #000;
+    background-color: #fff;
+}
+
+.controls {
+    margin-top: 20px;
+}
+
+.controls button {
+    padding: 15px 30px;
+    font-size: 1.2em;
+    margin: 0 10px;
+    cursor: pointer;
+}
