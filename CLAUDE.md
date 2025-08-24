@@ -49,6 +49,28 @@ Example structure:
 # No automated test framework in place
 ```
 
+### Work Logging
+Each application directory should maintain development logs for tracking progress and decisions:
+
+**Standard Log Files** (automatically excluded from Git):
+- `work.log` - Daily development activities and progress
+- `development.log` - Technical decisions and implementation notes  
+- `progress.md` - Structured progress tracking with markdown
+- `notes.md` - General notes, ideas, and observations
+
+**Log File Usage**:
+```bash
+# Example log entry format
+echo "$(date): Started implementing collision detection" >> my-game/work.log
+echo "$(date): Fixed rendering issue with canvas scaling" >> my-game/development.log
+```
+
+**Benefits**:
+- Track development decisions and reasoning
+- Record issues encountered and solutions found
+- Maintain project history without cluttering Git
+- Aid in debugging and future enhancements
+
 ### Common Technologies Used
 
 - **HTML5 Canvas** for graphics and game rendering
@@ -141,7 +163,12 @@ All blog articles and documentation for external platforms (note.com, Qiita, etc
 1. **Directory Placement** - Always create articles in `articles/` directory
 2. **Git Exclusion** - The entire `articles/` directory is excluded from Git via `.gitignore`
 3. **Naming Convention** - Use descriptive names: `{project_name}_article.md`, `{topic}_note.md`
-4. **Content Types**:
+4. **Work Log Integration** - Always reference project work logs when writing articles:
+   - Read `work.log` for development timeline and activities
+   - Check `development.log` for technical decisions and implementation details
+   - Review `progress.md` for structured development milestones
+   - Include `notes.md` insights and observations
+5. **Content Types**:
    - Technical deep-dive articles for blog platforms
    - Development diary entries
    - Tutorial and how-to guides
@@ -181,12 +208,22 @@ When creating articles, include:
 ```
 
 ### Workflow for Article Creation
-1. Create article file in `articles/` directory
-2. Write comprehensive content covering technical aspects
-3. Include code examples and explanations
-4. Review and refine content
-5. Publish manually to target platform (note.com, etc.)
-6. Articles remain private in local repository only
+1. **Read Work Logs** - Review all log files in the project directory:
+   - `{project}/work.log` - Development activities and timeline
+   - `{project}/development.log` - Technical decisions and solutions
+   - `{project}/progress.md` - Milestone achievements
+   - `{project}/notes.md` - Ideas and observations
+2. **Create article file** in `articles/` directory
+3. **Integrate log insights** - Use work logs to inform article content:
+   - Development challenges and how they were solved
+   - Technical decision rationale from development.log
+   - Timeline and progress milestones
+   - Key learnings and insights from notes
+4. **Write comprehensive content** covering technical aspects
+5. **Include code examples** and explanations based on actual implementation
+6. **Review and refine** content for accuracy and completeness
+7. **Publish manually** to target platform (note.com, etc.)
+8. **Articles remain private** in local repository only
 
 ## Project Completion Automation
 

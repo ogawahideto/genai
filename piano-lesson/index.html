@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ピアノレッスン</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>ピアノレッスン</h1>
+      <div class="controls">
+        <label>
+          レッスン:
+          <select id="lessonSelect" aria-label="レッスン選択"></select>
+        </label>
+        <button id="btnDemo" title="レッスンをデモ再生">デモ再生</button>
+        <button id="btnPractice" title="練習モード切替">練習モード</button>
+        <span id="status" class="status" aria-live="polite"></span>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section class="lesson-panel" aria-label="レッスン情報">
+        <div><strong>次の音:</strong> <span id="nextNote">—</span></div>
+        <div><strong>スコア:</strong> <span id="score">0</span></div>
+        <div class="hints">
+          マウスで鍵盤をクリック、またはキーボードで演奏:
+          <code>A S D F G H J</code>（白鍵） / <code>W E T Y U</code>（黒鍵）。
+          横にスクロールして他の鍵盤も弾けます（C3〜B5）。
+        </div>
+      </section>
+
+      <section class="piano-wrap" aria-label="ピアノ鍵盤">
+        <div id="piano" class="piano" role="application"></div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <small>WebAudio を使用。ブラウザの音量にご注意ください。</small>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+  </html>
