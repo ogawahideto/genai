@@ -92,6 +92,9 @@ This repository contains a collection of small, self-contained web applications 
 #### [日本の特急列車クイズ](japanese-train-quiz/) (2025-08-20)
 クイズ・学習アプリケーション
 
+#### [日本全国古墳クイズ](kofun/) (2025-08-27)
+クイズ・学習アプリケーション
+
 #### [国歌クイズアプリ](national_songs/) (2025-06-25)
 クイズ・学習アプリケーション
 
