@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本全国古墳クイズ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #ffa726);
+            color: white;
+            text-align: center;
+            padding: 30px 20px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .score-board {
+            background: #f8f9fa;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .score {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .quiz-content {
+            padding: 40px;
+        }
+        
+        .question-number {
+            color: #6c757d;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+        
+        .kofun-info {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .kofun-description {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #495057;
+            margin-bottom: 20px;
+        }
+        
+        .kofun-image {
+            width: 100%;
+            max-width: 300px;
+            height: 200px;
+            background: #e9ecef;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            font-size: 4rem;
+            color: #6c757d;
+        }
+        
+        .question-section {
+            margin-bottom: 25px;
+        }
+        
+        .question-title {
+            font-size: 1.2rem;
+            color: #343a40;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        .options {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .option-btn {
+            padding: 15px 20px;
+            border: 2px solid #dee2e6;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            text-align: left;
+        }
+        
+        .option-btn:hover {
+            border-color: #007bff;
+            background: #f8f9ff;
+            transform: translateY(-2px);
+        }
+        
+        .option-btn.selected {
+            border-color: #007bff;
+            background: #007bff;
+            color: white;
+        }
+        
+        .option-btn.correct {
+            border-color: #28a745;
+            background: #28a745;
+            color: white;
+        }
+        
+        .option-btn.incorrect {
+            border-color: #dc3545;
+            background: #dc3545;
+            color: white;
+        }
+        
+        .submit-btn, .next-btn, .restart-btn {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px auto;
+            display: block;
+        }
+        
+        .submit-btn:hover, .next-btn:hover, .restart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,123,255,0.3);
+        }
+        
+        .result {
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-size: 1.1rem;
+            display: none;
+        }
+        
+        .result.correct {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        
+        .result.incorrect {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        
+        .final-score {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        
+        .final-score h2 {
+            color: #343a40;
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+        
+        .score-display {
+            font-size: 3rem;
+            color: #007bff;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .quiz-content {
+                padding: 20px;
+            }
+            
+            .kofun-image {
+                height: 180px;
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏯 日本全国古墳クイズ</h1>
+            <p>古墳の名前・所在地・形状を当てよう！</p>
+        </div>
+        
+        <div class="score-board">
+            <div class="score">問題: <span id="current-question">1</span> / <span id="total-questions">8</span></div>
+            <div class="score">正解: <span id="correct-count">0</span></div>
+            <div class="score">スコア: <span id="score-percentage">0</span>%</div>
+        </div>
+        
+        <div class="quiz-content" id="quiz-content">
+            <div class="question-number">第<span id="question-num">1</span>問</div>
+            
+            <div class="kofun-info">
+                <div class="kofun-description" id="kofun-description"></div>
+                <div class="kofun-image" id="kofun-image">🏛️</div>
+            </div>
+            
+            <div class="question-section">
+                <div class="question-title">古墳の名前は？</div>
+                <div class="options" id="name-options"></div>
+            </div>
+            
+            <div class="question-section">
+                <div class="question-title">所在地は？</div>
+                <div class="options" id="location-options"></div>
+            </div>
+            
+            <div class="question-section">
+                <div class="question-title">形状は？</div>
+                <div class="options" id="shape-options"></div>
+            </div>
+            
+            <button class="submit-btn" id="submit-btn" onclick="checkAnswers()">回答する</button>
+            <button class="next-btn" id="next-btn" onclick="nextQuestion()" style="display: none;">次の問題</button>
+            
+            <div class="result" id="result"></div>
+        </div>
+        
+        <div class="final-score" id="final-score">
+            <h2>🎉 クイズ終了！</h2>
+            <div class="score-display" id="final-score-display"></div>
+            <p id="final-message"></p>
+            <button class="restart-btn" onclick="restartQuiz()">もう一度挑戦</button>
+        </div>
+    </div>
+
+    <script>
+        const kofunData = [
+            {
+                name: "仁徳天皇陵古墳（大仙陵古墳）",
+                location: "大阪府堺市",
+                shape: "前方後円墳",
+                description: "日本最大規模の古墳で、全長約486メートル。世界遺産「百舌鳥・古市古墳群」の一部として登録されています。",
+                emoji: "👑"
+            },
+            {
+                name: "応神天皇陵古墳（誉田御廟山古墳）",
+                location: "大阪府羽曳野市",
+                shape: "前方後円墳",
+                description: "全長約425メートルの巨大古墳。古市古墳群の中心的存在で、5世紀前半に築造されたと考えられています。",
+                emoji: "🌟"
+            },
+            {
+                name: "石舞台古墳",
+                location: "奈良県明日香村",
+                shape: "方墳",
+                description: "巨大な石室が露出した独特な姿で有名。蘇我馬子の墓とする説があり、飛鳥時代の代表的な古墳です。",
+                emoji: "🪨"
+            },
+            {
+                name: "箸墓古墳",
+                location: "奈良県桜井市",
+                shape: "前方後円墳",
+                description: "卑弥呼の墓との説もある3世紀後半の古墳。前方後円墳の原型とも考えられている重要な遺跡です。",
+                emoji: "⚡"
+            },
+            {
+                name: "高松塚古墳",
+                location: "奈良県明日香村",
+                shape: "円墳",
+                description: "極彩色の壁画で有名な古墳。飛鳥美人や四神図などの壁画が発見され、日本古代美術の傑作とされています。",
+                emoji: "🎨"
+            },
+            {
+                name: "キトラ古墳",
+                location: "奈良県明日香村",
+                shape: "円墳",
+                description: "高松塚古墳と並ぶ壁画古墳。天文図や四神図、十二支図などの精巧な壁画が描かれています。",
+                emoji: "⭐"
+            },
+            {
+                name: "造山古墳",
+                location: "岡山県岡山市",
+                shape: "前方後円墳",
+                description: "岡山県最大の古墳で、全長約350メートル。吉備地域の有力者の墓と考えられています。",
+                emoji: "🏔️"
+            },
+            {
+                name: "五色塚古墳",
+                location: "兵庫県神戸市",
+                shape: "前方後円墳",
+                description: "全長194メートルの前方後円墳。復元整備されており、築造当時の姿を体感できる貴重な古墳です。",
+                emoji: "🌈"
+            },
+            {
+                name: "稲荷山古墳",
+                location: "埼玉県行田市",
+                shape: "前方後円墳",
+                description: "金錯銘鉄剣が出土した古墳。ヤマト政権と東国の関係を示す重要な遺跡です。埼玉古墳群の中核をなします。",
+                emoji: "🗡️"
+            },
+            {
+                name: "今城塚古墳",
+                location: "大阪府高槻市",
+                shape: "前方後円墳",
+                description: "継体天皇の真陵とする説が有力。6世紀前半築造で、埴輪祭祀場の復元で有名です。",
+                emoji: "🏯"
+            },
+            {
+                name: "太田天神山古墳",
+                location: "群馬県太田市",
+                shape: "前方後円墳",
+                description: "東日本最大級の古墳で、全長約210メートル。関東地方の古墳時代を代表する巨大古墳です。",
+                emoji: "⛰️"
+            },
+            {
+                name: "森将軍塚古墳",
+                location: "長野県千曲市",
+                shape: "前方後円墳",
+                description: "信州最大の前方後円墳。全長約100メートルで、科野国の有力者の墓と考えられています。",
+                emoji: "🌲"
+            },
+            {
+                name: "西都原古墳群（男狭穂塚・女狭穂塚）",
+                location: "宮崎県西都市",
+                shape: "前方後円墳",
+                description: "九州最大の古墳群の中心的古墳。男狭穂塚は日本最大の帆立貝形古墳、女狭穂塚は九州最大の前方後円墳です。",
+                emoji: "🌸"
+            },
+            {
+                name: "江田船山古墳",
+                location: "熊本県和水町",
+                shape: "前方後円墳",
+                description: "金象嵌銘大刀で有名な古墳。75文字の銀象嵌銘は日本最古級の文章として貴重な史料です。",
+                emoji: "⚔️"
+            },
+            {
+                name: "岩橋千塚古墳群",
+                location: "和歌山県和歌山市",
+                shape: "円墳",
+                description: "約430基からなる古墳群。横穴式石室を持つ古墳が多く、特別史跡に指定されています。",
+                emoji: "💎"
+            },
+            {
+                name: "黒塚古墳",
+                location: "奈良県天理市",
+                shape: "前方後円墳",
+                description: "33面の三角縁神獣鏡が出土した古墳。3世紀後半築造で、初期ヤマト政権の謎に迫る重要な遺跡です。",
+                emoji: "🪞"
+            },
+            {
+                name: "行燈山古墳",
+                location: "奈良県天理市",
+                shape: "前方後円墳",
+                description: "崇神天皇陵に治定される古墳。全長約242メートルで、柳本古墳群の中核をなします。",
+                emoji: "🏮"
+            },
+            {
+                name: "見瀬丸山古墳",
+                location: "奈良県橿原市",
+                shape: "前方後円墳",
+                description: "欽明天皇陵説がある6世紀後半の古墳。巨大な横穴式石室で有名で、全長約318メートル。",
+                emoji: "🔮"
+            }
+        ];
+
+        let currentQuestion = 0;
+        let correctAnswers = 0;
+        let userAnswers = {
+            name: null,
+            location: null,
+            shape: null
+        };
+
+        // 選択肢のデータ
+        const nameOptions = kofunData.map(k => k.name);
+        const locationOptions = [...new Set(kofunData.map(k => k.location))];
+        const shapeOptions = ["前方後円墳", "円墳", "方墳", "前方後方墳"];
+
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function createOptions(optionsArray, correctAnswer, containerId, type) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            let options = [correctAnswer];
+            const otherOptions = optionsArray.filter(opt => opt !== correctAnswer);
+            const shuffledOthers = shuffleArray(otherOptions);
+            options.push(...shuffledOthers.slice(0, 3));
+            options = shuffleArray(options);
+
+            options.forEach(option => {
+                const btn = document.createElement('div');
+                btn.className = 'option-btn';
+                btn.textContent = option;
+                btn.onclick = () => selectOption(btn, type, option);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectOption(btn, type, value) {
+            const container = btn.parentElement;
+            container.querySelectorAll('.option-btn').forEach(b => {
+                b.classList.remove('selected');
+            });
+            
+            btn.classList.add('selected');
+            userAnswers[type] = value;
+        }
+
+        function loadQuestion() {
+            const kofun = kofunData[currentQuestion];
+            
+            document.getElementById('current-question').textContent = currentQuestion + 1;
+            document.getElementById('question-num').textContent = currentQuestion + 1;
+            document.getElementById('kofun-description').textContent = kofun.description;
+            document.getElementById('kofun-image').textContent = kofun.emoji;
+
+            createOptions(nameOptions, kofun.name, 'name-options', 'name');
+            createOptions(locationOptions, kofun.location, 'location-options', 'location');
+            createOptions(shapeOptions, kofun.shape, 'shape-options', 'shape');
+
+            userAnswers = { name: null, location: null, shape: null };
+            
+            document.getElementById('submit-btn').style.display = 'block';
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('result').style.display = 'none';
+        }
+
+        function checkAnswers() {
+            if (!userAnswers.name || !userAnswers.location || !userAnswers.shape) {
+                alert('すべての質問に答えてください！');
+                return;
+            }
+
+            const kofun = kofunData[currentQuestion];
+            const isCorrect = userAnswers.name === kofun.name && 
+                            userAnswers.location === kofun.location && 
+                            userAnswers.shape === kofun.shape;
+
+            if (isCorrect) {
+                correctAnswers++;
+            }
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            
+            if (isCorrect) {
+                resultDiv.className = 'result correct';
+                resultDiv.innerHTML = `
+                    <strong>🎉 正解！</strong><br>
+                    すべて正しく答えました！
+                `;
+            } else {
+                resultDiv.className = 'result incorrect';
+                let incorrectAnswers = [];
+                if (userAnswers.name !== kofun.name) incorrectAnswers.push(`名前: ${kofun.name}`);
+                if (userAnswers.location !== kofun.location) incorrectAnswers.push(`所在地: ${kofun.location}`);
+                if (userAnswers.shape !== kofun.shape) incorrectAnswers.push(`形状: ${kofun.shape}`);
+                
+                resultDiv.innerHTML = `
+                    <strong>❌ 不正解</strong><br>
+                    正答: ${incorrectAnswers.join('、')}
+                `;
+            }
+
+            updateOptionColors();
+            updateScore();
+
+            document.getElementById('submit-btn').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'block';
+        }
+
+        function updateOptionColors() {
+            const kofun = kofunData[currentQuestion];
+            
+            updateCategoryOptions('name-options', kofun.name, userAnswers.name);
+            updateCategoryOptions('location-options', kofun.location, userAnswers.location);
+            updateCategoryOptions('shape-options', kofun.shape, userAnswers.shape);
+        }
+
+        function updateCategoryOptions(containerId, correctAnswer, userAnswer) {
+            const container = document.getElementById(containerId);
+            const options = container.querySelectorAll('.option-btn');
+            
+            options.forEach(option => {
+                if (option.textContent === correctAnswer) {
+                    option.classList.add('correct');
+                } else if (option.textContent === userAnswer && userAnswer !== correctAnswer) {
+                    option.classList.add('incorrect');
+                }
+                option.onclick = null;
+            });
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            
+            if (currentQuestion >= kofunData.length) {
+                showFinalScore();
+            } else {
+                loadQuestion();
+            }
+        }
+
+        function updateScore() {
+            document.getElementById('correct-count').textContent = correctAnswers;
+            const percentage = Math.round((correctAnswers / (currentQuestion + 1)) * 100);
+            document.getElementById('score-percentage').textContent = percentage;
+        }
+
+        function showFinalScore() {
+            document.getElementById('quiz-content').style.display = 'none';
+            document.getElementById('final-score').style.display = 'block';
+            
+            const percentage = Math.round((correctAnswers / kofunData.length) * 100);
+            document.getElementById('final-score-display').textContent = `${correctAnswers}/${kofunData.length} (${percentage}%)`;
+            
+            let message = '';
+            if (percentage >= 90) {
+                message = '🏆 素晴らしい！古墳博士ですね！';
+            } else if (percentage >= 70) {
+                message = '👏 とても良くできました！';
+            } else if (percentage >= 50) {
+                message = '📚 まずまずの成績です。もう少し頑張りましょう！';
+            } else {
+                message = '💪 古墳についてもっと学んでから再挑戦してみてください！';
+            }
+            
+            document.getElementById('final-message').textContent = message;
+        }
+
+        function restartQuiz() {
+            currentQuestion = 0;
+            correctAnswers = 0;
+            document.getElementById('quiz-content').style.display = 'block';
+            document.getElementById('final-score').style.display = 'none';
+            updateScore();
+            loadQuestion();
+        }
+
+        document.getElementById('total-questions').textContent = kofunData.length;
+        loadQuestion();
+    </script>
+</body>
+</html>
