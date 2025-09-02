@@ -1,0 +1,623 @@
+<!--
+AI Model: OpenAI Codex CLI Assistant
+Codex CLI Version: 2025-09-02
+Created: 2025-09-02
+User Prompt: 新しいディレクトリを作り、そこにHTMLで恐竜大図鑑を作ってください。ゲーム要素などエンタメ性をたくさん入れ込んでください
+AI Approach: Single-file, no deps, multiple mini-games (quiz, dig, audio)
+Implementation Intent: Fun-first encyclopedia with unlockables and localStorage
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>恐竜大図鑑 - エンタメ満載</title>
+  <style>
+    :root{
+      --bg:#0b1d26;
+      --panel:#0f2732;
+      --accent:#ffcf33;
+      --accent2:#69e6a6;
+      --text:#e6f2f7;
+      --muted:#9fb7c1;
+      --danger:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, sans-serif;
+      color:var(--text);
+      background: radial-gradient(1200px 600px at 80% -10%, #12394a 0%, #0d2633 40%, var(--bg) 70%) fixed, url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140"><text x="10" y="90" font-size="100">🦖</text></svg>');
+      background-blend-mode: overlay;
+    }
+    header{
+      display:flex;gap:16px;align-items:center;justify-content:space-between;
+      padding:14px 16px;position:sticky;top:0;z-index:10;
+      background: linear-gradient(180deg, rgba(11,29,38,.95), rgba(11,29,38,.7));
+      backdrop-filter:saturate(1.2) blur(6px);
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .title{display:flex;gap:10px;align-items:center}
+    .title .logo{font-size:28px}
+    .title h1{font-size:18px;margin:0 0 2px 0;letter-spacing:.02em}
+    .title p{margin:0;color:var(--muted);font-size:12px}
+    nav{display:flex;gap:8px;flex-wrap:wrap}
+    nav button{
+      background:var(--panel);color:var(--text);border:1px solid rgba(255,255,255,.08);
+      padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;
+    }
+    nav button.active{outline:2px solid var(--accent);background:linear-gradient(180deg,#143545,#0f2a36)}
+    main{max-width:1200px;margin:16px auto;padding:0 16px 80px}
+    .panel{
+      background:linear-gradient(180deg, rgba(15,39,50,.9), rgba(10,29,38,.9));
+      border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+    .card{
+      background:#0f2632;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:12px;position:relative;overflow:hidden
+    }
+    .badge{position:absolute;top:8px;right:8px;background:var(--accent2);color:#063b25;font-weight:800;font-size:11px;padding:2px 8px;border-radius:999px}
+    .dino-emoji{font-size:48px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.3))}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    input,select{
+      background:#0f2632;color:var(--text);border:1px solid rgba(255,255,255,.1);
+      padding:8px 10px;border-radius:10px
+    }
+    .cta{background:var(--accent);color:#2b2200;font-weight:900;border:none;padding:10px 14px;border-radius:12px;cursor:pointer}
+    .cta.secondary{background:#2fd0f6;color:#072933}
+    .statbar{height:8px;background:#0c2130;border:1px solid rgba(255,255,255,.08);border-radius:999px;overflow:hidden}
+    .statbar>div{height:100%;background:linear-gradient(90deg,#ffcf33,#ff8f33)}
+
+    /* Tabs */
+    section{display:none;margin-top:14px}
+    section.active{display:block}
+
+    /* Quiz */
+    .quiz-q{font-size:18px;margin:8px 0}
+    .choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .choice{background:#113244;border:1px solid rgba(255,255,255,.08);padding:10px;border-radius:10px;cursor:pointer}
+    .choice.correct{outline:2px solid #65f0a6}
+    .choice.wrong{outline:2px solid var(--danger)}
+
+    /* Dig */
+    #digWrap{position:relative}
+    #digCanvas{width:100%;max-width:800px;border-radius:12px;border:1px solid rgba(255,255,255,.08);display:block}
+    .dig-ui{position:absolute;inset:auto 12px 12px 12px;display:flex;gap:8px}
+    .progress{min-width:160px;background:#0c2130;border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden}
+    .progress>div{height:18px;background:linear-gradient(90deg,#69e6a6,#2fd0f6)}
+
+    /* Runner */
+    #runnerCanvas{width:100%;max-width:900px;height:160px;background:#0f2430;border:1px solid rgba(255,255,255,.07);border-radius:10px}
+    .keyhint{font-size:12px;color:var(--muted)}
+
+    /* Achievements */
+    .achv{display:inline-flex;align-items:center;gap:8px;background:#123447;border:1px solid rgba(255,255,255,.08);padding:6px 10px;border-radius:999px;margin:4px 6px 0 0}
+    .achv.lock{opacity:.6;filter:grayscale(1)}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">
+      <div class="logo">🦖</div>
+      <div>
+        <h1>恐竜大図鑑 - エンタメ満載</h1>
+        <p class="muted">図鑑 × クイズ × 発掘 × ランナー × サウンド</p>
+      </div>
+    </div>
+    <nav>
+      <button data-tab="encyc" class="active">図鑑</button>
+      <button data-tab="quiz">クイズ</button>
+      <button data-tab="dig">化石発掘</button>
+      <button data-tab="runner">ダッシュ</button>
+      <button data-tab="roar">鳴き声ラボ</button>
+      <button data-tab="badges">コレクション</button>
+    </nav>
+  </header>
+  <main>
+    <div class="panel row" style="justify-content:space-between">
+      <div class="row">
+        <label>検索 <input id="search" placeholder="名前・時代・特徴で検索"/></label>
+        <label>時代 
+          <select id="filter-era">
+            <option value="">すべて</option>
+            <option>三畳紀</option>
+            <option>ジュラ紀</option>
+            <option>白亜紀</option>
+          </select>
+        </label>
+        <label>属性 
+          <select id="filter-diet">
+            <option value="">すべて</option>
+            <option>草食</option>
+            <option>肉食</option>
+            <option>雑食</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <button class="cta" id="shuffle">今日のおすすめ</button>
+        <button class="cta secondary" id="surprise">サプライズ!</button>
+      </div>
+    </div>
+
+    <!-- Encyclopedia -->
+    <section id="encyc" class="active">
+      <div class="grid" id="cards"></div>
+    </section>
+
+    <!-- Quiz -->
+    <section id="quiz">
+      <div class="panel">
+        <div class="row" style="justify-content:space-between">
+          <div>スコア: <b id="score">0</b> / 連続正解: <b id="streak">0</b></div>
+          <div class="keyhint">ヒント: 時間制限なし。落ち着いて選ぼう。</div>
+        </div>
+        <hr style="border-color:rgba(255,255,255,.06)"/>
+        <div class="quiz-q" id="quizQ">問題がここに表示されます</div>
+        <div class="choices" id="choices"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="cta" id="nextQ">次の問題</button>
+          <button class="cta secondary" id="resetQ">リセット</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dig -->
+    <section id="dig">
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;align-items:flex-end">
+          <div>
+            <div style="font-weight:800">化石発掘ミニゲーム</div>
+            <div class="muted">ドラッグして砂を払い、骨格を見つけよう（70%で発見）。</div>
+          </div>
+          <div class="row">
+            ブラシ: <input type="range" id="brush" min="8" max="60" value="28"/>
+            <button class="cta" id="resetDig">埋め戻す</button>
+          </div>
+        </div>
+        <div id="digWrap" style="margin-top:10px">
+          <canvas id="digCanvas" width="900" height="480"></canvas>
+          <div class="dig-ui">
+            <div class="progress"><div id="digProg" style="width:0%"></div></div>
+            <button class="cta" id="newFossil">別の化石</button>
+            <div id="digStatus" class="muted"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Runner -->
+    <section id="runner">
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;align-items:flex-end">
+          <div>
+            <div style="font-weight:800">ジュラ紀ダッシュ</div>
+            <div class="muted">スペースでジャンプ。障害物を避けてスコアを伸ばそう。</div>
+          </div>
+          <div class="row">スコア: <b id="runScore">0</b></div>
+        </div>
+        <canvas id="runnerCanvas" width="900" height="160"></canvas>
+        <div class="keyhint">スマホはタップでジャンプ</div>
+        <div class="row" style="margin-top:8px">
+          <button class="cta" id="runStart">スタート</button>
+          <button class="cta secondary" id="runStop">ストップ</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Roar Lab -->
+    <section id="roar">
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;align-items:flex-end">
+          <div>
+            <div style="font-weight:800">鳴き声ラボ</div>
+            <div class="muted">合成サウンドを聴いて恐竜を当てよう（ヘッドホン推奨）。</div>
+          </div>
+          <button class="cta" id="playRoar">鳴き声再生</button>
+        </div>
+        <div id="roarQ" class="quiz-q" style="margin-top:6px">この鳴き声の主は？</div>
+        <div class="choices" id="roarChoices"></div>
+        <div id="roarResult" class="muted" style="margin-top:8px"></div>
+      </div>
+    </section>
+
+    <!-- Badges -->
+    <section id="badges">
+      <div class="panel">
+        <div style="font-weight:800">コレクション / 実績</div>
+        <div id="badgeList" style="margin-top:6px"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ---------- Data ----------
+    const DINOS = [
+      { id:'trex',      name:'ティラノサウルス', era:'白亜紀', diet:'肉食', size:12, weight:8000, emoji:'🦖', trivia:'名は「暴君トカゲ」。噛む力は最強クラス。' },
+      { id:'velo',      name:'ヴェロキラプトル', era:'白亜紀', diet:'肉食', size:2,  weight:15,   emoji:'🦖', trivia:'実は小型で羽毛があった説が有力。' },
+      { id:'tricera',   name:'トリケラトプス',   era:'白亜紀', diet:'草食', size:9,  weight:6000, emoji:'🦕', trivia:'3本の角と大きなフリルが特徴。' },
+      { id:'brachio',   name:'ブラキオサウルス', era:'ジュラ紀', diet:'草食', size:25, weight:30000,emoji:'🦕', trivia:'前脚が長く、首を高く上げて採食。' },
+      { id:'stego',     name:'ステゴサウルス',   era:'ジュラ紀', diet:'草食', size:9,  weight:3000, emoji:'🦕', trivia:'背中の板は体温調節や威嚇に役立った。' },
+      { id:'ankyl',     name:'アンキロサウルス', era:'白亜紀', diet:'草食', size:8,  weight:6000, emoji:'🦕', trivia:'尾のハンマーで捕食者に反撃。' },
+      { id:'spino',     name:'スピノサウルス',   era:'白亜紀', diet:'肉食', size:15, weight:7000, emoji:'🦖', trivia:'背中の帆と半水生の生活で知られる。' },
+      { id:'allo',      name:'アロサウルス',     era:'ジュラ紀', diet:'肉食', size:9,  weight:2000, emoji:'🦖', trivia:'群れで狩りをした可能性がある。' },
+      { id:'para',      name:'パラサウロロフス', era:'白亜紀', diet:'草食', size:10, weight:2500, emoji:'🦕', trivia:'頭の長いトサカで音を共鳴させた説。' },
+      { id:'iguan',     name:'イグアノドン',     era:'白亜紀', diet:'草食', size:10, weight:3500, emoji:'🦕', trivia:'親指のとげは防御や採食に使用。' },
+      { id:'compy',     name:'コンプソグナトゥス', era:'ジュラ紀', diet:'肉食', size:1.2,weight:3,    emoji:'🦖', trivia:'小型で素早いハンター。' },
+      { id:'plateo',    name:'プラテオサウルス', era:'三畳紀', diet:'草食', size:9,  weight:4000, emoji:'🦕', trivia:'初期の大型草食恐竜のひとつ。' },
+
+      // --- 福井県で発見された恐竜（白亜紀前期） ---
+      { id:'fukuiraptor', name:'フクイラプトル',   era:'白亜紀', diet:'肉食', size:4.5, weight:600, emoji:'🦖', trivia:'福井県勝山市・北谷層で発見。中型の獣脚類で鋭い爪が特徴。' },
+      { id:'fukuisaurus', name:'フクイサウルス',   era:'白亜紀', diet:'草食', size:5.0, weight:700, emoji:'🦕', trivia:'福井県産の鳥脚類。くちばし状の口で植物を食べたと考えられる。' },
+      { id:'fukuititan',  name:'フクイティタン',   era:'白亜紀', diet:'草食', size:10,  weight:12000,emoji:'🦕', trivia:'福井県で見つかった竜脚類。長い首と尾をもつ大型草食恐竜。' },
+      { id:'fukuivenator',name:'フクイヴェナトル', era:'白亜紀', diet:'雑食', size:2.5, weight:25,  emoji:'🦖', trivia:'小型の獣脚類。多様な特徴を併せ持つ“謎めいた”恐竜として知られる（福井県）。' },
+      { id:'koshisaurus', name:'コシサウルス',     era:'白亜紀', diet:'草食', size:4.0, weight:150, emoji:'🦕', trivia:'「越（こし）」に由来する名。福井県勝山市の地層から報告された小型鳥脚類。' },
+      { id:'tyrannomimus',name:'ティラノミムス',   era:'白亜紀', diet:'雑食', size:2.8, weight:40,  emoji:'🦖', trivia:'ティラノサウルス類に近縁な走鳥類と考えられる新属新種（福井県）。' },
+    ];
+
+    // ---------- Tabs ----------
+    document.querySelectorAll('nav button').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'))
+        btn.classList.add('active')
+        const tab = btn.dataset.tab
+        document.querySelectorAll('main section').forEach(s=>s.classList.toggle('active', s.id===tab))
+      })
+    })
+
+    // ---------- Encyclopedia rendering ----------
+    const $cards = document.getElementById('cards')
+    const $search = document.getElementById('search')
+    const $era = document.getElementById('filter-era')
+    const $diet = document.getElementById('filter-diet')
+
+    function renderCards(){
+      const q = ($search.value||'').toLowerCase()
+      const e = $era.value
+      const d = $diet.value
+      const filtered = DINOS.filter(x=>
+        (!e || x.era===e) && (!d || x.diet===d) &&
+        (x.name.includes($search.value) || x.era.includes($search.value) || x.trivia.includes($search.value) || x.id.includes(q))
+      )
+      $cards.innerHTML = filtered.map(x=>`<div class="card">
+        <span class="badge">${x.era}</span>
+        <div class="dino-emoji" aria-hidden="true">${x.emoji}</div>
+        <div style="font-weight:800">${x.name}</div>
+        <div class="muted" style="font-size:12px">${x.diet}・全長約${x.size}m</div>
+        <div class="statbar" style="margin:8px 0"><div style="width:${Math.min(100, x.size*4)}%"></div></div>
+        <details>
+          <summary>詳細</summary>
+          <div style="font-size:13px">${x.trivia}</div>
+        </details>
+        <div class="row" style="margin-top:8px">
+          <button class="cta" onclick="startQuizWith('${x.id}')">この恐竜でクイズ</button>
+          <button class="cta secondary" onclick="unlockBadge('view_${x.id}','${x.name}を詳しく見た')">お気に入り</button>
+        </div>
+      </div>`).join('')
+    }
+    [$search,$era,$diet].forEach(el=>el.addEventListener('input',renderCards))
+    document.getElementById('shuffle').onclick=()=>{
+      $search.value = ''
+      $era.selectedIndex = 0
+      $diet.selectedIndex = 0
+      DINOS.sort(()=>Math.random()-.5)
+      renderCards()
+      toast('今日のおすすめを更新！')
+    }
+    document.getElementById('surprise').onclick=()=>{
+      const d = DINOS[Math.floor(Math.random()*DINOS.length)]
+      toast(`今日は「${d.name}」の日！`)
+      unlockBadge('surprise','サプライズを使った')
+    }
+
+    // ---------- Quiz ----------
+    const $quizQ = document.getElementById('quizQ')
+    const $choices = document.getElementById('choices')
+    const $score = document.getElementById('score')
+    const $streak = document.getElementById('streak')
+    let score=0, streak=0, quizAnswer=null, quizLock=false
+
+    function mkChoices(items, answer){
+      $choices.innerHTML = ''
+      items.forEach(txt=>{
+        const div = document.createElement('div')
+        div.className='choice'
+        div.textContent=txt
+        div.onclick=()=>{
+          if(quizLock) return
+          quizLock=true
+          if(txt===answer){
+            div.classList.add('correct')
+            score++; streak++; $score.textContent=score; $streak.textContent=streak
+            unlockBadge('quiz_correct','クイズ正解！')
+            if(streak>=5) unlockBadge('quiz_streak5','連続正解5')
+            ping('#69e6a6')
+          }else{
+            div.classList.add('wrong')
+            streak=0; $streak.textContent=streak
+            ping('#ff6b6b')
+          }
+        }
+        $choices.appendChild(div)
+      })
+    }
+
+    function nextQuiz(){
+      quizLock=false
+      const mode = Math.random()<.5 ? 'era' : 'diet'
+      const d = DINOS[Math.floor(Math.random()*DINOS.length)]
+      if(mode==='era'){
+        $quizQ.textContent = `${d.name} が生きた時代は？`
+        const pool = ['三畳紀','ジュラ紀','白亜紀','ペルム紀','デボン紀','新生代']
+        const set = new Set([d.era])
+        while(set.size < 4){
+          const pick = pool[Math.floor(Math.random()*pool.length)]
+          set.add(pick)
+        }
+        const opts = [...set]
+        mkChoices(shuffle(opts), d.era)
+      }else{
+        $quizQ.textContent = `${d.name} の食性は？`
+        const opts = Array.from(new Set([d.diet,'草食','肉食','雑食']))
+        mkChoices(shuffle(opts), d.diet)
+      }
+    }
+    document.getElementById('nextQ').onclick=nextQuiz
+    document.getElementById('resetQ').onclick=()=>{score=0;streak=0;$score.textContent=0;$streak.textContent=0;nextQuiz()}
+    function startQuizWith(id){
+      const d = DINOS.find(x=>x.id===id)
+      document.querySelector('nav button[data-tab="quiz"]').click()
+      $quizQ.textContent = `${d.name} のトリビアはどれ？`
+      const wrongs = shuffle(DINOS.filter(x=>x.id!==id)).slice(0,3).map(x=>x.trivia)
+      mkChoices(shuffle([d.trivia, ...wrongs]), d.trivia)
+    }
+
+    // ---------- Dig game (scratch) ----------
+    const digCanvas = document.getElementById('digCanvas')
+    const g = digCanvas.getContext('2d')
+    const $digProg = document.getElementById('digProg')
+    const $digStatus = document.getElementById('digStatus')
+    let digging=false, brush=28
+    document.getElementById('brush').oninput=(e)=>brush=+e.target.value
+
+    const fossils = [
+      (ctx,w,h)=>{ // Triceratops skull style
+        ctx.strokeStyle='#ffd966';ctx.lineWidth=3;ctx.lineCap='round'
+        ctx.beginPath(); ctx.arc(w*0.35,h*0.55,w*0.18,Math.PI*.2,Math.PI*1.7); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(w*0.42,h*0.55); ctx.lineTo(w*0.55,h*0.45); ctx.lineTo(w*0.62,h*0.5); ctx.stroke()
+        // horns
+        tri(w*.33,h*.48,w*.29,h*.35)
+        tri(w*.40,h*.50,w*.36,h*.38)
+        // frill plates
+        for(let i=0;i<7;i++){tri(w*(.26+i*.03),h*.58,w*(.25+i*.03),h*.64)}
+        function tri(x1,y1,x2,y2){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
+      },
+      (ctx,w,h)=>{ // T-rex skull
+        ctx.strokeStyle='#ffd966';ctx.lineWidth=3;ctx.lineCap='round'
+        ctx.beginPath(); ctx.moveTo(w*.2,h*.6); ctx.quadraticCurveTo(w*.45,h*.35,w*.7,h*.5); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(w*.22,h*.63); ctx.quadraticCurveTo(w*.48,h*.6,w*.75,h*.62); ctx.stroke()
+        for(let i=0;i<9;i++){ctx.beginPath();ctx.moveTo(w*(.35+i*.04),h*.59);ctx.lineTo(w*(.34+i*.04),h*.64);ctx.stroke()}
+      },
+      (ctx,w,h)=>{ // Stegosaurus plates & vertebrae
+        ctx.strokeStyle='#ffd966';ctx.lineWidth=3
+        for(let i=0;i<8;i++){ctx.beginPath();ctx.moveTo(w*(.2+i*.1),h*.55);ctx.lineTo(w*(.25+i*.1),h*.45);ctx.stroke()}
+        ctx.beginPath();ctx.moveTo(w*.18,h*.65);ctx.lineTo(w*.85,h*.65);ctx.stroke()
+      }
+    ]
+    let fossilIndex=0
+    function drawFossil(){
+      const w=digCanvas.width,h=digCanvas.height
+      // background rock
+      g.fillStyle='#0b1f29';g.fillRect(0,0,w,h)
+      // light gradient
+      const grd = g.createLinearGradient(0,0,0,h)
+      grd.addColorStop(0,'#0d2732');grd.addColorStop(1,'#0a1d26')
+      g.fillStyle=grd;g.fillRect(0,0,w,h)
+      fossils[fossilIndex](g,w,h)
+    }
+    function bury(){
+      drawFossil()
+      // sand layer
+      g.globalCompositeOperation='source-over'
+      const w=digCanvas.width,h=digCanvas.height
+      g.fillStyle='rgba(222, 193, 137, 0.94)'
+      g.fillRect(0,0,w,h)
+      g.fillStyle='rgba(140,110,70,0.12)'
+      for(let i=0;i<200;i++) g.fillRect(Math.random()*w,Math.random()*h,2,2)
+      g.globalCompositeOperation='destination-out'
+      updateProgress()
+      $digStatus.textContent=''
+    }
+    function scratch(x,y){
+      g.beginPath();g.arc(x,y,brush,0,Math.PI*2);g.fill()
+    }
+    function updateProgress(){
+      // estimate cleared area by sampling
+      const {width:w,height:h}=digCanvas
+      const data = g.getImageData(0,0,w,h).data
+      // in destination-out mode, cleared pixels are transparent -> alpha==0
+      let transparent=0, total=w*h
+      for(let i=3;i<data.length;i+=4){ if(data[i]===0) transparent++ }
+      const ratio = Math.min(100, Math.round((transparent/total)*100))
+      $digProg.style.width=ratio+'%'
+      if(ratio>=70){
+        $digStatus.textContent='発見！ 新しい化石カードを解放した！'
+        unlockBadge('dig_found','化石を発見した')
+      }
+    }
+    digCanvas.addEventListener('pointerdown',e=>{digging=true; const r=digCanvas.getBoundingClientRect(); scratch(e.clientX-r.left, e.clientY-r.top)})
+    window.addEventListener('pointerup',()=>digging=false)
+    digCanvas.addEventListener('pointermove',e=>{ if(!digging) return; const r=digCanvas.getBoundingClientRect(); scratch(e.clientX-r.left, e.clientY-r.top); if(Math.random()<.2) updateProgress() })
+    document.getElementById('resetDig').onclick=bury
+    document.getElementById('newFossil').onclick=()=>{ fossilIndex=(fossilIndex+1)%fossils.length; bury(); unlockBadge('dig_new','別の化石に挑戦') }
+
+    // ---------- Runner ----------
+    const runnerCanvas = document.getElementById('runnerCanvas')
+    const rg = runnerCanvas.getContext('2d')
+    let runTimer=null, playerY=0, vel=0, grav=0.9, onGround=true, obstacles=[], runScore=0
+    const groundY = runnerCanvas.height-28
+    function runReset(){
+      playerY = groundY-24; vel=0; onGround=true; obstacles=[]; runScore=0; document.getElementById('runScore').textContent=0
+      rg.clearRect(0,0,runnerCanvas.width,runnerCanvas.height)
+      drawGround()
+      drawDino()
+    }
+    function drawGround(){
+      rg.strokeStyle='rgba(255,255,255,.15)'; rg.beginPath(); rg.moveTo(0,groundY+12); rg.lineTo(runnerCanvas.width,groundY+12); rg.stroke()
+    }
+    function drawDino(){
+      // simple t-rex box with tail and head
+      const x=80,y=playerY
+      rg.fillStyle='#69e6a6'; rg.fillRect(x,y,32,24)
+      rg.fillRect(x+26,y-6,12,10) // head
+      rg.fillRect(x-14,y+6,14,6) // tail
+    }
+    function addObstacle(){
+      const h = 20 + Math.floor(Math.random()*30)
+      obstacles.push({x:runnerCanvas.width, w:10, h})
+    }
+    function step(){
+      // physics
+      vel += grav; playerY += vel
+      if(playerY>groundY-24){ playerY=groundY-24; vel=0; onGround=true }
+      // move obs
+      obstacles.forEach(o=>o.x-=6)
+      if(Math.random()<.03) addObstacle()
+      obstacles = obstacles.filter(o=>o.x>-20)
+      // collide
+      const px=80, py=playerY, pw=32, ph=24
+      for(const o of obstacles){
+        if(px < o.x+o.w && px+pw > o.x && py+ph > groundY-o.h){ gameOver(); return }
+      }
+      runScore++; document.getElementById('runScore').textContent = runScore
+      if(runScore===200) unlockBadge('runner200','ランナーでスコア200')
+      // draw
+      rg.fillStyle='#0f2430'; rg.fillRect(0,0,runnerCanvas.width,runnerCanvas.height)
+      drawGround(); drawDino()
+      rg.fillStyle='#ffcf33'; obstacles.forEach(o=>rg.fillRect(o.x, groundY-o.h, o.w, o.h))
+      runTimer = requestAnimationFrame(step)
+    }
+    function jump(){ if(onGround){ vel=-15; onGround=false } }
+    function gameOver(){ cancelAnimationFrame(runTimer); runTimer=null; ping('#ff6b6b'); unlockBadge('runner_try','ランナーで遊んだ'); toast('ゲームオーバー！ スコア '+runScore) }
+    document.getElementById('runStart').onclick=()=>{ if(runTimer) return; runReset(); runTimer=requestAnimationFrame(step) }
+    document.getElementById('runStop').onclick=()=>{ if(!runTimer) return; cancelAnimationFrame(runTimer); runTimer=null }
+    window.addEventListener('keydown',e=>{ if(e.code==='Space'){ e.preventDefault(); jump() } })
+    runnerCanvas.addEventListener('pointerdown',jump)
+
+    // ---------- Roar Lab (WebAudio) ----------
+    const AudioCtx = window.AudioContext || window.webkitAudioContext
+    let actx=null
+    const ROARS = {
+      trex: { name:'ティラノサウルス', pattern:[{t:0, type:'noise', dur:.5, gain:1.2},{t:.5,type:'saw',freq:70,dur:.6,gain:.6}] },
+      para: { name:'パラサウロロフス', pattern:[{t:0,type:'sine',freq:220,dur:1.2,gain:.6, slide:-120}] },
+      velo: { name:'ヴェロキラプトル', pattern:[{t:0,type:'noise',dur:.12,gain:.6},{t:.14,type:'square',freq:600,dur:.25,gain:.4}] }
+    }
+    let roarAnswer='trex'
+    function playPattern(p){
+      if(!actx) actx = new AudioCtx()
+      const now = actx.currentTime
+      const master = actx.createGain(); master.gain.value=0.3; master.connect(actx.destination)
+      p.forEach(ev=>{
+        const t = now + ev.t
+        if(ev.type==='noise'){
+          const buf = actx.createBuffer(1, actx.sampleRate*ev.dur, actx.sampleRate)
+          const ch = buf.getChannelData(0)
+          for(let i=0;i<ch.length;i++) ch[i] = (Math.random()*2-1)*0.4
+          const src = actx.createBufferSource(); src.buffer=buf
+          const g = actx.createGain(); g.gain.value=ev.gain
+          src.connect(g); g.connect(master)
+          src.start(t)
+        }else{
+          const osc = actx.createOscillator(); osc.type=ev.type
+          const g = actx.createGain(); g.gain.value=ev.gain
+          osc.connect(g); g.connect(master)
+          const freq = ev.freq||120
+          osc.frequency.setValueAtTime(freq, t)
+          if(ev.slide){ osc.frequency.linearRampToValueAtTime(freq+ev.slide, t+ev.dur) }
+          osc.start(t); osc.stop(t+ev.dur)
+        }
+      })
+    }
+    function newRoarQuestion(){
+      const keys = Object.keys(ROARS)
+      roarAnswer = keys[Math.floor(Math.random()*keys.length)]
+      const opts = shuffle(keys).slice(0,3)
+      if(!opts.includes(roarAnswer)) opts[0]=roarAnswer
+      const names = opts.map(k=>ROARS[k].name)
+      renderRoarChoices(names, ROARS[roarAnswer].name)
+    }
+    function renderRoarChoices(names, ans){
+      const $rc = document.getElementById('roarChoices')
+      $rc.innerHTML=''
+      names.forEach(n=>{
+        const div=document.createElement('div'); div.className='choice'; div.textContent=n
+        div.onclick=()=>{
+          if(n===ans){ div.classList.add('correct'); unlockBadge('roar_ok','鳴き声を当てた'); ping('#69e6a6') }
+          else { div.classList.add('wrong'); ping('#ff6b6b') }
+        }
+        $rc.appendChild(div)
+      })
+      document.getElementById('roarResult').textContent='再生してから答えよう！'
+    }
+    document.getElementById('playRoar').onclick=()=>{ playPattern(ROARS[roarAnswer].pattern); unlockBadge('roar_play','鳴き声を聴いた') }
+
+    // ---------- Badges ----------
+    const $badgeList = document.getElementById('badgeList')
+    const BADGES = {
+      view_trex: 'ティラノを詳しく見た',
+      quiz_correct: 'クイズに正解した',
+      quiz_streak5: '連続正解5',
+      dig_found: '化石を発見した',
+      dig_new: '別の化石に挑戦',
+      runner_try: 'ランナーで遊んだ',
+      runner200: 'ランナー200点',
+      roar_play: '鳴き声を聴いた',
+      roar_ok: '鳴き声を当てた',
+      surprise: 'サプライズボタン'
+    }
+    function loadBadges(){
+      const set = JSON.parse(localStorage.getItem('dino_badges')||'[]')
+      renderBadges(set)
+    }
+    function renderBadges(set){
+      $badgeList.innerHTML = Object.entries(BADGES).map(([k,label])=>{
+        const unlocked = set.includes(k)
+        const icon = unlocked ? '🏆' : '🔒'
+        return `<span class="achv ${unlocked?'':'lock'}">${icon} ${label}</span>`
+      }).join('')
+    }
+    function unlockBadge(key,label){
+      const set = new Set(JSON.parse(localStorage.getItem('dino_badges')||'[]'))
+      set.add(key)
+      localStorage.setItem('dino_badges', JSON.stringify([...set]))
+      renderBadges([...set])
+      if(label) toast('実績解除: '+label)
+    }
+
+    // ---------- Utils ----------
+    function shuffle(a){ return a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]) }
+    function toast(msg){
+      const d=document.createElement('div')
+      d.textContent=msg
+      d.style.cssText='position:fixed;left:50%;top:12px;transform:translateX(-50%);background:#123447;color:#e6f2f7;border:1px solid rgba(255,255,255,.15);padding:8px 12px;border-radius:999px;z-index:99;box-shadow:0 8px 20px rgba(0,0,0,.25)'
+      document.body.appendChild(d)
+      setTimeout(()=>{ d.style.transition='all .3s'; d.style.opacity='0'; d.style.transform='translateX(-50%) translateY(-10px)'; },1200)
+      setTimeout(()=>d.remove(),1600)
+    }
+    function ping(color){
+      const d=document.createElement('div')
+      d.style.cssText=`position:fixed;inset:0;background:${color}22;pointer-events:none;z-index:98`
+      document.body.appendChild(d); setTimeout(()=>d.remove(),120)
+    }
+
+    // ---------- Init ----------
+    function init(){
+      renderCards(); nextQuiz(); runReset(); bury(); newRoarQuestion(); loadBadges()
+    }
+    init()
+  </script>
+</body>
+</html>

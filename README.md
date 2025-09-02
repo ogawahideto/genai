@@ -78,6 +78,9 @@ This repository contains a collection of small, self-contained web applications 
 #### [UNO風カードゲーム](uno-like/) (2025-07-04)
 ゲームアプリケーション
 
+#### [恐竜大図鑑](kyouryu-daizukan/) (2025-09-02)
+ゲーム要素満載の図鑑アプリケーション
+
 ### 🧠 クイズ・学習 (Quiz & Educational)
 
 #### [化学式クイズ](chem_formula_quiz/) (2025-07-05)
