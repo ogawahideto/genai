@@ -57,6 +57,33 @@ Implementation Intent: <intent>
 - Use descriptive names: `{project_name}_article.md`, `{topic}_note.md`
 - Derive content from project logs (work/development/progress/notes)
 
+### Article Directory Structure
+
+```
+/articles/
+  README.md                    # Directory documentation and rules
+  {project_name}_article.md    # Main project articles
+  {topic}_note.md              # Topic-specific notes
+  {feature}_tutorial.md        # Tutorial content
+```
+
+### Workflow for Article Creation
+1. Read work logs in the project directory:
+   - `{project}/work.log` — activities and timeline
+   - `{project}/development.log` — technical decisions and solutions
+   - `{project}/progress.md` — milestones
+   - `{project}/notes.md` — ideas and observations
+2. Create the article in `articles/` using the appropriate template
+3. Integrate insights from logs throughout the article
+4. Write comprehensive content with technical detail and code snippets
+5. Review for accuracy and coherence
+6. Publish manually to the target platform (note.com, etc.)
+7. Keep `articles/` Git-ignored (local documentation only)
+
+### New Project Template
+
+Codex provides a single‑file HTML scaffold (inline CSS/JS) via `.codex/commands.json` → `newproject` using the `html_single_file` template. This enforces the single‑file rule in practice.
+
 ## Automation & Commands
 
 Custom commands for Codex live in `.codex/commands.json`, mirroring the Claude setup:
@@ -73,4 +100,3 @@ Settings include:
 - Auto documentation variables for the HTML header
 
 These mirror `.claude/commands.json` so workflows remain consistent when using Codex.
-
