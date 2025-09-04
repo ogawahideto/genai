@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <!--
+    AI Model: OpenAI Codex CLI Assistant
+    User Prompt: 「"emo"ディレクトリを作り、そこにエモいWebページをつくってください。できるだけおシャレかつエモいサイトにしてください。内容はエモければよいのでお任せします。中高生がエモいと思うコンテンツにしてください。」
+    AI Approach: 単一HTML内にHTML/CSS/JSを内包（Zero依存）、グラデーション背景＋グラスモーフィズム、軽いアニメと星エフェクト、アクセシビリティ配慮（reduced motion, aria-pressed）。
+    Implementation Intent: CLAUDE/CODEXの方針に沿ったシングルファイルの“エモ”体験を実装し、モバイルでも快適に楽しめるワンページを提供。
+    -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>emo — 夜更かしエモスケープ</title>
+    <meta name="description" content="中高生むけ、夜の放課後に刺さるエモいワンページ。" />
+    <style>
+      /* Base */
+      :root {
+        --bg-1: #0f1022;
+        --bg-2: #1b0f2e;
+        --bg-3: #0b1a2a;
+        --text: #dfe7ff;
+        --muted: #94a3b8;
+        --accent: #ff6ec7; /* pink */
+        --accent-2: #7cf0ff; /* cyan */
+        --glass: rgba(255, 255, 255, 0.08);
+        --glass-strong: rgba(255, 255, 255, 0.12);
+        --shadow: rgba(0, 0, 0, 0.4);
+      }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        color: var(--text);
+        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", "YuGothic", "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        background: radial-gradient(1200px 800px at 10% 20%, var(--bg-2), transparent 60%),
+                    radial-gradient(1000px 700px at 90% 10%, var(--bg-3), transparent 60%),
+                    linear-gradient(120deg, #0a0c19, var(--bg-1));
+        background-size: 200% 200%;
+        animation: bgMove 18s ease-in-out infinite alternate;
+        overflow-x: hidden;
+      }
+
+      .bg::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image:
+          radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.18), transparent 50%),
+          radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.14), transparent 50%),
+          radial-gradient(1px 1px at 30% 80%, rgba(255,255,255,0.12), transparent 50%);
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+
+      @keyframes bgMove {
+        0% { background-position: 0% 0%, 100% 0%, 0% 0%; }
+        100% { background-position: 100% 100%, 0% 100%, 100% 100%; }
+      }
+
+      /* Header */
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.35), transparent);
+        backdrop-filter: blur(6px);
+      }
+
+      .brand { display: flex; align-items: baseline; gap: 10px; }
+      .logo { font-weight: 800; letter-spacing: 1px; font-size: 20px; color: var(--accent); text-shadow: 0 0 12px rgba(255,110,199,.35); }
+      .tag { color: var(--muted); font-size: 12px; }
+
+      .tools { display: flex; gap: 10px; }
+      .btn {
+        appearance: none;
+        border: 0;
+        padding: 10px 14px;
+        color: #0b0b14;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        box-shadow: 0 6px 18px rgba(124, 240, 255, 0.22), inset 0 -2px 0 rgba(255,255,255,0.2);
+        font-weight: 700; letter-spacing: .3px;
+        cursor: pointer;
+      }
+      .btn:hover { transform: translateY(-1px); }
+      .btn:active { transform: translateY(0); filter: brightness(.95); }
+      .btn.ghost { color: var(--text); background: transparent; border: 1px solid rgba(255,255,255,.16); box-shadow: none; }
+      .btn.pulse { animation: pulse 2.6s ease-in-out infinite; }
+
+      @keyframes pulse { 0%,100%{ filter: saturate(1); } 50%{ filter: saturate(1.4) brightness(1.1);} }
+
+      /* Hero */
+      .hero { padding: 80px 24px 24px; text-align: center; position: relative; }
+      .title { font-size: clamp(28px, 5vw, 56px); line-height: 1.1; margin: 0 0 12px; }
+      .title .grad {
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        -webkit-background-clip: text;
+        background-clip: text; color: transparent;
+        text-shadow: 0 8px 28px rgba(124,240,255,.1);
+      }
+      .subtitle { margin: 0 auto 22px; color: var(--muted); max-width: 40ch; }
+
+      .ticker { overflow: hidden; mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent); }
+      .ticker .track { white-space: nowrap; padding-block: 8px; opacity: .8; animation: marquee 28s linear infinite; }
+      @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+      /* Cards */
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 18px; padding: 28px; max-width: 1100px; margin: 0 auto;
+      }
+      .card {
+        position: relative; height: 160px; border-radius: 16px; perspective: 1000px; cursor: pointer;
+      }
+      .card .face {
+        position: absolute; inset: 0; padding: 18px; border-radius: 16px;
+        background: linear-gradient(180deg, var(--glass), rgba(255,255,255,0.04));
+        border: 1px solid rgba(255,255,255,0.12);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 10px 30px var(--shadow);
+        transform-style: preserve-3d; backface-visibility: hidden;
+        display: grid; place-items: center; text-align: center; font-weight: 600;
+      }
+      .card .front { color: #e9f0ff; }
+      .card .back { transform: rotateY(180deg); color: #cde9ff; }
+      .card:hover .front, .card:focus .front { transform: rotateY(180deg); }
+      .card:hover .back, .card:focus .back { transform: rotateY(360deg); }
+
+      /* Note / Typer */
+      .note { padding: 8px 24px 64px; display: grid; place-items: center; text-align: center; }
+      .note p { margin: 0; color: var(--muted); font-size: 14px; }
+      .note #typer { color: #ffffff; font-weight: 700; letter-spacing: .3px; }
+      .cursor { animation: blink 1.2s steps(2, jump-none) infinite; }
+      @keyframes blink { 50% { opacity: 0; } }
+
+      /* Footer */
+      .site-footer { text-align: center; padding: 28px; color: var(--muted); }
+
+      /* Sky particles */
+      .sky { position: fixed; inset: 0; pointer-events: none; z-index: -1; }
+
+      /* Sparkles */
+      .sparkle {
+        position: fixed; width: 8px; height: 8px; pointer-events: none;
+        background: radial-gradient(circle at 30% 30%, #fff, rgba(255,255,255,.5) 60%, transparent 70%);
+        filter: drop-shadow(0 0 10px rgba(255, 255, 255, .6));
+        border-radius: 50%;
+        animation: pop 700ms ease-out forwards;
+      }
+      @keyframes pop {
+        0% { transform: scale(.2) translateY(0); opacity: 0; }
+        40% { opacity: 1; }
+        100% { transform: scale(1.6) translateY(-16px); opacity: 0; }
+      }
+
+      .meteor {
+        position: fixed; width: 2px; height: 2px; background: #fff; border-radius: 999px;
+        box-shadow: 0 0 16px 6px rgba(255,255,255,.5), 0 0 24px 10px var(--accent);
+        transform: translate(-50%, -50%) rotate(-45deg);
+        animation: meteor 1000ms ease-out forwards;
+      }
+      .meteor::after {
+        content: ""; position: absolute; right: 0; top: 0; height: 2px; width: 100px;
+        background: linear-gradient(90deg, rgba(255,255,255,.9), transparent);
+      }
+      @keyframes meteor { to { transform: translate(200px, 200px) rotate(-45deg); opacity: 0; } }
+
+      /* States */
+      body.midnight {
+        --bg-1: #070913;
+        --bg-2: #130920;
+        --bg-3: #02111d;
+        --accent: #b26eff;
+        --accent-2: #66ffd8;
+      }
+
+      /* Reduced motion */
+      @media (prefers-reduced-motion: reduce) {
+        * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+      }
+
+      /* Responsive tweaks */
+      @media (min-width: 900px) {
+        .hero { padding-top: 100px; }
+        .subtitle { font-size: 18px; }
+        .card { height: 180px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg"></div>
+    <header class="site-header" role="banner">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">emo</span>
+        <span class="tag">今日も、ちょっとだけドラマチック。</span>
+      </div>
+      <nav class="tools" aria-label="ページ設定">
+        <button id="toggle-midnight" class="btn" aria-pressed="false">夜更かしモード</button>
+        <button id="toggle-reduced" class="btn ghost" aria-pressed="false">静かにする</button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-label="イントロ">
+        <h1 class="title" aria-label="エモいは、君の中にある">
+          <span class="grad">エモいは、</span>君の中にある
+        </h1>
+        <p class="subtitle">泣くほどじゃない。でも、胸がぎゅってする。</p>
+        <div class="cta">
+          <button id="make-stars" class="btn pulse">タップで星を降らせる ✦</button>
+        </div>
+        <div class="ticker" aria-hidden="true">
+          <div class="track">
+            ✦ きらきら ✦ 深夜ラジオ ✦ 放課後 ✦ 片耳イヤホン ✦ コンビニ前 ✦ 自転車帰り ✦ 窓の灯り ✦ 既読スルー ✦
+          </div>
+        </div>
+      </section>
+
+      <section class="cards" aria-label="今日のエモ">
+        <article class="card" tabindex="0">
+          <div class="face front">放課後、<strong>自転車で帰る</strong>風の匂い</div>
+          <div class="face back">ペダルを踏むリズムが、今日をほどく。</div>
+        </article>
+        <article class="card" tabindex="0">
+          <div class="face front">コンビニ前、友だちと語る<strong>0時のカップ麺</strong></div>
+          <div class="face back">湯気に混ざる、まだ言えてないほんね。</div>
+        </article>
+        <article class="card" tabindex="0">
+          <div class="face front">既読はつくのに<strong>返事は来ない</strong></div>
+          <div class="face back">既読の青は、たぶん空の色。</div>
+        </article>
+        <article class="card" tabindex="0">
+          <div class="face front">窓に流れる<strong>校舎の灯り</strong></div>
+          <div class="face back">だれかの残響、だれかのスタート。</div>
+        </article>
+        <article class="card" tabindex="0">
+          <div class="face front"><strong>片耳イヤホン</strong>、世界の半分はBGM</div>
+          <div class="face back">残り半分は、君の物語。</div>
+        </article>
+        <article class="card" tabindex="0">
+          <div class="face front">たまたま流れた曲が<strong>全部を救う夜</strong></div>
+          <div class="face back">リピートは、祈りの形だ。</div>
+        </article>
+        <article class="card" tabindex="0">
+          <div class="face front">制服のシワも、<strong>今日の証拠</strong></div>
+          <div class="face back">よれた袖に刻む、笑いとため息。</div>
+        </article>
+        <article class="card" tabindex="0">
+          <div class="face front">未来への<strong>置き手紙</strong>：大丈夫、ちゃんと好きになれる</div>
+          <div class="face back">明日の君が読むころ、少し軽くなってる。</div>
+        </article>
+      </section>
+
+      <section class="note" aria-label="夜のメモ">
+        <p>
+          メモ：きょうのエモを一行で。<br />
+          <span class="cursor" aria-hidden="true">▌</span>
+          <span id="typer" aria-label="タイプ中の言葉"></span>
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <small>© emo — 夜更かしは自己責任。水分と睡眠もしっかり。</small>
+    </footer>
+
+    <div class="sky" aria-hidden="true"></div>
+    <script>
+      // Small utilities
+      const $ = (s, r = document) => r.querySelector(s);
+      const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+      // State
+      let reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // UI elements
+      const toggleMidnight = $('#toggle-midnight');
+      const toggleReduced = $('#toggle-reduced');
+      const makeStars = $('#make-stars');
+      const typer = $('#typer');
+
+      // Midnight mode
+      toggleMidnight.addEventListener('click', () => {
+        const on = document.body.classList.toggle('midnight');
+        toggleMidnight.setAttribute('aria-pressed', String(on));
+      });
+
+      // Reduced motion toggle (soft)
+      toggleReduced.addEventListener('click', () => {
+        reduced = !reduced;
+        toggleReduced.setAttribute('aria-pressed', String(reduced));
+      });
+
+      // Card flip on click (for touch)
+      $$('.card').forEach(card => {
+        card.addEventListener('click', () => {
+          const front = card.querySelector('.front');
+          const back = card.querySelector('.back');
+          const flipped = front.style.transform.includes('180deg');
+          if (!flipped) {
+            front.style.transform = 'rotateY(180deg)';
+            back.style.transform = 'rotateY(360deg)';
+          } else {
+            front.style.transform = '';
+            back.style.transform = 'rotateY(180deg)';
+          }
+        });
+      });
+
+      // Sparkle creation
+      const spawnSparkle = (x, y) => {
+        const sp = document.createElement('div');
+        sp.className = 'sparkle';
+        sp.style.left = x + 'px';
+        sp.style.top = y + 'px';
+        document.body.appendChild(sp);
+        sp.addEventListener('animationend', () => sp.remove());
+      };
+
+      // Meteor creation
+      const spawnMeteor = (x, y) => {
+        const m = document.createElement('div');
+        m.className = 'meteor';
+        m.style.left = x + 'px';
+        m.style.top = y + 'px';
+        document.body.appendChild(m);
+        setTimeout(() => m.remove(), 1200);
+      };
+
+      // Click to make meteors
+      makeStars.addEventListener('click', () => {
+        const { innerWidth: w, innerHeight: h } = window;
+        const count = reduced ? 4 : 10;
+        for (let i = 0; i < count; i++) {
+          const x = Math.random() * (w * 0.7);
+          const y = Math.random() * (h * 0.4);
+          setTimeout(() => spawnMeteor(x, y), i * 80);
+        }
+      });
+
+      // Cursor trail (throttled)
+      let ticking = false;
+      window.addEventListener('pointermove', (e) => {
+        if (reduced) return;
+        if (!ticking) {
+          window.requestAnimationFrame(() => {
+            for (let i = 0; i < 2; i++) {
+              const dx = (Math.random() - 0.5) * 14;
+              const dy = (Math.random() - 0.5) * 14;
+              spawnSparkle(e.clientX + dx, e.clientY + dy);
+            }
+            ticking = false;
+          });
+          ticking = true;
+        }
+      });
+
+      // Simple typer lines
+      const LINES = [
+        '放課後の風がちょっと甘い。',
+        '通知の数より、大事なものがある。',
+        'あの曲が流れたら、帰り道が映画になる。',
+        '今日はちゃんと、自分を好きでいられた。',
+        '未来のわたしへ：ちゃんと寝ろ。',
+      ];
+
+      let li = 0, ci = 0, deleting = false;
+      const typeLoop = () => {
+        const text = LINES[li % LINES.length];
+        if (!deleting) {
+          ci++;
+          typer.textContent = text.slice(0, ci);
+          if (ci >= text.length + 2) deleting = true;
+        } else {
+          ci--;
+          typer.textContent = text.slice(0, Math.max(ci, 0));
+          if (ci <= 0) { deleting = false; li++; }
+        }
+        const delay = deleting ? 38 : 74;
+        setTimeout(typeLoop, reduced ? 220 : delay);
+      };
+
+      // Kick off after load
+      window.addEventListener('load', () => {
+        toggleReduced.setAttribute('aria-pressed', String(reduced));
+        typeLoop();
+      });
+    </script>
+  </body>
+  </html>
