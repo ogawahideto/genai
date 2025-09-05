@@ -7,6 +7,9 @@ articles/
 # Codex CLI設定ファイル（Gitに登録しない）
 .codex/
 
+# Codex ガイド（コミット対象外）
+CODEX.md
+
 # 作業ログファイル（各サブディレクトリ内）
 */work.log
 */development.log
