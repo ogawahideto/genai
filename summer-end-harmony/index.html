@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <!--
+    AI Model: OpenAI Codex CLI Assistant
+    User Prompt: 「夏の終わりのハーモニー」をテーマとしたエモーショナル＆インタラクティブなサイト
+    AI Approach: 単一HTMLにCSS/JSを内包（外部依存なし）。夕暮れ〜秋色へ移ろうパレット、葉のパーティクル、タイプ風コピー、控えめな環境音（WebAudio）。
+    Implementation Intent: 中高生にも届く詩的UI。軽量・モバイル対応・低モーション配慮。
+    -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>夏の終わりのハーモニー</title>
+    <meta name="description" content="夏の終わりの寂しさと秋の気配が混ざる、エモい対話的ワンページ。" />
+    <style>
+      :root{
+        --bg1:#0f1323; --bg2:#18233a; --fg:#e9f0ff; --muted:#9aa6c4; 
+        --acc:#ffd36e; /* late-summer sun */
+        --acc2:#7cf0ff; /* cool breeze */
+        --leaf:#9bd37a; --leaf2:#f2b36e; /* green→amber */
+        --glass:rgba(255,255,255,.08);
+      }
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body{
+        margin:0;color:var(--fg);
+        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+        background:
+          radial-gradient(1200px 800px at 10% 20%, var(--bg2), transparent 60%),
+          radial-gradient(1000px 700px at 90% 10%, #0b1a2a, transparent 60%),
+          linear-gradient(120deg, #0a0c19, var(--bg1));
+        background-size:200% 200%;
+        animation:bg 20s ease-in-out infinite alternate;
+        overflow-x:hidden; min-height:100dvh;
+      }
+      @keyframes bg{from{background-position:0 0,100% 0,0 0}to{background-position:100% 100%,0 100%,100% 100%}}
+
+      /* Twilight theme */
+      body.twilight{
+        --bg1:#1a1023; --bg2:#3a193c; --acc:#ff9e6e; --acc2:#8fb8ff; --leaf:#98d38b; --leaf2:#f59f6a;
+      }
+
+      header{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;background:linear-gradient(to bottom, rgba(0,0,0,.38), transparent);backdrop-filter:blur(6px)}
+      /* Ensure content stays above effects */
+      header, main, footer { position: relative; z-index: 5; }
+      .brand{font-weight:800;letter-spacing:.3px;color:var(--acc);text-shadow:0 0 12px rgba(255,211,110,.25)}
+      .tools{display:flex;gap:8px;flex-wrap:wrap}
+      .btn{appearance:none;border:1px solid rgba(255,255,255,.16);padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:700;color:var(--fg);background:linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.02));backdrop-filter:blur(8px);transition:transform .12s ease, filter .2s ease, box-shadow .2s ease, background .2s ease, color .2s ease}
+      .btn.primary{border:0;color:#0b0b14;background:linear-gradient(135deg,var(--acc),var(--acc2));box-shadow:0 6px 18px rgba(124,240,255,.22), inset 0 -2px 0 rgba(255,255,255,.2)}
+      .btn:hover{transform:translateY(-1px)}
+      .btn:focus-visible{outline:2px solid rgba(255,255,255,.5); outline-offset:2px}
+      /* Visual toggle state */
+      .btn[aria-pressed="true"]{border:0;color:#0b0b14;background:linear-gradient(135deg,var(--acc),var(--acc2));box-shadow:0 6px 18px rgba(124,240,255,.22), inset 0 -2px 0 rgba(255,255,255,.2)}
+      .btn.primary[aria-pressed="true"]{filter:saturate(1.2) brightness(1.06); box-shadow:0 8px 22px rgba(124,240,255,.28), inset 0 -2px 0 rgba(255,255,255,.25)}
+
+      main{padding:64px 20px}
+      .hero{max-width:960px;margin:0 auto;text-align:center;position:relative}
+      h1{font-size:clamp(28px,6vw,64px);margin:0 0 10px;line-height:1.1}
+      .grad{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 8px 28px rgba(124,240,255,.15)}
+      .sub{color:var(--muted);margin:0 auto 22px;max-width:60ch}
+      .ticker{overflow:hidden;mask-image:linear-gradient(to right,transparent,#000 10%,#000 90%,transparent)}
+      .ticker .track{white-space:nowrap;opacity:.8;padding-block:8px;animation:marq 30s linear infinite}
+      @keyframes marq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+      .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;max-width:1100px;margin:24px auto}
+      .card{padding:18px;border-radius:16px;background:linear-gradient(180deg,var(--glass),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.4);text-align:center;font-weight:600}
+      .note{padding:10px 18px;color:var(--muted);text-align:center}
+      .note strong{color:#fff}
+
+      footer{text-align:center;color:var(--muted);padding:28px}
+
+      /* Particles */
+      .sky{position:fixed;inset:0;pointer-events:none;z-index:-1}
+      .bokeh{position:fixed;inset:0;pointer-events:none;mix-blend-mode:screen;z-index:0;background:
+        radial-gradient(12px 12px at 20% 30%, rgba(255,255,255,.06), transparent 60%),
+        radial-gradient(16px 16px at 70% 20%, rgba(255,255,255,.05), transparent 60%),
+        radial-gradient(10px 10px at 40% 80%, rgba(255,255,255,.05), transparent 60%)}
+
+      .leaf{position:fixed;left:0;top:0;width:12px;height:18px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:linear-gradient(135deg,var(--leaf), var(--leaf2));box-shadow:0 0 12px rgba(255,255,255,.15);opacity:.95;transform-origin:center;animation:fall 5s linear forwards, spin 5s ease-in-out forwards; pointer-events:none; z-index:1}
+      @keyframes fall{to{transform:translate(var(--tx),var(--ty)) rotate(var(--rot)) scale(1)} }
+      @keyframes spin{0%{border-radius:50% 50% 50% 50%/60% 60% 40% 40%}50%{border-radius:60% 40% 60% 40%/70% 30% 70% 30%}100%{border-radius:50% 50% 50% 50%/60% 60% 40% 40%}}
+
+      /* range UI */
+      input[type=range]{appearance:none;width:140px;height:4px;border-radius:8px;background:rgba(255,255,255,.14);outline:none}
+      input[type=range]::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));box-shadow:0 2px 6px rgba(0,0,0,.3)}
+
+      /* Floating memo & pile leaves */
+      .float-note{position:fixed;color:#fff;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(6px);padding:6px 10px;border-radius:12px;animation:rise 9s ease-in forwards;pointer-events:none;white-space:nowrap}
+      @keyframes rise{0%{transform:translateY(0);opacity:.0}15%{opacity:1}85%{opacity:1}100%{transform:translateY(-120px);opacity:0}}
+      .pile-leaf{position:fixed;width:8px;height:12px;border-radius:60% 40% 60% 40%/60% 40% 60% 40%;background:linear-gradient(135deg,var(--leaf2), var(--leaf));opacity:.9;pointer-events:none;filter:blur(.2px); z-index:6}
+      .pile-floor{position:fixed;width:8px;height:12px;border-radius:60% 40% 60% 40%/60% 40% 60% 40%;background:linear-gradient(135deg,var(--leaf2), var(--leaf));opacity:.75;pointer-events:none;filter:blur(.3px); z-index:1}
+
+      /* Canvas overlay */
+      .flow{position:fixed;inset:0;pointer-events:none;z-index:-1}
+
+      /* Rain and meteors */
+      .raindrop{position:fixed;width:2px;height:18px;pointer-events:none;background:linear-gradient(to bottom, rgba(255,255,255,.0), rgba(255,255,255,.8));filter:blur(.2px);opacity:.85;animation:rain 900ms linear forwards; z-index:1}
+      @keyframes rain{from{transform:translate(var(--rx), -40px)}to{transform:translate(var(--rx), 110vh);opacity:.1}}
+      .meteor{position:fixed;width:2px;height:2px;background:#fff;border-radius:999px;box-shadow:0 0 16px 6px rgba(255,255,255,.5), 0 0 24px 10px var(--acc);transform:translate(-50%, -50%) rotate(45deg);animation:meteor 1000ms ease-out forwards;pointer-events:none; z-index:1}
+      .meteor::after{content:"";position:absolute;right:0;top:0;height:2px;width:110px;background:linear-gradient(90deg, rgba(255,255,255,.9), transparent)}
+      @keyframes meteor{
+        0%{transform:translate(-50%, -50%) rotate(45deg) translateX(0); opacity:1}
+        100%{transform:translate(-50%, -50%) rotate(45deg) translateX(280px); opacity:0}
+      }
+
+      
+
+      /* Reduced motion */
+      @media (prefers-reduced-motion: reduce){ *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important} }
+    </style>
+  </head>
+  <body>
+    <div class="bokeh" aria-hidden="true"></div>
+    <header>
+      <div class="brand">夏の終わりのハーモニー</div>
+      <nav class="tools" aria-label="ページ設定">
+        <label style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px;color:var(--muted)">季節</span>
+          <input id="season" type="range" min="0" max="100" value="35" aria-label="季節スライダー" />
+        </label>
+        <button id="toggle-twilight" class="btn primary" aria-pressed="false">夕暮れ</button>
+        <button id="toggle-hum" class="btn" aria-pressed="false">ハミング</button>
+        <button id="toggle-ambient" class="btn" aria-pressed="false">環境音</button>
+        <button id="toggle-reduced" class="btn" aria-pressed="false">静かにする</button>
+        <button id="memo-float" class="btn" aria-pressed="false">メモを浮かべる</button>
+        <button id="toggle-const" class="btn" aria-pressed="false">星座を描く</button>
+        <button id="toggle-rain" class="btn" aria-pressed="false">小雨</button>
+        <button id="toggle-breeze" class="btn" aria-pressed="false">風まかせ</button>
+        <button id="toggle-autotime" class="btn" aria-pressed="false">自動時間</button>
+        <button id="toggle-meteors" class="btn" aria-pressed="false">流星群</button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-label="イントロ">
+        <h1 class="pile-target"><span class="grad">夏の終わり</span>のハーモニー</h1>
+        <p class="sub">夕焼けのオレンジと、夜風のブルー。さようならと、はじめましてが同時に来る。指先で風をなでると、葉っぱが一枚、季節を追い越す。</p>
+        <div class="ticker" aria-hidden="true">
+          <div class="track">波打ち際・風鈴・セミの抜け殻・打ち上げ花火の煙・夕立の匂い・土曜日の終わり・コンビニの白い灯り・鈴虫・新しいノート・少し長い影・</div>
+        </div>
+      </section>
+
+      <section class="row" aria-label="ことば">
+        <div class="card pile-target">夏の残響、ポケットの中でまだ鳴る。</div>
+        <div class="card pile-target">冷たい麦茶、氷が小さく謝る音。</div>
+        <div class="card pile-target">花火の色が消える頃、言えたはずの言葉。</div>
+        <div class="card pile-target">校舎の窓に夕焼け、明日を少しだけ好きになる。</div>
+      </section>
+
+      <section class="note" aria-label="タイプメモ">
+        <p class="pile-target">
+          メモ：<strong id="typer" aria-label="タイプ中のことば"></strong>
+          <span class="cursor" aria-hidden="true">▌</span>
+        </p>
+      </section>
+    </main>
+
+    <footer>© <span id="year"></span> — そっとスクロール、指で風を描いて。</footer>
+
+    <div class="sky" aria-hidden="true"></div>
+    <canvas id="flow" class="flow" aria-hidden="true"></canvas>
+    <script>
+      // Helpers
+      const $ = (s, r=document) => r.querySelector(s);
+      const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+
+      // State
+      let reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const reducedBtn = $('#toggle-reduced');
+      const twilightBtn = $('#toggle-twilight');
+      const ambientBtn = $('#toggle-ambient');
+      const humBtn = $('#toggle-hum');
+      const memoBtn = $('#memo-float');
+      const constBtn = $('#toggle-const');
+      const rainBtn = $('#toggle-rain');
+      const breezeBtn = $('#toggle-breeze');
+      const autoTimeBtn = $('#toggle-autotime');
+      const meteorsBtn = $('#toggle-meteors');
+      const season = $('#season');
+      const sky = $('.sky');
+      const flow = $('#flow');
+
+      // Typing lines
+      const LINES = [
+        '夏の終わり、ポケットにしまった夕焼け。',
+        '風鈴の余韻、部屋が少し広くなる。',
+        '鈴虫、ノートの一行目をくすぐる。',
+        'あしたの空気、たぶん少しだけ透明。',
+      ];
+      let li=0, ci=0, deleting=false; const typer=$('#typer');
+      const tick=()=>{
+        const t = LINES[li % LINES.length];
+        if(!deleting){ ci++; typer.textContent=t.slice(0,ci); if(ci>=t.length+2) deleting=true; }
+        else { ci--; typer.textContent=t.slice(0,Math.max(ci,0)); if(ci<=0){ deleting=false; li++; } }
+        setTimeout(tick, reduced? 240 : (deleting? 40:80));
+      };
+
+      // Theme toggles
+      twilightBtn.addEventListener('click',()=>{ const on=document.body.classList.toggle('twilight'); twilightBtn.setAttribute('aria-pressed',String(on)); });
+      reducedBtn.addEventListener('click',()=>{ reduced=!reduced; reducedBtn.setAttribute('aria-pressed',String(reduced)); });
+
+      // Season slider: blend summer→autumn palette
+      const summer = { acc:'#ffd36e', acc2:'#7cf0ff', leaf:'#9bd37a', leaf2:'#f2b36e' };
+      const autumn = { acc:'#ff9e6e', acc2:'#8fb8ff', leaf:'#d2a45e', leaf2:'#a86a2a' };
+      function hexToRgb(h){ const n=h.replace('#',''); return {r:parseInt(n.slice(0,2),16),g:parseInt(n.slice(2,4),16),b:parseInt(n.slice(4,6),16)} }
+      function mix(c1,c2,t){ const a=hexToRgb(c1), b=hexToRgb(c2); const m=(x,y)=>Math.round(x+(y-x)*t); return `rgb(${m(a.r,b.r)}, ${m(a.g,b.g)}, ${m(a.b,b.b)})`; }
+      function applySeason(v){ const t=v/100; document.documentElement.style.setProperty('--acc', mix(summer.acc, autumn.acc, t)); document.documentElement.style.setProperty('--acc2', mix(summer.acc2, autumn.acc2, t)); document.documentElement.style.setProperty('--leaf', mix(summer.leaf, autumn.leaf, t)); document.documentElement.style.setProperty('--leaf2', mix(summer.leaf2, autumn.leaf2, t)); }
+      season.addEventListener('input', e=> applySeason(Number(e.target.value)) );
+      applySeason(Number(season.value));
+
+      // Leaves on pointer move
+      let rafLock=false;
+      let drawing=false; // for flow trails
+      window.addEventListener('pointerdown',()=>{ drawing=true; });
+      window.addEventListener('pointerup',()=>{ drawing=false; });
+      window.addEventListener('pointerdown',(e)=>{ if(!reduced) addRipple(e.clientX, e.clientY); });
+      window.addEventListener('pointermove',(e)=>{
+        if(reduced) return;
+        if(rafLock) return; rafLock=true;
+        requestAnimationFrame(()=>{ 
+          spawnLeaf(e.clientX, e.clientY);
+          if(drawing) addTrailPoint(e.clientX, e.clientY);
+          rafLock=false; 
+        });
+      });
+      function spawnLeaf(x,y){
+        const l=document.createElement('div'); l.className='leaf';
+        const dx=(Math.random()*200+80)*(Math.random()<.5? -1:1);
+        const dy=(Math.random()*260+180);
+        const rot=(Math.random()*360-180)+"deg";
+        l.style.left=x+'px'; l.style.top=y+'px';
+        l.style.setProperty('--tx', dx+'px');
+        l.style.setProperty('--ty', dy+'px');
+        l.style.setProperty('--rot', rot);
+        // slight hue shift per leaf
+        if(Math.random()<.5) l.style.background='linear-gradient(135deg,var(--leaf2), var(--leaf))';
+        document.body.appendChild(l);
+        const endX = x + dx; const endY = y + dy;
+        const px = Math.max(2, Math.min(innerWidth-6, endX));
+        const py = Math.min(innerHeight-6, endY);
+        l.addEventListener('animationend',()=>{ l.remove(); addPile(px, py); });
+      }
+
+      const pile=[];
+      const pileTargets = ()=> Array.from(document.querySelectorAll('.pile-target'));
+      function distPointRect(px,py,r){
+        const dx = Math.max(r.left - px, 0, px - (r.left + r.width));
+        const dy = Math.max(r.top - py, 0, py - (r.top + r.height));
+        return Math.hypot(dx, dy);
+      }
+      function addPile(x,y){
+        // Default is to settle near final position (floor layer)
+        let cls = 'pile-floor';
+        let px = x - 4, py = y - 4;
+        // Check proximity to any text target; only if already near, settle on top of text
+        const list = pileTargets();
+        if(list.length){
+          let bestR=null, bd=1e9;
+          for(const el of list){
+            const r=el.getBoundingClientRect();
+            const d = distPointRect(x,y,r);
+            if(d<bd){ bd=d; bestR=r; }
+          }
+          // Threshold: must have fallen within ~48px of the text box boundary
+          if(bestR && bd < 48){
+            cls = 'pile-leaf';
+            px = (bestR.left + Math.random()*bestR.width) - 4;
+            py = (bestR.top + Math.random()*bestR.height*0.8) - 6;
+          }
+        }
+        const p=document.createElement('div');
+        p.className=cls;
+        p.style.left=px+'px';
+        p.style.top=py+'px';
+        p.style.transform=`rotate(${Math.random()*180-90}deg)`;
+        document.body.appendChild(p);
+        pile.push(p);
+        if(pile.length>160){ const rm=pile.shift(); rm.remove(); }
+        setTimeout(()=>{ p.style.transition='opacity 3s linear'; p.style.opacity= cls==='pile-leaf' ? '0.7':'0.6'; }, 50);
+      }
+
+      // Ambient audio (WebAudio)
+      let ctx=null, ambientOn=false, chirpTimer=null;
+      ambientBtn.addEventListener('click', async ()=>{
+        if(!ctx){ ctx = new (window.AudioContext||window.webkitAudioContext)(); }
+        if(!ambientOn){ ambientOn=true; ambientBtn.setAttribute('aria-pressed','true');
+          startWind(); scheduleChirps();
+        } else { ambientOn=false; ambientBtn.setAttribute('aria-pressed','false');
+          stopAmbient();
+        }
+      });
+
+      let wind = null, windGain=null;
+      function startWind(){
+        if(!ctx) return;
+        const buffer = ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for(let i=0;i<data.length;i++){ data[i] = (Math.random()*2-1)*0.4; }
+        const src = ctx.createBufferSource(); src.buffer=buffer; src.loop=true;
+        const biq = ctx.createBiquadFilter(); biq.type='lowpass'; biq.frequency.value=900;
+        const g = ctx.createGain(); g.gain.value=0.08;
+        const lfo = ctx.createOscillator(); lfo.frequency.value=0.08;
+        const lfoGain = ctx.createGain(); lfoGain.gain.value=0.05;
+        lfo.connect(lfoGain).connect(g.gain);
+        src.connect(biq).connect(g).connect(ctx.destination);
+        src.start(); lfo.start();
+        wind = {src, lfo}; windGain=g;
+      }
+      function scheduleChirps(){
+        if(!ctx) return; if(chirpTimer) clearTimeout(chirpTimer);
+        const next=()=>{
+          if(!ambientOn) return;
+          // simple short high-frequency chirp
+          const o = ctx.createOscillator(); o.type='triangle'; o.frequency.value=5200+Math.random()*1200;
+          const g = ctx.createGain(); g.gain.value=0.0;
+          o.connect(g).connect(ctx.destination);
+          o.start();
+          const now=ctx.currentTime; g.gain.setValueAtTime(0.0001, now);
+          g.gain.exponentialRampToValueAtTime(0.05, now+0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, now+0.14);
+          o.stop(now+0.2);
+          // schedule next
+          chirpTimer=setTimeout(next, 2200+Math.random()*2600);
+        };
+        chirpTimer=setTimeout(next, 1200);
+      }
+      function stopAmbient(){
+        if(wind){ try{ wind.src.stop(); wind.lfo.stop(); }catch{} wind=null; }
+        if(chirpTimer){ clearTimeout(chirpTimer); chirpTimer=null; }
+      }
+
+      // Humming notes on click (pentatonic)
+      let humOn=false, humTimer=null;
+      const SCALE=[220,261.63,293.66,329.63,392,440]; // A minor pentatonic approx
+      function playNote(freq){ if(!ctx) return; const o=ctx.createOscillator(); const g=ctx.createGain(); o.type='sine'; o.frequency.value=freq; g.gain.value=0.0; o.connect(g).connect(ctx.destination); const now=ctx.currentTime; o.start(); g.gain.linearRampToValueAtTime(0.08, now+0.02); g.gain.exponentialRampToValueAtTime(0.0001, now+0.6); o.stop(now+0.75); }
+      function scheduleHum(){ if(humTimer) clearInterval(humTimer); if(!humOn) return; humTimer=setInterval(()=>{ if(!ctx||!humOn) return; const f=SCALE[Math.floor(Math.random()*SCALE.length)]; playNote(f); }, 2200); }
+      humBtn.addEventListener('click', async()=>{ if(!ctx) ctx= new (window.AudioContext||window.webkitAudioContext)(); humOn=!humOn; humBtn.setAttribute('aria-pressed', String(humOn)); if(humOn){ scheduleHum(); } else { if(humTimer) { clearInterval(humTimer); humTimer=null; } } });
+      window.addEventListener('click',(e)=>{ if(!humOn) return; if(!ctx) return; const x=e.clientX/window.innerWidth; const idx=Math.min(SCALE.length-1, Math.max(0, Math.floor(x*SCALE.length))); playNote(SCALE[idx]); });
+
+      // Floating memo
+      memoBtn.addEventListener('click',()=>{
+        const s = prompt('空に浮かべるメモを一行で');
+        if(!s) return; floatMemo(s);
+      });
+      function floatMemo(text){
+        const d=document.createElement('div'); d.className='float-note'; d.textContent=text; document.body.appendChild(d);
+        const x = 10 + Math.random()*80; const y = 50 + Math.random()*30;
+        d.style.left = x+'vw'; d.style.top = y+'vh';
+        setTimeout(()=> d.remove(), 9000);
+      }
+
+      // Flow trails + ripples + constellations
+      const ctx2 = flow.getContext('2d');
+      function resizeCanvas(){ flow.width=innerWidth; flow.height=innerHeight; ctx2.clearRect(0,0,flow.width,flow.height); }
+      window.addEventListener('resize', resizeCanvas); resizeCanvas();
+      const trail=[]; // {x,y,life}
+      const ripples=[]; // {x,y,r,alpha}
+      const stars=[]; // {x,y,tw}
+      let starsMode=false;
+      constBtn?.addEventListener('click',()=>{ starsMode=!starsMode; constBtn.setAttribute('aria-pressed', String(starsMode)); });
+      window.addEventListener('click',(e)=>{ if(starsMode) addStar(e.clientX, e.clientY); });
+      function addTrailPoint(x,y){ trail.push({x,y,life:1}); if(trail.length>280) trail.shift(); }
+      function addRipple(x,y){ ripples.push({x,y,r:4,alpha:1}); if(ripples.length>60) ripples.shift(); }
+      function addStar(x,y){ stars.push({x,y,tw:Math.random()}); if(stars.length>40) stars.shift(); }
+      function renderScene(){ requestAnimationFrame(renderScene); if(reduced) return; ctx2.fillStyle='rgba(10,12,25,0.08)'; ctx2.fillRect(0,0,flow.width,flow.height);
+        for(let i=1;i<trail.length;i++){ const a=trail[i-1], b=trail[i]; const alpha=b.life*0.6; ctx2.strokeStyle=`rgba(255,255,255,${alpha})`; ctx2.lineWidth=2*b.life; ctx2.beginPath(); ctx2.moveTo(a.x,a.y); ctx2.lineTo(b.x,b.y); ctx2.stroke(); b.life*=0.965; }
+        ripples.forEach(o=>{ ctx2.strokeStyle=`rgba(255,255,255,${o.alpha})`; ctx2.lineWidth=1.5; ctx2.beginPath(); ctx2.arc(o.x,o.y,o.r,0,Math.PI*2); ctx2.stroke(); o.r+=1.8; o.alpha*=0.95; });
+        if(stars.length){ ctx2.lineWidth=1; for(let i=0;i<stars.length;i++){ const s=stars[i]; const tw=(Math.sin(performance.now()/900 + s.tw*6)+1)/2; const a=0.6*tw+0.2; ctx2.fillStyle=`rgba(255,255,255,${a})`; ctx2.beginPath(); ctx2.arc(s.x,s.y,1.6+tw*1.2,0,Math.PI*2); ctx2.fill(); if(i>0){ const p=stars[i-1]; ctx2.strokeStyle=`rgba(255,255,255,${0.28+tw*0.3})`; ctx2.beginPath(); ctx2.moveTo(p.x,p.y); ctx2.lineTo(s.x,s.y); ctx2.stroke(); } } }
+        for(let i=ripples.length-1;i>=0;i--){ if(ripples[i].alpha<0.02) ripples.splice(i,1); }
+      }
+      renderScene();
+
+      // Rain toggle
+      let rainOn=false, rainTimer=null; 
+      function spawnRain(){
+        const d=document.createElement('div'); d.className='raindrop';
+        const rx = Math.random()*innerWidth; d.style.setProperty('--rx', rx+'px');
+        d.style.left='0px'; d.style.top='-40px'; document.body.appendChild(d);
+        // ground ripple
+        setTimeout(()=>{ addRipple(rx, innerHeight-20); }, 800);
+        d.addEventListener('animationend',()=> d.remove());
+      }
+      function startRain(){ if(rainTimer) return; const base = reduced? 220 : 120; rainTimer=setInterval(()=>{ for(let i=0;i< (reduced? 1: 3); i++) spawnRain(); }, base); startRainSound(); }
+      function stopRain(){ if(rainTimer){ clearInterval(rainTimer); rainTimer=null; } stopRainSound(); }
+      rainBtn.addEventListener('click',()=>{ rainOn=!rainOn; rainBtn.setAttribute('aria-pressed', String(rainOn)); rainOn? startRain(): stopRain(); });
+
+      // Breeze auto leaves
+      let breezeOn=false, breezeTimer=null;
+      function startBreeze(){ if(breezeTimer) return; const rate=()=> 900 - Number(season.value)*4; breezeTimer=setInterval(()=>{ const x = Math.random()*innerWidth; const y = Math.random()* (innerHeight*0.3); spawnLeaf(x, y); }, Math.max(200, rate())); }
+      function stopBreeze(){ if(breezeTimer){ clearInterval(breezeTimer); breezeTimer=null; } }
+      breezeBtn.addEventListener('click',()=>{ breezeOn=!breezeOn; breezeBtn.setAttribute('aria-pressed', String(breezeOn)); breezeOn? startBreeze(): stopBreeze(); });
+
+      
+
+      // Meteors
+      let meteorOn=false, meteorTimer=null;
+      function spawnMeteor(){ const m=document.createElement('div'); m.className='meteor'; m.style.left=(Math.random()*innerWidth*0.7)+'px'; m.style.top=(Math.random()*innerHeight*0.3)+'px'; document.body.appendChild(m); setTimeout(()=> m.remove(), 1200); }
+      function startMeteors(){ if(meteorTimer) return; meteorTimer=setInterval(()=>{ spawnMeteor(); }, reduced? 2400: 1400); }
+      function stopMeteors(){ if(meteorTimer){ clearInterval(meteorTimer); meteorTimer=null; } }
+      meteorsBtn.addEventListener('click',()=>{ meteorOn=!meteorOn; meteorsBtn.setAttribute('aria-pressed', String(meteorOn)); meteorOn? startMeteors(): stopMeteors(); });
+
+      // Auto-time theme
+      let autoTime=false, autoTimer=null;
+      function applyTimeTheme(){ const h = new Date().getHours(); const night = (h>=19 || h<=5); document.body.classList.toggle('twilight', night); twilightBtn.setAttribute('aria-pressed', String(night)); }
+      function startAutoTime(){ if(autoTimer) return; applyTimeTheme(); autoTimer=setInterval(applyTimeTheme, 60*1000); }
+      function stopAutoTime(){ if(autoTimer){ clearInterval(autoTimer); autoTimer=null; } }
+      autoTimeBtn.addEventListener('click',()=>{ autoTime=!autoTime; autoTimeBtn.setAttribute('aria-pressed', String(autoTime)); autoTime? startAutoTime(): stopAutoTime(); });
+
+      // Rain sound (WebAudio)
+      let rainNoise=null, rainGain=null, rainLP=null;
+      function startRainSound(){ if(!ctx) return; if(rainNoise) return; const buffer=ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate); const data=buffer.getChannelData(0); for(let i=0;i<data.length;i++){ data[i]=(Math.random()*2-1)*0.6; } const src=ctx.createBufferSource(); src.buffer=buffer; src.loop=true; const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2400; const g=ctx.createGain(); g.gain.value=0.05; src.connect(lp).connect(g).connect(ctx.destination); src.start(); rainNoise=src; rainGain=g; rainLP=lp; }
+      function stopRainSound(){ if(rainNoise){ try{ rainNoise.stop(); }catch{} rainNoise=null; } }
+
+      // Parallax bokeh
+      const bokeh = document.querySelector('.bokeh');
+      window.addEventListener('pointermove',(e)=>{ if(!bokeh || reduced) return; const nx=(e.clientX/innerWidth-0.5); const ny=(e.clientY/innerHeight-0.5); bokeh.style.transform=`translate(${nx*10}px, ${ny*6}px)`; }, {passive:true});
+
+      // Footer year and init
+
+      $('#year').textContent = new Date().getFullYear();
+      reducedBtn.setAttribute('aria-pressed', String(reduced));
+      tick();
+    </script>
+  </body>
+  </html>
