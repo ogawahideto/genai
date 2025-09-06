@@ -259,6 +259,9 @@ AI・チャットアプリケーション
 #### [Prayer Time - 祈りの時間](universal-prayer/) (2025-09-05)
 実験的アプリケーション
 
+#### [world-voyage](world-voyage/) (2025-09-06)
+実験的アプリケーション
+
 
 ## Usage
 
