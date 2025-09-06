@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 ビクトリア号アドベンチャー - 世界一周ゲーム 🎮</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        /* ゲーム要素のスタイル */
+        .game-stats {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #FFD700;
+            min-width: 200px;
+            z-index: 25;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .stat-value {
+            color: #FFD700;
+            font-weight: bold;
+        }
+
+        .weather-indicator {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2em;
+            z-index: 20;
+            animation: weatherFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes weatherFloat {
+            0%, 100% { transform: translateX(-50%) translateY(0px); }
+            50% { transform: translateX(-50%) translateY(-10px); }
+        }
+
+        .treasure {
+            position: absolute;
+            font-size: 16px;
+            z-index: 10;
+            cursor: pointer;
+            animation: treasureGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes treasureGlow {
+            0% { transform: scale(1) rotate(0deg); }
+            100% { transform: scale(1.2) rotate(10deg); }
+        }
+
+        .event-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            border: 3px solid #FF6B6B;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            z-index: 30;
+            display: none;
+            max-width: 400px;
+            animation: popupBounce 0.5s ease-out;
+        }
+
+        @keyframes popupBounce {
+            0% { transform: translate(-50%, -50%) scale(0.1); }
+            80% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .event-popup h3 {
+            color: #FF6B6B;
+            margin-bottom: 15px;
+        }
+
+        .choice-btn {
+            background: linear-gradient(45deg, #FF6B6B, #FF8E53);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .choice-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .achievement-toast {
+            position: fixed;
+            top: -100px;
+            right: 20px;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 25px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: top 0.5s ease;
+            z-index: 35;
+            font-weight: bold;
+        }
+
+        .achievement-toast.show {
+            top: 20px;
+        }
+
+        .mini-game-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 40;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .mini-game-content {
+            background: rgba(255,255,255,0.1);
+            border: 3px solid #FFD700;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .wind-effect {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+            animation: windSweep 4s linear infinite;
+            opacity: 0;
+        }
+
+        .wind-effect.active {
+            opacity: 1;
+        }
+
+        @keyframes windSweep {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .floating-points {
+            position: absolute;
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFD700;
+            pointer-events: none;
+            animation: floatUp 2s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-50px); }
+        }
+
+        .world-map-container {
+            position: relative;
+            width: 100%;
+            height: 70vh;
+            background: linear-gradient(to bottom, #87CEEB, #4682B4);
+            border: 3px solid #8B4513;
+            margin: 20px 0;
+        }
+
+        .world-map {
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 30%, #228B22 2px, transparent 2px),
+                radial-gradient(circle at 60% 20%, #228B22 1px, transparent 1px),
+                radial-gradient(circle at 80% 60%, #228B22 3px, transparent 3px),
+                radial-gradient(circle at 15% 80%, #228B22 2px, transparent 2px),
+                radial-gradient(circle at 85% 75%, #228B22 1px, transparent 1px),
+                radial-gradient(circle at 40% 70%, #228B22 2px, transparent 2px);
+            background-size: 100px 100px, 150px 150px, 120px 120px, 180px 180px, 90px 90px, 110px 110px;
+            position: relative;
+        }
+
+        .continent {
+            position: absolute;
+            background: #8B4513;
+            border-radius: 20px;
+        }
+
+        .europe {
+            top: 20%;
+            left: 45%;
+            width: 8%;
+            height: 12%;
+        }
+
+        .africa {
+            top: 35%;
+            left: 48%;
+            width: 6%;
+            height: 20%;
+            border-radius: 15px 15px 5px 5px;
+        }
+
+        .asia {
+            top: 15%;
+            left: 60%;
+            width: 20%;
+            height: 25%;
+            border-radius: 30px;
+        }
+
+        .americas {
+            top: 20%;
+            left: 15%;
+            width: 15%;
+            height: 40%;
+            border-radius: 25px;
+        }
+
+        .australia {
+            top: 60%;
+            left: 70%;
+            width: 8%;
+            height: 8%;
+            border-radius: 50%;
+        }
+
+        .route-point {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #FFD700;
+            border: 2px solid #FFA500;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .route-point:hover {
+            width: 16px;
+            height: 16px;
+            background: #FF6B6B;
+            transform: scale(1.2);
+        }
+
+        .route-point.active {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+        }
+
+        .ship {
+            position: absolute;
+            font-size: 20px;
+            z-index: 15;
+            transition: all 2s ease-in-out;
+        }
+
+        .route-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #FFD700, transparent);
+            transform-origin: left center;
+            opacity: 0.8;
+            z-index: 5;
+        }
+
+        .info-panel {
+            position: fixed;
+            top: 50%;
+            right: -350px;
+            transform: translateY(-50%);
+            width: 320px;
+            height: 400px;
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 20px;
+            transition: right 0.5s ease;
+            z-index: 20;
+        }
+
+        .info-panel.show {
+            right: 20px;
+        }
+
+        .info-panel h3 {
+            color: #FFD700;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #FFD700;
+            padding-bottom: 5px;
+        }
+
+        .controls {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            margin: 10px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .progress-bar {
+            width: 80%;
+            height: 10px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 5px;
+            margin: 20px auto;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FFD700, #FFA500);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .date-display {
+            text-align: center;
+            font-size: 1.5em;
+            margin: 20px;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .info-panel {
+                width: 90%;
+                right: -100%;
+                top: 10%;
+                transform: none;
+                height: 70%;
+            }
+            
+            .info-panel.show {
+                right: 5%;
+            }
+
+            .game-stats {
+                position: relative;
+                margin: 10px;
+                width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎮 ビクトリア号アドベンチャー 🌍</h1>
+        <p>史上最も危険で壮大な冒険に挑戦しよう！</p>
+    </div>
+
+    <!-- ゲーム統計パネル -->
+    <div class="game-stats">
+        <div class="stat-item">
+            <span>🏆 スコア:</span>
+            <span class="stat-value" id="score">0</span>
+        </div>
+        <div class="stat-item">
+            <span>⚓ 乗組員:</span>
+            <span class="stat-value" id="crew">270</span>
+        </div>
+        <div class="stat-item">
+            <span>🍞 食料:</span>
+            <span class="stat-value" id="food">100</span>%
+        </div>
+        <div class="stat-item">
+            <span>💰 資金:</span>
+            <span class="stat-value" id="money">1000</span>
+        </div>
+        <div class="stat-item">
+            <span>🏖️ 功績:</span>
+            <span class="stat-value" id="achievements">0</span>/15
+        </div>
+    </div>
+
+    <div class="date-display">
+        <span id="currentDate">1519年9月20日 - 冒険の始まり</span>
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div class="world-map-container">
+        <div class="world-map">
+            <!-- 天候エフェクト -->
+            <div class="weather-indicator" id="weather">☀️</div>
+            <div class="wind-effect" id="windEffect"></div>
+
+            <!-- 大陸 -->
+            <div class="continent europe"></div>
+            <div class="continent africa"></div>
+            <div class="continent asia"></div>
+            <div class="continent americas"></div>
+            <div class="continent australia"></div>
+
+            <!-- 航路ポイント -->
+            <div class="route-point" data-location="スペイン・セビリア" style="top: 25%; left: 44%;"></div>
+            <div class="route-point" data-location="カナリア諸島" style="top: 30%; left: 40%;"></div>
+            <div class="route-point" data-location="ブラジル・リオデジャネイロ" style="top: 55%; left: 25%;"></div>
+            <div class="route-point" data-location="アルゼンチン・パタゴニア" style="top: 70%; left: 22%;"></div>
+            <div class="route-point" data-location="マゼラン海峡" style="top: 75%; left: 20%;"></div>
+            <div class="route-point" data-location="太平洋横断開始" style="top: 45%; left: 5%;"></div>
+            <div class="route-point" data-location="太平洋横断終了" style="top: 42%; left: 95%;"></div>
+            <div class="route-point" data-location="グアム島" style="top: 40%; left: 75%;"></div>
+            <div class="route-point" data-location="フィリピン・セブ島" style="top: 45%; left: 72%;"></div>
+            <div class="route-point" data-location="モルッカ諸島（香料諸島）" style="top: 50%; left: 74%;"></div>
+            <div class="route-point" data-location="インド洋横断" style="top: 55%; left: 60%;"></div>
+            <div class="route-point" data-location="喜望峰" style="top: 65%; left: 48%;"></div>
+            <div class="route-point" data-location="大西洋横断" style="top: 45%; left: 35%;"></div>
+            <div class="route-point" data-location="スペイン帰還" style="top: 25%; left: 44%;"></div>
+
+            <!-- 宝物 -->
+            <div class="treasure" style="top: 28%; left: 38%;" onclick="collectTreasure(this, 100)">💎</div>
+            <div class="treasure" style="top: 52%; left: 28%;" onclick="collectTreasure(this, 150)">🏺</div>
+            <div class="treasure" style="top: 42%; left: 73%;" onclick="collectTreasure(this, 200)">👑</div>
+            <div class="treasure" style="top: 62%; left: 50%;" onclick="collectTreasure(this, 120)">💰</div>
+
+            <!-- 船 -->
+            <div class="ship" id="ship" style="top: 25%; left: 44%;">🚢</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="startVoyage()">🎮 冒険開始</button>
+        <button class="btn" onclick="pauseVoyage()">⏸️ 一時停止</button>
+        <button class="btn" onclick="resetVoyage()">🔄 最初から</button>
+        <button class="btn" onclick="speedUp()">⚡ 速度UP</button>
+        <button class="btn" onclick="openMiniGame('navigation')">🧭 航海術訓練</button>
+    </div>
+
+    <div class="info-panel" id="infoPanel">
+        <h3>航海情報</h3>
+        <div id="locationInfo">
+            <p><strong>現在地:</strong> <span id="currentLocation">セビリア港</span></p>
+            <p><strong>日付:</strong> <span id="infoDate">1519年9月20日</span></p>
+            <p><strong>航海日数:</strong> <span id="dayCount">0</span>日</p>
+            <p><strong>残り船:</strong> <span id="shipCount">5</span>隻</p>
+        </div>
+        <div id="historicalInfo">
+            <h4>歴史的事実</h4>
+            <p id="historicalText">フェルディナンド・マゼランが率いる5隻の船団がスペインのセビリアを出発。世界初の世界一周航海の始まりです。</p>
+        </div>
+        <button class="btn" onclick="closeInfo()">閉じる</button>
+    </div>
+
+    <!-- イベントポップアップ -->
+    <div class="event-popup" id="eventPopup">
+        <h3 id="eventTitle">🌊 突然の事件！</h3>
+        <p id="eventDescription">どうしますか？</p>
+        <div id="eventChoices"></div>
+    </div>
+
+    <!-- 実績トースト -->
+    <div class="achievement-toast" id="achievementToast">
+        🏆 新しい実績を獲得しました！
+    </div>
+
+    <!-- ミニゲームモーダル -->
+    <div class="mini-game-modal" id="miniGameModal">
+        <div class="mini-game-content">
+            <h3 id="miniGameTitle">🧭 航海術訓練</h3>
+            <div id="miniGameContent">
+                <p>正しい方角を選んでください！</p>
+                <div style="font-size: 3em; margin: 20px;">🧭</div>
+                <div>
+                    <button class="choice-btn" onclick="answerNavigation('north')">⬆️ 北</button>
+                    <button class="choice-btn" onclick="answerNavigation('south')">⬇️ 南</button>
+                    <button class="choice-btn" onclick="answerNavigation('east')">➡️ 東</button>
+                    <button class="choice-btn" onclick="answerNavigation('west')">⬅️ 西</button>
+                </div>
+            </div>
+            <button class="btn" onclick="closeMiniGame()">閉じる</button>
+        </div>
+    </div>
+
+    <script>
+        // ゲーム状態
+        let gameStats = {
+            score: 0,
+            crew: 270,
+            food: 100,
+            money: 1000,
+            achievements: [],
+            treasuresFound: 0
+        };
+
+        const weatherTypes = ['☀️', '⛅', '🌧️', '⛈️', '🌪️', '❄️'];
+        const randomEvents = [
+            {
+                title: '🏴‍☠️ 海賊発見！',
+                description: '海賊船が接近しています！',
+                choices: [
+                    { text: '⚔️ 戦う', effect: { crew: -10, score: 100, money: 200 } },
+                    { text: '💰 買収する', effect: { money: -300, score: 50 } },
+                    { text: '🏃 逃げる', effect: { food: -10, score: 20 } }
+                ]
+            },
+            {
+                title: '🌊 大嵐襲来！',
+                description: '激しい嵐に巻き込まれました！',
+                choices: [
+                    { text: '⚓ 投錨して耐える', effect: { food: -15, crew: -5, score: 80 } },
+                    { text: '⛵ 強行突破', effect: { crew: -20, score: 150 } }
+                ]
+            },
+            {
+                title: '🐋 巨大クジラ発見！',
+                description: '巨大なクジラが船の近くを泳いでいます！',
+                choices: [
+                    { text: '📖 観察して記録', effect: { score: 200, achievements: ['海洋学者'] } },
+                    { text: '🎣 捕獲に挑戦', effect: { food: 30, crew: -3, score: 100 } }
+                ]
+            }
+        ];
+
+        const achievementsList = [
+            { name: '初航海', condition: 'firstSail', description: '初めての航海を開始' },
+            { name: '宝探し名人', condition: 'treasure5', description: '宝物を5個発見' },
+            { name: '太平洋征服者', condition: 'pacific_cross', description: '99日間の太平洋航海を完了' },
+            { name: '嵐の航海士', condition: 'storm3', description: '嵐を3回乗り越える' },
+            { name: '外交官', condition: 'peaceful5', description: '5回平和的に解決' },
+            { name: '勇敢な船長', condition: 'fight5', description: '5回戦闘で勝利' },
+            { name: 'マゼランの後継者', condition: 'complete', description: '世界一周を完成' }
+        ];
+
+        const voyageData = [
+            { location: "スペイン・セビリア", date: "1519年9月20日", ships: 5, info: "マゼラン艦隊5隻がセビリア港から出発。Trinidad、San Antonio、Concepción、Victoria、Santiagoの5隻。", event: 'start' },
+            { location: "カナリア諸島", date: "1519年9月26日", ships: 5, info: "カナリア諸島で補給。大西洋横断の準備を整える。", event: 'supply' },
+            { location: "ブラジル・リオデジャネイロ", date: "1519年12月13日", ships: 5, info: "南米大陸到達。リオデジャネイロで越冬準備と船の修理。" },
+            { location: "アルゼンチン・パタゴニア", date: "1520年3月31日", ships: 4, info: "パタゴニア地方で越冬。Santiago号が座礁により失われる。乗組員の反乱も発生。" },
+            { location: "マゼラン海峡", date: "1520年10月21日", ships: 3, info: "太平洋への通路発見！San Antonio号が脱走。マゼランにちなんで命名された海峡。", event: 'discovery' },
+            { location: "太平洋横断開始", date: "1520年11月28日", ships: 3, info: "未知の大洋に突入。「太平洋（Pacific Ocean）」と命名。99日間の困難な航海が始まる。", event: 'pacific' },
+            { location: "太平洋横断終了", date: "1521年3月5日", ships: 3, info: "99日間の太平洋航海。壊血病により多くの乗組員が死亡。ついに西太平洋に到達。", event: 'pacific_end' },
+            { location: "グアム島", date: "1521年3月6日", ships: 3, info: "99日間の太平洋航海の末、ようやく陸地発見。原住民との最初の接触。" },
+            { location: "フィリピン・セブ島", date: "1521年4月7日", ships: 3, info: "フィリピン諸島到達。マゼランがキリスト教布教を開始。" },
+            { location: "マゼラン死亡", date: "1521年4月27日", ships: 3, info: "マクタン島でマゼラン戦死。酋長ラプラプとの戦いで命を落とす。" },
+            { location: "モルッカ諸島", date: "1521年11月8日", ships: 2, info: "ついに香料諸島到達！Concepción号を破棄。香辛料を大量に積載。" },
+            { location: "インド洋横断", date: "1522年2月11日", ships: 1, info: "Trinidad号が故障により残留。Victoria号のみが帰路につく。" },
+            { location: "喜望峰", date: "1522年5月20日", ships: 1, info: "アフリカ最南端を回航。多くの乗組員が壊血病で死亡。" },
+            { location: "大西洋横断", date: "1522年7月9日", ships: 1, info: "最後の大洋横断。食糧不足と病気に苦しみながらも航海を続行。" },
+            { location: "スペイン帰還", date: "1522年9月6日", ships: 1, info: "Victoria号がセビリア港に帰還！18人の生存者と共に人類初の世界一周を完成。" }
+        ];
+
+        let currentStep = 0;
+        let voyageInterval = null;
+        let voyageSpeed = 3000;
+        let isVoyaging = false;
+        let currentWeather = 0;
+        let weatherInterval = null;
+
+        const ship = document.getElementById('ship');
+        const infoPanel = document.getElementById('infoPanel');
+        const routePoints = document.querySelectorAll('.route-point');
+
+        function startVoyage() {
+            if (isVoyaging) return;
+            isVoyaging = true;
+            
+            // 初回航海の実績
+            if (currentStep === 0) {
+                unlockAchievement('firstSail');
+            }
+            
+            if (voyageInterval) clearInterval(voyageInterval);
+            if (weatherInterval) clearInterval(weatherInterval);
+            
+            voyageInterval = setInterval(() => {
+                if (currentStep < voyageData.length - 1) {
+                    currentStep++;
+                    updateVoyage();
+                    
+                    // ランダムイベント発生
+                    if (Math.random() < 0.3) {
+                        triggerRandomEvent();
+                    }
+                } else {
+                    completeVoyage();
+                }
+            }, voyageSpeed);
+            
+            // 天候変化
+            weatherInterval = setInterval(() => {
+                changeWeather();
+            }, 5000);
+            
+            playSound('sail');
+        }
+
+        function pauseVoyage() {
+            isVoyaging = false;
+            if (voyageInterval) {
+                clearInterval(voyageInterval);
+                voyageInterval = null;
+            }
+        }
+
+        function resetVoyage() {
+            pauseVoyage();
+            currentStep = 0;
+            gameStats = {
+                score: 0,
+                crew: 270,
+                food: 100,
+                money: 1000,
+                achievements: [],
+                treasuresFound: 0
+            };
+            updateGameStats();
+            updateVoyage();
+            // 宝物を再表示
+            document.querySelectorAll('.treasure').forEach(t => t.style.display = 'block');
+        }
+
+        function speedUp() {
+            voyageSpeed = Math.max(1000, voyageSpeed - 1000);
+            if (isVoyaging) {
+                pauseVoyage();
+                startVoyage();
+            }
+        }
+
+        function updateVoyage() {
+            const data = voyageData[currentStep];
+            const point = routePoints[currentStep];
+            
+            // 船の位置を更新
+            if (point) {
+                // 太平洋横断の特別処理
+                if (data.location === "太平洋横断開始") {
+                    // 左端に移動
+                    ship.style.top = point.style.top;
+                    ship.style.left = point.style.left;
+                    ship.style.opacity = '1';
+                } else if (data.location === "太平洋横断終了") {
+                    // 地球一周効果：左端に消えて右端から現れる
+                    ship.style.opacity = '0';
+                    ship.style.left = '5%';
+                    
+                    setTimeout(() => {
+                        ship.style.transition = 'none';
+                        ship.style.left = '95%';
+                        ship.style.top = point.style.top;
+                        
+                        setTimeout(() => {
+                            ship.style.transition = 'all 2s ease-in-out';
+                            ship.style.opacity = '1';
+                            ship.style.left = point.style.left;
+                        }, 100);
+                    }, 1000);
+                } else {
+                    ship.style.top = point.style.top;
+                    ship.style.left = point.style.left;
+                    ship.style.opacity = '1';
+                }
+                
+                // 船の移動エフェクト
+                ship.style.animation = 'none';
+                setTimeout(() => {
+                    ship.style.animation = 'shipBob 2s ease-in-out infinite';
+                }, 100);
+            }
+            
+            // アクティブポイントを更新
+            routePoints.forEach((p, i) => {
+                p.classList.remove('active');
+                if (i === currentStep) p.classList.add('active');
+            });
+            
+            // 進行状況を更新
+            const progress = (currentStep / (voyageData.length - 1)) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            
+            // 日付表示を更新
+            document.getElementById('currentDate').textContent = data.date + ' - ' + data.location;
+            
+            // スコア更新
+            gameStats.score += 50;
+            updateGameStats();
+            
+            // 情報パネルを表示
+            showLocationInfo(data);
+            
+            // 特別イベント
+            if (data.event) {
+                handleSpecialEvent(data.event);
+            }
+            
+            playSound('arrive');
+        }
+
+        function showLocationInfo(data) {
+            document.getElementById('currentLocation').textContent = data.location;
+            document.getElementById('infoDate').textContent = data.date;
+            document.getElementById('shipCount').textContent = data.ships;
+            document.getElementById('historicalText').textContent = data.info;
+            
+            // 航海日数計算
+            const startDate = new Date('1519-09-20');
+            const currentDate = new Date(data.date.replace('年', '-').replace('月', '-').replace('日', ''));
+            const dayDiff = Math.floor((currentDate - startDate) / (1000 * 60 * 60 * 24));
+            document.getElementById('dayCount').textContent = dayDiff;
+            
+            infoPanel.classList.add('show');
+            
+            setTimeout(() => {
+                if (!infoPanel.matches(':hover')) {
+                    infoPanel.classList.remove('show');
+                }
+            }, 5000);
+        }
+
+        function closeInfo() {
+            infoPanel.classList.remove('show');
+        }
+
+        function completeVoyage() {
+            pauseVoyage();
+            gameStats.score += 1000;
+            unlockAchievement('complete');
+            updateGameStats();
+            
+            showEventPopup(
+                '🎉 偉業達成！',
+                `おめでとうございます！世界初の世界一周を完成させました！\n\n最終スコア: ${gameStats.score}点\n生存者: ${gameStats.crew}人\n発見した宝物: ${gameStats.treasuresFound}個\n獲得実績: ${gameStats.achievements.length}個`,
+                [
+                    { text: '🎊 祝う', effect: null }
+                ]
+            );
+            
+            playSound('victory');
+        }
+
+        // 新しい関数群
+        function updateGameStats() {
+            document.getElementById('score').textContent = gameStats.score;
+            document.getElementById('crew').textContent = gameStats.crew;
+            document.getElementById('food').textContent = Math.max(0, gameStats.food);
+            document.getElementById('money').textContent = gameStats.money;
+            document.getElementById('achievements').textContent = gameStats.achievements.length;
+        }
+
+        function changeWeather() {
+            currentWeather = (currentWeather + 1) % weatherTypes.length;
+            document.getElementById('weather').textContent = weatherTypes[currentWeather];
+            
+            // 風エフェクト
+            if (currentWeather >= 2) {
+                document.getElementById('windEffect').classList.add('active');
+                setTimeout(() => {
+                    document.getElementById('windEffect').classList.remove('active');
+                }, 4000);
+            }
+        }
+
+        function triggerRandomEvent() {
+            const event = randomEvents[Math.floor(Math.random() * randomEvents.length)];
+            showEventPopup(event.title, event.description, event.choices);
+        }
+
+        function showEventPopup(title, description, choices) {
+            const popup = document.getElementById('eventPopup');
+            document.getElementById('eventTitle').textContent = title;
+            document.getElementById('eventDescription').textContent = description;
+            
+            const choicesDiv = document.getElementById('eventChoices');
+            choicesDiv.innerHTML = '';
+            
+            choices.forEach(choice => {
+                const btn = document.createElement('button');
+                btn.className = 'choice-btn';
+                btn.textContent = choice.text;
+                btn.onclick = () => handleEventChoice(choice.effect);
+                choicesDiv.appendChild(btn);
+            });
+            
+            popup.style.display = 'block';
+            playSound('event');
+        }
+
+        function handleEventChoice(effect) {
+            if (effect) {
+                Object.keys(effect).forEach(key => {
+                    if (key === 'achievements') {
+                        effect[key].forEach(achievement => unlockAchievement(achievement));
+                    } else {
+                        gameStats[key] = Math.max(0, gameStats[key] + effect[key]);
+                    }
+                });
+                updateGameStats();
+                showFloatingPoints(effect.score || 0);
+            }
+            document.getElementById('eventPopup').style.display = 'none';
+        }
+
+        function collectTreasure(element, points) {
+            element.style.display = 'none';
+            gameStats.score += points;
+            gameStats.money += points;
+            gameStats.treasuresFound++;
+            
+            showFloatingPoints(points);
+            updateGameStats();
+            
+            if (gameStats.treasuresFound >= 5) {
+                unlockAchievement('treasure5');
+            }
+            
+            playSound('treasure');
+        }
+
+        function showFloatingPoints(points) {
+            const pointsEl = document.createElement('div');
+            pointsEl.className = 'floating-points';
+            pointsEl.textContent = '+' + points;
+            pointsEl.style.left = ship.style.left;
+            pointsEl.style.top = ship.style.top;
+            document.querySelector('.world-map').appendChild(pointsEl);
+            
+            setTimeout(() => {
+                pointsEl.remove();
+            }, 2000);
+        }
+
+        function unlockAchievement(achievementKey) {
+            if (!gameStats.achievements.includes(achievementKey)) {
+                gameStats.achievements.push(achievementKey);
+                
+                const toast = document.getElementById('achievementToast');
+                toast.innerHTML = '🏆 実績解除: ' + (achievementsList.find(a => a.condition === achievementKey)?.name || achievementKey);
+                toast.classList.add('show');
+                
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+                
+                playSound('achievement');
+            }
+        }
+
+        function handleSpecialEvent(eventType) {
+            switch(eventType) {
+                case 'start':
+                    gameStats.score += 100;
+                    break;
+                case 'discovery':
+                    gameStats.score += 200;
+                    unlockAchievement('discovery');
+                    break;
+                case 'pacific':
+                    gameStats.food -= 20;
+                    gameStats.crew -= 30;
+                    break;
+                case 'pacific_end':
+                    gameStats.score += 300;
+                    showFloatingPoints(300);
+                    unlockAchievement('pacific_cross');
+                    break;
+            }
+            updateGameStats();
+        }
+
+        function openMiniGame(type) {
+            document.getElementById('miniGameModal').style.display = 'flex';
+            playSound('menu');
+        }
+
+        function closeMiniGame() {
+            document.getElementById('miniGameModal').style.display = 'none';
+        }
+
+        function answerNavigation(direction) {
+            const correct = direction === 'east';
+            if (correct) {
+                gameStats.score += 100;
+                showFloatingPoints(100);
+                alert('🎯 正解！東へ向かうのが正しい選択でした！');
+            } else {
+                alert('❌ 不正解。正しくは東でした。');
+            }
+            updateGameStats();
+            closeMiniGame();
+        }
+
+        function playSound(type) {
+            // Web Audio APIを使用した効果音生成
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                switch(type) {
+                    case 'sail':
+                        oscillator.frequency.setValueAtTime(220, audioContext.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(440, audioContext.currentTime + 0.5);
+                        break;
+                    case 'treasure':
+                        oscillator.frequency.setValueAtTime(523, audioContext.currentTime);
+                        oscillator.frequency.setValueAtTime(659, audioContext.currentTime + 0.1);
+                        break;
+                    case 'achievement':
+                        oscillator.frequency.setValueAtTime(523, audioContext.currentTime);
+                        oscillator.frequency.setValueAtTime(659, audioContext.currentTime + 0.1);
+                        oscillator.frequency.setValueAtTime(784, audioContext.currentTime + 0.2);
+                        break;
+                }
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch(e) {
+                // サウンドが再生できない場合は無視
+            }
+        }
+
+        // 航路ポイントクリックイベント
+        routePoints.forEach((point, index) => {
+            point.addEventListener('click', () => {
+                currentStep = index;
+                updateVoyage();
+            });
+        });
+
+        // CSS animation追加
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shipBob {
+                0%, 100% { transform: translateY(0px) rotate(0deg); }
+                50% { transform: translateY(-5px) rotate(2deg); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 初期化
+        updateGameStats();
+        updateVoyage();
+        changeWeather();
+
+        // 自動的に情報パネルを一度表示
+        setTimeout(() => {
+            infoPanel.classList.add('show');
+            setTimeout(() => {
+                infoPanel.classList.remove('show');
+            }, 3000);
+        }, 2000);
+    </script>
+</body>
+</html>
