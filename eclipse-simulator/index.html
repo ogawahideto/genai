@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>皆既月食シミュレータ</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>皆既月食シミュレータ</h1>
+      <div class="meta">
+        <span id="event-name">イベント: 未設定</span>
+        <span id="event-location">場所: 日本</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="panes">
+        <div class="pane left">
+          <h2>左: 太陽-地球-月の幾何</h2>
+          <canvas id="geometryCanvas" width="640" height="480" aria-label="幾何表示"></canvas>
+          <div class="legend">
+            <span class="chip sun"></span>太陽
+            <span class="chip earth"></span>地球（影中心）
+            <span class="chip penumbra"></span>半影
+            <span class="chip umbra"></span>本影
+            <span class="chip moon"></span>月
+          </div>
+        </div>
+        <div class="pane right">
+          <h2>右: 地球から見た月</h2>
+          <canvas id="viewCanvas" width="480" height="480" aria-label="見かけ表示"></canvas>
+          <div class="info">
+            <div id="phase-label">状態: -</div>
+            <div id="time-label">時刻: -</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="controls">
+        <div class="timeline">
+          <button id="playPause">▶</button>
+          <input id="timeSlider" type="range" min="0" max="1000" value="0" />
+          <select id="speed">
+            <option value="0.25">0.25x</option>
+            <option value="0.5">0.5x</option>
+            <option value="1" selected>1x</option>
+            <option value="2">2x</option>
+            <option value="4">4x</option>
+          </select>
+        </div>
+        <div class="marks" id="marks"></div>
+        <details class="data-input">
+          <summary>データ入力（時刻を上書き）</summary>
+          <div class="grid">
+            <label>P1 <input id="inP1" placeholder="YYYY-MM-DD HH:MM[:SS]" /></label>
+            <label>U1 <input id="inU1" placeholder="YYYY-MM-DD HH:MM[:SS]" /></label>
+            <label>U2 <input id="inU2" placeholder="YYYY-MM-DD HH:MM[:SS]" /></label>
+            <label>最大 <input id="inG"  placeholder="YYYY-MM-DD HH:MM[:SS]" /></label>
+            <label>U3 <input id="inU3" placeholder="YYYY-MM-DD HH:MM[:SS]" /></label>
+            <label>U4 <input id="inU4" placeholder="YYYY-MM-DD HH:MM[:SS]" /></label>
+            <label>P4 <input id="inP4" placeholder="YYYY-MM-DD HH:MM[:SS]" /></label>
+          </div>
+          <div class="actions">
+            <button id="applyJST" type="button">JSTとして反映</button>
+            <button id="applyUTC" type="button">UTC→JST(+9h)で反映</button>
+          </div>
+        </details>
+      </section>
+    </main>
+
+    <footer>
+      <small>
+        簡略化モデル: 直線運動・一定速度で月が地球の影（半影/本影）を横切ると仮定しています。実際の見え方と多少異なる場合があります。
+      </small>
+    </footer>
+
+    <script src="data.js"></script>
+    <script src="main.js"></script>
+  </body>
+  </html>
