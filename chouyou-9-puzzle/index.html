@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>重陽の節句 9パズル</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #8b0000;
+            font-size: 2.5em;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header .subtitle {
+            color: #666;
+            font-size: 1.2em;
+            margin: 5px 0;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            width: 400px;
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .score-display {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .moves {
+            color: #d2691e;
+        }
+
+        .time {
+            color: #8b0000;
+        }
+
+        .game-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .puzzle-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            width: 100%;
+            height: 100%;
+            gap: 2px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .puzzle-tile {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            font-weight: bold;
+            color: #8b0000;
+            background: linear-gradient(145deg, #ff6b9d, #c44569);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            user-select: none;
+        }
+
+        .puzzle-tile:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+
+        .puzzle-tile.empty {
+            background: transparent;
+            box-shadow: none;
+            cursor: default;
+        }
+
+        .puzzle-tile.empty:hover {
+            transform: none;
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 1.1em;
+            background: linear-gradient(145deg, #ff6b9d, #c44569);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .celebration {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: none;
+            z-index: 100;
+        }
+
+        .celebration.show {
+            display: block;
+        }
+
+        .celebration h2 {
+            color: #8b0000;
+            font-size: 2em;
+            margin: 0 0 15px 0;
+        }
+
+        .celebration p {
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+
+        .nine-pattern {
+            position: absolute;
+            font-size: 6em;
+            color: rgba(139,0,0,0.1);
+            pointer-events: none;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+    <!--
+    AI Model: Claude 3.5 Sonnet
+    User Prompt: 今日は9月9日、重陽の節句と呼ばれ、９が重なるのが縁起がよいとされています。そこで、９をモチーフにしたパズルゲームを作ってください。
+    AI Approach: 重陽の節句にちなんで、9つの数字(1-8と空白)を使った8パズル（9パズル）を作成。日本の伝統的な色合いとデザインを使用。
+    Implementation Intent: 重陳の節句を祝う教育的なパズルゲーム。9の数字と縁起の良さを表現しつつ、クラシックなスライディングパズルの楽しさを提供。
+    -->
+
+    <div class="nine-pattern" style="top: 10%; left: 5%;">9</div>
+    <div class="nine-pattern" style="top: 20%; right: 8%;">9</div>
+    <div class="nine-pattern" style="bottom: 15%; left: 10%;">9</div>
+
+    <div class="header">
+        <h1>🌸 重陽の節句 9パズル 🌸</h1>
+        <div class="subtitle">9月9日は縁起の良い日！数字を並べて幸運を呼ぼう</div>
+    </div>
+
+    <div class="game-info">
+        <div class="score-display moves">手数: <span id="moveCount">0</span></div>
+        <div class="score-display time">時間: <span id="timeCount">00:00</span></div>
+    </div>
+
+    <div class="game-container">
+        <div class="puzzle-grid" id="puzzleGrid">
+            <!-- パズルのタイルがJavaScriptで生成される -->
+        </div>
+        
+        <div class="celebration" id="celebration">
+            <h2>🎉 おめでとうございます！ 🎉</h2>
+            <p>重陽の節句の縁起を呼び込みました！</p>
+            <p>手数: <span id="finalMoves"></span></p>
+            <p>時間: <span id="finalTime"></span></p>
+            <button onclick="newGame()">新しいゲーム</button>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="newGame()">新しいゲーム</button>
+        <button onclick="solvePuzzle()">ヒント</button>
+    </div>
+
+    <script>
+        class ChouyouPuzzle {
+            constructor() {
+                this.size = 3;
+                this.tiles = [];
+                this.emptyPos = { row: 2, col: 2 };
+                this.moves = 0;
+                this.startTime = null;
+                this.gameTimer = null;
+                this.isGameComplete = false;
+                
+                this.initializeGame();
+            }
+
+            initializeGame() {
+                this.createSolvedState();
+                this.shufflePuzzle();
+                this.renderPuzzle();
+                this.startTimer();
+                this.moves = 0;
+                this.updateMoveCount();
+                this.isGameComplete = false;
+            }
+
+            createSolvedState() {
+                this.tiles = [];
+                for (let i = 0; i < this.size; i++) {
+                    this.tiles[i] = [];
+                    for (let j = 0; j < this.size; j++) {
+                        if (i === this.size - 1 && j === this.size - 1) {
+                            this.tiles[i][j] = 0; // 空のタイル
+                        } else {
+                            this.tiles[i][j] = i * this.size + j + 1;
+                        }
+                    }
+                }
+            }
+
+            shufflePuzzle() {
+                // 解ける状態になるように適切にシャッフル
+                const moves = ['up', 'down', 'left', 'right'];
+                const shuffleMoves = 1000;
+                
+                for (let i = 0; i < shuffleMoves; i++) {
+                    const validMoves = this.getValidMoves();
+                    if (validMoves.length > 0) {
+                        const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+                        this.moveEmpty(randomMove);
+                    }
+                }
+            }
+
+            getValidMoves() {
+                const moves = [];
+                const { row, col } = this.emptyPos;
+                
+                if (row > 0) moves.push('up');
+                if (row < this.size - 1) moves.push('down');
+                if (col > 0) moves.push('left');
+                if (col < this.size - 1) moves.push('right');
+                
+                return moves;
+            }
+
+            moveEmpty(direction) {
+                const { row, col } = this.emptyPos;
+                let newRow = row, newCol = col;
+                
+                switch (direction) {
+                    case 'up':
+                        newRow = row - 1;
+                        break;
+                    case 'down':
+                        newRow = row + 1;
+                        break;
+                    case 'left':
+                        newCol = col - 1;
+                        break;
+                    case 'right':
+                        newCol = col + 1;
+                        break;
+                }
+                
+                if (this.isValidPosition(newRow, newCol)) {
+                    // タイルを交換
+                    this.tiles[row][col] = this.tiles[newRow][newCol];
+                    this.tiles[newRow][newCol] = 0;
+                    this.emptyPos = { row: newRow, col: newCol };
+                    return true;
+                }
+                return false;
+            }
+
+            isValidPosition(row, col) {
+                return row >= 0 && row < this.size && col >= 0 && col < this.size;
+            }
+
+            handleTileClick(clickedRow, clickedCol) {
+                if (this.isGameComplete) return;
+                
+                const { row: emptyRow, col: emptyCol } = this.emptyPos;
+                
+                // クリックされたタイルが空のタイルに隣接しているかチェック
+                const isAdjacent = (
+                    (Math.abs(clickedRow - emptyRow) === 1 && clickedCol === emptyCol) ||
+                    (Math.abs(clickedCol - emptyCol) === 1 && clickedRow === emptyRow)
+                );
+                
+                if (isAdjacent) {
+                    // タイルを移動
+                    this.tiles[emptyRow][emptyCol] = this.tiles[clickedRow][clickedCol];
+                    this.tiles[clickedRow][clickedCol] = 0;
+                    this.emptyPos = { row: clickedRow, col: clickedCol };
+                    
+                    this.moves++;
+                    this.updateMoveCount();
+                    this.renderPuzzle();
+                    
+                    if (this.checkWin()) {
+                        this.gameComplete();
+                    }
+                }
+            }
+
+            checkWin() {
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        if (i === this.size - 1 && j === this.size - 1) {
+                            // 最後のマスは空であるべき
+                            if (this.tiles[i][j] !== 0) return false;
+                        } else {
+                            // 他のマスは順番通りであるべき
+                            if (this.tiles[i][j] !== i * this.size + j + 1) return false;
+                        }
+                    }
+                }
+                return true;
+            }
+
+            gameComplete() {
+                this.isGameComplete = true;
+                clearInterval(this.gameTimer);
+                
+                document.getElementById('finalMoves').textContent = this.moves;
+                document.getElementById('finalTime').textContent = document.getElementById('timeCount').textContent;
+                document.getElementById('celebration').classList.add('show');
+            }
+
+            renderPuzzle() {
+                const grid = document.getElementById('puzzleGrid');
+                grid.innerHTML = '';
+                
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        const tile = document.createElement('div');
+                        tile.className = 'puzzle-tile';
+                        
+                        if (this.tiles[i][j] === 0) {
+                            tile.classList.add('empty');
+                        } else {
+                            tile.textContent = this.tiles[i][j];
+                            tile.addEventListener('click', () => this.handleTileClick(i, j));
+                        }
+                        
+                        grid.appendChild(tile);
+                    }
+                }
+            }
+
+            startTimer() {
+                this.startTime = Date.now();
+                this.gameTimer = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                    const minutes = Math.floor(elapsed / 60);
+                    const seconds = elapsed % 60;
+                    document.getElementById('timeCount').textContent = 
+                        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }, 1000);
+            }
+
+            updateMoveCount() {
+                document.getElementById('moveCount').textContent = this.moves;
+            }
+
+            showHint() {
+                // 次に動かすべきタイルをハイライト
+                const hintTile = this.findNextMove();
+                if (hintTile) {
+                    const tiles = document.querySelectorAll('.puzzle-tile:not(.empty)');
+                    tiles.forEach(tile => {
+                        if (tile.textContent == hintTile) {
+                            tile.style.background = 'linear-gradient(145deg, #ffd700, #ffb347)';
+                            setTimeout(() => {
+                                tile.style.background = 'linear-gradient(145deg, #ff6b9d, #c44569)';
+                            }, 1500);
+                        }
+                    });
+                }
+            }
+
+            findNextMove() {
+                // 簡単なヒント：正しい位置にない最小の数字を返す
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        const expectedValue = i * this.size + j + 1;
+                        if (i === this.size - 1 && j === this.size - 1) continue; // 空のマスをスキップ
+                        if (this.tiles[i][j] !== expectedValue && this.tiles[i][j] !== 0) {
+                            // このタイルが空のマスに隣接している場合、それがヒント
+                            const { row: emptyRow, col: emptyCol } = this.emptyPos;
+                            const isAdjacent = (
+                                (Math.abs(i - emptyRow) === 1 && j === emptyCol) ||
+                                (Math.abs(j - emptyCol) === 1 && i === emptyRow)
+                            );
+                            if (isAdjacent) {
+                                return this.tiles[i][j];
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+        }
+
+        let game = new ChouyouPuzzle();
+
+        function newGame() {
+            document.getElementById('celebration').classList.remove('show');
+            clearInterval(game.gameTimer);
+            game = new ChouyouPuzzle();
+        }
+
+        function solvePuzzle() {
+            game.showHint();
+        }
+
+        // キーボード操作のサポート
+        document.addEventListener('keydown', (e) => {
+            if (game.isGameComplete) return;
+            
+            let direction = null;
+            switch (e.key) {
+                case 'ArrowUp':
+                    direction = 'down'; // 空のタイルを下に移動 = 上のタイルを下に
+                    break;
+                case 'ArrowDown':
+                    direction = 'up';
+                    break;
+                case 'ArrowLeft':
+                    direction = 'right';
+                    break;
+                case 'ArrowRight':
+                    direction = 'left';
+                    break;
+            }
+            
+            if (direction && game.moveEmpty(direction)) {
+                game.moves++;
+                game.updateMoveCount();
+                game.renderPuzzle();
+                
+                if (game.checkWin()) {
+                    game.gameComplete();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
