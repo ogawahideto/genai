@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地引網 - Jibiki Beach Net Fishing</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #87CEEB 0%, #1E90FF 70%, #4169E1 100%);
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            border: 2px solid #8B4513;
+            display: block;
+            margin: 0 auto;
+            cursor: grab;
+        }
+
+        #gameCanvas:active {
+            cursor: grabbing;
+        }
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        button {
+            background: #4169E1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #1E90FF;
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div>捕獲した魚: <span id="fishCount">0</span></div>
+        <div>スコア: <span id="score">0</span></div>
+        <div>協力者: <span id="helpers">1</span>人</div>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <div id="controls">
+        <div>🌊 地引網漁体験ゲーム 🐟</div>
+        <div>マウスで網を引いて魚を捕まえよう！</div>
+        <button id="startBtn">漁を開始</button>
+        <button id="pullBtn" disabled>みんなで引く！</button>
+        <button id="resetBtn">リセット</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const fishCountEl = document.getElementById('fishCount');
+        const scoreEl = document.getElementById('score');
+        const helpersEl = document.getElementById('helpers');
+        const startBtn = document.getElementById('startBtn');
+        const pullBtn = document.getElementById('pullBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        let gameState = {
+            isPlaying: false,
+            fishCaught: 0,
+            score: 0,
+            helpers: 8,
+            netDeployed: false,
+            pullPower: 0
+        };
+
+        let fish = [];
+        let net = {
+            x: 720, // canvas.width - 80 の固定値
+            y: 50,
+            width: 60,
+            height: 500,
+            deployed: false,
+            pulling: false,
+            targetX: 720
+        };
+
+        let mouse = { x: 0, y: 0, dragging: false };
+
+        // 魚クラス
+        class Fish {
+            constructor() {
+                this.x = Math.random() * 250 + 450; // 海の範囲内（右側）
+                this.y = Math.random() * 500 + 50;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 1;
+                this.size = Math.random() * 15 + 10;
+                this.color = this.getRandomFishColor();
+                this.caught = false;
+                this.type = this.getFishType();
+            }
+
+            getRandomFishColor() {
+                const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD'];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            getFishType() {
+                const types = ['🐟', '🐠', '🐡', '🦈', '🐙', '🦐'];
+                return types[Math.floor(Math.random() * types.length)];
+            }
+
+            update() {
+                if (!this.caught) {
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // 境界での反射（海の範囲内）
+                    if (this.x < 410 || this.x > 790) this.vx *= -1;
+                    if (this.y < 10 || this.y > 590) this.vy *= -1;
+
+                    // 網に捕まったかチェック
+                    if (net.deployed &&
+                        this.x > net.x && this.x < net.x + net.width &&
+                        this.y > net.y && this.y < net.y + net.height) {
+                        if (!this.caught) {
+                            this.caught = true;
+                        }
+                    }
+                }
+
+                // 捕まった魚は網と一緒に移動
+                if (this.caught) {
+                    // 網の相対位置を保持
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                if (this.caught) {
+                    ctx.globalAlpha = 0.7;
+                }
+
+                // 魚の体
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, this.size, this.size * 0.6, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 魚の尾
+                ctx.beginPath();
+                ctx.moveTo(-this.size, 0);
+                ctx.lineTo(-this.size * 1.5, -this.size * 0.5);
+                ctx.lineTo(-this.size * 1.3, 0);
+                ctx.lineTo(-this.size * 1.5, this.size * 0.5);
+                ctx.closePath();
+                ctx.fill();
+
+                // 目
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(this.size * 0.3, -this.size * 0.2, this.size * 0.15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(this.size * 0.35, -this.size * 0.2, this.size * 0.08, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        // 初期化
+        function init() {
+            fish = [];
+            for (let i = 0; i < 20; i++) {
+                fish.push(new Fish());
+            }
+
+            net.x = 720;
+            net.y = 50;
+            net.deployed = false;
+            net.pulling = false;
+            gameState.netDeployed = false;
+            gameState.pullPower = 0;
+            gameState.fishCaught = 0;
+            gameState.score = 0;
+            gameState.helpers = 8;
+        }
+
+        // 背景描画
+        function drawBackground() {
+            // 砂浜（左側）
+            ctx.fillStyle = '#F4E4BC';
+            ctx.fillRect(0, 0, 400, 600);
+
+            // 海（右側）
+            const gradient = ctx.createLinearGradient(400, 0, 800, 0);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.5, '#1E90FF');
+            gradient.addColorStop(1, '#4169E1');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(400, 0, 400, 600);
+
+            // 海岸線
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(400, 0);
+            ctx.lineTo(400, 600);
+            ctx.stroke();
+
+            // 波（海側のみ）
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                for (let x = 400; x < 800; x += 20) {
+                    const y = 50 + i * 50 + Math.sin(x * 0.02 + Date.now() * 0.001) * 10;
+                    if (x === 400) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+        }
+
+        // 網描画
+        function drawNet() {
+            if (net.deployed) {
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 3;
+
+                // 網の格子
+                const gridSize = 20;
+                for (let x = net.x; x <= net.x + net.width; x += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, net.y);
+                    ctx.lineTo(x, net.y + net.height);
+                    ctx.stroke();
+                }
+                for (let y = net.y; y <= net.y + net.height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(net.x, y);
+                    ctx.lineTo(net.x + net.width, y);
+                    ctx.stroke();
+                }
+
+                // 網の境界
+                ctx.strokeStyle = '#654321';
+                ctx.lineWidth = 5;
+                ctx.strokeRect(net.x, net.y, net.width, net.height);
+
+                // 引く力の表示
+                if (net.pulling) {
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                    ctx.fillRect(net.x, net.y, net.width, net.height);
+                }
+            }
+        }
+
+        // 人々描画
+        function drawPeople() {
+            const peopleCount = gameState.helpers;
+            const peoplePerRow = Math.floor(peopleCount / 2);
+
+            // ロープの位置を網の端と同じにする
+            const upperRopeY = net.y; // 網の最上部
+            const lowerRopeY = net.y + net.height; // 網の最下部
+
+            // 2列に人を配置（ロープと同じ高さに）
+            for (let i = 0; i < peopleCount; i++) {
+                const row = i < peoplePerRow ? 0 : 1; // 前半は上列、後半は下列
+                const col = i < peoplePerRow ? i : i - peoplePerRow;
+                const x = 50 + col * 300 / Math.max(peoplePerRow - 1, 1);
+                const y = row === 0 ? upperRopeY : lowerRopeY; // 網の端と同じ高さ
+
+                // 人の体
+                ctx.fillStyle = '#FFE4B5';
+                ctx.beginPath();
+                ctx.arc(x, y - 20, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 体
+                ctx.fillStyle = '#4169E1';
+                ctx.fillRect(x - 5, y - 10, 10, 15);
+
+                // 腕（ロープを掴んでいる）
+                ctx.strokeStyle = '#FFE4B5';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(x, y - 5);
+                ctx.lineTo(x + 15, y - 5); // ロープ方向に腕を伸ばす
+                ctx.stroke();
+            }
+
+            // ロープを水平に描画
+            if (net.deployed && peopleCount > 0) {
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 4;
+
+                // 上列のロープ（網の最上部と同じ高さ）
+                ctx.beginPath();
+                ctx.moveTo(50, upperRopeY);
+                ctx.lineTo(net.x, upperRopeY);
+                ctx.stroke();
+
+                // 下列のロープ（網の最下部と同じ高さ）
+                ctx.beginPath();
+                ctx.moveTo(50, lowerRopeY);
+                ctx.lineTo(net.x, lowerRopeY);
+                ctx.stroke();
+            }
+        }
+
+        // ゲームループ
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawBackground();
+            drawNet();
+            drawPeople();
+
+            // 魚の更新と描画
+            fish.forEach(f => {
+                f.update();
+                f.draw();
+            });
+
+            // 網が引かれている時の処理
+            if (net.pulling) {
+                gameState.pullPower += gameState.helpers;
+
+                if (gameState.pullPower > 30) {
+                    // 網を左に移動
+                    net.x -= 40;
+
+                    // 魚の動的な処理
+                    fish.forEach(f => {
+                        if (f.caught) {
+                            // 捕まった魚も一緒に移動
+                            f.x -= 40;
+
+                            // ランダムに魚が逃げる可能性（10%の確率）
+                            if (Math.random() < 0.1) {
+                                f.caught = false;
+                                f.vx = (Math.random() - 0.5) * 4; // 逃げる時は早く泳ぐ
+                                f.vy = (Math.random() - 0.5) * 3;
+                            }
+                        } else {
+                            // 自由な魚が網に新しく引っかかる可能性（15%の確率）
+                            if (Math.random() < 0.15 &&
+                                f.x > net.x && f.x < net.x + net.width &&
+                                f.y > net.y && f.y < net.y + net.height) {
+                                f.caught = true;
+                            }
+                        }
+                    });
+
+                    net.pulling = false;
+                    gameState.pullPower = 0;
+                    pullBtn.disabled = false;
+                    pullBtn.textContent = 'みんなで引く！';
+
+                    // 網が砂浜に到達したかチェック
+                    if (net.x <= 400) {
+                        // 最終的な魚の捕獲処理（その時点で網にいる魚のみ）
+                        let finalCaughtFish = fish.filter(f => f.caught);
+                        gameState.fishCaught = finalCaughtFish.length;
+                        gameState.score += finalCaughtFish.length * 50;
+
+                        // ゲーム終了処理
+                        gameState.isPlaying = false;
+                        pullBtn.disabled = true;
+                        pullBtn.textContent = '漁終了！';
+
+                        // 結果表示
+                        setTimeout(() => {
+                            alert(`地引網漁終了！\n捕獲した魚: ${gameState.fishCaught}匹\nスコア: ${gameState.score}点`);
+                        }, 500);
+                    }
+
+                    // リアルタイムでUI更新
+                    gameState.fishCaught = fish.filter(f => f.caught).length;
+                }
+            }
+
+            // UI更新
+            fishCountEl.textContent = gameState.fishCaught;
+            scoreEl.textContent = gameState.score;
+            helpersEl.textContent = gameState.helpers;
+
+            if (gameState.isPlaying) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // イベントリスナー
+        startBtn.addEventListener('click', () => {
+            gameState.isPlaying = true;
+            net.deployed = true;
+            gameState.netDeployed = true;
+            pullBtn.disabled = false;
+            startBtn.disabled = true;
+            gameLoop();
+        });
+
+        pullBtn.addEventListener('click', () => {
+            if (net.deployed && !net.pulling) {
+                net.pulling = true;
+                gameState.pullPower = 0;
+                pullBtn.disabled = true;
+                gameState.helpers = Math.min(gameState.helpers + 1, 10);
+
+                // 視覚的フィードバック
+                pullBtn.textContent = '引いています...';
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            gameState = {
+                isPlaying: false,
+                fishCaught: 0,
+                score: 0,
+                helpers: 1,
+                netDeployed: false,
+                pullPower: 0
+            };
+            startBtn.disabled = false;
+            pullBtn.disabled = true;
+            init();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+            drawPeople();
+        });
+
+        // マウスイベント
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+            mouse.dragging = true;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            // マウスドラッグ機能を無効化（地引網は決められた軌道で移動）
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            mouse.dragging = false;
+        });
+
+        // 初期化実行
+        init();
+        drawBackground();
+        drawPeople();
+    </script>
+</body>
+</html>
