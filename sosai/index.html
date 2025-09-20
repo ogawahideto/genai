@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>与党総裁選 2025 - 候補者紹介サイト</title>
+    <!--
+    AI Model: Claude Sonnet 4
+    User Prompt: sosaiの中に、与党総裁選コンテンツを作ってください。複数のバラエティのある架空候補者を設定し、それぞれの公約が表示されるサイトを作ってください。
+    AI Approach: Single-file HTML with CSS Grid layout, interactive candidate profiles with detailed policies
+    Implementation Intent: Educational political simulation showcasing diverse candidate profiles and policy positions
+    -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', 'Yu Gothic', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            color: #7f8c8d;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .candidates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .candidate-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .candidate-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .candidate-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #3498db, #e74c3c, #f39c12, #2ecc71);
+        }
+
+        .candidate-photo {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            color: white;
+            font-weight: bold;
+            overflow: hidden;
+            border: 3px solid white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .candidate-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .candidate-name {
+            font-size: 1.8em;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .candidate-title {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+
+        .policies {
+            margin-top: 20px;
+        }
+
+        .policies h3 {
+            color: #34495e;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 5px;
+        }
+
+        .policy-list {
+            list-style: none;
+        }
+
+        .policy-list li {
+            margin-bottom: 10px;
+            padding-left: 25px;
+            position: relative;
+            color: #555;
+        }
+
+        .policy-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #27ae60;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .vote-button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.3s ease;
+        }
+
+        .vote-button:hover {
+            background: linear-gradient(45deg, #2980b9, #1e6a96);
+        }
+
+        .voting-results {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-top: 40px;
+        }
+
+        .voting-results h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .result-bar {
+            margin-bottom: 20px;
+        }
+
+        .result-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .result-progress {
+            height: 25px;
+            background: #ecf0f1;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .result-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            border-radius: 15px;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        .reset-button {
+            display: block;
+            margin: 30px auto 0;
+            padding: 15px 30px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .reset-button:hover {
+            background: #c0392b;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: 30px;
+            border-bottom: 2px solid #ecf0f1;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .modal-photo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            color: white;
+            font-weight: bold;
+            overflow: hidden;
+            border: 2px solid white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .modal-candidate-info h2 {
+            margin: 0;
+            font-size: 2em;
+            color: #2c3e50;
+        }
+
+        .modal-candidate-info p {
+            margin: 5px 0 0 0;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+            margin-left: auto;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #333;
+        }
+
+        .detailed-policies {
+            margin-bottom: 30px;
+        }
+
+        .policy-category {
+            margin-bottom: 25px;
+        }
+
+        .policy-category h3 {
+            color: #2c3e50;
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .policy-detail {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+        }
+
+        .policy-detail h4 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .policy-detail p {
+            color: #555;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .candidate-card {
+            cursor: pointer;
+        }
+
+        .view-details-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background 0.3s ease;
+        }
+
+        .view-details-btn:hover {
+            background: linear-gradient(45deg, #7f8c8d, #6c7b7d);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .candidates-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .candidate-card {
+                padding: 20px;
+            }
+
+            .container {
+                padding: 0 15px;
+            }
+
+            .modal-content {
+                margin: 10% auto;
+                width: 95%;
+            }
+
+            .modal-header {
+                padding: 20px;
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .modal-body {
+                padding: 20px;
+            }
+
+            .modal-candidate-info h2 {
+                font-size: 1.6em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🏛️ 与党総裁選 2025</h1>
+        <p>次期総裁候補者の政策をチェックして投票しよう</p>
+    </header>
+
+    <div class="container">
+        <div class="candidates-grid" id="candidatesGrid">
+            <!-- 候補者カードはJavaScriptで生成 -->
+        </div>
+
+        <div class="voting-results" id="votingResults">
+            <h2>📊 投票結果</h2>
+            <div id="resultsContainer">
+                <!-- 結果はJavaScriptで生成 -->
+            </div>
+            <button class="reset-button" onclick="resetVotes()">🔄 投票をリセット</button>
+        </div>
+    </div>
+
+    <!-- モーダル -->
+    <div id="candidateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-photo" id="modalPhoto"></div>
+                <div class="modal-candidate-info">
+                    <h2 id="modalName"></h2>
+                    <p id="modalTitle"></p>
+                </div>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="detailed-policies" id="modalPolicies">
+                    <!-- 詳細政策はJavaScriptで生成 -->
+                </div>
+                <button class="vote-button" id="modalVoteButton">
+                    🗳️ この候補者に投票
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const candidates = [
+            {
+                id: 1,
+                name: "田中 英雄",
+                title: "元財務大臣・経済政策専門家",
+                photo: "田",
+                photoImg: "photo/tanaka.png",
+                color: "#3498db",
+                policies: [
+                    "消費税減税による経済活性化",
+                    "中小企業支援金の拡充",
+                    "デジタル通貨の導入推進",
+                    "働き方改革の更なる推進",
+                    "インフラ投資による雇用創出"
+                ],
+                detailedPolicies: {
+                    "経済政策": [
+                        {
+                            title: "消費税減税による経済活性化",
+                            description: "消費税を現行の10%から8%に減税し、家計の可処分所得を増やします。特に低所得者層への負担軽減を図り、消費拡大を通じた経済成長を実現します。"
+                        },
+                        {
+                            title: "中小企業支援金の大幅拡充",
+                            description: "中小企業向けの補助金制度を拡充し、設備投資やデジタル化への支援を強化します。年間予算を現在の2倍に増額し、雇用維持と企業成長を支援します。"
+                        }
+                    ],
+                    "デジタル政策": [
+                        {
+                            title: "デジタル通貨の段階的導入",
+                            description: "中央銀行デジタル通貨（CBDC）の実証実験を開始し、2027年までに本格導入を目指します。決済効率化と金融包摂の向上を図ります。"
+                        }
+                    ],
+                    "労働政策": [
+                        {
+                            title: "働き方改革2.0の推進",
+                            description: "テレワーク環境整備への企業支援、副業・兼業の促進、労働時間の柔軟化を進めます。生産性向上と働きがいの両立を実現します。"
+                        }
+                    ]
+                }
+            },
+            {
+                id: 2,
+                name: "佐藤 麗子",
+                title: "元厚生労働大臣・社会保障専門家",
+                photo: "佐",
+                photoImg: "photo/sato.png",
+                color: "#e74c3c",
+                policies: [
+                    "子育て支援金の大幅増額",
+                    "高齢者医療費の負担軽減",
+                    "保育所待機児童ゼロの実現",
+                    "介護職員の待遇改善",
+                    "女性の社会進出支援強化"
+                ],
+                detailedPolicies: {
+                    "子育て支援": [
+                        {
+                            title: "児童手当の大幅拡充",
+                            description: "児童手当を現在の月額1.5万円から3万円に増額し、支給年齢を高校3年生まで延長します。子育て世帯の経済負担を大幅に軽減します。"
+                        },
+                        {
+                            title: "保育所待機児童ゼロプロジェクト",
+                            description: "5年間で保育士10万人を新規採用し、保育施設を全国に2000箇所新設します。保育士の待遇改善と併せて待機児童問題を根本的に解決します。"
+                        }
+                    ],
+                    "医療・福祉": [
+                        {
+                            title: "高齢者医療費の自己負担軽減",
+                            description: "75歳以上の医療費自己負担上限を月額1万円に設定し、年金生活者の医療費負担を大幅に軽減します。健康寿命の延伸も同時に推進します。"
+                        },
+                        {
+                            title: "介護職員の待遇改善パッケージ",
+                            description: "介護職員の平均給与を5年間で10万円アップし、キャリアアップ支援制度を充実させます。介護現場の人材不足解消を図ります。"
+                        }
+                    ],
+                    "女性支援": [
+                        {
+                            title: "女性活躍推進法の強化",
+                            description: "企業の管理職女性比率目標を30%に設定し、達成企業への税制優遇を拡大します。仕事と家庭の両立支援制度も充実させます。"
+                        }
+                    ]
+                }
+            },
+            {
+                id: 3,
+                name: "山田 革新",
+                title: "元環境大臣・グリーン政策推進派",
+                photo: "山",
+                photoImg: "photo/yamada.png",
+                color: "#2ecc71",
+                policies: [
+                    "2030年カーボンニュートラル実現",
+                    "再生可能エネルギー100%達成",
+                    "電気自動車購入補助金の拡大",
+                    "森林保護と緑化事業の推進",
+                    "循環型社会の構築"
+                ],
+                detailedPolicies: {
+                    "気候変動対策": [
+                        {
+                            title: "2030年カーボンニュートラル前倒し実現",
+                            description: "世界に先駆けて2030年にカーボンニュートラルを達成します。大胆な炭素税導入と企業への排出量削減義務化を実施し、グリーン経済への転換を加速します。"
+                        },
+                        {
+                            title: "再生可能エネルギー100%社会",
+                            description: "2028年までに電力需要の100%を再生可能エネルギーで賄います。太陽光・風力発電の大規模導入と蓄電技術への投資を拡大します。"
+                        }
+                    ],
+                    "交通政策": [
+                        {
+                            title: "EV普及促進プログラム",
+                            description: "電気自動車購入補助金を最大200万円に拡大し、充電インフラを全国10万箇所に整備します。2030年までに新車販売の80%をEVにします。"
+                        }
+                    ],
+                    "環境保護": [
+                        {
+                            title: "国土緑化プロジェクト",
+                            description: "全国で年間100万本の植樹を実施し、都市部の緑化率を30%向上させます。生物多様性保護と温室効果ガス吸収を同時に推進します。"
+                        },
+                        {
+                            title: "循環型経済システム構築",
+                            description: "プラスチック廃棄物ゼロ社会を目指し、リサイクル率90%達成と使い捨てプラスチック製品の段階的禁止を実施します。"
+                        }
+                    ]
+                }
+            },
+            {
+                id: 4,
+                name: "鈴木 未来",
+                title: "元IT担当大臣・デジタル改革推進派",
+                photo: "鈴",
+                photoImg: "photo/suzuki.png",
+                color: "#9b59b6",
+                policies: [
+                    "全国民へのデジタルID配布",
+                    "AI・ロボット産業の育成",
+                    "5G/6G通信網の全国展開",
+                    "リモートワーク環境の整備",
+                    "デジタル教育の義務化"
+                ],
+                detailedPolicies: {
+                    "デジタルガバメント": [
+                        {
+                            title: "国民デジタルID制度の導入",
+                            description: "全国民にユニークなデジタルIDを配布し、行政手続きの完全電子化を実現します。マイナンバーカードと連携し、ワンストップサービスを提供します。"
+                        },
+                        {
+                            title: "行政DXの完全実現",
+                            description: "全ての行政手続きをオンライン化し、AI活用で申請処理時間を90%短縮します。デジタルファーストの行政サービスを構築します。"
+                        }
+                    ],
+                    "AI・ロボット産業": [
+                        {
+                            title: "AI産業育成プログラム",
+                            description: "AI開発企業への投資減税を拡大し、研究開発費を10年間で10兆円投入します。世界をリードするAI先進国を目指します。"
+                        },
+                        {
+                            title: "ロボット社会実装推進",
+                            description: "介護・建設・農業分野でのロボット導入を支援し、人手不足解消と生産性向上を実現します。ロボット税制優遇制度も創設します。"
+                        }
+                    ],
+                    "通信インフラ": [
+                        {
+                            title: "6G通信網の世界最速導入",
+                            description: "2027年までに6G通信網を全国展開し、超高速・低遅延通信を実現します。自動運転やスマートシティの基盤を構築します。"
+                        }
+                    ],
+                    "教育DX": [
+                        {
+                            title: "全学校でのプログラミング教育必修化",
+                            description: "小学校から高校まで全学年でプログラミング教育を必修とし、AIリテラシーを身につけた人材を育成します。"
+                        }
+                    ]
+                }
+            },
+            {
+                id: 5,
+                name: "高橋 防衛",
+                title: "元防衛大臣・安全保障専門家",
+                photo: "高",
+                photoImg: "photo/takahashi.png",
+                color: "#f39c12",
+                policies: [
+                    "防衛費GDP2%への増額",
+                    "サイバーセキュリティ強化",
+                    "災害対策予算の倍増",
+                    "国際協力体制の構築",
+                    "食料安全保障の確立"
+                ],
+                detailedPolicies: {
+                    "国防政策": [
+                        {
+                            title: "防衛費の段階的増額",
+                            description: "防衛費を5年間でGDP比2%まで段階的に増額し、防衛装備の近代化と自衛隊員の処遇改善を実現します。抑止力向上と平和維持を両立します。"
+                        },
+                        {
+                            title: "防衛産業基盤の強化",
+                            description: "国産防衛装備品の開発を促進し、技術的優位性を確保します。同盟国との共同開発も推進し、防衛技術力を向上させます。"
+                        }
+                    ],
+                    "サイバーセキュリティ": [
+                        {
+                            title: "国家サイバーセキュリティ戦略",
+                            description: "サイバー攻撃対処能力を強化し、重要インフラの防護体制を構築します。民間企業との連携も深め、社会全体のサイバー耐性を向上させます。"
+                        }
+                    ],
+                    "災害対策": [
+                        {
+                            title: "国土強靭化の加速",
+                            description: "災害対策予算を現在の2倍に増額し、インフラの耐震化・津波対策を強化します。避難施設の整備と災害時の迅速な対応体制を構築します。"
+                        },
+                        {
+                            title: "防災テクノロジーの活用",
+                            description: "AI・IoTを活用した災害予測システムを導入し、被害を最小限に抑える先進的な防災体制を構築します。"
+                        }
+                    ],
+                    "食料安全保障": [
+                        {
+                            title: "食料自給率向上プロジェクト",
+                            description: "食料自給率を10年間で60%まで向上させ、農業の大規模化と高度化を推進します。有事の際の食料供給体制も整備します。"
+                        }
+                    ]
+                }
+            },
+            {
+                id: 6,
+                name: "伊藤 地方",
+                title: "元総務大臣・地方創生推進派",
+                photo: "伊",
+                photoImg: "photo/ito.png",
+                color: "#1abc9c",
+                policies: [
+                    "地方交付税の増額",
+                    "移住促進支援金の創設",
+                    "地方大学の研究支援強化",
+                    "観光業復興支援パッケージ",
+                    "農業・漁業の6次産業化推進"
+                ],
+                detailedPolicies: {
+                    "地方財政": [
+                        {
+                            title: "地方交付税の大幅増額",
+                            description: "地方交付税を30%増額し、地方自治体の財政基盤を強化します。過疎地域への重点配分により、地域格差の是正を図ります。"
+                        },
+                        {
+                            title: "ふるさと納税制度の拡充",
+                            description: "ふるさと納税の控除上限額を引き上げ、地方自治体の独自財源確保を支援します。寄付金の使途透明化も推進します。"
+                        }
+                    ],
+                    "移住促進": [
+                        {
+                            title: "移住支援金制度の創設",
+                            description: "地方移住者に最大500万円の支援金を支給し、住居確保や起業支援を行います。都市部から地方への人口流動を促進します。"
+                        },
+                        {
+                            title: "テレワーク拠点整備",
+                            description: "地方にサテライトオフィスを1000箇所整備し、都市部の仕事を地方で行える環境を構築します。ワーケーション促進も支援します。"
+                        }
+                    ],
+                    "教育・研究": [
+                        {
+                            title: "地方大学研究力強化プログラム",
+                            description: "地方大学への研究費を5年間で3倍に増額し、地域密着型の研究開発を促進します。産学連携も強化し、地方の知的基盤を向上させます。"
+                        }
+                    ],
+                    "産業振興": [
+                        {
+                            title: "観光業V字回復支援",
+                            description: "観光業への総合支援パッケージを実施し、インバウンド誘致と国内観光の両面から地方経済を活性化します。"
+                        },
+                        {
+                            title: "農水産業の6次産業化推進",
+                            description: "農業・漁業の加工・販売まで一貫した6次産業化を支援し、付加価値向上と雇用創出を実現します。ブランド化も促進します。"
+                        }
+                    ]
+                }
+            }
+        ];
+
+        let votes = {};
+
+        function initializeVotes() {
+            candidates.forEach(candidate => {
+                votes[candidate.id] = parseInt(localStorage.getItem(`vote_${candidate.id}`) || '0');
+            });
+        }
+
+        function saveVote(candidateId) {
+            localStorage.setItem(`vote_${candidateId}`, votes[candidateId].toString());
+        }
+
+        function vote(candidateId) {
+            votes[candidateId] = (votes[candidateId] || 0) + 1;
+            saveVote(candidateId);
+            updateResults();
+
+            // 投票ボタンのフィードバック
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = '投票完了！';
+            button.style.background = '#27ae60';
+
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.background = '';
+            }, 1500);
+        }
+
+        function renderCandidates() {
+            const grid = document.getElementById('candidatesGrid');
+            grid.innerHTML = candidates.map(candidate => `
+                <div class="candidate-card" onclick="openModal(${candidate.id})">
+                    <div class="candidate-photo" style="background: linear-gradient(45deg, ${candidate.color}, ${candidate.color}aa)">
+                        <img src="${candidate.photoImg}" alt="${candidate.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${candidate.photo}';">
+                    </div>
+                    <div class="candidate-name">${candidate.name}</div>
+                    <div class="candidate-title">${candidate.title}</div>
+                    <div class="policies">
+                        <h3>🎯 主要政策</h3>
+                        <ul class="policy-list">
+                            ${candidate.policies.map(policy => `<li>${policy}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <button class="view-details-btn" onclick="event.stopPropagation(); openModal(${candidate.id})">
+                        📋 詳細政策を見る
+                    </button>
+                    <button class="vote-button" onclick="event.stopPropagation(); vote(${candidate.id})">
+                        🗳️ ${candidate.name} に投票
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function openModal(candidateId) {
+            const candidate = candidates.find(c => c.id === candidateId);
+            if (!candidate) return;
+
+            const modalPhoto = document.getElementById('modalPhoto');
+            modalPhoto.style.background = `linear-gradient(45deg, ${candidate.color}, ${candidate.color}aa)`;
+            modalPhoto.innerHTML = `<img src="${candidate.photoImg}" alt="${candidate.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${candidate.photo}';">`;
+            document.getElementById('modalName').textContent = candidate.name;
+            document.getElementById('modalTitle').textContent = candidate.title;
+
+            const policiesContainer = document.getElementById('modalPolicies');
+            policiesContainer.innerHTML = Object.entries(candidate.detailedPolicies).map(([category, policies]) => `
+                <div class="policy-category">
+                    <h3>${category}</h3>
+                    ${policies.map(policy => `
+                        <div class="policy-detail">
+                            <h4>${policy.title}</h4>
+                            <p>${policy.description}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+
+            const modalVoteButton = document.getElementById('modalVoteButton');
+            modalVoteButton.onclick = () => {
+                vote(candidateId);
+                closeModal();
+            };
+            modalVoteButton.innerHTML = `🗳️ ${candidate.name} に投票`;
+            modalVoteButton.style.background = `linear-gradient(45deg, ${candidate.color}, ${candidate.color}aa)`;
+
+            document.getElementById('candidateModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('candidateModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('candidateModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        function updateResults() {
+            const totalVotes = Object.values(votes).reduce((sum, count) => sum + count, 0);
+            const resultsContainer = document.getElementById('resultsContainer');
+
+            if (totalVotes === 0) {
+                resultsContainer.innerHTML = '<p style="text-align: center; color: #7f8c8d;">まだ投票がありません</p>';
+                return;
+            }
+
+            const sortedCandidates = candidates
+                .map(candidate => ({
+                    ...candidate,
+                    voteCount: votes[candidate.id] || 0,
+                    percentage: totalVotes > 0 ? ((votes[candidate.id] || 0) / totalVotes * 100).toFixed(1) : 0
+                }))
+                .sort((a, b) => b.voteCount - a.voteCount);
+
+            resultsContainer.innerHTML = sortedCandidates.map((candidate, index) => `
+                <div class="result-bar">
+                    <div class="result-label">
+                        <span>${index + 1}位. ${candidate.name}</span>
+                        <span>${candidate.voteCount}票 (${candidate.percentage}%)</span>
+                    </div>
+                    <div class="result-progress">
+                        <div class="result-fill" style="width: ${candidate.percentage}%; background: linear-gradient(90deg, ${candidate.color}, ${candidate.color}aa)">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function resetVotes() {
+            if (confirm('投票結果をリセットしますか？')) {
+                candidates.forEach(candidate => {
+                    votes[candidate.id] = 0;
+                    localStorage.removeItem(`vote_${candidate.id}`);
+                });
+                updateResults();
+            }
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeVotes();
+            renderCandidates();
+            updateResults();
+        });
+    </script>
+</body>
+</html>
