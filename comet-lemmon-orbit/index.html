@@ -1,0 +1,397 @@
+<!--
+    AIモデル: Gemini
+    Gemini CLIバージョン: 1.0.0
+    作成日時: 2025年9月20日
+    ユーザープロンプト: それでは、太陽と地球とレモン彗星の軌道、および、地上から見たレモン彗星の位置をビジュアライズするHTMLを作ってください
+    AIのアプローチ: ユーザーの要望に応えるため、単一のHTMLファイル内に3Dの太陽系儀を作成します。外部ライブラリは使用せず、HTML Canvas 2D APIとJavaScriptのみを使用します。軌道計算は、ユーザーから提供された学術データ（軌道要素）を基に、ケプラー方程式をニュートン法で解いて各天体の位置を求めます。3D座標は単純な平行投影（オルソグラフィック投影）を用いて2Dキャンバスにマッピングします。ユーザーが時間や視点を操作できるUIも実装します。
+    実装の意図: このコードは、レモン彗星 C/2025 A6 の太陽系内での動きを視覚的に理解することを目的としています。太陽、地球、彗星の軌道と、指定した日時におけるそれらの相対的な位置関係を表示します。また、地球から彗星がどの方向に見えるかを示す線を描画することで、地上からの観測のイメージを掴みやすくします。教育的な目的や天文学への興味を深めるためのツールとして作成します。
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>レモン彗星 (C/2025 A6) 軌道ビジュアライザ</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #000;
+            color: #fff;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+        }
+        h1, h2 {
+            text-align: center;
+            margin: 5px 0;
+        }
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            background-color: #222;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #controls label, #controls input, #controls button, #controls span {
+            margin: 5px 10px;
+        }
+        #mainCanvas {
+            background-color: #000010;
+            border: 1px solid #444;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>レモン彗星 (C/2025 A6) 軌道ビジュアライザ</h1>
+    <div id="controls">
+        <label for="dateSlider">日付:</label>
+        <input type="range" id="dateSlider" min="0" max="730">
+        <span id="dateDisplay"></span>
+        <button id="playPauseBtn">再生/一時停止</button>
+        <label for="speedSlider">速度:</label>
+        <input type="range" id="speedSlider" min="1" max="10" value="5">
+    </div>
+    <canvas id="mainCanvas"></canvas>
+    <div id="info"></div>
+
+    <script>
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const dateSlider = document.getElementById('dateSlider');
+    const dateDisplay = document.getElementById('dateDisplay');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const speedSlider = document.getElementById('speedSlider');
+    const infoDisplay = document.getElementById('info');
+
+    let width, height;
+    let scale = 150; // pixels per AU
+    let rotationX = 0.5; // 傾き
+    let rotationY = 0;
+    let isPlaying = true;
+    let simTime = new Date('2025-01-01T00:00:00Z');
+    const startDate = new Date('2025-01-01T00:00:00Z');
+    const endDate = new Date('2027-01-01T00:00:00Z');
+    const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+    dateSlider.max = totalDays;
+    let lastTimestamp = 0;
+    let cometTrail = [];
+
+
+    // --- Constants and Orbital Data ---
+    const AU = 149597870.7; // km
+
+    // 軌道要素 (JPL Small-Body Databaseより)
+    const cometLemmon = {
+        name: "C/2025 A6 (Lemmon)",
+        a: 122.38,      // 軌道長半径 (AU)
+        e: 0.9956,      // 離心率
+        i: 143.66,      // 軌道傾斜角 (deg)
+        omega: 132.97,  // 近日点引数 (deg)
+        Omega: 108.10,  // 昇交点黄経 (deg)
+        T: new Date('2025-11-08T10:45:00Z').getTime(), // 近日点通過時刻 (ms)
+        color: '#00FFFF'
+    };
+
+    const earth = {
+        name: "Earth",
+        a: 1.00000261,
+        e: 0.01671123,
+        i: -0.00001531,
+        omega: 114.20783,
+        Omega: -11.26064,
+        M0: 357.52911, // Mean Anomaly at J2000
+        n: 0.98560912, // Mean daily motion (deg/day)
+        color: '#2299FF'
+    };
+    
+    const j2000 = new Date('2000-01-01T12:00:00Z');
+
+    // --- Orbital Mechanics Calculations ---
+
+    function toRad(deg) {
+        return deg * Math.PI / 180;
+    }
+
+    function solveKepler(M, e) {
+        let E = M;
+        let delta;
+        const maxIter = 100;
+        const tolerance = 1e-9;
+        for (let i = 0; i < maxIter; i++) {
+            delta = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+            E -= delta;
+            if (Math.abs(delta) < tolerance) {
+                return E;
+            }
+        }
+        return E;
+    }
+
+    function getPositionFromMeanAnomaly(body, M) {
+        const E = solveKepler(M, body.e);
+
+        const x_orb = body.a * (Math.cos(E) - body.e);
+        const y_orb = body.a * Math.sqrt(1 - body.e * body.e) * Math.sin(E);
+
+        const omega_rad = toRad(body.omega);
+        const Omega_rad = toRad(body.Omega);
+        const i_rad = toRad(body.i);
+
+        const cos_omega = Math.cos(omega_rad);
+        const sin_omega = Math.sin(omega_rad);
+        const cos_Omega = Math.cos(Omega_rad);
+        const sin_Omega = Math.sin(Omega_rad);
+        const cos_i = Math.cos(i_rad);
+        const sin_i = Math.sin(i_rad);
+
+        const x = (cos_Omega * cos_omega - sin_Omega * sin_omega * cos_i) * x_orb +
+                  (-cos_Omega * sin_omega - sin_Omega * cos_omega * cos_i) * y_orb;
+        const y = (sin_Omega * cos_omega + cos_Omega * sin_omega * cos_i) * x_orb +
+                  (-sin_Omega * sin_omega + cos_Omega * cos_omega * cos_i) * y_orb;
+        const z = (sin_omega * sin_i) * x_orb + (cos_omega * sin_i) * y_orb;
+
+        return { x, y, z };
+    }
+
+    function calculatePosition(body, time) {
+        let M; // 平均近点角 (rad)
+        if (body.name === "Earth") {
+            const daysSinceJ2000 = (time - j2000) / (1000 * 60 * 60 * 24);
+            const M_deg = (body.M0 + body.n * daysSinceJ2000) % 360;
+            M = toRad(M_deg);
+        } else { // Comet
+            const periodInDays = Math.pow(body.a, 1.5) * 365.25; // P^2=a^3 -> P=a^1.5 (P in years)
+            const n = (2 * Math.PI) / periodInDays; // rad/day
+            const timeToPerihelion = (time.getTime() - body.T) / (1000 * 60 * 60 * 24); // days
+            M = n * timeToPerihelion;
+        }
+
+        return getPositionFromMeanAnomaly(body, M);
+    }
+
+    // --- 3D Projection & Drawing ---
+    
+    function project(x, y, z) {
+        let x1 = x * Math.cos(rotationY) - y * Math.sin(rotationY);
+        let y1 = x * Math.sin(rotationY) + y * Math.cos(rotationY);
+        let z1 = z;
+
+        let x2 = x1;
+        let y2 = y1 * Math.cos(rotationX) - z1 * Math.sin(rotationX);
+        let z2 = y1 * Math.sin(rotationX) + z1 * Math.cos(rotationX);
+
+        return {
+            x: width / 2 + x2 * scale,
+            y: height / 2 - y2 * scale,
+            z: z2
+        };
+    }
+
+    function drawGrid() {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        const gridSize = 1 * scale;
+        const numLines = 10;
+
+        for (let i = -numLines; i <= numLines; i++) {
+            let p1 = project(-numLines, 0, i);
+            let p2 = project(numLines, 0, i);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+            
+            p1 = project(i, 0, -numLines);
+            p2 = project(i, 0, numLines);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+        }
+    }
+
+    function drawOrbit(body) {
+        // 彗星の静的な軌道は描画しない
+        if (body.name === "Comet") return;
+
+        ctx.beginPath();
+        ctx.strokeStyle = body.color;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.5;
+
+        const orbitPoints = 360;
+        let M_start = 0;
+        let M_end = 2 * Math.PI;
+
+        for (let i = 0; i <= orbitPoints; i++) {
+            const M = M_start + (i / orbitPoints) * (M_end - M_start);
+            const pos = getPositionFromMeanAnomaly(body, M);
+            const p = project(pos.x, pos.y, pos.z);
+
+            if (i === 0) {
+                ctx.moveTo(p.x, p.y);
+            } else {
+                ctx.lineTo(p.x, p.y);
+            }
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+    }
+
+    function drawTrail() {
+        if (cometTrail.length < 2) return;
+        
+        ctx.lineWidth = 2;
+        for (let i = 1; i < cometTrail.length; i++) {
+            const p1 = project(cometTrail[i-1].x, cometTrail[i-1].y, cometTrail[i-1].z);
+            const p2 = project(cometTrail[i].x, cometTrail[i].y, cometTrail[i].z);
+            
+            // 軌跡が徐々に薄くなるようにアルファ値を設定
+            const alpha = (i / cometTrail.length) * 0.7;
+            ctx.strokeStyle = `rgba(0, 255, 255, ${alpha})`;
+            
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+        drawGrid();
+
+        const sunPos = project(0, 0, 0);
+        ctx.beginPath();
+        ctx.arc(sunPos.x, sunPos.y, 8, 0, 2 * Math.PI);
+        ctx.fillStyle = '#FFD700';
+        ctx.fill();
+        ctx.fillText("Sun", sunPos.x + 10, sunPos.y);
+
+        const earthPos = calculatePosition(earth, simTime);
+        const cometPos = calculatePosition(cometLemmon, simTime);
+        
+        // シミュレーションが再生中の場合のみ軌跡を追加
+        if (isPlaying) {
+            cometTrail.push(cometPos);
+            // 軌跡の長さを制限
+            if (cometTrail.length > 500) {
+                cometTrail.shift();
+            }
+        }
+
+        drawOrbit(earth);
+        drawTrail();
+
+        drawBody(earthPos, earth.color, 5, "Earth");
+        drawBody(cometPos, cometLemmon.color, 3, "Lemmon");
+        
+        const pEarth = project(earthPos.x, earthPos.y, earthPos.z);
+        const pComet = project(cometPos.x, cometPos.y, cometPos.z);
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.moveTo(pEarth.x, pEarth.y);
+        ctx.lineTo(pComet.x, pComet.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const dist = Math.sqrt(
+            Math.pow(cometPos.x - earthPos.x, 2) +
+            Math.pow(cometPos.y - earthPos.y, 2) +
+            Math.pow(cometPos.z - earthPos.z, 2)
+        );
+        infoDisplay.innerHTML = `
+            地球-彗星 距離: ${dist.toFixed(3)} AU<br>
+            視点回転: (マウスドラッグ)<br>
+            ズーム: (マウスホイール)
+        `;
+    }
+
+    function animationLoop(timestamp) {
+        const deltaTime = (timestamp - lastTimestamp) / 1000; // in seconds
+        lastTimestamp = timestamp;
+
+        if (!isNaN(deltaTime)) {
+            update(deltaTime);
+        }
+        draw();
+        requestAnimationFrame(animationLoop);
+    }
+
+    // --- UI Event Handlers ---
+
+    function resizeCanvas() {
+        width = window.innerWidth * 0.95;
+        height = window.innerHeight - document.getElementById('controls').offsetHeight - 60;
+        canvas.width = width;
+        canvas.height = height;
+        scale = Math.min(width, height) / 5;
+        draw();
+    }
+
+    playPauseBtn.addEventListener('click', () => {
+        isPlaying = !isPlaying;
+        lastTimestamp = performance.now(); // Reset timestamp on play
+    });
+
+    dateSlider.addEventListener('input', () => {
+        const newDays = parseInt(dateSlider.value, 10);
+        simTime = new Date(startDate.getTime() + newDays * 1000 * 60 * 60 * 24);
+        isPlaying = false;
+    });
+
+    let isDragging = false;
+    let lastMouseX, lastMouseY;
+
+    canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    });
+
+    canvas.addEventListener('mouseup', () => { isDragging = false; });
+    canvas.addEventListener('mouseleave', () => { isDragging = false; });
+
+    canvas.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+            const dx = e.clientX - lastMouseX;
+            const dy = e.clientY - lastMouseY;
+            rotationY += dx * 0.01;
+            rotationX += dy * 0.01;
+            rotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotationX));
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        }
+    });
+    
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        scale *= (1 - e.deltaY * 0.001);
+        scale = Math.max(10, Math.min(1000, scale));
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // Initial setup
+    resizeCanvas();
+    lastTimestamp = performance.now();
+    animationLoop(lastTimestamp);
+
+    </script>
+</body>
+</html>
