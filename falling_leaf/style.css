@@ -1,0 +1,20 @@
+:root{
+  --bg:#0b1020;
+  --panel:#11182d;
+  --text:#e6edf3;
+  --muted:#9fb0c9;
+  --accent:#5fb3ff;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:radial-gradient(1200px 600px at 70% -200px,#0f1730,#0b1020);color:var(--text);font:14px/1.6 system-ui,Segoe UI,Roboto,Helvetica,Arial}
+.app{max-width:1000px;margin:12px auto;padding:8px 12px}
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+h1{font-size:18px;margin:0 8px 0 0;color:var(--accent)}
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.controls label{background:var(--panel);padding:6px 8px;border-radius:8px;border:1px solid #1a2442}
+.controls .chk{display:flex;gap:6px;align-items:center}
+button{background:#1a2442;color:var(--text);border:1px solid #2a3967;border-radius:8px;padding:6px 10px;cursor:pointer}
+button:hover{filter:brightness(1.1)}
+main{position:relative;margin-top:10px}
+canvas{display:block;width:100%;height:auto;border-radius:10px;border:1px solid #1a2442;background:linear-gradient(#0e1530,#0a0f22)}

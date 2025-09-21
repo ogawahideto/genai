@@ -87,7 +87,6 @@
     const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
     dateSlider.max = totalDays;
     let lastTimestamp = 0;
-    let cometTrail = [];
 
 
     // --- Constants and Orbital Data ---
@@ -224,7 +223,6 @@
     }
 
     function drawOrbit(body) {
-        // 彗星の静的な軌道は描画しない
         if (body.name === "Comet") return;
 
         ctx.beginPath();
@@ -233,8 +231,15 @@
         ctx.globalAlpha = 0.5;
 
         const orbitPoints = 360;
-        let M_start = 0;
-        let M_end = 2 * Math.PI;
+        let M_start, M_end;
+
+        if (body.name === "Earth") {
+            M_start = 0;
+            M_end = 2 * Math.PI;
+        } else { 
+            M_start = -2;
+            M_end = 2;
+        }
 
         for (let i = 0; i <= orbitPoints; i++) {
             const M = M_start + (i / orbitPoints) * (M_end - M_start);
@@ -251,23 +256,30 @@
         ctx.globalAlpha = 1.0;
     }
 
-    function drawTrail() {
-        if (cometTrail.length < 2) return;
-        
-        ctx.lineWidth = 2;
-        for (let i = 1; i < cometTrail.length; i++) {
-            const p1 = project(cometTrail[i-1].x, cometTrail[i-1].y, cometTrail[i-1].z);
-            const p2 = project(cometTrail[i].x, cometTrail[i].y, cometTrail[i].z);
+    function drawBody(pos, color, size, name) {
+        const p = project(pos.x, pos.y, pos.z);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.fillText(name, p.x + size + 2, p.y + size + 2);
+    }
+
+    // --- Simulation & Animation Loop ---
+
+    function update(deltaTime) {
+        if (isPlaying) {
+            const speed = Math.pow(2, speedSlider.value - 1) * 0.25; // days per second
+            const daysToAdd = speed * deltaTime;
+            simTime.setTime(simTime.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+
+            if (simTime > endDate) simTime = new Date(startDate.getTime());
             
-            // 軌跡が徐々に薄くなるようにアルファ値を設定
-            const alpha = (i / cometTrail.length) * 0.7;
-            ctx.strokeStyle = `rgba(0, 255, 255, ${alpha})`;
-            
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
+            const currentDays = (simTime - startDate) / (1000 * 60 * 60 * 24);
+            dateSlider.value = currentDays;
         }
+        dateDisplay.textContent = simTime.toISOString().slice(0, 10);
     }
 
     function draw() {
@@ -284,17 +296,8 @@
         const earthPos = calculatePosition(earth, simTime);
         const cometPos = calculatePosition(cometLemmon, simTime);
         
-        // シミュレーションが再生中の場合のみ軌跡を追加
-        if (isPlaying) {
-            cometTrail.push(cometPos);
-            // 軌跡の長さを制限
-            if (cometTrail.length > 500) {
-                cometTrail.shift();
-            }
-        }
-
         drawOrbit(earth);
-        drawTrail();
+        drawOrbit(cometLemmon);
 
         drawBody(earthPos, earth.color, 5, "Earth");
         drawBody(cometPos, cometLemmon.color, 3, "Lemmon");
