@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="秋分の日（しゅうぶんのひ）について学べる、やさしく楽しいWebページ。昼と夜の長さをスライダーで体感できます。" />
+    <title>秋分の日 | Shubun no Hi</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <h1>秋分の日</h1>
+      <p class="tag">昼と夜がほぼ同じ長さになる日</p>
+    </header>
+
+    <main>
+      <section class="card" aria-labelledby="about-title">
+        <h2 id="about-title">秋分の日って？</h2>
+        <p>
+          秋分の日は、日本の国民の祝日のひとつ。太陽が真東から昇り真西に沈み、
+          <strong>昼と夜の長さがほぼ同じ</strong>になります。祖先をうやまい、亡くなった人々をしのぶ日ともされています。
+        </p>
+        <p>
+          日付は天文学に基づいて毎年変わり、
+          <strong><span id="year"></span>年は9月22〜24日ごろ</strong>のいずれかになります。
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="balance-title">
+        <h2 id="balance-title">昼と夜のバランスを体感</h2>
+        <p>スライダーで「昼の割合」を変えて、秋分のバランス（50%）と見比べてみましょう。</p>
+
+        <div class="balance-wrap">
+          <div class="equinox-circle" role="img" aria-label="円の色分けで昼夜の割合を表現"></div>
+
+          <div class="controls">
+            <label for="ratio">昼の割合: <strong><span id="ratioValue">50%</span></strong></label>
+            <input id="ratio" type="range" min="0" max="100" step="1" value="50" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-label="昼の割合スライダー" />
+            <button id="resetBtn" type="button" class="ghost">秋分（50%）に戻す</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="calendar-title">
+        <h2 id="calendar-title">暦と日付</h2>
+        <p>
+          日本の秋分の日は「太陽黄経が180°になる瞬間」を基準に定まり、
+          年によって9月22〜24日のいずれかになります。下の表は前後数年の推定日です。
+        </p>
+        <div class="table-wrap">
+          <table class="tbl" aria-describedby="calendar-title">
+            <thead>
+              <tr><th>年</th><th>日付（推定）</th><th>メモ</th></tr>
+            </thead>
+            <tbody id="equinoxTable">
+              <!-- JSで自動生成 -->
+            </tbody>
+          </table>
+        </div>
+        <p class="note">注: 簡易計算に基づく目安。正式な祝日は官報等をご確認ください。</p>
+      </section>
+
+      <section class="card grid" aria-labelledby="history-title">
+        <h2 id="history-title">歴史と由来</h2>
+        <div>
+          <h3>祝日の趣旨</h3>
+          <p>
+            祝日法では「祖先をうやまい、亡くなった人々をしのぶ」日とされています。
+            秋のお彼岸の時期にあたり、お墓参りや供養を行う家庭も多いです。
+          </p>
+        </div>
+        <div>
+          <h3>昔の行事</h3>
+          <p>
+            明治期には皇室の祭祀「秋季皇霊祭」が行われており、戦後の祝日制定で
+            「秋分の日」として広く親しまれるようになりました。
+          </p>
+        </div>
+        <div>
+          <h3>天文学のポイント</h3>
+          <ul>
+            <li>太陽が天の赤道（天球上の赤道）を南へ横切る瞬間。</li>
+            <li>真東から昇り真西に沈む（観測地点の地平線基準）。</li>
+            <li>昼夜は「ほぼ」同じ。大気差等で数分の差が出ます。</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card grid" aria-labelledby="culture-title">
+        <h2 id="culture-title">季節を楽しむ</h2>
+        <div>
+          <h3>食べもの</h3>
+          <ul>
+            <li>おはぎ（ぼたもち）</li>
+            <li>きのこ・さつまいも・栗など秋の味覚</li>
+            <li>新米のごはん</li>
+          </ul>
+        </div>
+        <div>
+          <h3>自然・風物</h3>
+          <ul>
+            <li>彼岸花（曼珠沙華）</li>
+            <li>澄んだ夜空と中秋の名月</li>
+            <li>秋の七草（萩・尾花・葛・撫子・藤袴・女郎花・桔梗）</li>
+          </ul>
+        </div>
+        <div>
+          <h3>豆知識</h3>
+          <ul>
+            <li>昼と夜の長さが完全に同じになるわけではありません。</li>
+            <li>大気差や日の出・日の入りの定義で数分の差が生じます。</li>
+            <li>秋分を中心とした前後7日間が「彼岸」です。</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="ideas-title">
+        <h2 id="ideas-title">楽しみ方アイデア</h2>
+        <ul class="ideas">
+          <li>おはぎ作りに挑戦して、家族で季節を味わう。</li>
+          <li>真西に沈む太陽の方角を意識して写真を撮る。</li>
+          <li>夜は星見。南中の夏の大三角や土星をチェック。</li>
+          <li>自然散策で彼岸花や秋の七草を観察する。</li>
+          <li>感謝の気持ちを手紙やメッセージで伝える。</li>
+        </ul>
+      </section>
+
+      <section class="card" aria-labelledby="quiz-title">
+        <h2 id="quiz-title">ミニクイズ</h2>
+        <form id="quiz" class="quiz" novalidate>
+          <fieldset>
+            <legend>Q1. 秋分の太陽はどの方角から昇る？</legend>
+            <label><input type="radio" name="q1" value="a" /> 真東</label>
+            <label><input type="radio" name="q1" value="b" /> やや北東</label>
+            <label><input type="radio" name="q1" value="c" /> 真南</label>
+          </fieldset>
+          <fieldset>
+            <legend>Q2. 昼と夜の長さが「完全に同じ」にならない主な要因は？</legend>
+            <label><input type="radio" name="q2" value="a" /> 地球の自転が止まるから</label>
+            <label><input type="radio" name="q2" value="b" /> 大気差と日の出入の定義</label>
+            <label><input type="radio" name="q2" value="c" /> 月の満ち欠け</label>
+          </fieldset>
+          <fieldset>
+            <legend>Q3. 日本の秋分の日は毎年固定？</legend>
+            <label><input type="radio" name="q3" value="a" /> いいえ、年により22〜24日</label>
+            <label><input type="radio" name="q3" value="b" /> はい、毎年23日</label>
+          </fieldset>
+          <div class="quiz-actions">
+            <button type="button" id="gradeBtn">採点する</button>
+            <span id="quizResult" class="result" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>© <span id="year2"></span> 秋分の日 mini</p>
+    </footer>
+
+    <!-- ちいさな飾り（落ち葉アニメーション） -->
+    <div class="leaves" aria-hidden="true">
+      <span>🍁</span><span>🍂</span><span>🍁</span><span>🍂</span><span>🍁</span>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+  </html>
