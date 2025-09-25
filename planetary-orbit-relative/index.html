@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>惑星軌道アニメーション - 地球中心相対座標系</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: white;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        #canvas {
+            border: 1px solid #333;
+            background: radial-gradient(circle at center, #001122, #000000);
+            display: block;
+            margin: 0 auto;
+        }
+
+        .controls {
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .control-group {
+            display: inline-block;
+            margin: 0 15px;
+        }
+
+        label {
+            display: inline-block;
+            width: 80px;
+            font-size: 12px;
+        }
+
+        input[type="range"] {
+            width: 100px;
+        }
+
+        input[type="number"] {
+            width: 60px;
+            background: #333;
+            color: white;
+            border: 1px solid #666;
+        }
+
+        button {
+            background: #444;
+            color: white;
+            border: 1px solid #666;
+            padding: 5px 10px;
+            margin: 0 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #555;
+        }
+
+        .info {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            font-size: 12px;
+            border-radius: 5px;
+        }
+
+        .legend {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            font-size: 12px;
+            border-radius: 5px;
+        }
+
+        .planet-color {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <!--
+    AI Model: Claude 4 Sonnet
+    User Prompt: 惑星の軌道を、地球上の一点を中心とした相対座標でアニメーションしてください
+    AI Approach: 地球中心の相対座標系で惑星軌道を描画、地球の公転による座標軸回転を考慮
+    Implementation Intent: 地球上から見た惑星の見かけの軌道をアニメーション表示
+    -->
+
+    <div class="legend">
+        <h3>惑星軌道 - 地球中心相対座標系</h3>
+        <div><span class="planet-color" style="background: #ff6b35"></span>水星</div>
+        <div><span class="planet-color" style="background: #f7931e"></span>金星</div>
+        <div><span class="planet-color" style="background: #1f77b4"></span>地球 (中心)</div>
+        <div><span class="planet-color" style="background: #d62728"></span>火星</div>
+        <div><span class="planet-color" style="background: #ff7f0e"></span>木星</div>
+        <div><span class="planet-color" style="background: #2ca02c"></span>土星</div>
+        <div><span class="planet-color" style="background: #17becf"></span>天王星</div>
+        <div><span class="planet-color" style="background: #9467bd"></span>海王星</div>
+    </div>
+
+    <div class="info">
+        <div>時刻: <span id="currentTime">0</span> 日</div>
+        <div>地球年: <span id="earthYear">0.00</span></div>
+        <div>座標軸回転: <span id="axisRotation">0</span>°</div>
+        <div>表示スケール: <span id="scaleValue">1.0</span>AU</div>
+    </div>
+
+    <canvas id="canvas" width="800" height="600"></canvas>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>速度:</label>
+            <input type="range" id="speedSlider" min="0.1" max="10" value="1" step="0.1">
+            <span id="speedValue">1.0</span>x
+        </div>
+
+        <div class="control-group">
+            <label>スケール:</label>
+            <input type="range" id="scaleSlider" min="0.1" max="3" value="1" step="0.1">
+            <span id="scaleDisplay">1.0</span>AU
+        </div>
+
+        <div class="control-group">
+            <button id="playPauseBtn">一時停止</button>
+            <button id="resetBtn">リセット</button>
+        </div>
+
+        <div class="control-group">
+            <label>軌道表示:</label>
+            <input type="checkbox" id="showOrbits" checked>
+        </div>
+
+        <div class="control-group">
+            <label>座標軸:</label>
+            <input type="checkbox" id="showAxes" checked>
+        </div>
+    </div>
+
+    <script>
+        // 天体データ (AU単位、地球を基準とした軌道半径と公転周期)
+        const planets = {
+            mercury: {
+                name: '水星',
+                radius: 0.387,
+                period: 88,
+                color: '#ff6b35',
+                size: 3
+            },
+            venus: {
+                name: '金星',
+                radius: 0.723,
+                period: 225,
+                color: '#f7931e',
+                size: 4
+            },
+            earth: {
+                name: '地球',
+                radius: 1.0,
+                period: 365,
+                color: '#1f77b4',
+                size: 4
+            },
+            mars: {
+                name: '火星',
+                radius: 1.524,
+                period: 687,
+                color: '#d62728',
+                size: 3
+            },
+            jupiter: {
+                name: '木星',
+                radius: 5.203,
+                period: 4333,
+                color: '#ff7f0e',
+                size: 8
+            },
+            saturn: {
+                name: '土星',
+                radius: 9.537,
+                period: 10759,
+                color: '#2ca02c',
+                size: 7
+            },
+            uranus: {
+                name: '天王星',
+                radius: 19.191,
+                period: 30687,
+                color: '#17becf',
+                size: 5
+            },
+            neptune: {
+                name: '海王星',
+                radius: 30.069,
+                period: 60190,
+                color: '#9467bd',
+                size: 5
+            }
+        };
+
+        // キャンバス設定
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        // アニメーション制御
+        let time = 0;  // 日数
+        let animationSpeed = 1;
+        let isPlaying = true;
+        let scale = 50;  // AU to pixel scale
+        let showOrbits = true;
+        let showAxes = true;
+
+        // UI要素
+        const speedSlider = document.getElementById('speedSlider');
+        const scaleSlider = document.getElementById('scaleSlider');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const showOrbitsCheck = document.getElementById('showOrbits');
+        const showAxesCheck = document.getElementById('showAxes');
+
+        // 軌道の軌跡を保存する配列
+        const orbitTrails = {};
+        Object.keys(planets).forEach(key => {
+            orbitTrails[key] = [];
+        });
+
+        // 惑星位置を計算する関数（太陽中心座標系）
+        function getPlanetPosition(planet, days) {
+            const angle = (days / planet.period) * 2 * Math.PI;
+            return {
+                x: planet.radius * Math.cos(angle),
+                y: planet.radius * Math.sin(angle)
+            };
+        }
+
+        // 地球中心の相対座標に変換する関数
+        function getRelativePosition(planetPos, earthPos, earthAngle) {
+            // 地球を原点とした座標
+            let relativeX = planetPos.x - earthPos.x;
+            let relativeY = planetPos.y - earthPos.y;
+
+            // 地球の公転による座標軸の回転を適用
+            const cosAngle = Math.cos(-earthAngle);
+            const sinAngle = Math.sin(-earthAngle);
+
+            const rotatedX = relativeX * cosAngle - relativeY * sinAngle;
+            const rotatedY = relativeX * sinAngle + relativeY * cosAngle;
+
+            return {
+                x: rotatedX,
+                y: rotatedY
+            };
+        }
+
+        // 描画関数
+        function draw() {
+            // 背景をクリア
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 地球の位置と角度を計算
+            const earthPos = getPlanetPosition(planets.earth, time);
+            const earthAngle = (time / planets.earth.period) * 2 * Math.PI;
+
+            // 座標軸を描画
+            if (showAxes) {
+                drawAxes(earthAngle);
+            }
+
+            // 各惑星を処理
+            Object.entries(planets).forEach(([key, planet]) => {
+                const planetPos = getPlanetPosition(planet, time);
+
+                if (key === 'earth') {
+                    // 地球は中心に固定
+                    const screenX = centerX;
+                    const screenY = centerY;
+
+                    // 地球を描画
+                    ctx.fillStyle = planet.color;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, planet.size, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    // 地球のラベル
+                    ctx.fillStyle = 'white';
+                    ctx.font = '12px monospace';
+                    ctx.fillText(planet.name, screenX + 8, screenY - 8);
+                } else {
+                    // 他の惑星は相対座標で描画
+                    const relativePos = getRelativePosition(planetPos, earthPos, earthAngle);
+                    const screenX = centerX + relativePos.x * scale;
+                    const screenY = centerY + relativePos.y * scale;
+
+                    // 軌道の軌跡を記録（画面内の場合のみ）
+                    if (screenX >= 0 && screenX <= canvas.width &&
+                        screenY >= 0 && screenY <= canvas.height) {
+                        orbitTrails[key].push({ x: screenX, y: screenY });
+
+                        // 軌跡の長さを制限
+                        if (orbitTrails[key].length > 1000) {
+                            orbitTrails[key].shift();
+                        }
+                    }
+
+                    // 軌道の軌跡を描画
+                    if (showOrbits && orbitTrails[key].length > 1) {
+                        ctx.strokeStyle = planet.color + '40'; // 透明度を追加
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(orbitTrails[key][0].x, orbitTrails[key][0].y);
+                        for (let i = 1; i < orbitTrails[key].length; i++) {
+                            ctx.lineTo(orbitTrails[key][i].x, orbitTrails[key][i].y);
+                        }
+                        ctx.stroke();
+                    }
+
+                    // 惑星を描画（画面内の場合のみ）
+                    if (screenX >= -50 && screenX <= canvas.width + 50 &&
+                        screenY >= -50 && screenY <= canvas.height + 50) {
+                        ctx.fillStyle = planet.color;
+                        ctx.beginPath();
+                        ctx.arc(screenX, screenY, planet.size, 0, 2 * Math.PI);
+                        ctx.fill();
+
+                        // 惑星名を描画
+                        ctx.fillStyle = 'white';
+                        ctx.font = '12px monospace';
+                        ctx.fillText(planet.name, screenX + planet.size + 3, screenY - 3);
+                    }
+                }
+            });
+
+            // 情報を更新
+            updateInfo();
+        }
+
+        // 座標軸を描画する関数
+        function drawAxes(earthAngle) {
+            const axisLength = Math.min(canvas.width, canvas.height) / 3;
+
+            // X軸（赤）
+            ctx.strokeStyle = '#ff4444';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(
+                centerX + axisLength * Math.cos(-earthAngle),
+                centerY + axisLength * Math.sin(-earthAngle)
+            );
+            ctx.stroke();
+
+            // Y軸（緑）
+            ctx.strokeStyle = '#44ff44';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(
+                centerX + axisLength * Math.cos(-earthAngle + Math.PI / 2),
+                centerY + axisLength * Math.sin(-earthAngle + Math.PI / 2)
+            );
+            ctx.stroke();
+
+            // 軸のラベル
+            ctx.fillStyle = '#ff4444';
+            ctx.font = '14px monospace';
+            ctx.fillText('X',
+                centerX + (axisLength + 10) * Math.cos(-earthAngle),
+                centerY + (axisLength + 10) * Math.sin(-earthAngle)
+            );
+
+            ctx.fillStyle = '#44ff44';
+            ctx.fillText('Y',
+                centerX + (axisLength + 10) * Math.cos(-earthAngle + Math.PI / 2),
+                centerY + (axisLength + 10) * Math.sin(-earthAngle + Math.PI / 2)
+            );
+        }
+
+        // 情報更新関数
+        function updateInfo() {
+            document.getElementById('currentTime').textContent = Math.round(time);
+            document.getElementById('earthYear').textContent = (time / 365).toFixed(2);
+            document.getElementById('axisRotation').textContent =
+                Math.round(((time / 365) * 360) % 360);
+            document.getElementById('scaleValue').textContent = (scale / 50).toFixed(1);
+        }
+
+        // アニメーションループ
+        function animate() {
+            if (isPlaying) {
+                time += animationSpeed;
+            }
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        // イベントリスナー
+        speedSlider.addEventListener('input', (e) => {
+            animationSpeed = parseFloat(e.target.value);
+            document.getElementById('speedValue').textContent = animationSpeed.toFixed(1);
+        });
+
+        scaleSlider.addEventListener('input', (e) => {
+            const newScale = parseFloat(e.target.value) * 50;
+            scale = newScale;
+            document.getElementById('scaleDisplay').textContent = (newScale / 50).toFixed(1);
+
+            // スケール変更時は軌跡をリセット
+            Object.keys(orbitTrails).forEach(key => {
+                orbitTrails[key] = [];
+            });
+        });
+
+        playPauseBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            playPauseBtn.textContent = isPlaying ? '一時停止' : '再生';
+        });
+
+        resetBtn.addEventListener('click', () => {
+            time = 0;
+            Object.keys(orbitTrails).forEach(key => {
+                orbitTrails[key] = [];
+            });
+        });
+
+        showOrbitsCheck.addEventListener('change', (e) => {
+            showOrbits = e.target.checked;
+            if (!showOrbits) {
+                Object.keys(orbitTrails).forEach(key => {
+                    orbitTrails[key] = [];
+                });
+            }
+        });
+
+        showAxesCheck.addEventListener('change', (e) => {
+            showAxes = e.target.checked;
+        });
+
+        // 初期化
+        animate();
+    </script>
+</body>
+</html>
