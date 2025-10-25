@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ピカソの本名パズル - Picasso Name Puzzle</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1, #FFA07A);
+            background-size: 400% 400%;
+            animation: gradientShift 8s ease infinite;
+            min-height: 100vh;
+            overflow-x: auto;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            transform: perspective(1000px) rotateX(2deg);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2C3E50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            transform: skew(-5deg);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7F8C8D;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .name-parts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 15px;
+            border: 3px dashed #3498DB;
+            min-height: 120px;
+        }
+
+        .drop-zone {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(46, 204, 113, 0.1);
+            border-radius: 15px;
+            border: 3px solid #2ECC71;
+            min-height: 150px;
+            position: relative;
+        }
+
+        .name-part {
+            background: linear-gradient(45deg, #E74C3C, #F39C12);
+            color: white;
+            padding: 12px 18px;
+            border-radius: 25px;
+            cursor: grab;
+            user-select: none;
+            font-weight: bold;
+            font-size: 1.1em;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transform: rotate(-2deg);
+            transition: all 0.3s ease;
+            border: 3px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .name-part:nth-child(even) {
+            transform: rotate(2deg);
+            background: linear-gradient(45deg, #9B59B6, #3498DB);
+        }
+
+        .name-part:nth-child(3n) {
+            transform: rotate(-1deg);
+            background: linear-gradient(45deg, #1ABC9C, #16A085);
+        }
+
+        .name-part:hover {
+            transform: scale(1.1) rotate(0deg);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            z-index: 10;
+        }
+
+        .name-part:active {
+            cursor: grabbing;
+            transform: scale(0.95) rotate(5deg);
+        }
+
+        .drop-zone.drag-over {
+            background: rgba(46, 204, 113, 0.3);
+            border-color: #27AE60;
+            box-shadow: inset 0 0 20px rgba(46, 204, 113, 0.5);
+        }
+
+        .correct-order {
+            background: rgba(39, 174, 96, 0.2);
+            border-color: #27AE60;
+            animation: correctPulse 1s ease infinite alternate;
+        }
+
+        @keyframes correctPulse {
+            from { box-shadow: 0 0 20px rgba(39, 174, 96, 0.5); }
+            to { box-shadow: 0 0 30px rgba(39, 174, 96, 0.8); }
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        button {
+            background: linear-gradient(45deg, #E74C3C, #C0392B);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transform: perspective(100px) rotateX(-5deg);
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: perspective(100px) rotateX(0deg) scale(1.05);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .reset-btn {
+            background: linear-gradient(45deg, #95A5A6, #7F8C8D);
+        }
+
+        .success-message {
+            text-align: center;
+            font-size: 2em;
+            color: #27AE60;
+            font-weight: bold;
+            margin-top: 20px;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.5s ease;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .success-message.show {
+            opacity: 1;
+            transform: scale(1);
+            animation: celebration 2s ease infinite alternate;
+        }
+
+        @keyframes celebration {
+            from { transform: scale(1) rotate(-1deg); }
+            to { transform: scale(1.05) rotate(1deg); }
+        }
+
+        .instructions {
+            background: rgba(241, 196, 15, 0.2);
+            border: 2px solid #F1C40F;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 1.1em;
+            color: #2C3E50;
+        }
+
+        .name-count {
+            text-align: center;
+            color: #7F8C8D;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+
+        .score-display {
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(45deg, #3498DB, #2980B9);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transform: perspective(100px) rotateX(-3deg);
+        }
+
+        .score-high {
+            background: linear-gradient(45deg, #27AE60, #2ECC71);
+        }
+
+        .score-medium {
+            background: linear-gradient(45deg, #F39C12, #E67E22);
+        }
+
+        .score-low {
+            background: linear-gradient(45deg, #E74C3C, #C0392B);
+            animation: scorePulse 1s ease infinite alternate;
+        }
+
+        @keyframes scorePulse {
+            from { transform: perspective(100px) rotateX(-3deg) scale(1); }
+            to { transform: perspective(100px) rotateX(-3deg) scale(1.05); }
+        }
+
+        .name-part.correct {
+            border: 3px solid #27AE60;
+            background: linear-gradient(45deg, #27AE60, #2ECC71) !important;
+            animation: correctShake 0.5s ease;
+        }
+
+        .name-part.incorrect {
+            border: 3px solid #E74C3C;
+            background: linear-gradient(45deg, #E74C3C, #C0392B) !important;
+            animation: incorrectShake 0.5s ease;
+        }
+
+        @keyframes correctShake {
+            0%, 50%, 100% { transform: rotate(0deg) scale(1); }
+            25%, 75% { transform: rotate(2deg) scale(1.1); }
+        }
+
+        @keyframes incorrectShake {
+            0%, 50%, 100% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(-5deg) scale(0.95); }
+            75% { transform: rotate(5deg) scale(0.95); }
+        }
+
+        .feedback-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 1.5em;
+            font-weight: bold;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .feedback-message.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .feedback-correct {
+            background: rgba(39, 174, 96, 0.95);
+        }
+
+        .feedback-incorrect {
+            background: rgba(231, 76, 60, 0.95);
+        }
+
+        .game-over {
+            background: rgba(231, 76, 60, 0.3);
+            border: 3px solid #E74C3C;
+            pointer-events: none;
+        }
+
+        .game-over .name-part {
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #f0f;
+            animation: confetti-fall 3s linear infinite;
+            z-index: 1000;
+        }
+
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .firework {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            animation: firework 1s ease-out forwards;
+            z-index: 1000;
+        }
+
+        @keyframes firework {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(30);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(50);
+                opacity: 0;
+            }
+        }
+
+        .celebration-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg,
+                rgba(255, 0, 150, 0.3),
+                rgba(0, 255, 150, 0.3),
+                rgba(150, 0, 255, 0.3),
+                rgba(255, 150, 0, 0.3));
+            background-size: 400% 400%;
+            animation: rainbow-celebration 2s ease infinite;
+            z-index: 500;
+            pointer-events: none;
+        }
+
+        @keyframes rainbow-celebration {
+            0% { background-position: 0% 50%; }
+            25% { background-position: 100% 50%; }
+            50% { background-position: 100% 100%; }
+            75% { background-position: 0% 100%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .success-message.mega-celebration {
+            animation: mega-bounce 2s ease infinite;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #ffa07a);
+            background-size: 400% 400%;
+            animation: mega-bounce 1s ease infinite, rainbow-text 3s ease infinite;
+            padding: 30px;
+            border-radius: 25px;
+            border: 5px solid gold;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.8);
+        }
+
+        @keyframes mega-bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: scale(1) rotate(0deg);
+            }
+            40% {
+                transform: scale(1.3) rotate(-5deg);
+            }
+            60% {
+                transform: scale(1.3) rotate(5deg);
+            }
+        }
+
+        @keyframes rainbow-text {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .picasso-frame {
+            position: fixed;
+            top: 10%;
+            left: 10%;
+            width: 80%;
+            height: 80%;
+            border: 15px solid gold;
+            border-radius: 20px;
+            background: linear-gradient(45deg,
+                rgba(255, 215, 0, 0.2),
+                rgba(255, 140, 0, 0.2),
+                rgba(255, 69, 0, 0.2));
+            z-index: 800;
+            pointer-events: none;
+            animation: frame-glow 2s ease infinite alternate;
+        }
+
+        @keyframes frame-glow {
+            from {
+                box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+                transform: scale(1);
+            }
+            to {
+                box-shadow: 0 0 60px rgba(255, 215, 0, 0.8);
+                transform: scale(1.02);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .name-part {
+                font-size: 0.9em;
+                padding: 10px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 ピカソの本名パズル 🎨</h1>
+        <p class="subtitle">Pablo Picasso's Full Name Puzzle - 今日はピカソの誕生日！</p>
+
+        <div class="instructions">
+            <strong>遊び方:</strong> 下のピースをドラッグ＆ドロップして、ピカソの正しい本名を完成させよう！<br>
+            <em>全部で20個の名前があります。50点からスタートし、間違える度に-1点。0点になる前にクリアしよう！</em>
+        </div>
+
+        <div class="score-display" id="score-display">
+            💎 スコア: <span id="current-score">50</span> 点
+        </div>
+
+        <div class="name-count">
+            <span id="placed-count">0</span> / <span id="total-count">20</span> 配置済み
+        </div>
+
+        <div class="game-area">
+            <div class="drop-zone" id="drop-zone">
+                <!-- 正しい順番の名前がここに配置される -->
+            </div>
+
+            <div class="name-parts" id="name-parts">
+                <!-- シャッフルされた名前のピースがここに表示される -->
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="checkOrder()">答え合わせ</button>
+            <button onclick="showHint()">ヒント</button>
+            <button onclick="resetGame()" class="reset-btn">リセット</button>
+        </div>
+
+        <div class="success-message" id="success-message">
+            🎉 おめでとうございます！ピカソの本名を正しく並べました！🎉<br>
+            <div style="font-size: 0.8em; margin-top: 10px;">
+                🎨 あなたのスコア: <span id="final-score"></span>点 🎨<br>
+                ¡Fantástico! Pablo Picasso would be proud!
+            </div>
+        </div>
+
+        <div class="feedback-message" id="feedback-message"></div>
+        <div class="celebration-bg" id="celebration-bg" style="display: none;"></div>
+        <div class="picasso-frame" id="picasso-frame" style="display: none;"></div>
+    </div>
+
+    <script>
+        const correctOrder = [
+            'Pablo', 'Diego', 'José', 'Francisco', 'de', 'Paula', 'Juan', 'Nepomuceno',
+            'María', 'de', 'los', 'Remedios', 'Cipriano', 'de', 'la', 'Santísima', 'Trinidad',
+            'Ruiz', 'y', 'Picasso'
+        ];
+
+        let currentOrder = [];
+        let draggedElement = null;
+        let score = 50;
+        let gameOver = false;
+
+        function initGame() {
+            const nameParts = document.getElementById('name-parts');
+            const dropZone = document.getElementById('drop-zone');
+
+            // シャッフルされた名前のピースを作成
+            const shuffledNames = [...correctOrder].sort(() => Math.random() - 0.5);
+
+            nameParts.innerHTML = '';
+            dropZone.innerHTML = '';
+            currentOrder = [];
+            score = 50;
+            gameOver = false;
+
+            document.getElementById('drop-zone').classList.remove('game-over');
+            updateScoreDisplay();
+
+            shuffledNames.forEach(name => {
+                const nameElement = createNameElement(name);
+                nameParts.appendChild(nameElement);
+            });
+
+            updatePlacedCount();
+            hideSuccessMessage();
+        }
+
+        function createNameElement(name) {
+            const element = document.createElement('div');
+            element.className = 'name-part';
+            element.textContent = name;
+            element.draggable = true;
+
+            // ドラッグイベント
+            element.addEventListener('dragstart', handleDragStart);
+            element.addEventListener('dragend', handleDragEnd);
+
+            // クリックイベント（モバイル対応）
+            element.addEventListener('click', handleClick);
+
+            return element;
+        }
+
+        function handleDragStart(e) {
+            draggedElement = e.target;
+            e.target.style.opacity = '0.5';
+        }
+
+        function handleDragEnd(e) {
+            e.target.style.opacity = '1';
+            draggedElement = null;
+        }
+
+        function handleClick(e) {
+            if (gameOver) return;
+
+            const dropZone = document.getElementById('drop-zone');
+            const nameParts = document.getElementById('name-parts');
+
+            if (e.target.parentElement === nameParts) {
+                // 名前パーツエリアからドロップゾーンに移動
+                dropZone.appendChild(e.target);
+                currentOrder.push(e.target.textContent);
+                checkPlacement(e.target, currentOrder.length - 1);
+            } else if (e.target.parentElement === dropZone) {
+                // ドロップゾーンから名前パーツエリアに戻す
+                nameParts.appendChild(e.target);
+                const index = currentOrder.indexOf(e.target.textContent);
+                if (index > -1) {
+                    currentOrder.splice(index, 1);
+                }
+                e.target.classList.remove('correct', 'incorrect');
+            }
+
+            updatePlacedCount();
+        }
+
+        // ドロップゾーンの設定
+        const dropZone = document.getElementById('drop-zone');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+
+            if (draggedElement && !gameOver) {
+                dropZone.appendChild(draggedElement);
+                currentOrder.push(draggedElement.textContent);
+                checkPlacement(draggedElement, currentOrder.length - 1);
+                updatePlacedCount();
+            }
+        });
+
+        // 名前パーツエリアの設定
+        const nameParts = document.getElementById('name-parts');
+
+        nameParts.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        nameParts.addEventListener('drop', (e) => {
+            e.preventDefault();
+
+            if (draggedElement && draggedElement.parentElement === dropZone) {
+                nameParts.appendChild(draggedElement);
+                const index = currentOrder.indexOf(draggedElement.textContent);
+                if (index > -1) {
+                    currentOrder.splice(index, 1);
+                }
+                draggedElement.classList.remove('correct', 'incorrect');
+                updatePlacedCount();
+            }
+        });
+
+        function updatePlacedCount() {
+            document.getElementById('placed-count').textContent = currentOrder.length;
+            document.getElementById('total-count').textContent = correctOrder.length;
+        }
+
+        function checkPlacement(element, position) {
+            const isCorrect = element.textContent === correctOrder[position];
+
+            element.classList.remove('correct', 'incorrect');
+
+            if (isCorrect) {
+                element.classList.add('correct');
+                showFeedback('✅ 正解！', 'correct');
+
+                // 全て正しく配置されているかチェック
+                if (currentOrder.length === correctOrder.length) {
+                    const allCorrect = currentOrder.every((name, index) => name === correctOrder[index]);
+                    if (allCorrect) {
+                        setTimeout(() => {
+                            startMegaCelebration();
+                            document.getElementById('drop-zone').classList.add('correct-order');
+                        }, 500);
+                    }
+                }
+            } else {
+                element.classList.add('incorrect');
+                showFeedback('❌ 不正解！ -1点', 'incorrect');
+                score = Math.max(0, score - 1);
+                updateScoreDisplay();
+
+                // 不正解のパーツを少し間を置いてプールに戻す
+                setTimeout(() => {
+                    returnToPool(element);
+                }, 1500);
+
+                if (score === 0) {
+                    setTimeout(() => {
+                        gameOver = true;
+                        showGameOver();
+                    }, 1000);
+                }
+            }
+        }
+
+        function updateScoreDisplay() {
+            const scoreElement = document.getElementById('current-score');
+            const scoreDisplay = document.getElementById('score-display');
+
+            scoreElement.textContent = score;
+
+            scoreDisplay.classList.remove('score-high', 'score-medium', 'score-low');
+
+            if (score >= 30) {
+                scoreDisplay.classList.add('score-high');
+            } else if (score >= 15) {
+                scoreDisplay.classList.add('score-medium');
+            } else {
+                scoreDisplay.classList.add('score-low');
+            }
+        }
+
+        function showFeedback(message, type) {
+            const feedbackElement = document.getElementById('feedback-message');
+            feedbackElement.textContent = message;
+            feedbackElement.className = `feedback-message feedback-${type} show`;
+
+            setTimeout(() => {
+                feedbackElement.classList.remove('show');
+            }, 1000);
+        }
+
+        function showGameOver() {
+            const dropZone = document.getElementById('drop-zone');
+            dropZone.classList.add('game-over');
+            showFeedback('💀 ゲームオーバー！スコアが0になりました', 'incorrect');
+
+            setTimeout(() => {
+                if (confirm('ゲームオーバーです！もう一度プレイしますか？')) {
+                    resetGame();
+                }
+            }, 2000);
+        }
+
+        function checkOrder() {
+            const dropZone = document.getElementById('drop-zone');
+            const placedNames = Array.from(dropZone.children).map(el => el.textContent);
+
+            if (placedNames.length !== correctOrder.length) {
+                alert('まだ全ての名前を配置していません。全部で' + correctOrder.length + '個の名前があります。');
+                return;
+            }
+
+            const isCorrect = placedNames.every((name, index) => name === correctOrder[index]);
+
+            if (isCorrect) {
+                showSuccessMessage();
+                dropZone.classList.add('correct-order');
+            } else {
+                alert('順番が違います。もう一度試してみてください！');
+                dropZone.classList.remove('correct-order');
+            }
+        }
+
+        function showHint() {
+            const hintNames = correctOrder.slice(0, 5).join(' ');
+            alert('ヒント: 最初の5つの名前は "' + hintNames + '" です。');
+        }
+
+        function resetGame() {
+            const dropZone = document.getElementById('drop-zone');
+            const message = document.getElementById('success-message');
+            const celebrationBg = document.getElementById('celebration-bg');
+            const picassoFrame = document.getElementById('picasso-frame');
+
+            dropZone.classList.remove('correct-order');
+            message.classList.remove('mega-celebration');
+            celebrationBg.style.display = 'none';
+            picassoFrame.style.display = 'none';
+
+            // エフェクトを削除
+            document.querySelectorAll('.confetti').forEach(el => el.remove());
+            document.querySelectorAll('.firework').forEach(el => el.remove());
+
+            initGame();
+        }
+
+        function showSuccessMessage() {
+            const message = document.getElementById('success-message');
+            message.classList.add('show');
+        }
+
+        function startMegaCelebration() {
+            // 最終スコアを表示
+            document.getElementById('final-score').textContent = score;
+
+            // 背景エフェクト
+            const celebrationBg = document.getElementById('celebration-bg');
+            const picassoFrame = document.getElementById('picasso-frame');
+            celebrationBg.style.display = 'block';
+            picassoFrame.style.display = 'block';
+
+            // 成功メッセージを派手に
+            const message = document.getElementById('success-message');
+            message.classList.add('show', 'mega-celebration');
+
+            // 効果音を再生
+            playVictorySound();
+
+            // 紙吹雪を開始
+            createConfetti();
+
+            // 花火エフェクト
+            setTimeout(() => createFireworks(), 500);
+            setTimeout(() => createFireworks(), 1000);
+            setTimeout(() => createFireworks(), 1500);
+
+            // 5秒後にエフェクトを停止
+            setTimeout(() => {
+                celebrationBg.style.display = 'none';
+                picassoFrame.style.display = 'none';
+                // 紙吹雪を削除
+                document.querySelectorAll('.confetti').forEach(el => el.remove());
+                document.querySelectorAll('.firework').forEach(el => el.remove());
+            }, 5000);
+        }
+
+        function createConfetti() {
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffa07a', '#ff69b4', '#32cd32', '#ffd700', '#ff4500'];
+
+            for (let i = 0; i < 100; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() * 2 + 's';
+                    confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                    document.body.appendChild(confetti);
+
+                    // 4秒後に削除
+                    setTimeout(() => {
+                        if (confetti.parentNode) {
+                            confetti.parentNode.removeChild(confetti);
+                        }
+                    }, 4000);
+                }, i * 50);
+            }
+        }
+
+        function createFireworks() {
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffa07a', '#ff69b4', '#32cd32', '#ffd700'];
+
+            for (let i = 0; i < 5; i++) {
+                const firework = document.createElement('div');
+                firework.className = 'firework';
+                firework.style.left = Math.random() * 100 + '%';
+                firework.style.top = Math.random() * 100 + '%';
+                firework.style.background = colors[Math.floor(Math.random() * colors.length)];
+                document.body.appendChild(firework);
+
+                // 1秒後に削除
+                setTimeout(() => {
+                    if (firework.parentNode) {
+                        firework.parentNode.removeChild(firework);
+                    }
+                }, 1000);
+            }
+        }
+
+        function playVictorySound() {
+            // Web Audio APIを使用して勝利音を生成
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                // メロディーの音符 (勝利のファンファーレ)
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+
+                notes.forEach((frequency, index) => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+                    oscillator.type = 'triangle';
+
+                    gainNode.gain.setValueAtTime(0, audioContext.currentTime + index * 0.2);
+                    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + index * 0.2 + 0.1);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * 0.2 + 0.4);
+
+                    oscillator.start(audioContext.currentTime + index * 0.2);
+                    oscillator.stop(audioContext.currentTime + index * 0.2 + 0.4);
+                });
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+        }
+
+        function hideSuccessMessage() {
+            const message = document.getElementById('success-message');
+            message.classList.remove('show');
+        }
+
+        function returnToPool(element) {
+            if (gameOver) return;
+
+            const nameParts = document.getElementById('name-parts');
+
+            // 戻る前にエフェクトを追加
+            element.style.transition = 'all 0.5s ease';
+            element.style.transform = 'scale(0.8) rotate(10deg)';
+            element.style.opacity = '0.7';
+
+            setTimeout(() => {
+                // プールに戻す
+                nameParts.appendChild(element);
+
+                // currentOrderから削除
+                const index = currentOrder.indexOf(element.textContent);
+                if (index > -1) {
+                    currentOrder.splice(index, 1);
+                }
+
+                // スタイルをリセット
+                element.classList.remove('correct', 'incorrect');
+                element.style.transition = '';
+                element.style.transform = '';
+                element.style.opacity = '';
+
+                updatePlacedCount();
+            }, 500);
+        }
+
+        // ゲーム開始
+        initGame();
+    </script>
+</body>
+</html>
