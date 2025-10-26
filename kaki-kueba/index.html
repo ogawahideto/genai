@@ -1,0 +1,314 @@
+<!--
+AIモデル: Gemini
+Gemini CLIバージョン: 1.0.0 (仮)
+作成日時: 2025年10月26日
+ユーザープロンプト: 今日は正岡子規が「柿食えば鐘が鳴るなり法隆寺」を詠んだ日だそうです。それにちなんだゲームを作ってください。
+AIのアプローチ: プレイヤーが左右に移動して、空から落ちてくる柿や鐘をキャッチするゲームを、単一のHTMLファイル内にHTML, CSS, JavaScriptを記述して実装します。柿をキャッチするとスコアが加算され、鐘をキャッチするとさらに高いスコアが得られます。さらに、似た漢字のトラップを追加し、スマートフォン操作にも対応させます。
+実装の意図: 正岡子規の有名な俳句をテーマにしたシンプルなミニゲームを提供し、ユーザーに楽しんでもらうことを目的とします。
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>柿食えば鐘が鳴るなり法隆寺ゲーム</title>
+    <style>
+        body {
+            font-family: 'Hiragino Mincho ProN', 'MS Mincho', serif;
+            text-align: center;
+            background-color: #f0e6d2;
+            color: #5a4a42;
+            overflow: hidden;
+            touch-action: manipulation; /* ダブルタップズームを無効化 */
+        }
+        #game-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            font-size: 24px;
+            margin-top: 10px;
+        }
+        #game-container {
+            position: relative;
+            width: 90vw;
+            max-width: 600px;
+            height: 75vh;
+            max-height: 450px;
+            border: 2px solid #5a4a42;
+            margin: 10px auto;
+            background-image: url('https://www.irasutoya.com/2014/04/blog-post_29.html');
+            background-size: cover;
+            background-position: center;
+            overflow: hidden;
+            background-color: #c2b280;
+        }
+        #player, .item {
+            position: absolute;
+            user-select: none;
+            -webkit-user-select: none; /* Safari用 */
+        }
+        #player {
+            width: 50px;
+            height: 50px;
+            font-size: 40px;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .item {
+            width: 30px;
+            height: 30px;
+            font-size: 28px;
+            top: -30px;
+        }
+        #score-board {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        #start-button, #retry-button {
+            font-size: 18px;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #7a6a52;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        #game-over-screen, #trap-message {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        #game-over-screen {
+            display: none;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        #final-score { font-size: 24px; margin-bottom: 20px; }
+        #trap-message {
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3em;
+            font-weight: bold;
+            color: #e53935;
+            text-shadow: 2px 2px 4px #000;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        .controls {
+            display: none; /* デフォルトでは非表示 */
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+        .control-btn {
+            width: 80px;
+            height: 80px;
+            background-color: rgba(122, 106, 82, 0.5);
+            color: white;
+            font-size: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* タッチデバイスでのみコントロールを表示 */
+        @media (hover: none) and (pointer: coarse) {
+            .controls { display: flex; }
+            #keyboard-instructions { display: none; }
+        }
+        @keyframes shake { 0%{transform:translate(1px,1px) rotate(0)}10%{transform:translate(-1px,-2px) rotate(-1deg)}20%{transform:translate(-3px,0) rotate(1deg)}30%{transform:translate(3px,2px) rotate(0)}40%{transform:translate(1px,-1px) rotate(1deg)}50%{transform:translate(-1px,2px) rotate(-1deg)}60%{transform:translate(-3px,1px) rotate(0)}70%{transform:translate(3px,1px) rotate(-1deg)}80%{transform:translate(-1px,-1px) rotate(1deg)}90%{transform:translate(1px,2px) rotate(0)}100%{transform:translate(1px,-2px) rotate(-1deg)} }
+    </style>
+</head>
+<body>
+    <div id="game-wrapper">
+        <h1>柿食えば鐘が鳴るなり法隆寺</h1>
+        <div id="score-board">スコア: 0 | 時間: 30</div>
+        <div id="game-container">
+            <div id="player">🧺</div>
+            <div id="trap-message"></div>
+            <div id="game-over-screen">
+                <h2>時間切れ！</h2>
+                <div id="final-score"></div>
+                <button id="retry-button">もう一度</button>
+            </div>
+        </div>
+        <button id="start-button">ゲーム開始</button>
+        <p id="keyboard-instructions">左右の矢印キーでカゴを動かし、「柿」だけをキャッチ！</p>
+        <div class="controls">
+            <div id="left-btn" class="control-btn">＜</div>
+            <div id="right-btn" class="control-btn">＞</div>
+        </div>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('game-container');
+        const player = document.getElementById('player');
+        const scoreBoard = document.getElementById('score-board');
+        const startButton = document.getElementById('start-button');
+        const retryButton = document.getElementById('retry-button');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const trapMessage = document.getElementById('trap-message');
+        const leftBtn = document.getElementById('left-btn');
+        const rightBtn = document.getElementById('right-btn');
+
+        const catchSound = new Audio(), bellSound = new Audio(), leafSound = new Audio(), trapSound = new Audio();
+
+        let score = 0, timeLeft = 30, gameInterval, timerInterval, playerPosition = 50;
+        const playerSpeed = 2.5;
+        let moveInterval = null;
+
+        function updatePlayerPosition() {
+            player.style.left = `${playerPosition}%`;
+        }
+
+        function movePlayer(direction) {
+            if (direction === 'left' && playerPosition > 5) playerPosition -= playerSpeed;
+            if (direction === 'right' && playerPosition < 95) playerPosition += playerSpeed;
+            updatePlayerPosition();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') movePlayer('left');
+            if (e.key === 'ArrowRight') movePlayer('right');
+        });
+
+        ['mousedown', 'touchstart'].forEach(evt => {
+            leftBtn.addEventListener(evt, (e) => { e.preventDefault(); startMoving('left'); });
+            rightBtn.addEventListener(evt, (e) => { e.preventDefault(); startMoving('right'); });
+        });
+        ['mouseup', 'mouseleave', 'touchend'].forEach(evt => {
+            leftBtn.addEventListener(evt, stopMoving);
+            rightBtn.addEventListener(evt, stopMoving);
+        });
+
+        function startMoving(direction) {
+            if (moveInterval) clearInterval(moveInterval);
+            moveInterval = setInterval(() => movePlayer(direction), 50);
+        }
+
+        function stopMoving() {
+            clearInterval(moveInterval);
+        }
+
+        function spawnBell() {
+            const bell = document.createElement('div');
+            bell.classList.add('item');
+            bell.textContent = '🔔';
+            bell.dataset.type = 'bell';
+            bell.dataset.score = 30;
+            bell.style.fontSize = '35px';
+            bell.style.left = `${Math.random() * 90}%`;
+            gameContainer.appendChild(bell);
+            fall(bell, 4);
+        }
+
+        function createItem() {
+            const item = document.createElement('div');
+            item.classList.add('item');
+            const rand = Math.random();
+            if (rand < 0.6) { item.textContent = '柿'; item.dataset.type = 'kaki'; item.dataset.score = 1; }
+            else if (rand < 0.8) { item.textContent = '🍂'; item.dataset.type = 'leaf'; item.dataset.score = -5; }
+            else if (rand < 0.9) { item.textContent = '杮'; item.dataset.type = 'kokera'; item.dataset.score = -50; }
+            else { item.textContent = '姉'; item.dataset.type = 'ane'; item.dataset.score = -50; }
+            item.style.left = `${Math.random() * 90}%`;
+            gameContainer.appendChild(item);
+            fall(item, Math.random() * 2 + 2);
+        }
+
+        function fall(item, speed) {
+            let itemPosition = -5;
+            const fallInterval = setInterval(() => {
+                itemPosition += speed;
+                item.style.top = `${itemPosition}px`;
+                const playerRect = player.getBoundingClientRect();
+                const itemRect = item.getBoundingClientRect();
+                if (itemRect.bottom > playerRect.top && itemRect.top < playerRect.bottom && itemRect.right > playerRect.left && itemRect.left < playerRect.right) {
+                    handleCatch(item);
+                    clearInterval(fallInterval);
+                }
+                if (itemPosition > gameContainer.clientHeight) {
+                    item.remove();
+                    clearInterval(fallInterval);
+                }
+            }, 20);
+        }
+
+        function handleCatch(item) {
+            const itemType = item.dataset.type;
+            score += parseInt(item.dataset.score);
+            switch(itemType) {
+                case 'kaki': catchSound.play(); spawnBell(); break;
+                case 'bell': bellSound.play(); shakeScreen(); break;
+                case 'leaf': leafSound.play(); break;
+                case 'kokera': trapSound.play(); displayTrapMessage('それはこけら！'); break;
+                case 'ane': trapSound.play(); displayTrapMessage('それはあね！'); break;
+            }
+            updateScore();
+            item.remove();
+        }
+
+        function displayTrapMessage(message) {
+            trapMessage.textContent = message;
+            trapMessage.style.opacity = 1;
+            setTimeout(() => { trapMessage.style.opacity = 0; }, 1500);
+        }
+        
+        function shakeScreen() {
+            gameContainer.style.animation = 'shake 0.5s';
+            setTimeout(() => { gameContainer.style.animation = ''; }, 500);
+        }
+
+        function updateScore() {
+            scoreBoard.textContent = `スコア: ${score} | 時間: ${timeLeft}`;
+        }
+
+        function updateTimer() {
+            timeLeft--;
+            updateScore();
+            if (timeLeft <= 0) endGame();
+        }
+
+        function startGame() {
+            startButton.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            score = 0;
+            timeLeft = 30;
+            playerPosition = 50;
+            updatePlayerPosition();
+            updateScore();
+            gameInterval = setInterval(createItem, 900);
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function endGame() {
+            clearInterval(gameInterval);
+            clearInterval(timerInterval);
+            stopMoving();
+            finalScoreDisplay.textContent = `最終スコア: ${score}`;
+            gameOverScreen.style.display = 'flex';
+            document.querySelectorAll('.item').forEach(item => item.remove());
+        }
+
+        startButton.addEventListener('click', startGame);
+        retryButton.addEventListener('click', startGame);
+    </script>
+</body>
+</html>
