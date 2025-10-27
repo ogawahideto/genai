@@ -1,0 +1,448 @@
+<!--
+AI Model: Claude 3.5 Sonnet (claude-sonnet-4-5-20250929)
+User Prompt: 10月27日は、テディベアの日だそうです。しかし日本では近年熊が人の生活圏に現れることが問題になっています。そこで、かわいい縫いぐるみが実は凶暴な熊であることを皮肉るコンテンツを作ってください
+AI Approach: HTML5 Canvasを使用した段階的変化システム。かわいいテディベアをクリックすると徐々に凶暴な本物の熊に変化していく。4段階の変化（かわいい→警戒→威嚇→凶暴）でストーリーを展開。
+Implementation Intent: テディベアの日と日本の熊問題を皮肉るインタラクティブコンテンツ。ユーザーのインタラクションによって「かわいい」から「危険」への変化を体験させ、野生動物との距離感について考えさせる教育的な要素も含む。
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10月27日はテディベアの日 🧸</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #d63031;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .date {
+            color: #636e72;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+
+        #gameCanvas {
+            border: 3px solid #ff7675;
+            border-radius: 15px;
+            margin: 20px auto;
+            display: block;
+            cursor: pointer;
+            background: #fff5f5;
+            max-width: 100%;
+            height: auto;
+        }
+
+        #message {
+            font-size: 1.5em;
+            margin: 20px 0;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #2d3436;
+        }
+
+        #instruction {
+            color: #636e72;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        #stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #636e72;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2d3436;
+        }
+
+        #resetBtn {
+            background: #74b9ff;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+
+        #resetBtn:hover {
+            background: #0984e3;
+            transform: scale(1.05);
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ff7675;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .shake {
+            animation: shake 0.3s;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.5em;
+            }
+            #message {
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧸 10月27日はテディベアの日 🧸</h1>
+        <div class="date">かわいいテディベアと触れ合おう♡</div>
+
+        <div id="instruction">👇 テディベアをクリックして撫でてあげよう！</div>
+
+        <canvas id="gameCanvas" width="500" height="500"></canvas>
+
+        <div id="message">かわいいテディベアだね♡</div>
+
+        <div id="stats">
+            <div class="stat">
+                <div class="stat-label">撫でた回数</div>
+                <div class="stat-value" id="clickCount">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">警戒レベル</div>
+                <div class="stat-value" id="dangerLevel">安全</div>
+            </div>
+        </div>
+
+        <button id="resetBtn">もう一度遊ぶ</button>
+
+        <div class="warning">
+            ⚠️ これはフィクションです。実際の野生の熊は危険です。<br>
+            日本では近年、人間の生活圏に熊が出没する事例が増えています。<br>
+            野生動物には決して近づかないでください。
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const messageEl = document.getElementById('message');
+        const clickCountEl = document.getElementById('clickCount');
+        const dangerLevelEl = document.getElementById('dangerLevel');
+        const resetBtn = document.getElementById('resetBtn');
+        const container = document.querySelector('.container');
+
+        let clickCount = 0;
+        let stage = 0; // 0: cute, 1: suspicious, 2: warning, 3: danger, 4: attack
+
+        const messages = [
+            'かわいいテディベアだね♡',
+            'あれ...？何か様子が...',
+            'やばい...目つきが変わってきた💦',
+            '逃げろ！本物の熊だった！🐻',
+            '【危険】野生の熊に遭遇！通報してください！📞'
+        ];
+
+        const dangerLevels = ['安全', '注意', '警戒', '危険', '緊急'];
+        const dangerColors = ['#00b894', '#fdcb6e', '#e17055', '#d63031', '#2d3436'];
+
+        function drawBear() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // 背景の変化
+            const bgColors = ['#fff5f5', '#ffe5e5', '#ffd5d5', '#ffc5c5', '#ffb5b5'];
+            ctx.fillStyle = bgColors[stage];
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 体の色の変化（かわいい茶色→暗い茶色）
+            const bodyColors = ['#d4a574', '#b8895f', '#9c6d4a', '#654321', '#3d2817'];
+            const furIntensity = stage * 0.2;
+
+            // 体
+            ctx.fillStyle = bodyColors[stage];
+            ctx.beginPath();
+            ctx.ellipse(centerX, centerY + 50, 100 - stage * 5, 120 + stage * 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 頭
+            ctx.beginPath();
+            ctx.arc(centerX, centerY - 80, 80 + stage * 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 耳
+            const earOffset = 50 + stage * 10;
+            ctx.beginPath();
+            ctx.arc(centerX - earOffset, centerY - 120, 35 + stage * 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(centerX + earOffset, centerY - 120, 35 + stage * 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 耳の内側（段階的に暗くなる）
+            const innerEarColors = ['#f8b88b', '#e0a070', '#c88855', '#a06030', '#603010'];
+            ctx.fillStyle = innerEarColors[stage];
+            ctx.beginPath();
+            ctx.arc(centerX - earOffset, centerY - 120, 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(centerX + earOffset, centerY - 120, 20, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 鼻
+            const noseColors = ['#2d3436', '#2d3436', '#2d3436', '#000000', '#000000'];
+            ctx.fillStyle = noseColors[stage];
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY - 60);
+            ctx.lineTo(centerX - 15, centerY - 75);
+            ctx.lineTo(centerX + 15, centerY - 75);
+            ctx.closePath();
+            ctx.fill();
+
+            // 目の変化（かわいい→鋭い）
+            ctx.fillStyle = '#000000';
+            if (stage === 0) {
+                // かわいい丸い目
+                ctx.beginPath();
+                ctx.arc(centerX - 30, centerY - 90, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(centerX + 30, centerY - 90, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // ハイライト
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(centerX - 27, centerY - 93, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(centerX + 33, centerY - 93, 3, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // 鋭い目
+                const eyeWidth = 15 + stage * 5;
+                const eyeHeight = 12 - stage * 2;
+                ctx.fillStyle = stage >= 3 ? '#ff0000' : '#000000';
+                ctx.beginPath();
+                ctx.ellipse(centerX - 30, centerY - 90, eyeWidth, eyeHeight, -Math.PI / 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(centerX + 30, centerY - 90, eyeWidth, eyeHeight, Math.PI / 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 怒りの眉毛
+                if (stage >= 2) {
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - 45, centerY - 100);
+                    ctx.lineTo(centerX - 20, centerY - 95);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + 45, centerY - 100);
+                    ctx.lineTo(centerX + 20, centerY - 95);
+                    ctx.stroke();
+                }
+            }
+
+            // 口
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            if (stage === 0) {
+                // かわいい笑顔
+                ctx.beginPath();
+                ctx.arc(centerX, centerY - 60, 20, 0.2 * Math.PI, 0.8 * Math.PI);
+                ctx.stroke();
+            } else if (stage === 1) {
+                // 直線の口
+                ctx.beginPath();
+                ctx.moveTo(centerX - 20, centerY - 55);
+                ctx.lineTo(centerX + 20, centerY - 55);
+                ctx.stroke();
+            } else {
+                // 怒った口/牙
+                ctx.beginPath();
+                ctx.arc(centerX, centerY - 50, 25, 0.2 * Math.PI, 0.8 * Math.PI, true);
+                ctx.stroke();
+
+                // 牙
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.moveTo(centerX - 15, centerY - 60);
+                ctx.lineTo(centerX - 10, centerY - 45);
+                ctx.lineTo(centerX - 5, centerY - 60);
+                ctx.closePath();
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(centerX + 15, centerY - 60);
+                ctx.lineTo(centerX + 10, centerY - 45);
+                ctx.lineTo(centerX + 5, centerY - 60);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // 手（段階的に爪が目立つように）
+            ctx.fillStyle = bodyColors[stage];
+            ctx.beginPath();
+            ctx.ellipse(centerX - 90, centerY + 20, 30, 50, -Math.PI / 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(centerX + 90, centerY + 20, 30, 50, Math.PI / 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 爪
+            if (stage >= 2) {
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - 90 + i * 10 - 10, centerY + 50);
+                    ctx.lineTo(centerX - 90 + i * 10 - 10, centerY + 65);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + 90 - i * 10 + 10, centerY + 50);
+                    ctx.lineTo(centerX + 90 - i * 10 + 10, centerY + 65);
+                    ctx.stroke();
+                }
+            }
+
+            // 危険マーク
+            if (stage >= 3) {
+                ctx.fillStyle = '#ff0000';
+                ctx.font = 'bold 40px sans-serif';
+                ctx.fillText('⚠️', 30, 60);
+                ctx.fillText('⚠️', canvas.width - 60, 60);
+            }
+
+            // 警告線
+            if (stage === 4) {
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 5;
+                ctx.setLineDash([10, 10]);
+                ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+                ctx.setLineDash([]);
+            }
+        }
+
+        function updateDisplay() {
+            clickCountEl.textContent = clickCount;
+            dangerLevelEl.textContent = dangerLevels[stage];
+            dangerLevelEl.style.color = dangerColors[stage];
+            messageEl.textContent = messages[stage];
+            messageEl.style.color = dangerColors[stage];
+
+            if (stage >= 3) {
+                container.classList.add('shake');
+                setTimeout(() => container.classList.remove('shake'), 300);
+            }
+        }
+
+        canvas.addEventListener('click', function() {
+            clickCount++;
+
+            if (clickCount <= 2) {
+                stage = 0;
+            } else if (clickCount <= 5) {
+                stage = 1;
+            } else if (clickCount <= 8) {
+                stage = 2;
+            } else if (clickCount <= 12) {
+                stage = 3;
+            } else {
+                stage = 4;
+            }
+
+            drawBear();
+            updateDisplay();
+
+            // サウンド効果（シンプルなビープ音）
+            if (stage >= 2) {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.value = 200 - stage * 30;
+                gainNode.gain.value = 0.1;
+
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.1);
+            }
+        });
+
+        resetBtn.addEventListener('click', function() {
+            clickCount = 0;
+            stage = 0;
+            drawBear();
+            updateDisplay();
+        });
+
+        // 初期描画
+        drawBear();
+        updateDisplay();
+    </script>
+</body>
+</html>
