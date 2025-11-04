@@ -1,0 +1,402 @@
+<!--
+AI Model: GPT-4o mini
+User Prompt: 今日は「みたらし団子の日」だそうです。これにちなんだ、「みたらし団子ウォーズ」というゲームを企画して、htmlで作成してください
+AI Approach: シングルファイル構成（HTML5 Canvas + Vanilla JS）で、左右移動とショットのシンプルなアーケードゲーム。敵の団子にタレを当てて“みたらし化”し、落ちてくる団子をキャッチしてスコアを稼ぐ。
+Implementation Intent: 祝日・記念日に合わせた軽量なブラウザゲーム。依存なし・即実行可能。
+-->
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>みたらし団子ウォーズ</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: radial-gradient(1200px 800px at 70% 10%, #fff7ea 0%, #ffe9c9 40%, #f6d6a6 100%);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif;
+      color: #4a3217;
+      overflow: hidden;
+    }
+    header {
+      position: fixed; inset: 0 auto auto 0; padding: 8px 12px; font-size: 12px; opacity: .8;
+      background: linear-gradient(90deg, #fff7ea, transparent);
+      border-bottom-right-radius: 8px;
+    }
+    #wrap { width: 100%; height: 100%; display: grid; place-items: center; }
+    canvas { width: min(96vw, 720px); height: calc(min(96vw, 720px) * 16 / 10); max-height: 90vh; aspect-ratio: 10 / 16; box-shadow: 0 10px 40px rgba(0,0,0,.15); border-radius: 16px; background: #fffaf1; }
+    @media (max-aspect-ratio: 10/16) {
+      canvas { height: 90vh; width: calc(90vh * 10 / 16); }
+    }
+    #mobile-controls { position: fixed; left: 0; right: 0; bottom: 8px; display: none; gap: 12px; justify-content: center; align-items: center; padding: 0 12px; }
+    #mobile-controls button { -webkit-tap-highlight-color: transparent; touch-action: none; user-select: none; width: 24vw; max-width: 160px; height: 56px; font-size: 24px; border-radius: 14px; border: 2px solid #c18a3c; color: #4a3217; background: rgba(255,247,234,.9); box-shadow: 0 4px 10px rgba(0,0,0,.12); }
+    #mobile-controls #btn-shoot { width: 26vw; max-width: 180px; height: 64px; font-size: 28px; border-width: 3px; }
+    @media (hover: none) and (pointer: coarse) {
+      #mobile-controls { display: flex; }
+    }
+  </style>
+  <meta name="description" content="今日はみたらし団子の日！タレを撃って団子をみたらし化、キャッチしてスコアを伸ばそう。依存なしのブラウザゲーム。" />
+</head>
+<body>
+  <header>みたらし団子ウォーズ — ←→/Space/P（スマホは下部ボタン）</header>
+  <div id="wrap"><canvas id="game" width="600" height="960"></canvas></div>
+  <div id="mobile-controls" aria-label="モバイル操作">
+    <button id="btn-left" aria-label="左へ">◀︎</button>
+    <button id="btn-shoot" aria-label="ショット">●</button>
+    <button id="btn-right" aria-label="右へ">▶︎</button>
+  </div>
+
+  <script>
+  (function() {
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    // 仮想解像度（アスペクト 10:16）
+    const VW = 600, VH = 960;
+    function fitCanvas() {
+      // デバイスピクセルを考慮
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      canvas.width = VW * dpr;
+      canvas.height = VH * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // CSS サイズはスタイルで制御
+    }
+    window.addEventListener('resize', fitCanvas);
+    fitCanvas();
+
+    // 入力
+    let keys = new Set();
+    window.addEventListener('keydown', (e) => {
+      if (["ArrowLeft","ArrowRight"," ","Space","p","P"].includes(e.key)) e.preventDefault();
+      if (e.key === ' ' || e.code === 'Space') keys.add('shoot');
+      else if (e.key === 'ArrowLeft') keys.add('left');
+      else if (e.key === 'ArrowRight') keys.add('right');
+      else if (e.key === 'p' || e.key === 'P') togglePause();
+      else if (e.key === 'Enter') if (state === 'title' || state === 'gameover') startGame();
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.key === ' ' || e.code === 'Space') keys.delete('shoot');
+      else if (e.key === 'ArrowLeft') keys.delete('left');
+      else if (e.key === 'ArrowRight') keys.delete('right');
+    });
+
+    // タッチ/ポインタ対応（横移動+タップショット）
+    let pointerDown = false;
+    let holdLeft = false, holdRight = false, holdShoot = false;
+    canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); pointerDown = true; shoot(); });
+    canvas.addEventListener('pointerup', () => { pointerDown = false; });
+    canvas.addEventListener('pointermove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width * VW;
+      player.x = Math.max(30, Math.min(VW - 30, x));
+      if (pointerDown) shoot();
+    });
+
+    // モバイル用ボタン（長押し対応）
+    function bindHold(btn, setter) {
+      if (!btn) return;
+      const on = (ev) => { ev.preventDefault(); setter(true); };
+      const off = (ev) => { ev.preventDefault(); setter(false); };
+      btn.addEventListener('touchstart', on, {passive:false});
+      btn.addEventListener('touchend', off, {passive:false});
+      btn.addEventListener('touchcancel', off, {passive:false});
+      btn.addEventListener('mousedown', on);
+      btn.addEventListener('mouseup', off);
+      btn.addEventListener('mouseleave', off);
+    }
+    bindHold(document.getElementById('btn-left'), v=> holdLeft = v);
+    bindHold(document.getElementById('btn-right'), v=> holdRight = v);
+    bindHold(document.getElementById('btn-shoot'), v=> holdShoot = v);
+
+    // ゲームオブジェクト
+    const player = { x: VW/2, y: VH - 70, w: 60, h: 14, speed: 6, lives: 3, cooldown: 0, rapidTimer: 0, magnetTimer: 0, shield: 0 };
+    const shots = []; // {x,y,v}
+    const enemies = []; // {x,y,vy,hp,state}
+    const items = []; // みたらしアイテム {type:'skewer'|'fragment',x,y,vx,vy,ttl}
+    const powerUps = []; // パワーアップ {x,y,vy,kind,ttl}
+    let score = 0, wave = 1, spawnTimer = 0, state = 'title', paused = false, time = 0;
+
+    function reset() {
+      player.x = VW/2; player.y = VH - 70; player.lives = 3; player.cooldown = 0;
+      shots.length = 0; enemies.length = 0; items.length = 0;
+      score = 0; wave = 1; spawnTimer = 0; time = 0; state = 'running'; paused = false;
+    }
+    function startGame() { reset(); }
+    function togglePause() { if (state === 'running') paused = !paused; }
+
+    // 敵生成
+    function spawnEnemy() {
+      const x = 40 + Math.random() * (VW - 80);
+      const vy = 1.4 + Math.random() * 0.6 + wave*0.1;
+      const hp = 1;
+      enemies.push({ x, y: -40, vy, hp, state: 'plain' });
+    }
+
+    function shoot() {
+      if (player.cooldown > 0 || state !== 'running' || paused) return;
+      shots.push({ x: player.x, y: player.y - 20, v: 9 });
+      player.cooldown = (player.rapidTimer>0) ? 4 : 8; // フレーム
+    }
+
+    // 当たり判定
+    function hitCirclePoint(cx, cy, r, px, py) {
+      const dx = cx - px, dy = cy - py; return dx*dx + dy*dy <= r*r;
+    }
+    function aabbPoint(x,y,w,h, px,py) { return px>=x && px<=x+w && py>=y && py<=y+h; }
+
+    // 描画ヘルパー
+    function drawText(s, x, y, size=18, align='left', color='#4a3217') {
+      ctx.fillStyle = color; ctx.font = `${size}px/1.2 system-ui,\"Noto Sans JP\", sans-serif`; ctx.textAlign = align; ctx.fillText(s, x, y);
+    }
+    function drawDango(x, y, sauce=false, scale=1) {
+      const r = 12*scale; const gap = 22*scale;
+      // 串
+      ctx.strokeStyle = '#9c6f3b'; ctx.lineWidth = 4*scale; ctx.beginPath(); ctx.moveTo(x-2, y+30*scale); ctx.lineTo(x-2, y-30*scale); ctx.stroke();
+      // 団子3玉
+      const balls = [y- gap, y, y+ gap];
+      for (let i=0;i<3;i++) {
+        ctx.beginPath(); ctx.fillStyle = sauce? '#bf6b04' : '#f5e4c3';
+        ctx.arc(x, balls[i], r, 0, Math.PI*2);
+        ctx.fill();
+        // つや
+        ctx.beginPath(); ctx.fillStyle = sauce? 'rgba(255,220,150,.6)' : 'rgba(255,255,255,.7)';
+        ctx.ellipse(x-5*scale, balls[i]-5*scale, r*0.45, r*0.25, -0.8, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+    function drawPlayer() {
+      // 台
+      ctx.fillStyle = '#7a4e2a';
+      const pw = player.w, ph = player.h;
+      ctx.fillRect(player.x - pw/2, player.y - ph/2, pw, ph);
+      drawDango(player.x, player.y - 20, true, 0.8);
+    }
+
+    function drawSauceDrop(x,y) {
+      ctx.fillStyle = '#d1780a';
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x, y+5); ctx.quadraticCurveTo(x+2, y+12, x, y+14); ctx.quadraticCurveTo(x-2, y+12, x, y+5); ctx.fill();
+    }
+
+    // メインループ
+    let last = performance.now();
+    function loop(now) {
+      requestAnimationFrame(loop);
+      const dt = Math.min(33, now - last); last = now; // ~30fps 上限で安定
+      if (state !== 'running' || paused) { render(); return; }
+      time += dt;
+
+      // 入力
+      if (keys.has('left') || holdLeft) player.x -= player.speed;
+      if (keys.has('right') || holdRight) player.x += player.speed;
+      player.x = Math.max(30, Math.min(VW - 30, player.x));
+      if (keys.has('shoot') || holdShoot || pointerDown) shoot();
+      if (player.cooldown > 0) player.cooldown--;
+
+      // 敵生成
+      spawnTimer -= dt; if (spawnTimer <= 0) {
+        spawnEnemy();
+        const base = 900 - Math.min(600, wave*40);
+        spawnTimer = base * (0.6 + Math.random()*0.8);
+      }
+
+      // 更新: ショット
+      for (let i=shots.length-1;i>=0;i--) {
+        const s = shots[i]; s.y -= s.v;
+        if (s.y < -20) shots.splice(i,1);
+      }
+
+      // 更新: 敵
+      for (let i=enemies.length-1;i>=0;i--) {
+        const e = enemies[i]; e.y += e.vy;
+        // ショットと衝突 -> みたらし化して落下アイテムに
+        for (let j=shots.length-1;j>=0;j--) {
+          const s = shots[j];
+          const hit = hitCirclePoint(e.x, e.y-22, 12, s.x, s.y) || hitCirclePoint(e.x, e.y, 12, s.x, s.y) || hitCirclePoint(e.x, e.y+22, 12, s.x, s.y);
+          if (hit) {
+            shots.splice(j,1);
+            // スコア & アイテム化（たまにバラバラに分裂）
+            if (Math.random() < 0.35) {
+              const offs = [-22, 0, 22];
+              offs.forEach((dy, k) => {
+                items.push({ type: 'fragment', x: e.x + (k-1)*4, y: e.y + dy, vx: (Math.random()*2-1)*1.2, vy: 1.5, ttl: 5000 });
+              });
+              score += 40; // 命中ボーナス（回収で加点）
+            } else {
+              items.push({ type: 'skewer', x: e.x, y: e.y, vx: 0, vy: 2, ttl: 6000 });
+              score += 100; // 一体回収相当のボーナス
+            }
+            maybeDropPowerUp(e.x, e.y);
+            enemies.splice(i,1); break;
+          }
+        }
+        // 底に到達
+        if (enemies[i] && e.y-22 > VH+30) {
+          enemies.splice(i,1); damage();
+        }
+      }
+
+      // 更新: アイテム（みたらし化）
+      for (let i=items.length-1;i>=0;i--) {
+        const it = items[i];
+        it.x += (it.vx||0);
+        it.y += it.vy;
+        it.vy = Math.min(it.vy+0.05, 5);
+        it.ttl -= dt;
+        // 横端で軽くバウンド
+        if (it.x < 20) { it.x = 20; it.vx = -(it.vx||0) * 0.6; }
+        if (it.x > VW-20) { it.x = VW-20; it.vx = -(it.vx||0) * 0.6; }
+        // 磁石効果
+        if (player.magnetTimer>0) {
+          const dx = player.x - it.x;
+          it.vx = (it.vx||0) * 0.95 + Math.max(-2, Math.min(2, dx*0.02));
+        }
+        // 取得
+        if (aabbPoint(player.x - player.w/2, player.y - player.h/2 - 30, player.w, 60, it.x, it.y)) {
+          score += (it.type === 'fragment') ? 20 : 50;
+          items.splice(i,1); continue;
+        }
+        if (it.y > VH+40 || it.ttl <= 0) items.splice(i,1);
+      }
+
+      // 更新: パワーアップ
+      for (let i=powerUps.length-1;i>=0;i--) {
+        const p = powerUps[i];
+        p.y += p.vy; p.ttl -= dt;
+        if (aabbPoint(player.x - player.w/2, player.y - player.h/2 - 30, player.w, 60, p.x, p.y)) {
+          applyPowerUp(p.kind);
+          powerUps.splice(i,1);
+          continue;
+        }
+        if (p.y > VH+30 || p.ttl <= 0) powerUps.splice(i,1);
+      }
+
+      // ウェーブ進行
+      if (Math.floor(time/15000) + 1 > wave) wave++;
+
+      // ゲームオーバー
+      if (player.lives <= 0) state = 'gameover';
+
+      render();
+    }
+    requestAnimationFrame(loop);
+
+    function damage() {
+      if (player.shield > 0) { player.shield -= 1; flash = 14; return; }
+      player.lives -= 1; flash = 10;
+    }
+
+    let flash = 0;
+    function render() {
+      // 背景
+      ctx.clearRect(0,0,VW,VH);
+      // 市松模様風
+      const cell = 40; ctx.save(); ctx.globalAlpha = .07; ctx.fillStyle = '#7a4e2a';
+      for (let y=0;y<VH;y+=cell) for (let x=0;x<VW;x+=cell) if (((x+y)/cell)%2<1) ctx.fillRect(x,y,cell,cell);
+      ctx.restore();
+
+      // 上部UI
+      drawText(`スコア: ${score}`, 16, 28, 20);
+      drawText(`WAVE ${wave}`, VW/2, 28, 20, 'center');
+      // ライフ
+      for (let i=0;i<player.lives;i++) drawDango(VW - 26 - i*28, 26, true, 0.45);
+
+      // エンティティ
+      // 敵（未みたらし）
+      enemies.forEach(e => drawDango(e.x, e.y, false, 0.9));
+      // ショット
+      shots.forEach(s => drawSauceDrop(s.x, s.y));
+      // アイテム（みたらし化済）
+      items.forEach(it => {
+        if (it.type === 'fragment') drawBall(it.x, it.y, true, 1.0);
+        else drawDango(it.x, it.y, true, 0.8);
+      });
+      // パワーアップ
+      powerUps.forEach(p => drawPowerUp(p.x, p.y, p.kind));
+      // プレイヤー
+      if (flash>0) { ctx.save(); ctx.globalAlpha = 0.5 + 0.5*Math.sin(flash); }
+      drawPlayer();
+      if (flash>0) { ctx.restore(); flash -= 0.7; }
+
+      // 状態オーバーレイ
+      if (state === 'title') {
+        overlay(
+          'みたらし団子ウォーズ',
+          '今日は「みたらし団子の日」！\nタレを撃って団子をみたらし化し、\n落ちてきた団子をキャッチしてスコアを稼ごう。\n\n操作: ← → 移動 / Space ショット / P ポーズ\nEnter でスタート'
+        );
+      } else if (paused) {
+        overlay('一時停止', 'P で再開');
+      } else if (state === 'gameover') {
+        overlay('ゲームオーバー', `スコア: ${score}\nEnter で再スタート`);
+      }
+    }
+
+    function overlay(title, desc) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 247, 234, .86)';
+      ctx.fillRect(40, 120, VW-80, VH-240);
+      ctx.strokeStyle = '#c18a3c'; ctx.lineWidth = 4; ctx.strokeRect(40, 120, VW-80, VH-240);
+      drawText(title, VW/2, 200, 48, 'center', '#6b441a');
+      ctx.textAlign = 'center'; ctx.fillStyle = '#4a3217'; ctx.font = '20px/1.6 system-ui, "Noto Sans JP", sans-serif';
+      const lines = desc.split('\n');
+      lines.forEach((l,i)=> ctx.fillText(l, VW/2, 260 + i*28));
+      ctx.restore();
+    }
+
+    // みたらしの単玉描画
+    function drawBall(x, y, sauce=true, scale=1) {
+      const r = 10*scale;
+      ctx.beginPath(); ctx.fillStyle = sauce? '#bf6b04' : '#f5e4c3';
+      ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.fillStyle = sauce? 'rgba(255,220,150,.6)' : 'rgba(255,255,255,.7)';
+      ctx.ellipse(x-4*scale, y-4*scale, r*0.45, r*0.25, -0.8, 0, Math.PI*2); ctx.fill();
+    }
+
+    // パワーアップ描画と処理
+    function drawPowerUp(x, y, kind) {
+      ctx.save();
+      ctx.fillStyle = '#fff7ea'; ctx.strokeStyle = '#c18a3c'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x-16, y-16, 32, 32, 6); else ctx.rect(x-16, y-16, 32, 32);
+      ctx.fill(); ctx.stroke();
+      const label = kind === 'rapid' ? 'R' : kind === 'magnet' ? 'M' : kind === 'shield' ? 'S' : '?';
+      drawText(label, x, y+7, 22, 'center', '#6b441a');
+      ctx.restore();
+    }
+    function maybeDropPowerUp(x, y) {
+      if (Math.random() < 0.18) {
+        const kinds = ['rapid','magnet','shield'];
+        const kind = kinds[(Math.random()*kinds.length)|0];
+        powerUps.push({ x, y, vy: 1.8, kind, ttl: 8000 });
+      }
+    }
+    function applyPowerUp(kind) {
+      if (kind === 'rapid') {
+        player.rapidTimer = 8000; // ms
+      } else if (kind === 'magnet') {
+        player.magnetTimer = 8000;
+      } else if (kind === 'shield') {
+        player.shield = Math.min(3, player.shield + 1);
+      }
+    }
+    // タイマー減衰（別ループで緩やかに）
+    ;(function tickTimers(){
+      let prev = performance.now();
+      function step(){
+        const now = performance.now();
+        const d = Math.min(100, now - prev); prev = now;
+        if (state === 'running' && !paused) {
+          if (player.rapidTimer>0) player.rapidTimer = Math.max(0, player.rapidTimer - d);
+          if (player.magnetTimer>0) player.magnetTimer = Math.max(0, player.magnetTimer - d);
+        }
+        requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    })();
+
+    // 初期はタイトル
+    state = 'title';
+  })();
+  </script>
+</body>
+</html>
