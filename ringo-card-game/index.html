@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>りんごカードゲーム - いいりんごの日</title>
+    <!--
+    AI Model: Claude 3.5 Sonnet
+    User Prompt: 11月5日は「いいりんごの日」だそうです。というわけで、様々な種類の林檎を使ったカードゲームをHTMLで作ってください
+    AI Approach: HTML5とバニラJavaScriptを使った神経衰弱スタイルのカードマッチングゲーム。10種類の林檎品種を使用し、各品種を視覚的に区別できるよう異なる色とグラデーションで表現。
+    Implementation Intent: 日本と世界の様々な林檎品種を楽しく学べる教育的なカードゲーム。プレイヤーは同じ品種のペアを見つけることで、林檎の種類を覚えることができる。
+    -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+            background: linear-gradient(135deg, #ffeaa7 0%, #ff7675 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #d63031;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            aspect-ratio: 3/4;
+            position: relative;
+            cursor: pointer;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            opacity: 0.7;
+            cursor: default;
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #eb3b5a 0%, #fc5c65 100%);
+            border: 3px solid white;
+        }
+
+        .card-back::before {
+            content: '🍎';
+            font-size: 3em;
+        }
+
+        .card-front {
+            transform: rotateY(180deg);
+            border: 3px solid white;
+            font-size: 0.9em;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .card-emoji {
+            font-size: 2.5em;
+            margin-bottom: 8px;
+        }
+
+        .card-name {
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            line-height: 1.3;
+        }
+
+        .card-info {
+            font-size: 0.7em;
+            color: rgba(255,255,255,0.9);
+            margin-top: 4px;
+        }
+
+        /* 林檎品種ごとの色 */
+        .apple-fuji {
+            background: linear-gradient(135deg, #eb3b5a 0%, #fa8072 100%);
+        }
+
+        .apple-kougyoku {
+            background: linear-gradient(135deg, #8b0000 0%, #dc143c 100%);
+        }
+
+        .apple-orin {
+            background: linear-gradient(135deg, #98d8c8 0%, #f6e58d 100%);
+        }
+
+        .apple-tsugaru {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ffa07a 100%);
+        }
+
+        .apple-jonagold {
+            background: linear-gradient(135deg, #f39c12 0%, #e74c3c 45%, #f39c12 100%);
+        }
+
+        .apple-mutsu {
+            background: linear-gradient(135deg, #f7d794 0%, #f5cd79 100%);
+        }
+
+        .apple-shinano {
+            background: linear-gradient(135deg, #ff4757 0%, #ff6348 100%);
+        }
+
+        .apple-akane {
+            background: linear-gradient(135deg, #ee5a6f 0%, #f78fb3 100%);
+        }
+
+        .apple-sekaichi {
+            background: linear-gradient(135deg, #c23616 0%, #e84118 100%);
+        }
+
+        .apple-granny {
+            background: linear-gradient(135deg, #6ab04c 0%, #badc58 100%);
+        }
+
+        .apple-sinanogold {
+            background: linear-gradient(135deg, #f9ca24 0%, #f0932b 100%);
+        }
+
+        .apple-toki {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+        }
+
+        .apple-akibae {
+            background: linear-gradient(135deg, #a52a2a 0%, #8b0000 100%);
+        }
+
+        .apple-senshu {
+            background: linear-gradient(135deg, #ff7979 0%, #ff6348 100%);
+        }
+
+        .apple-meigetsu {
+            background: linear-gradient(135deg, #ffeaa7 0%, #ffb142 100%);
+        }
+
+        .controls {
+            text-align: center;
+        }
+
+        button {
+            background: linear-gradient(135deg, #eb3b5a 0%, #fc5c65 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .modal-content h2 {
+            color: #eb3b5a;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+
+        .modal-content p {
+            margin: 10px 0;
+            font-size: 1.2em;
+            color: #555;
+        }
+
+        .modal-content button {
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .game-board {
+                grid-template-columns: repeat(5, 1fr);
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .card-emoji {
+                font-size: 2em;
+            }
+
+            .card-name {
+                font-size: 0.8em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .game-board {
+                gap: 5px;
+            }
+
+            .info-panel {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍎 りんごカードゲーム 🍎</h1>
+            <div class="subtitle">11月5日は「いいりんごの日」</div>
+        </header>
+
+        <div class="info-panel">
+            <div class="info-item">
+                <div class="info-label">手数</div>
+                <div class="info-value" id="moves">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">マッチ数</div>
+                <div class="info-value" id="matches">0/15</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">タイム</div>
+                <div class="info-value" id="time">0:00</div>
+            </div>
+        </div>
+
+        <div class="game-board" id="gameBoard"></div>
+
+        <div class="controls">
+            <button onclick="resetGame()">新しいゲーム</button>
+        </div>
+    </div>
+
+    <div class="modal" id="winModal">
+        <div class="modal-content">
+            <h2>🎉 おめでとうございます！ 🎉</h2>
+            <p>すべてのペアを見つけました！</p>
+            <p>手数: <span id="finalMoves"></span></p>
+            <p>タイム: <span id="finalTime"></span></p>
+            <button onclick="resetGame()">もう一度プレイ</button>
+        </div>
+    </div>
+
+    <script>
+        // 林檎の品種データ
+        const apples = [
+            { id: 'fuji', name: 'ふじ', emoji: '🍎', info: '日本で最も人気', class: 'apple-fuji' },
+            { id: 'kougyoku', name: '紅玉', emoji: '🍎', info: '酸味が強い', class: 'apple-kougyoku' },
+            { id: 'orin', name: '王林', emoji: '🍏', info: '黄緑で甘い', class: 'apple-orin' },
+            { id: 'tsugaru', name: 'つがる', emoji: '🍎', info: '早生種', class: 'apple-tsugaru' },
+            { id: 'jonagold', name: 'ジョナゴールド', emoji: '🍎', info: '赤黄ストライプ', class: 'apple-jonagold' },
+            { id: 'mutsu', name: '陸奥', emoji: '🍏', info: '大きめサイズ', class: 'apple-mutsu' },
+            { id: 'shinano', name: 'シナノスイート', emoji: '🍎', info: '甘くて人気', class: 'apple-shinano' },
+            { id: 'akane', name: 'あかね', emoji: '🍎', info: '小さめサイズ', class: 'apple-akane' },
+            { id: 'sekaichi', name: '世界一', emoji: '🍎', info: '超大型品種', class: 'apple-sekaichi' },
+            { id: 'granny', name: 'グラニースミス', emoji: '🍏', info: '緑で酸っぱい', class: 'apple-granny' },
+            { id: 'sinanogold', name: 'シナノゴールド', emoji: '🍎', info: '黄色で人気', class: 'apple-sinanogold' },
+            { id: 'toki', name: 'トキ', emoji: '🍏', info: '青森の新品種', class: 'apple-toki' },
+            { id: 'akibae', name: '秋映', emoji: '🍎', info: '濃い赤色', class: 'apple-akibae' },
+            { id: 'senshu', name: '千秋', emoji: '🍎', info: '酸甘バランス良', class: 'apple-senshu' },
+            { id: 'meigetsu', name: '名月', emoji: '🍏', info: '香りが良い', class: 'apple-meigetsu' }
+        ];
+
+        // ゲーム状態
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let moves = 0;
+        let startTime = null;
+        let timerInterval = null;
+        let canFlip = true;
+
+        // カード配列を作成（各品種2枚ずつ）
+        function createCards() {
+            cards = [];
+            apples.forEach(apple => {
+                cards.push({ ...apple, cardId: `${apple.id}-1` });
+                cards.push({ ...apple, cardId: `${apple.id}-2` });
+            });
+            // シャッフル
+            cards.sort(() => Math.random() - 0.5);
+        }
+
+        // カードHTML要素を作成
+        function createCardElement(apple) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.dataset.id = apple.id;
+            card.dataset.cardId = apple.cardId;
+
+            card.innerHTML = `
+                <div class="card-face card-back"></div>
+                <div class="card-face card-front ${apple.class}">
+                    <div class="card-emoji">${apple.emoji}</div>
+                    <div class="card-name">${apple.name}</div>
+                    <div class="card-info">${apple.info}</div>
+                </div>
+            `;
+
+            card.addEventListener('click', () => flipCard(card));
+            return card;
+        }
+
+        // ゲームボードを初期化
+        function initBoard() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            cards.forEach(apple => {
+                gameBoard.appendChild(createCardElement(apple));
+            });
+        }
+
+        // カードをめくる
+        function flipCard(card) {
+            if (!canFlip) return;
+            if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+            if (flippedCards.length >= 2) return;
+
+            // タイマー開始
+            if (!startTime) {
+                startTime = Date.now();
+                startTimer();
+            }
+
+            card.classList.add('flipped');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                moves++;
+                updateMoves();
+                checkMatch();
+            }
+        }
+
+        // マッチをチェック
+        function checkMatch() {
+            canFlip = false;
+            const [card1, card2] = flippedCards;
+            const id1 = card1.dataset.id;
+            const id2 = card2.dataset.id;
+
+            if (id1 === id2) {
+                // マッチした
+                setTimeout(() => {
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    matchedPairs++;
+                    updateMatches();
+                    flippedCards = [];
+                    canFlip = true;
+
+                    // 全てマッチしたかチェック
+                    if (matchedPairs === apples.length) {
+                        setTimeout(showWinModal, 500);
+                    }
+                }, 600);
+            } else {
+                // マッチしなかった
+                setTimeout(() => {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    flippedCards = [];
+                    canFlip = true;
+                }, 1200);
+            }
+        }
+
+        // 手数を更新
+        function updateMoves() {
+            document.getElementById('moves').textContent = moves;
+        }
+
+        // マッチ数を更新
+        function updateMatches() {
+            document.getElementById('matches').textContent = `${matchedPairs}/${apples.length}`;
+        }
+
+        // タイマーを開始
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('time').textContent =
+                    `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        // 勝利モーダルを表示
+        function showWinModal() {
+            stopTimer();
+            document.getElementById('finalMoves').textContent = moves;
+            document.getElementById('finalTime').textContent =
+                document.getElementById('time').textContent;
+            document.getElementById('winModal').classList.add('active');
+        }
+
+        // タイマーを停止
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        // ゲームをリセット
+        function resetGame() {
+            // モーダルを閉じる
+            document.getElementById('winModal').classList.remove('active');
+
+            // 状態をリセット
+            flippedCards = [];
+            matchedPairs = 0;
+            moves = 0;
+            startTime = null;
+            canFlip = true;
+
+            // タイマーを停止
+            stopTimer();
+
+            // 表示をリセット
+            updateMoves();
+            updateMatches();
+            document.getElementById('time').textContent = '0:00';
+
+            // カードを再作成
+            createCards();
+            initBoard();
+        }
+
+        // 初期化
+        createCards();
+        initBoard();
+    </script>
+</body>
+</html>
