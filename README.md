@@ -63,6 +63,9 @@ This repository contains a collection of small, self-contained web applications 
 #### [リバーシ](reversi/) (2025-09-05)
 ゲームアプリケーション
 
+#### [りんごカードゲーム - いいりんごの日](ringo-card-game/) (2025-11-04)
+ゲームアプリケーション
+
 #### [シューティングゲーム](shooting_cc/) (2025-09-05)
 ゲームアプリケーション
 
@@ -254,6 +257,9 @@ AI・チャットアプリケーション
 実験的アプリケーション
 
 #### [地引網 - Jibiki Beach Net Fishing](jibiki/) (2025-09-13)
+実験的アプリケーション
+
+#### [みたらし団子ウォーズ](mitarashi-dango-wars/) (2025-11-04)
 実験的アプリケーション
 
 #### [3週間サボったあなたへ — 叱咤激励ページ](motivation-21days/) (2025-10-18)
