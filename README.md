@@ -60,6 +60,9 @@ This repository contains a collection of small, self-contained web applications 
 #### [ピタゴラゲーム](pitagora-game/) (2025-06-30)
 ゲームアプリケーション
 
+#### [ポッキーキャッチゲーム - 11/11記念](pocky-catch/) (2025-11-11)
+ゲームアプリケーション
+
 #### [リバーシ](reversi/) (2025-09-05)
 ゲームアプリケーション
 
