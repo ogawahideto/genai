@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ポッキーキャッチゲーム - 11/11記念</title>
+    <!--
+    AI Model: Claude 3.5 Sonnet (claude-sonnet-4-5-20250929)
+    User Prompt: 今日は11/11です。1111にちなんだゲームを考え、新たなプロジェクトを作成して、いつものようにHTMLで実装しなさい。
+    AI Approach: 11/11はポッキーの日として有名なので、上から落ちてくるポッキーをキャッチするHTML5 Canvasゲームを実装。
+                 プレイヤーがカゴを操作してポッキーをキャッチし、1111点を目指すゲーム。
+    Implementation Intent: 11/11（ポッキーの日）を記念した、親しみやすく楽しいキャッチゲーム。
+                          1本キャッチで11点、目標スコア1111点という、1111にちなんだ設計。
+    -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 50%, #ffecd2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #d4145a;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .date {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .info-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            min-width: 150px;
+        }
+
+        .info-label {
+            font-size: 0.8em;
+            opacity: 0.9;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        canvas {
+            border: 3px solid #d4145a;
+            border-radius: 10px;
+            background: #fff5f8;
+            margin: 20px 0;
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .controls {
+            margin: 20px 0;
+            color: #555;
+            font-size: 1.1em;
+            line-height: 1.8;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #d4145a 0%, #fbb03b 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 10px;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(212, 20, 90, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .message {
+            font-size: 1.3em;
+            color: #d4145a;
+            font-weight: bold;
+            margin: 15px 0;
+            min-height: 30px;
+        }
+
+        .goal {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 1.1em;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .info-item {
+                min-width: 120px;
+                padding: 10px 15px;
+                font-size: 1em;
+            }
+
+            canvas {
+                width: 100% !important;
+                height: auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍫 ポッキーキャッチ 🍫</h1>
+        <div class="date">11/11 ポッキーの日記念ゲーム</div>
+
+        <div class="game-info">
+            <div class="info-item">
+                <span class="info-label">スコア</span>
+                <span id="score">0</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">キャッチ数</span>
+                <span id="caught">0</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">ミス</span>
+                <span id="missed">0</span> / 3
+            </div>
+        </div>
+
+        <div class="goal">🎯 目標: 1111点！</div>
+
+        <canvas id="gameCanvas" width="600" height="500"></canvas>
+
+        <div class="message" id="message">スタートボタンを押してゲーム開始！</div>
+
+        <div>
+            <button class="btn" id="startBtn" onclick="startGame()">スタート</button>
+            <button class="btn" id="restartBtn" onclick="restartGame()" style="display: none;">もう一度</button>
+        </div>
+
+        <div class="controls">
+            <div>🎮 操作方法</div>
+            <div>← → キー または マウス移動でカゴを操作</div>
+            <div>落ちてくるポッキーをキャッチしよう！</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let gameState = 'ready'; // ready, playing, gameover
+        let score = 0;
+        let caughtCount = 0;
+        let missedCount = 0;
+        let basket = { x: 250, y: 450, width: 100, height: 20 };
+        let pockies = [];
+        let animationId = null;
+        let spawnTimer = 0;
+        let spawnInterval = 60; // フレーム数
+
+        // マウス操作
+        canvas.addEventListener('mousemove', (e) => {
+            if (gameState === 'playing') {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                basket.x = (e.clientX - rect.left) * scaleX - basket.width / 2;
+                basket.x = Math.max(0, Math.min(canvas.width - basket.width, basket.x));
+            }
+        });
+
+        // キーボード操作
+        document.addEventListener('keydown', (e) => {
+            if (gameState === 'playing') {
+                if (e.key === 'ArrowLeft') {
+                    basket.x = Math.max(0, basket.x - 20);
+                } else if (e.key === 'ArrowRight') {
+                    basket.x = Math.min(canvas.width - basket.width, basket.x + 20);
+                }
+            }
+        });
+
+        class Pocky {
+            constructor() {
+                this.width = 10;
+                this.height = 80;
+                this.x = Math.random() * (canvas.width - this.width);
+                this.y = -this.height;
+                this.speed = 2 + Math.random() * 2;
+                this.rotation = (Math.random() - 0.5) * 0.4;
+                this.color = Math.random() > 0.5 ? '#d4145a' : '#8B4513';
+            }
+
+            update() {
+                this.y += this.speed;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                ctx.rotate(this.rotation);
+
+                // チョコ部分
+                ctx.fillStyle = this.color;
+                ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height * 0.6);
+
+                // プレッツェル部分
+                ctx.fillStyle = '#daa520';
+                ctx.fillRect(-this.width / 2, -this.height / 2 + this.height * 0.6, this.width, this.height * 0.4);
+
+                ctx.restore();
+            }
+
+            isOffScreen() {
+                return this.y > canvas.height;
+            }
+
+            intersects(basket) {
+                return (
+                    this.x < basket.x + basket.width &&
+                    this.x + this.width > basket.x &&
+                    this.y + this.height > basket.y &&
+                    this.y + this.height < basket.y + basket.height + 20
+                );
+            }
+        }
+
+        function drawBasket() {
+            // カゴの本体
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
+
+            // カゴの縁
+            ctx.strokeStyle = '#654321';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(basket.x, basket.y, basket.width, basket.height);
+
+            // カゴの模様
+            ctx.strokeStyle = '#a0826d';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < basket.width; i += 10) {
+                ctx.beginPath();
+                ctx.moveTo(basket.x + i, basket.y);
+                ctx.lineTo(basket.x + i, basket.y + basket.height);
+                ctx.stroke();
+            }
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('caught').textContent = caughtCount;
+            document.getElementById('missed').textContent = missedCount;
+        }
+
+        function showMessage(text) {
+            document.getElementById('message').textContent = text;
+        }
+
+        function checkGoal() {
+            if (score >= 1111) {
+                gameState = 'gameover';
+                showMessage('🎉 おめでとう！1111点達成！🎉');
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('restartBtn').style.display = 'inline-block';
+                return true;
+            }
+            return false;
+        }
+
+        function gameLoop() {
+            if (gameState !== 'playing') return;
+
+            // 背景をクリア
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // ポッキーを生成
+            spawnTimer++;
+            if (spawnTimer >= spawnInterval) {
+                pockies.push(new Pocky());
+                spawnTimer = 0;
+                // 徐々に生成速度を上げる
+                if (spawnInterval > 30) {
+                    spawnInterval -= 0.5;
+                }
+            }
+
+            // ポッキーの更新と描画
+            for (let i = pockies.length - 1; i >= 0; i--) {
+                const pocky = pockies[i];
+                pocky.update();
+                pocky.draw();
+
+                // キャッチ判定
+                if (pocky.intersects(basket)) {
+                    pockies.splice(i, 1);
+                    score += 11;
+                    caughtCount++;
+                    updateScore();
+
+                    // ゴール判定
+                    if (checkGoal()) {
+                        return;
+                    }
+
+                    // メッセージ更新
+                    if (score % 111 === 0) {
+                        showMessage('🌟 すごい！' + score + '点！');
+                    } else {
+                        showMessage('ナイスキャッチ！ +11点');
+                    }
+                }
+                // 画面外に出た
+                else if (pocky.isOffScreen()) {
+                    pockies.splice(i, 1);
+                    missedCount++;
+                    updateScore();
+
+                    if (missedCount >= 3) {
+                        gameState = 'gameover';
+                        showMessage('ゲームオーバー！最終スコア: ' + score + '点');
+                        document.getElementById('startBtn').style.display = 'none';
+                        document.getElementById('restartBtn').style.display = 'inline-block';
+                        return;
+                    }
+                }
+            }
+
+            // カゴを描画
+            drawBasket();
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            if (gameState === 'ready') {
+                gameState = 'playing';
+                score = 0;
+                caughtCount = 0;
+                missedCount = 0;
+                pockies = [];
+                spawnTimer = 0;
+                spawnInterval = 60;
+                updateScore();
+                showMessage('ポッキーをキャッチしよう！');
+                document.getElementById('startBtn').style.display = 'none';
+                gameLoop();
+            }
+        }
+
+        function restartGame() {
+            gameState = 'ready';
+            score = 0;
+            caughtCount = 0;
+            missedCount = 0;
+            pockies = [];
+            spawnTimer = 0;
+            spawnInterval = 60;
+            updateScore();
+            showMessage('スタートボタンを押してゲーム開始！');
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('restartBtn').style.display = 'none';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBasket();
+
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+        }
+
+        // 初期表示
+        drawBasket();
+        updateScore();
+    </script>
+</body>
+</html>
