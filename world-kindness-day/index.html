@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>世界親切デー（11月13日）Kindness App</title>
+  <meta name="description" content="11月13日・世界親切デーにちなんだ、小さな親切を実践するためのアイデアとメッセージ作成ツール。">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --muted: #9ca3af;
+      --text: #e5e7eb;
+      --accent: #22c55e;
+      --accent-2: #60a5fa;
+      --warning: #f59e0b;
+      --ring: rgba(96, 165, 250, 0.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Hiragino Kaku Gothic ProN", Meiryo, "Noto Sans JP", sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #1f2937 10%, transparent 60%),
+                  radial-gradient(1000px 600px at 110% 10%, #0b1222 10%, transparent 60%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 24px 16px 80px;
+    }
+    header {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(22px, 3.6vw, 32px);
+      letter-spacing: 0.3px;
+    }
+    .subtle { color: var(--muted); font-size: 14px; }
+    .hero {
+      display: grid;
+      gap: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(148,163,184,0.15);
+      border-radius: 14px;
+      padding: 18px 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 820px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(148,163,184,0.15);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    h2 { font-size: 18px; margin: 0 0 8px; }
+    .tip {
+      font-size: 18px;
+      margin: 8px 0 14px;
+      padding: 12px 12px;
+      background: rgba(34,197,94,0.08);
+      border: 1px dashed rgba(34,197,94,0.35);
+      border-radius: 10px;
+    }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .spacer { flex: 1; }
+    .count { font-variant-numeric: tabular-nums; }
+    button, select, input, textarea {
+      font: inherit;
+      color: var(--text);
+      background: #0b1220;
+      border: 1px solid rgba(148,163,184,0.2);
+      border-radius: 10px;
+      padding: 10px 12px;
+      outline: none;
+    }
+    button {
+      cursor: pointer;
+      background: linear-gradient(180deg, rgba(96,165,250,0.25), rgba(96,165,250,0.12));
+      border-color: rgba(96,165,250,0.5);
+    }
+    button.primary { background: linear-gradient(180deg, rgba(34,197,94,0.35), rgba(34,197,94,0.18)); border-color: rgba(34,197,94,0.6); }
+    button.warn { background: linear-gradient(180deg, rgba(245,158,11,0.35), rgba(245,158,11,0.18)); border-color: rgba(245,158,11,0.6); }
+    button:focus, select:focus, input:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); }
+    textarea { width: 100%; min-height: 110px; resize: vertical; }
+    small.hint { color: var(--muted); font-size: 12px; }
+    footer { margin-top: 24px; color: var(--muted); font-size: 13px; }
+    canvas#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: rgba(96,165,250,0.15); border: 1px solid rgba(96,165,250,0.4); font-size: 12px; }
+  </style>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='%2322c55e' d='M50 80C20 60 10 40 20 30s25-5 30 8c5-13 20-18 30-8s0 30-30 50z'/%3E%3C/svg%3E">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0f172a">
+  <!-- No external dependencies; works on GitHub Pages under /genai/world-kindness-day/ -->
+  <!-- 11月13日は世界親切デー（World Kindness Day）です。1998年にWorld Kindness Movementにより提唱。 -->
+  <!-- Single-file micro-app by guidelines: inline HTML/CSS/JS; no global leaks. -->
+  <base href="./">
+  <meta property="og:title" content="世界親切デー（11月13日）Kindness App">
+  <meta property="og:description" content="小さな親切を実践するためのアイデアとメッセージ生成。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ogawahideto.github.io/genai/world-kindness-day/">
+  <meta property="og:image" content="data:image/png;base64,iVBORw0KGgo=">
+</head>
+<body>
+  <canvas id="confetti"></canvas>
+  <div class="container">
+    <header>
+      <div class="badge">11月13日 · 世界親切デー</div>
+      <h1>今日の小さな親切を、ひとつ。</h1>
+      <div class="subtle">World Kindness Day にちなんだ、軽やかな実践アプリ</div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <strong>世界親切デーとは？</strong><br>
+        1998年に<strong>World Kindness Movement</strong>が提唱した、思いやりと親切を広げる国際的な記念日です。<br>
+        「見返りを求めない小さな親切」を、今日から気軽に始めてみましょう。
+      </div>
+      <div class="row">
+        <small class="hint">ヒント: 1日1つでOK。続ければ習慣になります。</small>
+      </div>
+    </section>
+
+    <div class="grid" style="margin-top:16px;">
+      <!-- 左：アイデアとカウンター -->
+      <section class="card" aria-labelledby="ideas-title">
+        <h2 id="ideas-title">親切アイデア</h2>
+        <div id="tip" class="tip" role="status" aria-live="polite">読み込み中...</div>
+        <div class="row">
+          <button id="another" type="button">別のアイデア</button>
+          <button id="done" class="primary" type="button">完了！</button>
+          <span class="spacer"></span>
+          <span>今日のカウント: <strong class="count" id="count">0</strong></span>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button id="reset" class="warn" type="button" title="今日のカウントをリセット">リセット</button>
+          <small class="hint">カウントは端末にのみ保存（ローカルストレージ）。</small>
+        </div>
+      </section>
+
+      <!-- 右：メッセージメーカー -->
+      <section class="card" aria-labelledby="msg-title">
+        <h2 id="msg-title">メッセージメーカー</h2>
+        <div class="row">
+          <label>
+            宛先
+            <select id="to">
+              <option value="同僚">同僚</option>
+              <option value="友だち">友だち</option>
+              <option value="家族">家族</option>
+              <option value="自分">自分</option>
+              <option value="ご近所さん">ご近所さん</option>
+            </select>
+          </label>
+          <label>
+            トーン
+            <select id="tone">
+              <option value="light">ライト</option>
+              <option value="thanks">感謝</option>
+              <option value="cheer">応援</option>
+            </select>
+          </label>
+          <label class="spacer">
+            相手の名前（任意）
+            <input id="name" type="text" placeholder="例: さとしさん">
+          </label>
+        </div>
+        <div style="margin-top:10px;">
+          <textarea id="message" aria-label="生成されたメッセージ" placeholder="ここにメッセージが表示されます"></textarea>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button id="gen" type="button">メッセージを作る</button>
+          <button id="copy" type="button">コピー</button>
+          <button id="share" type="button">共有</button>
+          <span class="spacer"></span>
+          <small class="hint">共有は対応端末のみ</small>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      このページはオフラインでも動作します。外部サービス・トラッキングは使用していません。<br>
+      提案はあくまで例です。あなたなりの「小さな親切」を見つけてください。
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      // ----- Data -----
+      const TIPS = [
+        'エレベーターで「どうぞ」と先に譲る',
+        'ドアを開けて後ろの人を待つ',
+        'ありがとうを一言メッセージで伝える',
+        '今日出会った人の良いところを1つ褒める',
+        '席をゆずる／立ち止まって道をゆずる',
+        '落ちているゴミを1つ拾って捨てる',
+        '会議の前後に机をさっと拭く',
+        '行列で焦らずに優しく並ぶ',
+        'コンビニで募金箱に少額寄付する',
+        'SNSで誰かの良い投稿に温かいコメントを残す',
+        '同僚のタスクをひとつ手伝うと申し出る',
+        '静かな声で話す・周りに配慮する',
+        '道に迷っている人に声をかける',
+        'バスや電車でベビーカーにさっと道を作る',
+        'レジで丁寧に「お願いします」「ありがとうございます」を言う',
+        '職場の共有スペースを1分だけ片付ける',
+        '家族に感謝のメモを残す',
+        '自分に優しく、5分休憩をプレゼントする',
+        '近所の人に元気なあいさつをする',
+        '信号待ちで深呼吸して周囲に穏やかさを広げる',
+        '今日関わった人に「助かりました」を伝える',
+        '重そうな荷物を持つ人に手を差し伸べる',
+        '図書の返却日を守って次の人へバトンを渡す',
+        '公共の場で道をふさがないよう意識する',
+        'メールの文末に温かい一言を添える',
+        'いつもより5分早く出て心に余裕を作る',
+        'エンジニア仲間のPRに前向きなレビューを残す',
+        '良い仕事を見つけたらその場で称える',
+        '小さな手紙で「おつかれさま」を伝える',
+        '自分のミスに正直になり、フォローする',
+        '誰かの話を遮らず最後まで聴く',
+        '並んでいる列に割り込まないよう注意を払う',
+        '社内のナレッジを1つ残す',
+        '道端の植栽を踏まないよう気をつける',
+        '返却トレイに食器を戻す',
+        '会議の時間を守る（時間も思いやり）',
+        'オンライン会議で相手の発言をリフレーズして確認する',
+        '共有の冷蔵庫を1個分片付ける',
+        '駐輪・駐車はライン内に丁寧に停める'
+      ];
+
+      const TEMPLATES = {
+        light: [
+          '%%name%%、いつもありがとう。あなたの優しさに何度も助けられています。',
+          'ささやかですが感謝を届けたくて。今日もよい一日を！',
+          'ふと伝えたくなりました。あなたの存在が周りを明るくしています。'
+        ],
+        thanks: [
+          '%%name%%、この前のサポート本当に助かりました。心から感謝しています。',
+          '日頃の気配りにありがとう。あなたのおかげで進んでいます。',
+          '丁寧なお仕事にいつも感謝しています。無理せずいきましょう。'
+        ],
+        cheer: [
+          '%%name%%、最近よく頑張っていますね。あなたならきっとできます！',
+          'ゆっくり深呼吸。味方はここにいます。応援しています。',
+          '小さな一歩で十分。続けるあなたを尊敬しています。'
+        ]
+      };
+
+      // ----- Elements -----
+      const elTip = document.getElementById('tip');
+      const elCount = document.getElementById('count');
+      const elAnother = document.getElementById('another');
+      const elDone = document.getElementById('done');
+      const elReset = document.getElementById('reset');
+      const elTo = document.getElementById('to');
+      const elTone = document.getElementById('tone');
+      const elName = document.getElementById('name');
+      const elMsg = document.getElementById('message');
+      const elGen = document.getElementById('gen');
+      const elCopy = document.getElementById('copy');
+      const elShare = document.getElementById('share');
+
+      // ----- State & Storage -----
+      const KEY = {
+        count: 'wkd:count',
+        lastTip: 'wkd:lastTipIdx'
+      };
+
+      const loadCount = () => {
+        const v = Number(localStorage.getItem(KEY.count) || '0');
+        return Number.isFinite(v) && v >= 0 ? v : 0;
+      };
+      const saveCount = (v) => localStorage.setItem(KEY.count, String(v));
+      const loadLastTip = () => {
+        const v = Number(localStorage.getItem(KEY.lastTip) || '-1');
+        return Number.isInteger(v) ? v : -1;
+      };
+      const saveLastTip = (i) => localStorage.setItem(KEY.lastTip, String(i));
+
+      let count = loadCount();
+      let currentTipIdx = loadLastTip();
+
+      // ----- Tip Logic -----
+      const randomIdx = (max, notEq = -1) => {
+        if (max <= 1) return 0;
+        let i = Math.floor(Math.random() * max);
+        if (i === notEq) i = (i + 1) % max;
+        return i;
+      };
+
+      const renderCount = () => { elCount.textContent = String(count); };
+      const renderTip = () => {
+        if (currentTipIdx < 0 || currentTipIdx >= TIPS.length) currentTipIdx = 0;
+        elTip.textContent = '• ' + TIPS[currentTipIdx];
+        elTip.dataset.idx = String(currentTipIdx);
+      };
+      const nextTip = () => {
+        currentTipIdx = randomIdx(TIPS.length, currentTipIdx);
+        saveLastTip(currentTipIdx);
+        renderTip();
+      };
+
+      // ----- Message Logic -----
+      const makeMessage = () => {
+        const to = elTo.value;
+        const tone = elTone.value;
+        const name = (elName.value || '').trim();
+        const pool = TEMPLATES[tone] || TEMPLATES.light;
+        const template = pool[randomIdx(pool.length)];
+        const target = name || to;
+        const body = template.replace('%%name%%', target);
+        const suffix = '\n\n世界親切デーに寄せて。小さな親切を少しずつ🤝';
+        return body + suffix;
+      };
+
+      // ----- Confetti Animation -----
+      const cnv = document.getElementById('confetti');
+      const ctx = cnv.getContext('2d');
+      let confettiTimer = 0;
+      const fit = () => { cnv.width = innerWidth; cnv.height = innerHeight; };
+      window.addEventListener('resize', fit, { passive: true });
+      fit();
+      const confetti = [];
+      const spawnConfetti = (n = 80) => {
+        for (let i = 0; i < n; i++) {
+          confetti.push({
+            x: Math.random() * cnv.width,
+            y: -20 - Math.random() * 40,
+            w: 6 + Math.random() * 6,
+            h: 8 + Math.random() * 8,
+            vy: 2 + Math.random() * 3,
+            vx: -1 + Math.random() * 2,
+            rot: Math.random() * Math.PI,
+            vr: -0.2 + Math.random() * 0.4,
+            col: Math.random() < 0.33 ? '#22c55e' : (Math.random() < 0.5 ? '#60a5fa' : '#f59e0b')
+          });
+        }
+      };
+      const step = () => {
+        ctx.clearRect(0, 0, cnv.width, cnv.height);
+        for (const p of confetti) {
+          p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+        }
+        for (let i = confetti.length - 1; i >= 0; i--) {
+          if (confetti[i].y > cnv.height + 20) confetti.splice(i, 1);
+        }
+        for (const p of confetti) {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = p.col;
+          ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+          ctx.restore();
+        }
+        confettiTimer = requestAnimationFrame(step);
+      };
+      step();
+      const celebrate = () => { spawnConfetti(100); };
+
+      // ----- Events -----
+      elAnother.addEventListener('click', nextTip);
+      elDone.addEventListener('click', () => {
+        count += 1; saveCount(count); renderCount(); celebrate();
+      });
+      elReset.addEventListener('click', () => {
+        if (!confirm('今日のカウントを0にします。よろしいですか？')) return;
+        count = 0; saveCount(count); renderCount();
+      });
+      elGen.addEventListener('click', () => { elMsg.value = makeMessage(); });
+      elCopy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(elMsg.value);
+          elCopy.textContent = 'コピー済み！';
+          setTimeout(() => (elCopy.textContent = 'コピー'), 1200);
+        } catch {
+          alert('コピーに失敗しました');
+        }
+      });
+      elShare.addEventListener('click', async () => {
+        const text = elMsg.value || makeMessage();
+        if (navigator.share) {
+          try { await navigator.share({ text }); } catch (e) { /* cancel */ }
+        } else {
+          try {
+            await navigator.clipboard.writeText(text);
+            alert('共有に未対応のため、テキストをコピーしました。');
+          } catch { alert('共有/コピーに失敗しました'); }
+        }
+      });
+
+      // ----- Init -----
+      const boot = () => {
+        renderCount();
+        if (currentTipIdx < 0) {
+          currentTipIdx = randomIdx(TIPS.length);
+          saveLastTip(currentTipIdx);
+        }
+        renderTip();
+        elMsg.value = makeMessage();
+      };
+      boot();
+    })();
+  </script>
+</body>
+</html>
+

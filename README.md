@@ -313,6 +313,9 @@ AI・チャットアプリケーション
 #### [world-voyage](world-voyage/) (2025-09-06)
 実験的アプリケーション
 
+#### [世界親切デー - World Kindness Day](world-kindness-day/) (2025-11-13)
+実験的アプリケーション
+
 
 ## Usage
 
