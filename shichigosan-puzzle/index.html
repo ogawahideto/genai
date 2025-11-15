@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>七五三数字パズル - Shichi-Go-San Number Puzzle</title>
+    <!--
+    AI Model: Claude Sonnet 4.5
+    User Prompt: 七五三にちなんで7,5,3の３つの数字を使ったパズルゲームを作ってください
+    AI Approach: Interactive math puzzle using the numbers 7, 5, and 3 with operators to reach target numbers. Japanese traditional Shichi-Go-San themed design with multiple levels.
+    Implementation Intent: Create an educational and entertaining puzzle game that celebrates the Japanese tradition of Shichi-Go-San while exercising mathematical thinking.
+    -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
+            background: linear-gradient(135deg, #ffeef8 0%, #fff4e6 50%, #ffe8f0 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeIn 1s ease-in;
+        }
+
+        .header h1 {
+            color: #d63384;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header p {
+            color: #6c757d;
+            font-size: 1.1em;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(214, 51, 132, 0.2);
+            max-width: 600px;
+            width: 100%;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        .level-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+            color: #495057;
+        }
+
+        .target-display {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #ff6b9d 0%, #ffa06b 100%);
+            border-radius: 15px;
+            color: white;
+        }
+
+        .target-display .label {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .target-display .number {
+            font-size: 4em;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.2);
+        }
+
+        .expression-area {
+            text-align: center;
+            margin: 30px 0;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .expression-item {
+            display: inline-block;
+            font-size: 2.5em;
+            color: #495057;
+            animation: popIn 0.3s ease-out;
+        }
+
+        .number-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .number-btn {
+            width: 80px;
+            height: 80px;
+            font-size: 2em;
+            font-weight: bold;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .number-btn.num7 {
+            background: linear-gradient(135deg, #ff6b9d, #ff8fab);
+            color: white;
+        }
+
+        .number-btn.num5 {
+            background: linear-gradient(135deg, #ffa06b, #ffb88c);
+            color: white;
+        }
+
+        .number-btn.num3 {
+            background: linear-gradient(135deg, #c77dff, #d99eff);
+            color: white;
+        }
+
+        .number-btn:hover:not(:disabled) {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .number-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .operator-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .operator-btn {
+            width: 60px;
+            height: 60px;
+            font-size: 1.8em;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #4ecdc4, #44a8a0);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .operator-btn:hover:not(:disabled) {
+            transform: scale(1.1);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+
+        .operator-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .parentheses-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .paren-btn {
+            width: 60px;
+            height: 60px;
+            font-size: 2em;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .paren-btn:hover:not(:disabled) {
+            transform: scale(1.1);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+
+        .paren-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .action-btn {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .calculate-btn {
+            background: linear-gradient(135deg, #28a745, #34ce57);
+            color: white;
+        }
+
+        .clear-btn {
+            background: linear-gradient(135deg, #dc3545, #e55d6a);
+            color: white;
+        }
+
+        .next-btn {
+            background: linear-gradient(135deg, #ffc107, #ffd44d);
+            color: #333;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .result-message {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 1.5em;
+            min-height: 40px;
+            font-weight: bold;
+        }
+
+        .result-message.success {
+            color: #28a745;
+            animation: bounce 0.5s ease-out;
+        }
+
+        .result-message.error {
+            color: #dc3545;
+            animation: shake 0.5s ease-out;
+        }
+
+        .decorations {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .chitoseame {
+            position: absolute;
+            width: 30px;
+            height: 100px;
+            background: linear-gradient(45deg, #ff6b9d, #ffa06b);
+            border-radius: 15px;
+            animation: float 6s infinite ease-in-out;
+        }
+
+        .chitoseame:nth-child(1) {
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .chitoseame:nth-child(2) {
+            top: 20%;
+            right: 10%;
+            animation-delay: 1s;
+        }
+
+        .chitoseame:nth-child(3) {
+            bottom: 20%;
+            left: 15%;
+            animation-delay: 2s;
+        }
+
+        .chitoseame:nth-child(4) {
+            bottom: 15%;
+            right: 15%;
+            animation-delay: 3s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0);
+            }
+            to {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-20px) rotate(10deg);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .game-container {
+                padding: 20px;
+            }
+
+            .target-display .number {
+                font-size: 3em;
+            }
+
+            .number-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5em;
+            }
+
+            .operator-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 1.5em;
+            }
+
+            .expression-item {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="decorations">
+        <div class="chitoseame"></div>
+        <div class="chitoseame"></div>
+        <div class="chitoseame"></div>
+        <div class="chitoseame"></div>
+    </div>
+
+    <div class="header">
+        <h1>七五三数字パズル</h1>
+        <p>7、5、3の数字とカッコを使って目標の数を作ろう！</p>
+    </div>
+
+    <div class="game-container">
+        <div class="level-info">
+            <div>レベル: <span id="level">1</span></div>
+            <div>スコア: <span id="score">0</span></div>
+        </div>
+
+        <div class="target-display">
+            <div class="label">目標の数</div>
+            <div class="number" id="target">15</div>
+        </div>
+
+        <div class="expression-area" id="expression"></div>
+
+        <div class="number-buttons">
+            <button class="number-btn num7" id="btn7" onclick="addNumber(7)">7</button>
+            <button class="number-btn num5" id="btn5" onclick="addNumber(5)">5</button>
+            <button class="number-btn num3" id="btn3" onclick="addNumber(3)">3</button>
+        </div>
+
+        <div class="operator-buttons">
+            <button class="operator-btn" onclick="addOperator('+')">+</button>
+            <button class="operator-btn" onclick="addOperator('-')">−</button>
+            <button class="operator-btn" onclick="addOperator('×')">×</button>
+            <button class="operator-btn" onclick="addOperator('÷')">÷</button>
+        </div>
+
+        <div class="parentheses-buttons">
+            <button class="paren-btn" onclick="addParenthesis('(')">(</button>
+            <button class="paren-btn" onclick="addParenthesis(')')">)</button>
+        </div>
+
+        <div class="action-buttons">
+            <button class="action-btn calculate-btn" id="calculateBtn" onclick="calculate()">計算する</button>
+            <button class="action-btn clear-btn" onclick="clearExpression()">クリア</button>
+            <button class="action-btn next-btn" id="nextBtn" onclick="nextLevel()" style="display:none;">次へ</button>
+        </div>
+
+        <div class="result-message" id="result"></div>
+    </div>
+
+    <script>
+        // Game state
+        let level = 1;
+        let score = 0;
+        let expression = [];
+        let usedNumbers = { 7: false, 5: false, 3: false };
+        let targetNumber = 0;
+
+        // Problem sets for different levels
+        const problems = [
+            { target: 15, solutions: ["7+5+3", "5×3", "3×5"] },
+            { target: 9, solutions: ["7+5-3", "5+7-3"] },
+            { target: 6, solutions: ["(7-5)×3", "3×(7-5)"] },
+            { target: 35, solutions: ["7×5", "5×7"] },
+            { target: 21, solutions: ["7×3", "3×7"] },
+            { target: 2, solutions: ["7-5", "5-3"] },
+            { target: 14, solutions: ["7×(5-3)", "(5-3)×7"] },
+            { target: 20, solutions: ["(7-3)×5", "5×(7-3)"] },
+            { target: 36, solutions: ["(7+5)×3", "(5+7)×3", "3×(7+5)"] },
+            { target: 50, solutions: ["(7+3)×5", "5×(7+3)"] },
+            { target: 56, solutions: ["7×(5+3)", "7×(3+5)"] },
+            { target: 4, solutions: ["7-3", "(7+5)÷3"] },
+            { target: 105, solutions: ["7×5×3", "(7×5)×3", "7×(5×3)"] },
+            { target: 16, solutions: ["7×3-5", "(7×3)-5"] },
+            { target: 26, solutions: ["7×3+5", "(7×3)+5"] },
+            { target: 38, solutions: ["7×5+3", "(7×5)+3"] },
+            { target: 1, solutions: ["5-7+3", "5+3-7"] },
+            { target: 10, solutions: ["7+3", "3+7"] },
+            { target: -6, solutions: ["(5-7)×3", "3×(5-7)"] },
+            { target: -14, solutions: ["7×(3-5)", "(3-5)×7"] }
+        ];
+
+        function startGame() {
+            level = 1;
+            score = 0;
+            loadLevel();
+        }
+
+        function loadLevel() {
+            if (level > problems.length) {
+                showResult("おめでとう！全問クリア！", "success");
+                document.getElementById('nextBtn').style.display = 'none';
+                return;
+            }
+
+            targetNumber = problems[level - 1].target;
+            document.getElementById('target').textContent = targetNumber;
+            document.getElementById('level').textContent = level;
+            document.getElementById('score').textContent = score;
+            clearExpression();
+            document.getElementById('result').textContent = '';
+            document.getElementById('nextBtn').style.display = 'none';
+            document.getElementById('calculateBtn').disabled = false;
+        }
+
+        function addNumber(num) {
+            if (usedNumbers[num]) return;
+
+            const last = expression[expression.length - 1];
+            // Only add number if expression is empty, last item is an operator, or last item is '('
+            if (expression.length === 0 || isOperator(last) || last === '(') {
+                expression.push(num);
+                usedNumbers[num] = true;
+                updateDisplay();
+                updateButtons();
+            }
+        }
+
+        function addOperator(op) {
+            const last = expression[expression.length - 1];
+            // Only add operator if last item is a number or ')'
+            if (expression.length > 0 && !isOperator(last) && last !== '(') {
+                expression.push(op);
+                updateDisplay();
+                updateButtons();
+            }
+        }
+
+        function addParenthesis(paren) {
+            const last = expression[expression.length - 1];
+
+            if (paren === '(') {
+                // Can add '(' at start, after operator, or after another '('
+                if (expression.length === 0 || isOperator(last) || last === '(') {
+                    expression.push('(');
+                    updateDisplay();
+                }
+            } else if (paren === ')') {
+                // Can add ')' after a number or another ')'
+                // Also check that there are matching open parentheses
+                if (last && !isOperator(last) && last !== '(') {
+                    const openCount = expression.filter(item => item === '(').length;
+                    const closeCount = expression.filter(item => item === ')').length;
+                    if (openCount > closeCount) {
+                        expression.push(')');
+                        updateDisplay();
+                    }
+                }
+            }
+        }
+
+        function isOperator(item) {
+            return ['+', '-', '×', '÷'].includes(item);
+        }
+
+        function updateDisplay() {
+            const expressionDiv = document.getElementById('expression');
+            expressionDiv.innerHTML = '';
+            expression.forEach(item => {
+                const span = document.createElement('span');
+                span.className = 'expression-item';
+                span.textContent = item;
+                expressionDiv.appendChild(span);
+            });
+        }
+
+        function updateButtons() {
+            document.getElementById('btn7').disabled = usedNumbers[7];
+            document.getElementById('btn5').disabled = usedNumbers[5];
+            document.getElementById('btn3').disabled = usedNumbers[3];
+        }
+
+        function clearExpression() {
+            expression = [];
+            usedNumbers = { 7: false, 5: false, 3: false };
+            updateDisplay();
+            updateButtons();
+            document.getElementById('result').textContent = '';
+        }
+
+        function calculate() {
+            const last = expression[expression.length - 1];
+
+            // Check if expression is valid (ends with a number or ')')
+            if (expression.length === 0 || isOperator(last) || last === '(') {
+                showResult("式が不完全です", "error");
+                return;
+            }
+
+            // Check parentheses are balanced
+            const openCount = expression.filter(item => item === '(').length;
+            const closeCount = expression.filter(item => item === ')').length;
+            if (openCount !== closeCount) {
+                showResult("カッコが閉じられていません", "error");
+                return;
+            }
+
+            // Convert expression to JavaScript syntax
+            let jsExpression = expression.join('').replace(/×/g, '*').replace(/÷/g, '/');
+
+            try {
+                let result = eval(jsExpression);
+
+                // Check for division results
+                if (jsExpression.includes('/')) {
+                    result = Math.round(result * 100) / 100; // Round to 2 decimal places
+                }
+
+                if (result === targetNumber) {
+                    score += 10 * level;
+                    showResult(`正解！ ${expression.join('')} = ${result}`, "success");
+                    document.getElementById('score').textContent = score;
+                    document.getElementById('calculateBtn').disabled = true;
+                    document.getElementById('nextBtn').style.display = 'inline-block';
+                } else {
+                    showResult(`残念！ ${expression.join('')} = ${result} ≠ ${targetNumber}`, "error");
+                }
+            } catch (error) {
+                showResult("計算エラーが発生しました", "error");
+            }
+        }
+
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = `result-message ${type}`;
+        }
+
+        function nextLevel() {
+            level++;
+            loadLevel();
+        }
+
+        // Initialize game
+        startGame();
+    </script>
+</body>
+</html>
