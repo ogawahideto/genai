@@ -69,6 +69,9 @@ This repository contains a collection of small, self-contained web applications 
 #### [りんごカードゲーム - いいりんごの日](ringo-card-game/) (2025-11-04)
 ゲームアプリケーション
 
+#### [七五三数字パズル - Shichi-Go-San Number Puzzle](shichigosan-puzzle/) (2025-11-15)
+ゲームアプリケーション
+
 #### [シューティングゲーム](shooting_cc/) (2025-09-05)
 ゲームアプリケーション
 
@@ -188,6 +191,9 @@ AI・チャットアプリケーション
 ビジュアル・アートアプリケーション
 
 #### [月の満ち欠け](moon-phase/) (2025-09-05)
+ビジュアル・アートアプリケーション
+
+#### [世界親切デー（11月13日）Kindness App](world-kindness-day/) (2025-11-13)
 ビジュアル・アートアプリケーション
 
 #### [ゆれ豆腐](yuretofu/) (2025-09-05)
@@ -311,9 +317,6 @@ AI・チャットアプリケーション
 実験的アプリケーション
 
 #### [world-voyage](world-voyage/) (2025-09-06)
-実験的アプリケーション
-
-#### [世界親切デー - World Kindness Day](world-kindness-day/) (2025-11-13)
 実験的アプリケーション
 
 
