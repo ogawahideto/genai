@@ -16,6 +16,9 @@ CODEX.md
 */progress.md
 */notes.md
 
+# Note自動投稿の設定ファイル（秘密情報）
+scripts/note_config.json
+
 # その他のプライベートファイル
 *.local.md
 .vscode/

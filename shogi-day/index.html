@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>将棋の日 - 駒の動きを学ぼう</title>
+    <!--
+    AI Model: Claude Sonnet 4.5
+    User Prompt: 11月17日(将棋の日)にちなんだアプリケーションを作成
+    AI Approach: インタラクティブな将棋の駒の動きを学べる教育的アプリ。クリックで駒を選択し、移動可能な位置をハイライト表示
+    Implementation Intent: 将棋初心者向けの学習ツール。視覚的に駒の動きを理解できるようにし、将棋への興味を喚起する
+    -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'Meiryo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .info-section {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .info-section h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+
+        .piece-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .piece-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 20px 10px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .piece-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .piece-button.selected {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            transform: scale(1.1);
+        }
+
+        .board-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(9, 50px);
+            grid-template-rows: repeat(9, 50px);
+            gap: 1px;
+            background: #333;
+            border: 3px solid #333;
+            position: relative;
+        }
+
+        .cell {
+            background: #f5deb3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .cell.highlight {
+            background: #90EE90;
+            animation: pulse 1s infinite;
+        }
+
+        .cell.selected {
+            background: #FFD700;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        .piece-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 5px solid #667eea;
+        }
+
+        .piece-info h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .piece-info p {
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-box {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #333;
+            border-radius: 5px;
+        }
+
+        .legend-box.selected {
+            background: #FFD700;
+        }
+
+        .legend-box.highlight {
+            background: #90EE90;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .board {
+                grid-template-columns: repeat(9, 35px);
+                grid-template-rows: repeat(9, 35px);
+            }
+
+            .cell {
+                font-size: 1.2em;
+            }
+
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎌 将棋の日 🎌</h1>
+        <p>11月17日 - 駒の動きを学んで将棋をマスターしよう！</p>
+    </div>
+
+    <div class="container">
+        <div class="info-section">
+            <h2>将棋の日について</h2>
+            <p>11月17日は「将棋の日」です。江戸時代、八代将軍徳川吉宗がこの日を「お城将棋の日」と定め、御前対局を行わせた史実に基づき、日本将棋連盟が1975年に制定しました。</p>
+        </div>
+
+        <h2 style="text-align: center; color: #667eea; margin-bottom: 20px;">駒を選んで動きを見てみよう！</h2>
+
+        <div class="piece-selector" id="pieceSelector"></div>
+
+        <div class="board-container">
+            <div class="board" id="board"></div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-box selected"></div>
+                <span>選択中の駒</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box highlight"></div>
+                <span>移動可能な位置</span>
+            </div>
+        </div>
+
+        <div class="piece-info" id="pieceInfo">
+            <h3>駒を選択してください</h3>
+            <p>上のボタンから駒を選ぶと、その駒が盤上でどのように動けるかが表示されます。</p>
+        </div>
+    </div>
+
+    <script>
+        const pieces = {
+            '王': {
+                name: '王将/玉将',
+                moves: [[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1]],
+                description: '王将または玉将。全方向に1マスだけ移動できます。この駒を取られると負けです。'
+            },
+            '飛': {
+                name: '飛車',
+                moves: 'line_straight',
+                description: '縦横に何マスでも移動できます。成ると「竜王」となり、斜めにも1マス動けるようになります。'
+            },
+            '角': {
+                name: '角行',
+                moves: 'line_diagonal',
+                description: '斜めに何マスでも移動できます。成ると「竜馬」となり、縦横にも1マス動けるようになります。'
+            },
+            '金': {
+                name: '金将',
+                moves: [[0,1],[1,1],[1,0],[-1,0],[-1,1],[0,-1]],
+                description: '前と左右、斜め前、真後ろに1マス動けます。斜め後ろには動けません。'
+            },
+            '銀': {
+                name: '銀将',
+                moves: [[0,1],[1,1],[-1,1],[1,-1],[-1,-1]],
+                description: '斜め4方向と真前に1マス動けます。成ると金将と同じ動きになります。'
+            },
+            '桂': {
+                name: '桂馬',
+                moves: [[1,2],[-1,2]],
+                description: '前方2マス進んで左右1マスの位置に跳ねます。他の駒を飛び越えられる唯一の駒です。'
+            },
+            '香': {
+                name: '香車',
+                moves: 'line_forward',
+                description: '前方に何マスでも移動できます。後ろや横には動けません。'
+            },
+            '歩': {
+                name: '歩兵',
+                moves: [[0,1]],
+                description: '前に1マスだけ進めます。成ると「と金」となり、金将と同じ動きができます。'
+            }
+        };
+
+        let selectedPiece = null;
+        let centerPos = [4, 4]; // 盤の中央
+
+        function initBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        function initPieceSelector() {
+            const selector = document.getElementById('pieceSelector');
+            selector.innerHTML = '';
+
+            for (let [symbol, piece] of Object.entries(pieces)) {
+                const button = document.createElement('button');
+                button.className = 'piece-button';
+                button.textContent = symbol;
+                button.onclick = () => selectPiece(symbol);
+                selector.appendChild(button);
+            }
+        }
+
+        function selectPiece(symbol) {
+            selectedPiece = symbol;
+
+            // ボタンのハイライト
+            document.querySelectorAll('.piece-button').forEach(btn => {
+                btn.classList.remove('selected');
+                if (btn.textContent === symbol) {
+                    btn.classList.add('selected');
+                }
+            });
+
+            updateBoard();
+            updatePieceInfo(symbol);
+        }
+
+        function updateBoard() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                cell.textContent = '';
+                cell.className = 'cell';
+            });
+
+            if (!selectedPiece) return;
+
+            const [centerCol, centerRow] = centerPos;
+            const centerCell = document.querySelector(`[data-row="${centerRow}"][data-col="${centerCol}"]`);
+            centerCell.textContent = selectedPiece;
+            centerCell.classList.add('selected');
+
+            const moves = pieces[selectedPiece].moves;
+            const possibleMoves = getPossibleMoves(centerCol, centerRow, moves);
+
+            possibleMoves.forEach(([col, row]) => {
+                if (row >= 0 && row < 9 && col >= 0 && col < 9) {
+                    const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                    cell.classList.add('highlight');
+                    cell.textContent = '●';
+                }
+            });
+        }
+
+        function getPossibleMoves(col, row, moves) {
+            const possibleMoves = [];
+
+            if (moves === 'line_straight') {
+                // 縦横に直線
+                for (let i = 1; i < 9; i++) {
+                    possibleMoves.push([col + i, row]);
+                    possibleMoves.push([col - i, row]);
+                    possibleMoves.push([col, row + i]);
+                    possibleMoves.push([col, row - i]);
+                }
+            } else if (moves === 'line_diagonal') {
+                // 斜めに直線
+                for (let i = 1; i < 9; i++) {
+                    possibleMoves.push([col + i, row + i]);
+                    possibleMoves.push([col + i, row - i]);
+                    possibleMoves.push([col - i, row + i]);
+                    possibleMoves.push([col - i, row - i]);
+                }
+            } else if (moves === 'line_forward') {
+                // 前方直線
+                for (let i = 1; i < 9; i++) {
+                    possibleMoves.push([col, row + i]);
+                }
+            } else {
+                // 通常の移動パターン
+                moves.forEach(([dx, dy]) => {
+                    possibleMoves.push([col + dx, row + dy]);
+                });
+            }
+
+            return possibleMoves;
+        }
+
+        function updatePieceInfo(symbol) {
+            const piece = pieces[symbol];
+            const info = document.getElementById('pieceInfo');
+
+            info.innerHTML = `
+                <h3>${piece.name}</h3>
+                <p>${piece.description}</p>
+                <p style="margin-top: 15px; padding: 10px; background: #e8f4f8; border-radius: 5px;">
+                    💡 <strong>ヒント:</strong> 盤上の緑色のマス(●)が、この駒が移動できる位置を示しています。
+                </p>
+            `;
+        }
+
+        // 初期化
+        initBoard();
+        initPieceSelector();
+
+        // 最初の駒を選択
+        selectPiece('王');
+    </script>
+</body>
+</html>
