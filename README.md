@@ -170,6 +170,9 @@ AI・チャットアプリケーション
 #### [Anthropic & Claude 愛称ジェネレーター](claude_nickname/) (2025-09-05)
 AI・チャットアプリケーション
 
+#### [AI Models Showcase - 最先端AIモデル能力比較](comparison/) (2025-11-26)
+AI・チャットアプリケーション
+
 #### [恐竜大図鑑 - エンタメ満載](kyouryu-daizukan/) (2025-09-03)
 AI・チャットアプリケーション
 
