@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chromatic Renaissance</title>
+  <style>
+    :root {
+      --bg: radial-gradient(circle at 20% 20%, #1a1f3c, #0d0f1a 40%),
+             radial-gradient(circle at 80% 10%, rgba(255, 175, 204, 0.35), transparent 45%),
+             radial-gradient(circle at 20% 80%, rgba(140, 238, 255, 0.35), transparent 50%),
+             linear-gradient(135deg, #0b1224, #0a0d18 40%, #0b111f);
+      --glass: rgba(255, 255, 255, 0.08);
+      --accent: #ffd166;
+      --accent-2: #a8f0ff;
+      --accent-3: #c0a9ff;
+      --text: #e8f1ff;
+      --muted: #9fb1c9;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Inter", "Helvetica Neue", system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 32px;
+      overflow-x: hidden;
+    }
+
+    .frame {
+      width: min(1200px, 100%);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+        inset 0 0 40px rgba(255, 255, 255, 0.02);
+      border-radius: 24px;
+      position: relative;
+      overflow: hidden;
+      padding: 32px;
+      backdrop-filter: blur(18px);
+      isolation: isolate;
+    }
+
+    .frame::before,
+    .frame::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: conic-gradient(from 45deg, rgba(255, 209, 102, 0.1), rgba(168, 240, 255, 0.08), rgba(192, 169, 255, 0.12), rgba(255, 209, 102, 0.08));
+      filter: blur(70px);
+      opacity: 0.6;
+      mix-blend-mode: screen;
+      pointer-events: none;
+      z-index: -2;
+      animation: aurora 12s ease-in-out infinite alternate;
+    }
+
+    .frame::after {
+      animation-direction: alternate-reverse;
+      transform: translateY(-16px) scaleX(-1);
+    }
+
+    @keyframes aurora {
+      0% { transform: translate(-4%, -6%) rotate(0deg); }
+      50% { transform: translate(6%, 6%) rotate(4deg); }
+      100% { transform: translate(-2%, 4%) rotate(-2deg); }
+    }
+
+    .halo {
+      position: absolute;
+      inset: -60px;
+      background:
+        radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.08), transparent 45%),
+        radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.06), transparent 40%);
+      filter: blur(24px);
+      opacity: 0.5;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 18px;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+
+    .emblem {
+      width: 72px;
+      height: 72px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, rgba(255, 209, 102, 0.2), rgba(192, 169, 255, 0.25));
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: grid;
+      place-items: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 16px 38px rgba(12, 19, 45, 0.6);
+    }
+
+    .emblem::before,
+    .emblem::after {
+      content: "";
+      position: absolute;
+      width: 120%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+      top: 40%;
+      left: -10%;
+      animation: scan 4s linear infinite;
+      transform: rotate(12deg);
+    }
+
+    .emblem::after {
+      top: 60%;
+      animation-duration: 5.5s;
+      transform: rotate(-10deg);
+    }
+
+    @keyframes scan {
+      0% { transform: translateX(-20%) rotate(12deg); opacity: 0; }
+      30% { opacity: 1; }
+      100% { transform: translateX(120%) rotate(12deg); opacity: 0; }
+    }
+
+    .emblem svg {
+      width: 52px;
+      height: 52px;
+    }
+
+    h1 {
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      font-size: 28px;
+      color: #f6f8ff;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      letter-spacing: 0.12em;
+    }
+
+    .badge {
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      color: #fefefe;
+      text-transform: uppercase;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+    }
+
+    .badge::before {
+      content: "◦";
+      color: var(--accent);
+      font-size: 18px;
+      transform: translateY(-1px);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .panel {
+      position: relative;
+      padding: 18px;
+      border-radius: 18px;
+      background: var(--glass);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      transition: transform 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+      backdrop-filter: blur(10px);
+      min-height: 200px;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 16px 32px rgba(7, 11, 26, 0.45);
+    }
+
+    .panel:hover {
+      transform: translateY(-6px) scale(1.01);
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 24px 44px rgba(7, 11, 26, 0.6);
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 20% 20%, rgba(255, 209, 102, 0.12), transparent 40%),
+                  radial-gradient(circle at 80% 80%, rgba(168, 240, 255, 0.14), transparent 35%);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .panel h3 {
+      font-size: 16px;
+      letter-spacing: 0.08em;
+      color: #fefefe;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+
+    .panel p {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+      margin: 14px 0;
+    }
+
+    .orbits {
+      position: relative;
+      height: 320px;
+      border-radius: 18px;
+      overflow: hidden;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 32px rgba(7, 11, 26, 0.45);
+      backdrop-filter: blur(10px);
+    }
+
+    .orbit {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      animation: spin var(--speed) linear infinite;
+      filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4));
+    }
+
+    .orbit:nth-child(1) { --speed: 24s; transform: scale(0.5); opacity: 0.55; }
+    .orbit:nth-child(2) { --speed: 30s; transform: scale(0.75); opacity: 0.5; animation-direction: reverse; }
+    .orbit:nth-child(3) { --speed: 40s; transform: scale(1.05); opacity: 0.45; }
+    .orbit:nth-child(4) { --speed: 50s; transform: scale(1.35); opacity: 0.38; animation-direction: reverse; }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .planet {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #fff, #ffd166 65%, #ff9f1c 90%);
+      box-shadow: 0 0 16px rgba(255, 209, 102, 0.8);
+      animation: float 5s ease-in-out infinite;
+    }
+
+    .planet:nth-child(5) { top: 16%; left: 30%; animation-duration: 7s; }
+    .planet:nth-child(6) { top: 55%; left: 60%; animation-duration: 6s; }
+    .planet:nth-child(7) { top: 72%; left: 18%; animation-duration: 8s; }
+    .planet:nth-child(8) { top: 32%; left: 78%; animation-duration: 5s; }
+
+    @keyframes float {
+      0% { transform: translateY(0) scale(1); filter: brightness(1); }
+      50% { transform: translateY(-10px) scale(1.08); filter: brightness(1.1); }
+      100% { transform: translateY(0) scale(1); filter: brightness(1); }
+    }
+
+    .constellation {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow:
+        60px 40px #fff,
+        120px 80px #fff,
+        180px 140px #fff,
+        240px 200px #fff,
+        300px 100px #fff,
+        360px 180px #fff,
+        420px 60px #fff,
+        480px 220px #fff,
+        540px 40px #fff,
+        600px 160px #fff;
+      opacity: 0.75;
+      filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.7));
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .event {
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.05);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(8px);
+      min-height: 120px;
+    }
+
+    .event::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255, 209, 102, 0.12), rgba(168, 240, 255, 0.12));
+      opacity: 0.12;
+      mix-blend-mode: screen;
+    }
+
+    .event span {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fefefe;
+      margin-bottom: 8px;
+    }
+
+    .event h4 {
+      font-size: 15px;
+      margin-bottom: 6px;
+      color: #fdfdfd;
+      letter-spacing: 0.03em;
+    }
+
+    .event p {
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 13px;
+    }
+
+    footer {
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .glow-bar {
+      height: 4px;
+      width: 100%;
+      background: linear-gradient(90deg, rgba(255, 209, 102, 0.8), rgba(192, 169, 255, 0.8), rgba(168, 240, 255, 0.9));
+      border-radius: 999px;
+      filter: drop-shadow(0 0 12px rgba(192, 169, 255, 0.65));
+      animation: pulse 4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; transform: scaleX(0.98); }
+      50% { opacity: 1; transform: scaleX(1.02); }
+    }
+
+    @media (max-width: 720px) {
+      header { grid-template-columns: auto 1fr; grid-template-rows: auto auto; }
+      .badge { justify-self: flex-start; }
+      .orbits { height: 260px; }
+      body { padding: 32px 18px; }
+      .frame { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="halo"></div>
+    <header>
+      <div class="emblem" aria-hidden="true">
+        <svg viewBox="0 0 80 80" fill="none">
+          <defs>
+            <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffd166" />
+              <stop offset="50%" stop-color="#c0a9ff" />
+              <stop offset="100%" stop-color="#a8f0ff" />
+            </linearGradient>
+          </defs>
+          <circle cx="40" cy="40" r="24" stroke="url(#g1)" stroke-width="3" />
+          <path d="M20 40c8-4 16-4 24 0s16 4 24 0" stroke="url(#g1)" stroke-width="3" stroke-linecap="round" />
+          <path d="M40 20c4 8 4 16 0 24s-4 16 0 24" stroke="url(#g1)" stroke-width="3" stroke-linecap="round" />
+        </svg>
+      </div>
+      <div>
+        <h1>Chromatic Renaissance</h1>
+        <div class="subtitle">Luxurious HTML Artistry</div>
+      </div>
+      <div class="badge">Aurora-grade design</div>
+    </header>
+
+    <div class="grid">
+      <section class="panel">
+        <h3>Atmospheric Canvas</h3>
+        <p>多層のオーロラ、グラスモーフィックな面、細やかな影を重ね合わせ、静かに揺らめく空気感を演出します。インタラクションなしで複雑さと気品を表現しています。</p>
+        <div class="divider"></div>
+        <p>色彩は金と藤と水色の三重奏。ぼかしと光彩が漆黒の背景に滑らかに溶け込み、余白の静けさが高級感を支えます。</p>
+      </section>
+
+      <section class="panel orbits" aria-label="Orbital Sculpture">
+        <div class="orbit"></div>
+        <div class="orbit"></div>
+        <div class="orbit"></div>
+        <div class="orbit"></div>
+        <div class="planet"></div>
+        <div class="planet"></div>
+        <div class="planet"></div>
+        <div class="planet"></div>
+        <div class="constellation" aria-hidden="true"></div>
+      </section>
+
+      <section class="panel">
+        <h3>Silk-like Typography</h3>
+        <p>シャープな字間と柔らかなライン高さを併せ持つタイポグラフィ。光のグラデーションで輪郭を滲ませ、シルクのような質感を備えています。</p>
+        <div class="divider"></div>
+        <p>ヘッダーの徽章はミニマルな軌道を描き、横切る光線が静かな躍動感を与えます。情報は余裕を持ったグリッドに整列し、視線のリズムをコントロールします。</p>
+      </section>
+    </div>
+
+    <div class="timeline" aria-label="Radiant timeline">
+      <article class="event">
+        <span>01 — AURORA</span>
+        <h4>光のレイヤーを重ねた序章</h4>
+        <p>静かな起伏を持つ背景に、淡い光輪を混ぜ込みます。陰影の層が奥行きを生み、手触りを感じる夜明けのよう。</p>
+      </article>
+      <article class="event">
+        <span>02 — SILHOUETTE</span>
+        <h4>グラス質感のシルエット</h4>
+        <p>透過と輪郭線のバランスを緻密に調整し、視覚的な軽やかさを演出。ガラス越しの空気を感じるような佇まい。</p>
+      </article>
+      <article class="event">
+        <span>03 — CONSTELLATION</span>
+        <h4>点描で描く余韻</h4>
+        <p>微光の星々を散りばめ、余白にリズムを与えます。静止したまま動きを示唆し、想像の余地を残す設計。</p>
+      </article>
+      <article class="event">
+        <span>04 — FINALE</span>
+        <h4>柔らかく脈打つ終幕</h4>
+        <p>彩りのバーがゆったりと鼓動し、ページ全体を締めくくります。音のない音楽のように、静謐な余韻をたたえます。</p>
+      </article>
+    </div>
+
+    <footer>
+      <div>HTMLのみで描く、複雑で美麗なシーン。</div>
+      <div class="glow-bar" aria-hidden="true"></div>
+      <div>Codex 5.1-max — Neo-classic Visual</div>
+    </footer>
+  </div>
+</body>
+</html>

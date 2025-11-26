@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Models Showcase - 最先端AIモデル能力比較</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 60px;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            letter-spacing: 2px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            line-height: 1.8;
+        }
+
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 40px;
+            padding: 20px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 1s ease-out;
+            animation-fill-mode: both;
+        }
+
+        .card:nth-child(1) { animation-delay: 0.1s; }
+        .card:nth-child(2) { animation-delay: 0.2s; }
+        .card:nth-child(3) { animation-delay: 0.3s; }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, var(--accent-color), var(--accent-color-light));
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card:hover {
+            transform: translateY(-15px) scale(1.02);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-claude {
+            --accent-color: #cc785c;
+            --accent-color-light: #e89c7d;
+        }
+
+        .card-gemini {
+            --accent-color: #4285f4;
+            --accent-color-light: #669df6;
+        }
+
+        .card-codex {
+            --accent-color: #10a37f;
+            --accent-color-light: #1fd9a3;
+        }
+
+        .card-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 25px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .card h2 {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: #333;
+            text-align: center;
+        }
+
+        .card-subtitle {
+            color: var(--accent-color);
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .card-description {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+
+        .card-button {
+            display: block;
+            width: 100%;
+            padding: 16px 30px;
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-color-light));
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .card-button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .card-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .card-button span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 60px;
+            opacity: 0.9;
+            animation: fadeIn 2s ease-out;
+        }
+
+        .footer p {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            .card {
+                padding: 30px 25px;
+            }
+
+            .cards-container {
+                gap: 25px;
+            }
+        }
+
+        /* Particle background effect */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            animation: float linear infinite;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Models Showcase</h1>
+            <p>最先端AIモデルの能力比較展示</p>
+            <p style="font-size: 1rem; margin-top: 10px; opacity: 0.85;">
+                「HTMLだけでできる限り複雑で美麗でお洒落なWebページを作成する」<br>
+                各モデルの創造性と技術力の粋を体験してください
+            </p>
+        </div>
+
+        <div class="cards-container">
+            <div class="card card-claude">
+                <div class="card-icon">🧠</div>
+                <h2>Claude</h2>
+                <div class="card-subtitle">Opus 4.5</div>
+                <div class="card-description">
+                    Anthropic社が開発した最先端の大規模言語モデル。<br>
+                    優れた推論能力と創造性を持ち、複雑なタスクを高精度で処理します。
+                </div>
+                <a href="claude.html" class="card-button">
+                    <span>体験する →</span>
+                </a>
+            </div>
+
+            <div class="card card-gemini">
+                <div class="card-icon">💎</div>
+                <h2>Gemini</h2>
+                <div class="card-subtitle">3 Pro</div>
+                <div class="card-description">
+                    Google DeepMindによる次世代マルチモーダルAI。<br>
+                    テキスト、画像、音声を統合的に理解し、革新的な出力を生成します。
+                </div>
+                <a href="gemini.html" class="card-button">
+                    <span>体験する →</span>
+                </a>
+            </div>
+
+            <div class="card card-codex">
+                <div class="card-icon">⚡</div>
+                <h2>Codex</h2>
+                <div class="card-subtitle">5.1 Max</div>
+                <div class="card-description">
+                    OpenAIのコード生成特化型モデルの最新版。<br>
+                    高度なプログラミング能力と最適化されたコード出力が特徴です。
+                </div>
+                <a href="codex.html" class="card-button">
+                    <span>体験する →</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>
+                各モデルに同一の指示を与え、その能力を最大限発揮させた結果をご覧いただけます。<br>
+                <strong>制約条件：</strong> HTML単一ファイル / 外部ライブラリ不使用 / 純粋なWeb技術のみ
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Create floating particles
+        const particlesContainer = document.getElementById('particles');
+        const particleCount = 30;
+
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDuration = (Math.random() * 15 + 10) + 's';
+            particle.style.animationDelay = Math.random() * 5 + 's';
+            particlesContainer.appendChild(particle);
+        }
+
+        // Add smooth scroll behavior
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Add click ripple effect
+        document.querySelectorAll('.card-button').forEach(button => {
+            button.addEventListener('click', function(e) {
+                const ripple = document.createElement('span');
+                const rect = this.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = x + 'px';
+                ripple.style.top = y + 'px';
+                ripple.classList.add('ripple');
+
+                this.appendChild(ripple);
+
+                setTimeout(() => ripple.remove(), 600);
+            });
+        });
+    </script>
+</body>
+</html>
