@@ -9,6 +9,9 @@ This repository contains a collection of small, self-contained web applications 
 #### [91-100 パズルゲーム](91/) (2025-11-19)
 ゲームアプリケーション
 
+#### [Anti-Gravity Run - 反重力ラン](anti-gravity/) (2025-11-27)
+ゲームアプリケーション
+
 #### [重陽の節句 9パズル](chouyou-9-puzzle/) (2025-09-09)
 ゲームアプリケーション
 
