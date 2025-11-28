@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz & Catch Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- 画面上部の情報表示エリア -->
+        <header id="info-bar">
+            <div id="score-display">Score: 0</div>
+            <div id="inventory-display">Inventory: 0 items</div>
+            <button id="shop-button">Shop</button>
+        </header>
+
+        <!-- クイズ画面 -->
+        <div id="quiz-screen" class="screen">
+            <div id="quiz-container">
+                <h2 id="quiz-question"></h2>
+                <div id="quiz-choices"></div>
+            </div>
+        </div>
+
+        <!-- ゲーム画面 -->
+        <div id="game-screen" class="screen">
+            <div id="player"></div>
+        </div>
+        
+        <!-- ゲームオーバー画面 -->
+        <div id="game-over-screen" class="screen">
+            <h1>Game Over</h1>
+            <p>Final Score: <span id="final-score"></span></p>
+            <button id="restart-button">Play Again (Start with Quiz)</button>
+        </div>
+
+        <!-- ショップ画面 -->
+        <div id="shop-screen" class="screen">
+            <h1>Item Shop</h1>
+            <p>Your Points: <span id="shop-points"></span></p>
+            <div id="shop-items">
+                <!-- ショップアイテムはJSで動的に生成 -->
+            </div>
+            <button id="close-shop-button">Close Shop</button>
+        </div>
+
+    </div>
+
+    <script src="main.js" type="module"></script>
+</body>
+</html>
