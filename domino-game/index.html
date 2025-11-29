@@ -545,7 +545,6 @@ AIのアプローチ:
         if (checkEndCondition()) {
             return;
         }
-        
         switchTurn();
     }
     
@@ -604,7 +603,9 @@ AIのアプローチ:
         } else {
             // Pass the turn
             setMessage('パスしました。');
-            switchTurn();
+            if (!checkEndCondition()) {
+                switchTurn();
+            }
         }
     });
 
@@ -621,7 +622,9 @@ AIのアプローチ:
                 return;
             } else {
                 setMessage('コンピュータはパスしました。');
-                switchTurn();
+                if (!checkEndCondition()) {
+                    switchTurn();
+                }
                 return;
             }
         }
