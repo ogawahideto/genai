@@ -1,0 +1,772 @@
+
+<!--
+AIモデル: Gemini
+作成日時: 2025-11-29
+ユーザープロンプト: 新しいプロジェクトとして、ドミノゲームを作ってください。ドミノ倒しではなく本来のドミノゲームです。人間対コンピュータの対戦としてください。コンピュータの思考ルーチンはJavascriptでできるだけ強くしてください。ビジュアルを工夫してインタラクティブなゲームにしてください。
+AIのアプローチ:
+- HTML, CSS, JavaScriptを単一の`index.html`ファイルに記述するシングルファイルアーキテクチャを採用。
+- 外部ライブラリは使用せず、標準的なWeb APIのみで実装。
+- ゲームのロジックは、ドミノ牌、プレイヤーとコンピュータの手牌、場、山札を管理するデータ構造を中心に構築。
+- コンピュータの思考ルーチンは、単に出せる牌を出すだけでなく、出した後の手牌の多様性や相手をブロックする可能性を評価するスコアリング方式を実装し、戦略的な手を選択するように設計。
+- UIはCSSでスタイリングし、ドミノ牌のビジュアルやアニメーションによってインタラクティブな体験を目指す。Flexboxを使用して牌のドットを表現。
+実装の意図:
+- ユーザーの要求する「強いAI」と「インタラクティブなビジュアル」を備えた、本格的なドミノ対戦ゲームをブラウザ上で提供する。
+- コードを単一ファイルにまとめることで、プロジェクトのポータビリティと簡潔性を確保する。
+- 教育的な観点からも、ゲームロジックとAIの思考プロセスが理解しやすいように、コードにコメントを加えて構造化する。
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ドミノゲーム</title>
+    <style>
+        :root {
+            --domino-width: 40px;
+            --domino-height: 80px;
+            --dot-size: 8px;
+            --board-color: #006400;
+            --domino-color: #f8f8f8;
+            --dot-color: #333;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 1em;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: #333;
+        }
+        .game-container {
+            display: grid;
+            grid-template-areas:
+                "computer-hand"
+                "board"
+                "player-hand";
+            grid-template-rows: 120px 1fr 120px;
+            width: 100%;
+            height: calc(100vh - 150px);
+            max-width: 1200px;
+            gap: 1em;
+        }
+        .hand {
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        #computer-hand { grid-area: computer-hand; }
+        #player-hand { grid-area: player-hand; }
+        #game-board {
+            grid-area: board;
+            background-color: var(--board-color);
+            border: 5px solid saddlebrown;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-x: auto;
+            display: flex;
+            align-items: center;
+        }
+        .domino-chain {
+            display: flex;
+            align-items: center;
+        }
+        .domino {
+            width: var(--domino-width);
+            height: var(--domino-height);
+            background-color: var(--domino-color);
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            padding: 4px;
+            box-sizing: border-box;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .domino.horizontal {
+            width: var(--domino-height);
+            height: var(--domino-width);
+            flex-direction: row;
+        }
+        .domino-half {
+            flex: 1;
+            display: grid;
+            place-items: center;
+            position: relative;
+            padding: 2px;
+        }
+        .domino.horizontal .domino-half {
+            border-top: none;
+            border-right: 1px solid #ccc;
+        }
+        .domino.horizontal .domino-half:last-child {
+            border-right: none;
+        }
+        .domino:not(.horizontal) .domino-half {
+             border-bottom: 1px solid #ccc;
+        }
+         .domino:not(.horizontal) .domino-half:last-child {
+             border-bottom: none;
+        }
+        .dot {
+            width: var(--dot-size);
+            height: var(--dot-size);
+            background-color: var(--dot-color);
+            border-radius: 50%;
+            position: absolute;
+        }
+        #player-hand .domino:hover {
+            transform: translateY(-10px);
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .domino.back {
+            background-color: #555;
+            background-image: repeating-linear-gradient(45deg, #666 0, #666 10px, #555 10px, #555 20px);
+        }
+        #game-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.8);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: right;
+        }
+        #stock-info, #score-info {
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+        #message-area {
+            font-size: 1.2em;
+            color: firebrick;
+            font-weight: bold;
+            min-height: 25px;
+        }
+        .play-area {
+            width: 50px;
+            height: 90px;
+            border: 2px dashed #fff5;
+            border-radius: 8px;
+            transition: background-color 0.2s;
+            flex-shrink: 0;
+        }
+        .play-area.horizontal {
+             width: 90px;
+             height: 50px;
+        }
+        .play-area.highlight {
+            background-color: rgba(255, 255, 0, 0.5);
+            cursor: pointer;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 30px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .modal-content h2 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>ドミノゲーム</h1>
+
+    <div class="game-container">
+        <div id="computer-hand" class="hand"></div>
+        <div id="game-board"></div>
+        <div id="player-hand" class="hand"></div>
+    </div>
+
+    <div id="game-info">
+        <div id="score-info">スコア: あなた 0 - 0 CPU</div>
+        <div id="stock-info">山札: 14</div>
+        <div id="message-area"></div>
+        <button id="pass-button" style="display: none;">パス / 山から引く</button>
+        <button id="restart-button" style="display: none;">次のラウンド</button>
+    </div>
+    
+    <div id="game-over-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="game-over-title"></h2>
+            <p id="game-over-text"></p>
+            <button id="new-game-button">新しいゲームを始める</button>
+        </div>
+    </div>
+
+
+    <script>
+    const playerHandElem = document.getElementById('player-hand');
+    const computerHandElem = document.getElementById('computer-hand');
+    const gameBoardElem = document.getElementById('game-board');
+    const stockInfoElem = document.getElementById('stock-info');
+    const scoreInfoElem = document.getElementById('score-info');
+    const messageAreaElem = document.getElementById('message-area');
+    const passButton = document.getElementById('pass-button');
+    const restartButton = document.getElementById('restart-button');
+    const gameOverModal = document.getElementById('game-over-modal');
+    const gameOverTitle = document.getElementById('game-over-title');
+    const gameOverText = document.getElementById('game-over-text');
+    const newGameButton = document.getElementById('new-game-button');
+
+    const MAX_SCORE = 100;
+
+    let stock = [];
+    let playerHand = [];
+    let computerHand = [];
+    let board = [];
+    let boardEnds = { left: -1, right: -1 };
+    
+    let scores = { player: 0, computer: 0 };
+    let currentPlayer = 'player';
+    let selectedDomino = { element: null, domino: null, index: -1 };
+
+    function createDominoes() {
+        const dominoes = [];
+        for (let i = 0; i <= 6; i++) {
+            for (let j = i; j <= 6; j++) {
+                dominoes.push({ a: i, b: j, isDouble: i === j });
+            }
+        }
+        return dominoes;
+    }
+
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    function startGame() {
+        scores = { player: 0, computer: 0 };
+        startRound();
+    }
+    
+    function startRound() {
+        // Reset game state
+        stock = createDominoes();
+        shuffle(stock);
+
+        playerHand = stock.splice(0, 7);
+        computerHand = stock.splice(0, 7);
+        board = [];
+        boardEnds = { left: -1, right: -1 };
+        
+        // Decide who starts
+        const playerMaxDouble = Math.max(...playerHand.filter(d => d.isDouble).map(d => d.a), -1);
+        const computerMaxDouble = Math.max(...computerHand.filter(d => d.isDouble).map(d => d.a), -1);
+
+        if (playerMaxDouble === -1 && computerMaxDouble === -1) {
+            const playerMax = Math.max(...playerHand.map(d => d.a + d.b));
+            const computerMax = Math.max(...computerHand.map(d => d.a + d.b));
+            currentPlayer = playerMax >= computerMax ? 'player' : 'computer';
+        } else {
+            currentPlayer = playerMaxDouble >= computerMaxDouble ? 'player' : 'computer';
+        }
+
+        updateUI();
+        restartButton.style.display = 'none';
+
+        if (currentPlayer === 'computer') {
+            setMessage('コンピュータのターンです...');
+            setTimeout(computerTurn, 1000);
+        } else {
+            setMessage('あなたのターンです。');
+            checkPlayerMoves();
+        }
+    }
+    
+    function createDominoElement(dominoPiece, isBack = false) {
+        const div = document.createElement('div');
+        div.className = 'domino';
+        if (isBack) {
+            div.classList.add('back');
+            return div;
+        }
+        
+        const { domino, displayA, displayB, horizontal } = dominoPiece;
+
+        div.dataset.a = domino.a;
+        div.dataset.b = domino.b;
+
+        if (horizontal) {
+            div.classList.add('horizontal');
+        }
+
+        const halfA = createHalf(displayA);
+        const halfB = createHalf(displayB);
+        div.appendChild(halfA);
+        div.appendChild(halfB);
+        return div;
+    }
+
+    function createHalf(number) {
+        const half = document.createElement('div');
+        half.className = 'domino-half';
+        half.dataset.value = number;
+        
+        const positions = [
+            [], // 0
+            [[50, 50]], // 1
+            [[25, 25], [75, 75]], // 2
+            [[25, 25], [50, 50], [75, 75]], // 3
+            [[25, 25], [25, 75], [75, 25], [75, 75]], // 4
+            [[25, 25], [25, 75], [75, 25], [75, 75], [50, 50]], // 5
+            [[25, 25], [25, 75], [50, 25], [50, 75], [75, 25], [75, 75]] // 6
+        ];
+
+        if (number > 0) {
+             positions[number].forEach(pos => {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                dot.style.left = `${pos[0]}%`;
+                dot.style.top = `${pos[1]}%`;
+                dot.style.transform = 'translate(-50%, -50%)';
+                half.appendChild(dot);
+             });
+        }
+        return half;
+    }
+
+    function updateUI() {
+        // Player Hand
+        playerHandElem.innerHTML = '';
+        playerHand.sort((x,y) => (x.a+x.b) - (y.a+y.b)).forEach((d, i) => {
+            const dominoElem = createDominoElement({ domino: d, displayA: d.a, displayB: d.b, horizontal: false });
+            dominoElem.addEventListener('click', () => onPlayerDominoClick(dominoElem, d, i));
+            playerHandElem.appendChild(dominoElem);
+        });
+
+        // Computer Hand
+        computerHandElem.innerHTML = '';
+        computerHand.forEach(() => {
+            computerHandElem.appendChild(createDominoElement(null, true));
+        });
+
+        // Board
+        renderBoard();
+
+        // Info
+        stockInfoElem.textContent = `山札: ${stock.length}`;
+        scoreInfoElem.textContent = `スコア: あなた ${scores.player} - ${scores.computer} CPU`;
+    }
+    
+    function renderBoard() {
+        gameBoardElem.innerHTML = '';
+        const chain = document.createElement('div');
+        chain.className = 'domino-chain';
+
+        // Create a temporary play area for the left end
+        const leftArea = createPlayArea('left');
+        leftArea.classList.toggle('horizontal', board.length > 0 && board[0].horizontal);
+
+        // Create a temporary play area for the right end
+        const rightArea = createPlayArea('right');
+        rightArea.classList.toggle('horizontal', board.length > 0 && board[board.length - 1].horizontal);
+
+        board.forEach((d) => {
+            const dominoElem = createDominoElement(d); // Pass the entire pieceData object
+            chain.appendChild(dominoElem);
+        });
+        
+        gameBoardElem.appendChild(leftArea);
+        gameBoardElem.appendChild(chain);
+        gameBoardElem.appendChild(rightArea);
+
+        if (selectedDomino.domino) {
+            highlightPlayAreas();
+        }
+    }
+    
+    function createPlayArea(side) {
+        const area = document.createElement('div');
+        area.className = 'play-area';
+        area.dataset.side = side;
+        area.addEventListener('click', () => onPlayAreaClick(side));
+        return area;
+    }
+
+    function onPlayerDominoClick(element, domino, index) {
+        if (currentPlayer !== 'player') return;
+
+        if (selectedDomino.element) {
+            selectedDomino.element.style.transform = '';
+        }
+        if (selectedDomino.element === element) {
+            selectedDomino = { element: null, domino: null, index: -1 };
+            clearHighlights();
+        } else {
+            selectedDomino = { element, domino, index };
+            element.style.transform = 'translateY(-10px) scale(1.05)';
+            highlightPlayAreas();
+        }
+    }
+    
+    function highlightPlayAreas() {
+        clearHighlights();
+        if (!selectedDomino.domino) return;
+        
+        const { a, b } = selectedDomino.domino;
+        const areas = document.querySelectorAll('.play-area');
+        
+        if (board.length === 0) {
+            areas.forEach(area => area.classList.add('highlight'));
+            return;
+        }
+
+        if (a === boardEnds.left || b === boardEnds.left) {
+            document.querySelector('.play-area[data-side="left"]').classList.add('highlight');
+        }
+        if (a === boardEnds.right || b === boardEnds.right) {
+            document.querySelector('.play-area[data-side="right"]').classList.add('highlight');
+        }
+    }
+    
+    function clearHighlights() {
+        document.querySelectorAll('.play-area').forEach(a => a.classList.remove('highlight'));
+    }
+
+    function onPlayAreaClick(side) {
+        if (currentPlayer !== 'player' || !selectedDomino.domino) return;
+
+        const area = document.querySelector(`.play-area[data-side="${side}"]`);
+        if (!area.classList.contains('highlight')) {
+            setMessage("ここには置けません。");
+            return;
+        }
+        
+        placeDomino(selectedDomino.index, side);
+    }
+    
+    function placeDomino(handIndex, side) {
+        const domino = (currentPlayer === 'player' ? playerHand : computerHand)[handIndex];
+        
+        let pieceData = { domino: domino, displayA: domino.a, displayB: domino.b, horizontal: false };
+
+        if (board.length === 0) {
+            // First domino placed
+            pieceData.horizontal = false; // Always vertical for the first domino for simplicity
+            board.push(pieceData);
+            boardEnds.left = domino.a;
+            boardEnds.right = domino.b;
+        } else {
+            const endValue = side === 'left' ? boardEnds.left : boardEnds.right;
+            let otherValue;
+
+            if (domino.a === endValue) {
+                otherValue = domino.b;
+            } else if (domino.b === endValue) {
+                otherValue = domino.a;
+            } else {
+                console.error("Invalid move attempted in placeDomino");
+                return;
+            }
+            
+            if (side === 'left') {
+                pieceData.displayA = otherValue; // New free end on the left
+                pieceData.displayB = endValue;   // Connecting end on the right
+            } else { // side === 'right'
+                pieceData.displayA = endValue;   // Connecting end on the left
+                pieceData.displayB = otherValue; // New free end on the right
+            }
+
+            // Doubles are always vertical. Non-doubles are horizontal on the board.
+            pieceData.horizontal = !domino.isDouble;
+            
+            if (side === 'left') {
+                board.unshift(pieceData);
+                boardEnds.left = otherValue;
+            } else { // side === 'right'
+                board.push(pieceData);
+                boardEnds.right = otherValue;
+            }
+        }
+        
+        // Remove from hand
+        if (currentPlayer === 'player') {
+            playerHand.splice(handIndex, 1);
+            selectedDomino = { element: null, domino: null, index: -1 };
+        } else {
+            computerHand.splice(handIndex, 1);
+        }
+
+        clearHighlights();
+        passButton.style.display = 'none';
+        updateUI();
+
+        if (checkEndCondition()) {
+            return;
+        }
+        
+        switchTurn();
+    }
+    
+    function switchTurn() {
+        currentPlayer = currentPlayer === 'player' ? 'computer' : 'player';
+        if (currentPlayer === 'computer') {
+            setMessage('コンピュータのターンです...');
+            setTimeout(computerTurn, 1500);
+        } else {
+            setMessage('あなたのターンです。');
+            checkPlayerMoves();
+        }
+    }
+    
+    function getValidMoves(hand) {
+        const moves = [];
+        if (board.length === 0) {
+            return hand.map((domino, index) => ({ domino, index, side: 'left' }));
+        }
+        hand.forEach((domino, index) => {
+            if (domino.a === boardEnds.left || domino.b === boardEnds.left) {
+                moves.push({ domino, index, side: 'left' });
+            }
+            if (boardEnds.left !== boardEnds.right && (domino.a === boardEnds.right || domino.b === boardEnds.right)) {
+                moves.push({ domino, index, side: 'right' });
+            }
+        });
+        return moves;
+    }
+
+    function checkPlayerMoves() {
+        const validMoves = getValidMoves(playerHand);
+        if (validMoves.length === 0) {
+            passButton.style.display = 'inline-block';
+            if (stock.length > 0) {
+                 setMessage('出せる牌がありません。山から引いてください。');
+                 passButton.textContent = '山から引く';
+            } else {
+                 setMessage('出せる牌がありません。パスしてください。');
+                 passButton.textContent = 'パス';
+            }
+        } else {
+            passButton.style.display = 'none';
+        }
+    }
+    
+    passButton.addEventListener('click', () => {
+        if (currentPlayer !== 'player') return;
+
+        if (stock.length > 0) {
+            const newDomino = stock.pop();
+            playerHand.push(newDomino);
+            setMessage('山から1枚引きました。');
+            updateUI();
+            checkPlayerMoves();
+        } else {
+            // Pass the turn
+            setMessage('パスしました。');
+            switchTurn();
+        }
+    });
+
+    function computerTurn() {
+        let validMoves = getValidMoves(computerHand);
+
+        if (validMoves.length === 0) {
+            if (stock.length > 0) {
+                const newDomino = stock.pop();
+                computerHand.push(newDomino);
+                setMessage('コンピュータが山から1枚引きました。');
+                updateUI();
+                setTimeout(computerTurn, 1500);
+                return;
+            } else {
+                setMessage('コンピュータはパスしました。');
+                switchTurn();
+                return;
+            }
+        }
+
+        const bestMove = findBestMove(validMoves);
+        
+        const dominoToPlay = bestMove.domino;
+        const side = bestMove.side;
+        const handIndex = computerHand.findIndex(d => d.a === dominoToPlay.a && d.b === dominoToPlay.b);
+
+        setMessage(`コンピュータが [${dominoToPlay.a}|${dominoToPlay.b}] をプレイしました。`);
+        placeDomino(handIndex, side);
+    }
+    
+    // AI Logic
+    function findBestMove(moves) {
+        // Strategy:
+        // 1. Evaluate each move.
+        // 2. Score is based on:
+        //    - Higher score for playing a domino that leaves the computer's hand more flexible (more variety of numbers).
+        //    - Higher score for playing a domino with a high point value (to get rid of points).
+        //    - Consider what numbers the player might have.
+
+        const scoredMoves = moves.map(move => {
+            let score = 0;
+            const { domino } = move;
+            
+            // Score for getting rid of points
+            score += domino.a + domino.b;
+            if (domino.isDouble) score += 5; // Prioritize getting rid of doubles
+            
+            // Create a hypothetical remaining hand
+            const tempHand = computerHand.filter(d => d !== domino);
+            const remainingNumbers = new Set();
+            tempHand.forEach(d => {
+                remainingNumbers.add(d.a);
+                remainingNumbers.add(d.b);
+            });
+            
+            // Score for hand diversity after move
+            score += remainingNumbers.size * 3;
+
+            // Try to block opponent - this is a simplified heuristic
+            // We assume the player is less likely to have numbers that are rare on the board and in our hand
+            const allKnownNumbers = [...computerHand.flatMap(d => [d.a, d.b]), ...board.flatMap(p => [p.domino.a, p.domino.b])];
+            const numCounts = {};
+            for(let i=0; i<=6; i++) numCounts[i] = 0;
+            allKnownNumbers.forEach(num => numCounts[num]++);
+
+            const {a, b} = domino;
+            const endValue = move.side === 'left' ? boardEnds.left : boardEnds.right;
+            const newEndValue = a === endValue ? b : a;
+
+            // Give a bonus if the new end value is a number we have a lot of, or a number that seems rare overall
+            score += numCounts[newEndValue] * 2; // Favor creating ends we can match
+            
+            return { move, score };
+        });
+
+        scoredMoves.sort((a, b) => b.score - a.score);
+        return scoredMoves[0].move;
+    }
+    
+    function checkEndCondition() {
+        if (playerHand.length === 0) {
+            endRound('player');
+            return true;
+        }
+        if (computerHand.length === 0) {
+            endRound('computer');
+            return true;
+        }
+
+        // Check for blocked game
+        const playerMoves = getValidMoves(playerHand);
+        const computerMoves = getValidMoves(computerHand);
+
+        if (stock.length === 0 && playerMoves.length === 0 && computerMoves.length === 0) {
+            endRound('blocked');
+            return true;
+        }
+        return false;
+    }
+
+    function endRound(winner) {
+        let roundScore = 0;
+        let winnerName = "";
+
+        if (winner === 'blocked') {
+            const playerScore = playerHand.reduce((sum, d) => sum + d.a + d.b, 0);
+            const computerScore = computerHand.reduce((sum, d) => sum + d.a + d.b, 0);
+
+            if (playerScore < computerScore) {
+                winner = 'player';
+                roundScore = computerScore;
+            } else if (computerScore < playerScore) {
+                winner = 'computer';
+                roundScore = playerScore;
+            } else {
+                 setMessage("引き分けです！");
+                 restartButton.style.display = 'block';
+                 return;
+            }
+        }
+        
+        if (winner === 'player') {
+            roundScore = computerHand.reduce((sum, d) => sum + d.a + d.b, 0);
+            scores.player += roundScore;
+            winnerName = "あなた";
+        } else if (winner === 'computer') {
+            roundScore = playerHand.reduce((sum, d) => sum + d.a + d.b, 0);
+            scores.computer += roundScore;
+            winnerName = "コンピュータ";
+        }
+
+        setMessage(`${winnerName}がラウンド勝利！ ${roundScore}ポイント獲得！`);
+        updateUI();
+
+        if (scores.player >= MAX_SCORE || scores.computer >= MAX_SCORE) {
+            setTimeout(showGameOver, 1500);
+        } else {
+            restartButton.style.display = 'block';
+        }
+    }
+    
+    function showGameOver() {
+        const playerWon = scores.player >= MAX_SCORE;
+        gameOverTitle.textContent = playerWon ? "あなたの勝利です！" : "コンピュータの勝利です";
+        gameOverText.textContent = `最終スコア: あなた ${scores.player} - ${scores.computer} CPU`;
+        gameOverModal.style.display = 'flex';
+    }
+
+    function setMessage(msg) {
+        messageAreaElem.textContent = msg;
+    }
+
+    restartButton.addEventListener('click', startRound);
+    newGameButton.addEventListener('click', () => {
+        gameOverModal.style.display = 'none';
+        startGame();
+    });
+
+    // Initial start
+    startGame();
+
+    </script>
+</body>
+</html>
