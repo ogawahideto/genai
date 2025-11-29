@@ -21,6 +21,9 @@ This repository contains a collection of small, self-contained web applications 
 #### [Rubik's Cube](cube-gemini/) (2025-06-29)
 ゲームアプリケーション
 
+#### [ドミノゲーム](domino-game/) (2025-11-29)
+ゲームアプリケーション
+
 #### [50回記念ゲーム](fifty/) (2025-09-05)
 ゲームアプリケーション
 
