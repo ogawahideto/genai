@@ -73,14 +73,77 @@ AIのアプローチ:
             border: 5px solid saddlebrown;
             border-radius: 10px;
             padding: 20px;
+            overflow: visible; /* Allow content to go beyond bounds for spinner branches */
+            display: grid;
+            grid-template-columns: 1fr auto 1fr; /* Left branch, spinner column, right branch */
+            grid-template-rows: auto auto auto; /* Up branch, spinner row, down branch */
+            justify-items: center;
+            align-items: center;
+            position: relative; /* For absolute positioning of some elements if needed */
+        }
+        .main-board-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr; /* Left chain, spinner column, right chain */
+            grid-template-rows: auto auto auto; /* Up chain, spinner row, down chain */
+            justify-items: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            overflow: visible; /* Allow content to go beyond bounds for spinner branches */
+        }
+
+        .main-horizontal-chain {
+            grid-column: 1 / span 3; /* Spans across all three columns when no spinner */
+            grid-row: 2; /* Center row */
+            display: flex;
+            align-items: center;
+            justify-content: center;
             overflow-x: auto;
+            min-height: var(--domino-height);
+        }
+
+        .left-main-chain-container,
+        .right-main-chain-container {
             display: flex;
             align-items: center;
+            grid-row: 2; /* Main horizontal row */
         }
-        .domino-chain {
+        .left-main-chain-container {
+            grid-column: 1;
+            justify-content: flex-end; /* Align to the right side of its cell */
+        }
+        .right-main-chain-container {
+            grid-column: 3;
+            justify-content: flex-start; /* Align to the left side of its cell */
+        }
+
+        .spinner-node {
+            grid-column: 2; /* Center column */
+            grid-row: 1 / span 3; /* Spans all three rows */
             display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .spinner-central-node { /* Container for spinner + up/down branches */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spinner-branch-up,
+        .spinner-branch-down {
+            display: flex;
+            flex-direction: column;
             align-items: center;
         }
+        .spinner-branch-up {
+            flex-direction: column-reverse; /* Stack dominoes upwards */
+        }
+
         .domino {
             width: var(--domino-width);
             height: var(--domino-height);
@@ -168,6 +231,10 @@ AIのアプローチ:
         .play-area.horizontal {
              width: 90px;
              height: 50px;
+        }
+        .play-area.vertical {
+            width: 50px; /* Same as default domino width */
+            height: 90px; /* Same as default domino height */
         }
         .play-area.highlight {
             background-color: rgba(255, 255, 0, 0.5);
@@ -261,8 +328,8 @@ AIのアプローチ:
     let stock = [];
     let playerHand = [];
     let computerHand = [];
-    let board = [];
-    let boardEnds = { left: -1, right: -1 };
+    let board = { main: [], up: [], down: [] };
+    let playableEnds = [];
     
     let scores = { player: 0, computer: 0 };
     let currentPlayer = 'player';
@@ -297,8 +364,8 @@ AIのアプローチ:
 
         playerHand = stock.splice(0, 7);
         computerHand = stock.splice(0, 7);
-        board = [];
-        boardEnds = { left: -1, right: -1 };
+        board = { main: [], up: [], down: [] };
+        playableEnds = [];
         
         // Decide who starts
         const playerMaxDouble = Math.max(...playerHand.filter(d => d.isDouble).map(d => d.a), -1);
@@ -400,37 +467,154 @@ AIのアプローチ:
     }
     
     function renderBoard() {
-        gameBoardElem.innerHTML = '';
-        const chain = document.createElement('div');
-        chain.className = 'domino-chain';
+        gameBoardElem.innerHTML = ''; // Clear the board
+        gameBoardElem.classList.add('main-board-grid'); // Ensure grid display for branches
 
-        // Create a temporary play area for the left end
-        const leftArea = createPlayArea('left');
-        leftArea.classList.toggle('horizontal', board.length > 0 && board[0].horizontal);
+        // Find spinner domino (if any)
+        const spinnerDominoPiece = board.main.find(p => p.isSpinner);
+        const spinnerIndexInMain = board.main.findIndex(p => p.isSpinner);
 
-        // Create a temporary play area for the right end
-        const rightArea = createPlayArea('right');
-        rightArea.classList.toggle('horizontal', board.length > 0 && board[board.length - 1].horizontal);
+        if (!spinnerDominoPiece) {
+            // No spinner yet, render as a single horizontal chain
+            const mainChainContainer = document.createElement('div');
+            mainChainContainer.className = 'domino-chain main-horizontal-chain';
+            mainChainContainer.style.gridColumn = '1 / span 3'; // Span full width for non-spinner
+            mainChainContainer.style.gridRow = '2';
+            gameBoardElem.appendChild(mainChainContainer);
 
-        board.forEach((d) => {
-            const dominoElem = createDominoElement(d); // Pass the entire pieceData object
-            chain.appendChild(dominoElem);
-        });
+            // Add left play area
+            const leftEnd = playableEnds.find(end => end.type === 'left');
+            if (leftEnd) {
+                const playAreaIndex = playableEnds.indexOf(leftEnd);
+                const playArea = createPlayArea(leftEnd.type, playAreaIndex);
+                playArea.classList.add('horizontal');
+                mainChainContainer.appendChild(playArea);
+            }
+
+            // Render existing dominoes from board.main
+            board.main.forEach(d => {
+                const dominoElem = createDominoElement(d);
+                mainChainContainer.appendChild(dominoElem);
+            });
+
+            // Add right play area
+            const rightEnd = playableEnds.find(end => end.type === 'right');
+            if (rightEnd) {
+                const playAreaIndex = playableEnds.indexOf(rightEnd);
+                const playArea = createPlayArea(rightEnd.type, playAreaIndex);
+                playArea.classList.add('horizontal');
+                mainChainContainer.appendChild(playArea);
+            }
+
+        } else {
+            // Spinner exists, render with branches
+            // Left Main Chain Container
+            const leftMainChainContainer = document.createElement('div');
+            leftMainChainContainer.className = 'domino-chain left-main-chain-container';
+            leftMainChainContainer.style.gridColumn = '1';
+            leftMainChainContainer.style.gridRow = '2';
+            leftMainChainContainer.style.display = 'flex';
+            leftMainChainContainer.style.alignItems = 'center';
+            leftMainChainContainer.style.justifyContent = 'flex-end';
+            gameBoardElem.appendChild(leftMainChainContainer);
+            
+            // Left Play Area for main chain
+            const leftEnd = playableEnds.find(end => end.type === 'left');
+            if (leftEnd) {
+                const playAreaIndex = playableEnds.indexOf(leftEnd);
+                const playArea = createPlayArea(leftEnd.type, playAreaIndex);
+                playArea.classList.add('horizontal');
+                leftMainChainContainer.appendChild(playArea);
+            }
+            // Dominoes before spinner
+            for (let i = spinnerIndexInMain - 1; i >= 0; i--) { // Render in reverse for left-to-right visual flow
+                leftMainChainContainer.appendChild(createDominoElement(board.main[i]));
+            }
+
+
+            // Spinner Node (Center)
+            const spinnerNode = document.createElement('div');
+            spinnerNode.className = 'spinner-node';
+            spinnerNode.style.gridColumn = '2';
+            spinnerNode.style.gridRow = '1 / span 3'; // Spans full height for vertical branches
+            spinnerNode.style.display = 'flex';
+            spinnerNode.style.flexDirection = 'column';
+            spinnerNode.style.alignItems = 'center';
+            gameBoardElem.appendChild(spinnerNode);
+
+            // Up Branch Container
+            const upBranchContainer = document.createElement('div');
+            upBranchContainer.className = 'domino-chain up-branch-container';
+            upBranchContainer.style.flexDirection = 'column-reverse'; // To stack dominoes upwards
+            upBranchContainer.style.alignItems = 'center';
+            spinnerNode.appendChild(upBranchContainer);
+            // Up Play Area
+            const upEnd = playableEnds.find(end => end.type === 'up');
+            if (upEnd) {
+                const playAreaIndex = playableEnds.indexOf(upEnd);
+                const playArea = createPlayArea(upEnd.type, playAreaIndex);
+                playArea.classList.add('vertical');
+                upBranchContainer.appendChild(playArea);
+            }
+            // Dominoes in up chain
+            board.up.reverse().forEach(d => upBranchContainer.appendChild(createDominoElement(d)));
+
+
+            // Spinner itself
+            spinnerNode.appendChild(createDominoElement(spinnerDominoPiece));
+
+            // Down Branch Container
+            const downBranchContainer = document.createElement('div');
+            downBranchContainer.className = 'domino-chain down-branch-container';
+            downBranchContainer.style.flexDirection = 'column'; // To stack dominoes downwards
+            downBranchContainer.style.alignItems = 'center';
+            spinnerNode.appendChild(downBranchContainer);
+            // Dominoes in down chain
+            board.down.forEach(d => downBranchContainer.appendChild(createDominoElement(d)));
+            // Down Play Area
+            const downEnd = playableEnds.find(end => end.type === 'down');
+            if (downEnd) {
+                const playAreaIndex = playableEnds.indexOf(downEnd);
+                const playArea = createPlayArea(downEnd.type, playAreaIndex);
+                playArea.classList.add('vertical');
+                downBranchContainer.appendChild(playArea);
+            }
+
+
+            // Right Main Chain Container
+            const rightMainChainContainer = document.createElement('div');
+            rightMainChainContainer.className = 'domino-chain right-main-chain-container';
+            rightMainChainContainer.style.gridColumn = '3';
+            rightMainChainContainer.style.gridRow = '2';
+            rightMainChainContainer.style.display = 'flex';
+            rightMainChainContainer.style.alignItems = 'center';
+            rightMainChainContainer.style.justifyContent = 'flex-start';
+            gameBoardElem.appendChild(rightMainChainContainer);
+            // Dominoes after spinner
+            for (let i = spinnerIndexInMain + 1; i < board.main.length; i++) {
+                rightMainChainContainer.appendChild(createDominoElement(board.main[i]));
+            }
+            // Right Play Area for main chain
+            const rightEnd = playableEnds.find(end => end.type === 'right');
+            if (rightEnd) {
+                const playAreaIndex = playableEnds.indexOf(rightEnd);
+                const playArea = createPlayArea(rightEnd.type, playAreaIndex);
+                playArea.classList.add('horizontal');
+                rightMainChainContainer.appendChild(playArea);
+            }
+        }
         
-        gameBoardElem.appendChild(leftArea);
-        gameBoardElem.appendChild(chain);
-        gameBoardElem.appendChild(rightArea);
-
         if (selectedDomino.domino) {
             highlightPlayAreas();
         }
     }
     
-    function createPlayArea(side) {
+    function createPlayArea(endType, endIndex) {
         const area = document.createElement('div');
         area.className = 'play-area';
-        area.dataset.side = side;
-        area.addEventListener('click', () => onPlayAreaClick(side));
+        area.dataset.type = endType;
+        area.dataset.endIndex = endIndex;
+        area.addEventListener('click', () => onPlayAreaClick(endIndex)); // Pass the index
         return area;
     }
 
@@ -455,50 +639,79 @@ AIのアプローチ:
         if (!selectedDomino.domino) return;
         
         const { a, b } = selectedDomino.domino;
-        const areas = document.querySelectorAll('.play-area');
         
         if (board.length === 0) {
-            areas.forEach(area => area.classList.add('highlight'));
+            // If board is empty, any domino can be played on any initial play area
+            // All play areas generated by renderBoard should be highlighted
+            document.querySelectorAll('.play-area').forEach(area => area.classList.add('highlight'));
             return;
         }
 
-        if (a === boardEnds.left || b === boardEnds.left) {
-            document.querySelector('.play-area[data-side="left"]').classList.add('highlight');
-        }
-        if (a === boardEnds.right || b === boardEnds.right) {
-            document.querySelector('.play-area[data-side="right"]').classList.add('highlight');
-        }
+        playableEnds.forEach((end, index) => {
+            if (a === end.value || b === end.value) {
+                // Find the specific play area element to highlight using data-end-index
+                const playAreaElement = document.querySelector(`.play-area[data-end-index="${index}"]`);
+                if (playAreaElement) {
+                    playAreaElement.classList.add('highlight');
+                }
+            }
+        });
     }
     
     function clearHighlights() {
         document.querySelectorAll('.play-area').forEach(a => a.classList.remove('highlight'));
     }
 
-    function onPlayAreaClick(side) {
+    function onPlayAreaClick(endIndex) { // Now receives the index of the playable end
         if (currentPlayer !== 'player' || !selectedDomino.domino) return;
 
-        const area = document.querySelector(`.play-area[data-side="${side}"]`);
-        if (!area.classList.contains('highlight')) {
+        const selectedPlayableEnd = playableEnds[endIndex];
+        if (!selectedPlayableEnd) { // Defensive check
+            console.error("Playable end not found for index:", endIndex);
+            return;
+        }
+
+        // Check if selectedDomino can actually be played on this end
+        const { a, b } = selectedDomino.domino;
+        const endValue = selectedPlayableEnd.value;
+
+        if (!(a === endValue || b === endValue)) {
             setMessage("ここには置けません。");
             return;
         }
         
-        placeDomino(selectedDomino.index, side);
+        placeDomino(selectedDomino.index, endIndex); // Pass index of selected playable end
     }
     
-    function placeDomino(handIndex, side) {
+    function placeDomino(handIndex, selectedEndIndex) {
         const domino = (currentPlayer === 'player' ? playerHand : computerHand)[handIndex];
         
-        let pieceData = { domino: domino, displayA: domino.a, displayB: domino.b, horizontal: false };
+        let pieceData = { domino: domino, displayA: domino.a, displayB: domino.b, horizontal: false, isSpinner: false };
 
-        if (board.length === 0) {
-            // First domino placed
-            pieceData.horizontal = false; // Always vertical for the first domino for simplicity
-            board.push(pieceData);
-            boardEnds.left = domino.a;
-            boardEnds.right = domino.b;
+        if (board.main.length === 0 && board.up.length === 0 && board.down.length === 0) {
+            // First domino placed (always vertical for simplicity)
+            pieceData.horizontal = false; 
+            board.main.push(pieceData);
+
+            // Initialize playableEnds
+            playableEnds.push({ value: domino.a, type: 'left', parentDominoIndex: { chain: 'main', index: 0 } });
+            playableEnds.push({ value: domino.b, type: 'right', parentDominoIndex: { chain: 'main', index: 0 } });
+
+            // If first domino is a double, it's a spinner
+            if (domino.isDouble) {
+                board.main[0].isSpinner = true; // Mark the domino on the board as a spinner
+                playableEnds.push({ value: domino.a, type: 'up', parentDominoIndex: { chain: 'main', index: 0 } });
+                playableEnds.push({ value: domino.b, type: 'down', parentDominoIndex: { chain: 'main', index: 0 } });
+            }
+
         } else {
-            const endValue = side === 'left' ? boardEnds.left : boardEnds.right;
+            const selectedPlayableEnd = playableEnds[selectedEndIndex];
+            if (!selectedPlayableEnd) {
+                console.error("Invalid selected end index:", selectedEndIndex);
+                return;
+            }
+
+            const endValue = selectedPlayableEnd.value;
             let otherValue;
 
             if (domino.a === endValue) {
@@ -506,29 +719,56 @@ AIのアプローチ:
             } else if (domino.b === endValue) {
                 otherValue = domino.a;
             } else {
-                console.error("Invalid move attempted in placeDomino");
+                console.error("Invalid move attempted: domino does not match end value");
                 return;
             }
             
-            if (side === 'left') {
-                pieceData.displayA = otherValue; // New free end on the left
-                pieceData.displayB = endValue;   // Connecting end on the right
-            } else { // side === 'right'
-                pieceData.displayA = endValue;   // Connecting end on the left
-                pieceData.displayB = otherValue; // New free end on the right
+            // Set display A and B based on connection type
+            if (selectedPlayableEnd.type === 'left' || selectedPlayableEnd.type === 'up') {
+                pieceData.displayA = otherValue; // New free end on the left/up
+                pieceData.displayB = endValue;   // Connecting end on the right/down
+            } else { // 'right' or 'down'
+                pieceData.displayA = endValue;   // Connecting end on the left/up
+                pieceData.displayB = otherValue; // New free end on the right/down
             }
 
-            // Doubles are always horizontal for Fives Up (except for the very first domino if it's a double)
-            // All subsequent dominoes are horizontal
-            pieceData.horizontal = true;
-            
-            if (side === 'left') {
-                board.unshift(pieceData);
-                boardEnds.left = otherValue;
-            } else { // side === 'right'
-                board.push(pieceData);
-                boardEnds.right = otherValue;
+            // All subsequent dominoes are horizontal (except for spinner branches)
+            // Note: Spinner branches (up/down) will eventually need to be vertical for display.
+            pieceData.horizontal = true; // Default to horizontal for main chain
+
+            let newDominoIndex;
+            let targetChain;
+
+            if (selectedPlayableEnd.type === 'left') {
+                board.main.unshift(pieceData);
+                targetChain = 'main';
+                newDominoIndex = 0;
+            } else if (selectedPlayableEnd.type === 'right') {
+                board.main.push(pieceData);
+                targetChain = 'main';
+                newDominoIndex = board.main.length - 1;
+            } else if (selectedPlayableEnd.type === 'up') {
+                pieceData.horizontal = false; // Vertical for up/down branches
+                board.up.push(pieceData); // Add to up chain
+                targetChain = 'up';
+                newDominoIndex = board.up.length - 1;
+            } else if (selectedPlayableEnd.type === 'down') {
+                pieceData.horizontal = false; // Vertical for up/down branches
+                board.down.push(pieceData); // Add to down chain
+                targetChain = 'down';
+                newDominoIndex = board.down.length - 1;
+            } else {
+                console.error("Unknown playable end type:", selectedPlayableEnd.type);
+                return;
             }
+            
+            // Update playableEnds: Remove the connected end, add the new end
+            playableEnds.splice(selectedEndIndex, 1);
+            playableEnds.push({ 
+                value: otherValue, 
+                type: selectedPlayableEnd.type, 
+                parentDominoIndex: { chain: targetChain, index: newDominoIndex } 
+            }); 
         }
         
         // Remove from hand
@@ -564,16 +804,30 @@ AIのアプローチ:
     
     function getValidMoves(hand) {
         const moves = [];
-        if (board.length === 0) {
-            return hand.map((domino, index) => ({ domino, index, side: 'left' }));
+        if (board.main.length === 0 && board.up.length === 0 && board.down.length === 0) {
+            // For the first domino, any domino can be played.
+            // For simplicity, we'll say it's played to the 'left' initially.
+            return hand.map((domino, index) => ({ 
+                domino, 
+                index, 
+                endType: 'left', 
+                parentDominoIndex: { chain: 'main', index: 0 }, // Initial parent for first domino
+                isSpinnerConnect: false 
+            }));
         }
-        hand.forEach((domino, index) => {
-            if (domino.a === boardEnds.left || domino.b === boardEnds.left) {
-                moves.push({ domino, index, side: 'left' });
-            }
-            if (boardEnds.left !== boardEnds.right && (domino.a === boardEnds.right || domino.b === boardEnds.right)) {
-                moves.push({ domino, index, side: 'right' });
-            }
+        
+        hand.forEach((domino, dominoIndexInHand) => {
+            playableEnds.forEach(end => {
+                if (domino.a === end.value || domino.b === end.value) {
+                    moves.push({ 
+                        domino, 
+                        index: dominoIndexInHand, 
+                        endType: end.type, 
+                        parentDominoIndex: end.parentDominoIndex,
+                        isSpinnerConnect: (end.type === 'up' || end.type === 'down') 
+                    });
+                }
+            });
         });
         return moves;
     }
@@ -635,11 +889,26 @@ AIのアプローチ:
         const bestMove = findBestMove(validMoves);
         
         const dominoToPlay = bestMove.domino;
-        const side = bestMove.side;
         const handIndex = computerHand.findIndex(d => d.a === dominoToPlay.a && d.b === dominoToPlay.b);
 
+        // Find the index of the playable end that the AI chose
+        const selectedEndIndex = playableEnds.findIndex(end => 
+            end.type === bestMove.endType && end.parentDominoIndex === bestMove.parentDominoIndex
+        );
+
+        if (selectedEndIndex === -1) {
+            console.error("AI chose an invalid end!", bestMove);
+            // Fallback: try to play first valid move
+            const firstValidMove = validMoves[0];
+            const fallbackEndIndex = playableEnds.findIndex(end => 
+                end.type === firstValidMove.endType && end.parentDominoIndex === firstValidMove.parentDominoIndex
+            );
+            placeDomino(handIndex, fallbackEndIndex);
+            return;
+        }
+
         setMessage(`コンピュータが [${dominoToPlay.a}|${dominoToPlay.b}] をプレイしました。`);
-        placeDomino(handIndex, side);
+        placeDomino(handIndex, selectedEndIndex);
     }
     
     // AI Logic
@@ -670,19 +939,47 @@ AIのアプローチ:
             // Score for hand diversity after move
             score += remainingNumbers.size * 3;
 
+            // Bonus for connecting to a spinner's up/down end
+            if (move.isSpinnerConnect) {
+                score += 10; // Encourage connecting to spinner
+            }
+
+            // Fives Up specific bonus: predict if this move creates a Fives Up score
+            const connectingEnd = playableEnds.find(end => 
+                end.type === move.endType && 
+                end.parentDominoIndex.chain === move.parentDominoIndex.chain &&
+                end.parentDominoIndex.index === move.parentDominoIndex.index
+            );
+            const endValue = connectingEnd ? connectingEnd.value : -1; // Should always be found
+            const newEndValue = domino.a === endValue ? domino.b : domino.a;
+
+            // Calculate potential new sum of open ends
+            let potentialEndsSum = 0;
+            // Sum current open ends (excluding the one being played on)
+            playableEnds.forEach(end => {
+                if (!(end.type === move.endType && end.parentDominoIndex.chain === move.parentDominoIndex.chain && end.parentDominoIndex.index === move.parentDominoIndex.index)) {
+                    potentialEndsSum += end.value;
+                }
+            });
+            potentialEndsSum += newEndValue; // Add the new end value
+
+            if (potentialEndsSum > 0 && potentialEndsSum % 5 === 0) {
+                score += 20; // Big bonus for creating a Fives Up
+            }
+
             // Try to block opponent - this is a simplified heuristic
             // We assume the player is less likely to have numbers that are rare on the board and in our hand
-            const allKnownNumbers = [...computerHand.flatMap(d => [d.a, d.b]), ...board.flatMap(p => [p.domino.a, p.domino.b])];
+            const allKnownNumbers = [...computerHand.flatMap(d => [d.a, d.b]), ...board.main.flatMap(p => [p.domino.a, p.domino.b]), ...board.up.flatMap(p => [p.domino.a, p.domino.b]), ...board.down.flatMap(p => [p.domino.a, p.domino.b])];
             const numCounts = {};
             for(let i=0; i<=6; i++) numCounts[i] = 0;
             allKnownNumbers.forEach(num => numCounts[num]++);
 
             const {a, b} = domino;
-            const endValue = move.side === 'left' ? boardEnds.left : boardEnds.right;
-            const newEndValue = a === endValue ? b : a;
+            const predictedEndValue = connectingEnd ? connectingEnd.value : -1;
+            const newOpenEndValue = a === predictedEndValue ? b : a;
 
             // Give a bonus if the new end value is a number we have a lot of, or a number that seems rare overall
-            score += numCounts[newEndValue] * 2; // Favor creating ends we can match
+            score += numCounts[newOpenEndValue] * 2; // Favor creating ends we can match
             
             return { move, score };
         });
@@ -705,7 +1002,7 @@ AIのアプローチ:
         const playerMoves = getValidMoves(playerHand);
         const computerMoves = getValidMoves(computerHand);
 
-        if (stock.length === 0 && playerMoves.length === 0 && computerMoves.length === 0) {
+        if (board.main.length === 0 && board.up.length === 0 && board.down.length === 0) {
             endRound('blocked');
             return true;
         }
@@ -760,10 +1057,19 @@ AIのアプローチ:
         gameOverModal.style.display = 'flex';
     }
 
-    function calculateFivesUpScore() {
-        if (board.length === 0) return;
+    function getBoardEndValue(type) {
+        const end = playableEnds.find(e => e.type === type);
+        return end ? end.value : -1;
+    }
 
-        const currentEndsSum = boardEnds.left + boardEnds.right;
+    function calculateFivesUpScore() {
+        if (playableEnds.length === 0) return;
+
+        let currentEndsSum = 0;
+        playableEnds.forEach(end => {
+            currentEndsSum += end.value;
+        });
+        
         if (currentEndsSum > 0 && currentEndsSum % 5 === 0) {
             scores[currentPlayer] += currentEndsSum;
             setMessage(`${currentPlayer === 'player' ? 'あなた' : 'コンピュータ'}がFives Upで${currentEndsSum}ポイント獲得！`);
