@@ -331,3 +331,51 @@ Templates support variable substitution:
   - Auto-categorizes projects based on content and naming
   - Maintains chronological order within categories
   - Uses current date in YYYY-MM-DD format
+
+## Git Commit and Push Rules
+
+### Auto-commit Rule
+**IMPORTANT**: Automatically run `git commit` after every code generation or file edit to maintain a detailed history.
+
+- Commit immediately after creating or modifying files
+- Use descriptive commit messages that explain what was changed
+- This creates granular history that allows reverting to any previous state
+- Standard commit message format:
+  ```
+  [type]: [brief description]
+
+  [detailed explanation if needed]
+
+  🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+  Co-Authored-By: Claude <noreply@anthropic.com>
+  ```
+
+Common commit types:
+- `feat:` - New feature or application
+- `fix:` - Bug fix
+- `refactor:` - Code refactoring
+- `style:` - CSS/visual changes
+- `docs:` - Documentation updates
+
+### Push Rule
+**DO NOT** automatically push to remote repository.
+
+- Only execute `git push` when explicitly instructed by the user
+- Wait for explicit commands like:
+  - "push"
+  - "git push"
+  - "push to github"
+  - "commit and push"
+
+### Example Workflow
+1. User requests code changes
+2. Make the changes to files
+3. **Immediately commit** with descriptive message
+4. Continue with next task (do NOT push)
+5. Only push when user explicitly asks
+
+This workflow ensures:
+- Every change is tracked and reversible
+- Work can be reviewed before publishing
+- Remote repository only receives intentional updates
