@@ -1,0 +1,629 @@
+<!--
+AIモデル: Gemini
+Gemini CLIバージョン: 1.0.0 (仮)
+作成日時: 2025年11月29日
+ユーザープロンプト: 将棋とチェスを組み合わせたゲームを作成する。盤面は9x9。先手はチェス駒、後手は将棋駒。持ち駒ルールは選択可能。
+AIのアプローチ: 単一のHTMLファイル内にHTML、CSS、JavaScriptを記述する。JavaScriptでゲームロジック全体を管理する。DOM操作で盤面と駒を動的に描画する。
+実装の意図: ユーザーの要求に基づき、将棋とチェスのルールを融合させた新しいボードゲームのプロトタイプを作成する。保守性と拡張性を考慮し、データとロジックを適切に分離する。
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>将棋 vs チェス</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #game-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        .captured-area {
+            width: 150px;
+            min-height: 400px;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .captured-area h3 {
+            margin-top: 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ccc;
+            font-size: 16px;
+            text-align: center;
+        }
+        #board-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #board {
+            display: grid;
+            grid-template-columns: repeat(9, 60px);
+            grid-template-rows: repeat(9, 60px);
+            border: 2px solid #333;
+            width: 540px;
+            height: 540px;
+        }
+        .square {
+            width: 60px;
+            height: 60px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+            cursor: pointer;
+            background-color: #f7d9b3;
+        }
+        .piece {
+            transform-origin: center center;
+        }
+        .shogi-piece {
+             /* 将棋の駒は後手なので、180度回転させる */
+            transform: rotate(180deg);
+        }
+        .shogi-piece.promoted {
+            /* 成り駒は元の向きに戻すイメージだが、ここでは通常駒と同じ向きにする */
+            transform: rotate(180deg);
+            color: #c00; /* 成り駒の色を変える */
+        }
+        .chess-piece {
+            /* チェスの駒は先手なので、回転なし */
+            transform: rotate(0deg);
+        }
+        .selected {
+            background-color: #ffcc66 !important;
+        }
+        .valid-move {
+            background-color: #aaeebb !important;
+        }
+        #game-info {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 200px;
+        }
+        #game-controls, #game-status {
+            padding: 15px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #game-controls h3, #game-status h3 {
+             margin-top: 0;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- 将棋側（後手）の持ち駒エリア -->
+        <div id="shogi-captured-area" class="captured-area">
+            <h3>後手 (将棋)</h3>
+            <div id="shogi-captured-pieces"></div>
+        </div>
+
+        <div id="board-container">
+            <!-- 9x9のゲーム盤 -->
+            <div id="board"></div>
+        </div>
+
+        <div id="info-and-captured-container">
+            <!-- チェス側（先手）の持ち駒エリア -->
+            <div id="chess-captured-area" class="captured-area">
+                <h3>先手 (チェス)</h3>
+                <div id="chess-captured-pieces"></div>
+            </div>
+
+            <!-- ゲーム情報と操作エリア -->
+            <div id="game-info">
+                <div id="game-status">
+                    <h3>ステータス</h3>
+                    <p>手番: <span id="turn-display">チェス</span></p>
+                    <p id="message-display"></p>
+                </div>
+                <div id="game-controls">
+                    <h3>設定</h3>
+                     <label>
+                        <input type="checkbox" id="use-captured-pieces-checkbox" checked>
+                        持ち駒ルールを有効にする
+                    </label>
+                    <button id="reset-button">リセット</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const shogiCapturedArea = document.getElementById('shogi-captured-pieces');
+        const chessCapturedArea = document.getElementById('chess-captured-pieces');
+        const useCapturedPiecesCheckbox = document.getElementById('use-captured-pieces-checkbox');
+
+        const PIECES = {
+            // Chess Pieces (先手)
+            'C_PAWN':   { name: 'Pawn',   char: '♙', player: 'chess' },
+            'C_ROOK':   { name: 'Rook',   char: '♖', player: 'chess' },
+            'C_KNIGHT': { name: 'Knight', char: '♘', player: 'chess' },
+            'C_BISHOP': { name: 'Bishop', char: '♗', player: 'chess' },
+            'C_QUEEN':  { name: 'Queen',  char: '♕', player: 'chess' },
+            'C_KING':   { name: 'King',   char: '♔', player: 'chess' },
+            // Shogi Pieces (後手)
+            'S_PAWN':   { name: '歩', char: '歩', player: 'shogi' },
+            'S_LANCE':  { name: '香', char: '香', player: 'shogi' },
+            'S_KNIGHT': { name: '桂', char: '桂', player: 'shogi' },
+            'S_SILVER': { name: '銀', char: '銀', player: 'shogi' },
+            'S_GOLD':   { name: '金', char: '金', player: 'shogi' },
+            'S_BISHOP': { name: '角', char: '角', player: 'shogi' },
+            'S_ROOK':   { name: '飛', char: '飛', player: 'shogi' },
+            'S_KING':   { name: '王', char: '王', player: 'shogi' },
+            // Promoted Shogi Pieces
+            'S_PRO_PAWN':   { name: 'と', char: 'と', player: 'shogi', promoted: true },
+            'S_PRO_LANCE':  { name: '成香', char: '杏', player: 'shogi', promoted: true },
+            'S_PRO_KNIGHT': { name: '成桂', char: '圭', player: 'shogi', promoted: true },
+            'S_PRO_SILVER': { name: '成銀', char: '全', player: 'shogi', promoted: true },
+            'S_PRO_BISHOP': { name: '馬', char: '馬', player: 'shogi', promoted: true },
+            'S_PRO_ROOK':   { name: '龍', char: '龍', player: 'shogi', promoted: true },
+        };
+        const CAPTURE_CONVERSION = {
+            'C_PAWN': 'S_PAWN', 'C_ROOK': 'S_ROOK', 'C_KNIGHT': 'S_KNIGHT', 'C_BISHOP': 'S_BISHOP',
+            'S_PAWN': 'C_PAWN', 'S_ROOK': 'C_ROOK', 'S_KNIGHT': 'C_KNIGHT', 'S_BISHOP': 'C_BISHOP',
+            'S_LANCE': 'C_ROOK', 'S_SILVER': 'C_BISHOP', 'S_GOLD': 'C_ROOK'
+            // Queen is handled separately
+        };
+
+        const INITIAL_SETUP = {
+            // Chess (player 1, bottom of the board)
+            // Rows are 0-indexed from the top, so chess is on rows 6, 7, 8
+            chess: [
+                // 1段目 (index 8)
+                { row: 8, col: 0, piece: 'C_ROOK' }, { row: 8, col: 1, piece: 'C_KNIGHT' },
+                { row: 8, col: 2, piece: 'C_BISHOP' }, { row: 8, col: 3, piece: 'C_QUEEN' },
+                { row: 8, col: 4, piece: 'C_KING' }, { row: 8, col: 5, piece: 'C_BISHOP' },
+                { row: 8, col: 6, piece: 'C_KNIGHT' }, { row: 8, col: 7, piece: 'C_ROOK' },
+                { row: 8, col: 8, piece: 'C_ROOK' }, // Extra rook
+                // 2段目 (index 7)
+                ...Array.from({ length: 9 }, (_, i) => ({ row: 7, col: i, piece: 'C_PAWN' })),
+            ],
+            // Shogi (player 2, top of the board)
+            // Rows are 0-indexed from the top, so shogi is on rows 0, 1, 2
+            shogi: [
+                 // 9段目 (index 0)
+                { row: 0, col: 0, piece: 'S_LANCE' }, { row: 0, col: 1, piece: 'S_KNIGHT' },
+                { row: 0, col: 2, piece: 'S_SILVER' }, { row: 0, col: 3, piece: 'S_GOLD' },
+                { row: 0, col: 4, piece: 'S_KING' }, { row: 0, col: 5, piece: 'S_GOLD' },
+                { row: 0, col: 6, piece: 'S_SILVER' }, { row: 0, col: 7, piece: 'S_KNIGHT' },
+                { row: 0, col: 8, piece: 'S_LANCE' },
+                // 8段目 (index 1)
+                { row: 1, col: 1, piece: 'S_BISHOP' }, { row: 1, col: 7, piece: 'S_ROOK' },
+                // 7段目 (index 2)
+                ...Array.from({ length: 9 }, (_, i) => ({ row: 2, col: i, piece: 'S_PAWN' })),
+            ]
+        };
+
+        // --- Game State ---
+        let boardState = []; // 9x9の盤面状態を保持する2次元配列
+        let currentPlayer = 'chess'; // 'chess' or 'shogi'
+        let selectedPiece = null; // { piece, row, col } or { piece, isCaptured: true }
+        let useCapturedPieces = true;
+        let capturedPieces = {
+            shogi: [],
+            chess: []
+        };
+        // let gameOver = false; // Will be added later for checkmate logic
+
+
+        // --- Game Logic ---
+
+        function initGame() {
+            boardState = Array(9).fill(null).map(() => Array(9).fill(null));
+            INITIAL_SETUP.chess.forEach(p => {
+                boardState[p.row][p.col] = { id: p.piece, player: 'chess', hasMoved: false };
+            });
+            INITIAL_SETUP.shogi.forEach(p => {
+                boardState[p.row][p.col] = { id: p.piece, player: 'shogi' };
+            });
+            
+            currentPlayer = 'chess';
+            selectedPiece = null;
+            capturedPieces = { shogi: [], chess: [] };
+            useCapturedPieces = useCapturedPiecesCheckbox.checked;
+            // gameOver = false; // Will be uncommented/added later
+            
+            renderBoard();
+            renderCapturedPieces();
+            updateTurnDisplay();
+            messageDisplay.textContent = '';
+        }
+
+        function renderBoard() {
+            boardElement.innerHTML = '';
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    const square = document.createElement('div');
+                    square.classList.add('square');
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    const pieceData = boardState[row][col];
+                    if (pieceData) {
+                        const pieceDef = PIECES[pieceData.id];
+                        const pieceElement = document.createElement('span');
+                        pieceElement.classList.add('piece');
+                        pieceElement.textContent = pieceDef.char;
+                        pieceElement.classList.add(pieceDef.player === 'shogi' ? 'shogi-piece' : 'chess-piece');
+                        if (pieceDef.promoted) pieceElement.classList.add('promoted');
+                        square.appendChild(pieceElement);
+                    }
+                    boardElement.appendChild(square);
+                }
+            }
+        }
+        
+        function renderCapturedPieces() {
+            shogiCapturedArea.innerHTML = '<h3>後手 (将棋)</h3>';
+            chessCapturedArea.innerHTML = '<h3>先手 (チェス)</h3>';
+
+            const createCapturedPieceElement = (id, player) => {
+                const pieceDef = PIECES[id];
+                const el = document.createElement('div');
+                el.textContent = pieceDef.char;
+                el.classList.add('piece', 'captured-piece');
+                el.classList.add(pieceDef.player === 'shogi' ? 'shogi-piece' : 'chess-piece');
+                el.dataset.id = id;
+                el.addEventListener('click', () => handleCapturedPieceClick(id, player));
+                return el;
+            };
+
+            capturedPieces.shogi.forEach(id => shogiCapturedArea.appendChild(createCapturedPieceElement(id, 'shogi')));
+            capturedPieces.chess.forEach(id => chessCapturedArea.appendChild(createCapturedPieceElement(id, 'chess')));
+        }
+
+        function updateTurnDisplay() {
+            turnDisplay.textContent = currentPlayer === 'chess' ? 'チェス' : '将棋';
+        }
+
+        // --- Event Listeners ---
+        boardElement.addEventListener('click', (event) => {
+            const square = event.target.closest('.square');
+            if (!square) return;
+
+            const row = parseInt(square.dataset.row);
+            const col = parseInt(square.dataset.col);
+            
+            handleSquareClick(row, col);
+        });
+
+        resetButton.addEventListener('click', initGame);
+        useCapturedPiecesCheckbox.addEventListener('change', (e) => useCapturedPieces = e.target.checked);
+        
+        // --- Click Handlers ---
+        
+        function handleSquareClick(row, col) {
+            // if (gameOver) return; // Will be added later
+            const pieceData = boardState[row][col];
+            const clickedSquare = document.querySelector(`[data-row='${row}'][data-col='${col}']`);
+
+            if (selectedPiece && clickedSquare.classList.contains('valid-move')) {
+                if (selectedPiece.isCaptured) {
+                    dropPiece(selectedPiece.piece.id, row, col);
+                } else {
+                    movePiece(selectedPiece.row, selectedPiece.col, row, col);
+                }
+            } else {
+                clearHighlights();
+                if (pieceData && pieceData.player === currentPlayer) {
+                    selectedPiece = { piece: pieceData, row, col, isCaptured: false };
+                    clickedSquare.classList.add('selected');
+                    
+                    const validMoves = getValidMoves(pieceData, row, col);
+                    validMoves.forEach(move => {
+                        const moveSquare = document.querySelector(`[data-row='${move.row}'][data-col='${move.col}']`);
+                        if(moveSquare) moveSquare.classList.add('valid-move');
+                    });
+                } else {
+                    selectedPiece = null;
+                }
+            }
+        }
+
+        function handleCapturedPieceClick(pieceId, player) {
+            if (player !== currentPlayer || !useCapturedPieces) return;
+            clearHighlights();
+            selectedPiece = { piece: { id: pieceId, player }, isCaptured: true };
+            const validDrops = getValidDropLocations(pieceId);
+            validDrops.forEach(loc => {
+                document.querySelector(`[data-row='${loc.row}'][data-col='${loc.col}']`).classList.add('valid-move');
+            });
+        }
+        
+        const SHOGI_PROMOTION_MAP = {
+            'S_PAWN': 'S_PRO_PAWN', 'S_LANCE': 'S_PRO_LANCE', 'S_KNIGHT': 'S_PRO_KNIGHT',
+            'S_SILVER': 'S_PRO_SILVER', 'S_BISHOP': 'S_PRO_BISHOP', 'S_ROOK': 'S_PRO_ROOK'
+        };
+        const CAPTURE_CONVERSION = {
+            'C_PAWN': 'S_PAWN', 'C_ROOK': 'S_ROOK', 'C_KNIGHT': 'S_KNIGHT', 'C_BISHOP': 'S_BISHOP',
+            'S_PAWN': 'C_PAWN', 'S_ROOK': 'C_ROOK', 'S_KNIGHT': 'C_KNIGHT', 'S_BISHOP': 'C_BISHOP',
+            'S_LANCE': 'C_ROOK', 'S_SILVER': 'C_BISHOP', 'S_GOLD': 'C_ROOK'
+            // Queen is handled separately
+        };
+
+
+        // --- Core Game Actions ---
+
+        function movePiece(fromRow, fromCol, toRow, toCol) {
+            const movingPiece = { ...boardState[fromRow][fromCol] };
+            const targetPiece = boardState[toRow][toCol];
+
+            if (targetPiece) { // Target piece exists
+                // King capture is NOT game over here. This will be handled by checkmate logic.
+                // For now, just add captured piece to hand.
+                if (useCapturedPieces) {
+                    let capturedId = PIECES[targetPiece.id].promoted 
+                        ? Object.keys(SHOGI_PROMOTION_MAP).find(key => SHOGI_PROMOTION_MAP[key] === targetPiece.id) 
+                        : targetPiece.id;
+                    
+                    if (capturedId === 'C_QUEEN') {
+                        const choice = prompt("クイーンを取りました。持ち駒を「飛車(r)」または「角(b)」から選んでください。", "r") || 'r';
+                        capturedPieces[currentPlayer].push(choice.toLowerCase() === 'b' ? 'S_BISHOP' : 'S_ROOK');
+                    } else {
+                        const newPieceId = CAPTURE_CONVERSION[capturedId];
+                        if (newPieceId) {
+                            capturedPieces[currentPlayer].push(newPieceId);
+                        }
+                    }
+                }
+            }
+
+            boardState[toRow][toCol] = movingPiece;
+            if (movingPiece.player === 'chess') movingPiece.hasMoved = true;
+            boardState[fromRow][fromCol] = null;
+            
+            handlePromotion(movingPiece, fromRow, toRow, toCol);
+        }
+
+        function handlePromotion(piece, fromRow, toRow, toCol) {
+            const player = piece.player;
+            const pieceId = piece.id;
+
+            // Check for promotion
+            const canPromote = (
+                (player === 'shogi' && (toRow <= 2 || fromRow <= 2)) || // Shogi promotion zone (rows 0, 1, 2)
+                (player === 'chess' && (toRow >= 6 || fromRow >= 6))    // Chess promotion zone (rows 6, 7, 8)
+            );
+
+            let shouldPromote = false;
+            
+            if (canPromote && SHOGI_PROMOTION_MAP[pieceId] && !PIECES[pieceId].promoted) {
+                 // Force promotion for shogi pieces that can't move further
+                const forcePromote = (pieceId === 'S_PAWN' || pieceId === 'S_LANCE') && (toRow === 0);
+                const forcePromoteKnight = pieceId === 'S_KNIGHT' && (toRow === 0 || toRow === 1);
+
+                if (forcePromote || forcePromoteKnight) {
+                    shouldPromote = true;
+                } else if (confirm('成りますか？')) {
+                    shouldPromote = true;
+                }
+                if (shouldPromote) {
+                    boardState[toRow][toCol].id = SHOGI_PROMOTION_MAP[pieceId];
+                }
+            } else if (pieceId === 'C_PAWN' && toRow === 0) { // Chess pawn reaches far side
+                const choices = { 'q': 'C_QUEEN', 'r': 'C_ROOK', 'b': 'C_BISHOP', 'n': 'C_KNIGHT' };
+                const choice = prompt("プロモーションする駒を選んでください: クイーン(q), ルーク(r), ビショップ(b), ナイト(n)", "q") || "q";
+                boardState[toRow][toCol].id = choices[choice.toLowerCase()] || 'C_QUEEN';
+            }
+
+            finalizeTurn();
+        }
+
+        function dropPiece(pieceId, row, col) {
+            boardState[row][col] = { id: pieceId, player: currentPlayer };
+            const pieceIndex = capturedPieces[currentPlayer].indexOf(pieceId);
+            capturedPieces[currentPlayer].splice(pieceIndex, 1);
+            finalizeTurn();
+        }
+
+        function finalizeTurn() {
+            switchPlayer();
+            clearHighlights();
+            selectedPiece = null;
+            renderBoard();
+            renderCapturedPieces();
+        }
+
+        function switchPlayer() {
+            currentPlayer = (currentPlayer === 'chess') ? 'shogi' : 'chess';
+            updateTurnDisplay();
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.square.selected, .square.valid-move').forEach(s => {
+                s.classList.remove('selected', 'valid-move');
+            });
+        }
+        
+        // --- Move/Drop Validation ---
+
+        /**
+         * 指定された駒の有効な移動先を取得する
+         */
+        function getValidMoves(piece, row, col) {
+            const player = piece.player;
+            // 将棋の駒は向きが変わるため、方向を調整
+            const dir = player === 'shogi' ? 1 : -1;
+
+            switch (piece.id) {
+                case 'C_PAWN':   return getChessPawnMoves(row, col, player, dir, piece.hasMoved);
+                case 'C_ROOK':
+                case 'S_ROOK':   return getSlidingMoves(row, col, player, [[0, 1], [0, -1], [1, 0], [-1, 0]]);
+                case 'C_BISHOP':
+                case 'S_BISHOP': return getSlidingMoves(row, col, player, [[1, 1], [1, -1], [-1, 1], [-1, -1]]);
+                case 'C_KNIGHT': return getKnightMoves(row, col, player);
+                case 'C_QUEEN':  return getSlidingMoves(row, col, player, [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]);
+                case 'C_KING':
+                case 'S_KING':   return getKingMoves(row, col, player);
+                
+                case 'S_PAWN':   return getStepMoves(row, col, player, [[dir, 0]]);
+                case 'S_LANCE':  return getSlidingMoves(row, col, player, [[dir, 0]]);
+                case 'S_KNIGHT': return getShogiKnightMoves(row, col, player, dir);
+                case 'S_SILVER': return getStepMoves(row, col, player, [[dir, 0], [dir, 1], [dir, -1], [-dir, 1], [-dir, -1]]);
+                case 'S_GOLD':
+                case 'S_PRO_PAWN':
+                case 'S_PRO_LANCE':
+                case 'S_PRO_KNIGHT':
+                case 'S_PRO_SILVER':
+                    return getStepMoves(row, col, player, [[dir, 0], [dir, 1], [dir, -1], [0, 1], [0, -1], [-dir, 0]]);
+
+                case 'S_PRO_ROOK': // 龍王
+                    return [
+                        ...getSlidingMoves(row, col, player, [[0, 1], [0, -1], [1, 0], [-1, 0]]),
+                        ...getStepMoves(row, col, player, [[1, 1], [1, -1], [-1, 1], [-1, -1]])
+                    ];
+                case 'S_PRO_BISHOP': // 竜馬
+                    return [
+                        ...getSlidingMoves(row, col, player, [[1, 1], [1, -1], [-1, 1], [-1, -1]]),
+                        ...getStepMoves(row, col, player, [[0, 1], [0, -1], [1, 0], [-1, 0]])
+                    ];
+                default: return [];
+            }
+        }
+
+        function getValidDropLocations(pieceId) {
+            const drops = [];
+            const player = PIECES[pieceId].player;
+            const lastRank = player === 'shogi' ? 8 : 0; // Shogi promotion zone is top 3 ranks, Chess is bottom 3
+            const secondLastRank = player === 'shogi' ? 7 : 1; // For knight
+
+            for (let r = 0; r < 9; r++) {
+                for (let c = 0; c < 9; c++) {
+                    if (boardState[r][c]) continue; // Can't drop on occupied square
+
+                    // Pawn drop restrictions (二歩, 行き詰まり)
+                    if (pieceId === 'S_PAWN') {
+                        if (r === lastRank) continue; // Cannot drop on last rank (shogi side)
+                        let pawnInColumn = false;
+                        for(let i=0; i<9; i++) {
+                            const p = boardState[i][c];
+                            if(p && p.id === 'S_PAWN' && p.player === player) {
+                                pawnInColumn = true;
+                                break;
+                            }
+                        }
+                        if (pawnInColumn) continue; // Two pawns in a file (二歩)
+                        // Note: Uchi-fu-zume (打ち歩詰め) is not implemented for simplicity
+                    }
+                    if (pieceId === 'S_LANCE' && r === lastRank) continue; // Lance cannot drop on last rank
+                    if (pieceId === 'S_KNIGHT' && (r === lastRank || r === secondLastRank)) continue; // Knight cannot drop on last 2 ranks
+                    if (pieceId === 'C_PAWN' && (r === 0 || r === 8)) continue; // Chess pawn cannot drop on 0th or 8th rank
+
+                    drops.push({ row: r, col: c });
+                }
+            }
+            return drops;
+        }
+        
+        // --- Movement Helpers ---
+
+        function isValid(r, c) {
+            return r >= 0 && r < 9 && c >= 0 && c < 9;
+        }
+
+        function getStepMoves(row, col, player, directions) {
+            const moves = [];
+            for (const [dr, dc] of directions) {
+                const r = row + dr;
+                const c = col + dc;
+                if (isValid(r, c)) {
+                    const target = boardState[r][c];
+                    if (!target || target.player !== player) {
+                        moves.push({ row: r, col: c });
+                    }
+                }
+            }
+            return moves;
+        }
+
+        function getSlidingMoves(row, col, player, directions) {
+            const moves = [];
+            for (const [dr, dc] of directions) {
+                for (let i = 1; i < 9; i++) {
+                    const r = row + dr * i;
+                    const c = col + dc * i;
+                    if (!isValid(r, c)) break;
+                    const target = boardState[r][c];
+                    if (target) {
+                        if (target.player !== player) {
+                            moves.push({ row: r, col: c });
+                        }
+                        break;
+                    }
+                    moves.push({ row: r, col: c });
+                }
+            }
+            return moves;
+        }
+
+        function getKnightMoves(row, col, player) {
+            const directions = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+            return getStepMoves(row, col, player, directions);
+        }
+        
+        function getShogiKnightMoves(row, col, player, dir) {
+             const directions = [[dir * 2, -1], [dir * 2, 1]];
+             return getStepMoves(row, col, player, directions);
+        }
+
+        function getKingMoves(row, col, player) {
+            const directions = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+            return getStepMoves(row, col, player, directions);
+        }
+
+        function getChessPawnMoves(row, col, player, dir, hasMoved) {
+            const moves = [];
+            // Forward 1
+            const r1 = row + dir;
+            if (isValid(r1, col) && !boardState[r1][col]) {
+                moves.push({ row: r1, col: col });
+                // Forward 2 (from initial position)
+                if (!hasMoved) {
+                    const r2 = row + dir * 2;
+                    if (isValid(r2, col) && !boardState[r2][col]) {
+                        moves.push({ row: r2, col: col });
+                    }
+                }
+            }
+            // Capture
+            const captureCols = [col - 1, col + 1];
+            for (const c of captureCols) {
+                if (isValid(r1, c)) {
+                    const target = boardState[r1][c];
+                    if (target && target.player !== player) {
+                        moves.push({ row: r1, col: c });
+                    }
+                }
+            }
+            // TODO: En-passant
+            return moves;
+        }
+
+        // --- Main Execution ---
+        initGame();
+    </script>
+</body>
+</html>
