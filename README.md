@@ -84,6 +84,9 @@ This repository contains a collection of small, self-contained web applications 
 #### [七五三数字パズル - Shichi-Go-San Number Puzzle](shichigosan-puzzle/) (2025-11-15)
 ゲームアプリケーション
 
+#### [将棋 vs チェス](shogi-chess-game/) (2025-12-01)
+ゲームアプリケーション
+
 #### [シューティングゲーム](shooting_cc/) (2025-09-05)
 ゲームアプリケーション
 
