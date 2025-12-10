@@ -1,0 +1,395 @@
+<!--
+AIモデル: Gemini
+Gemini CLIバージョン: 1.0.0 (仮)
+作成日時: 2025年12月10日
+ユーザープロンプト: 賞与の喜びを全力で表現する楽しく感動的で、労働の喜びと、つらさも少し感じさせるWebサイトを作ってください。
+AIのアプローチ: HTML, CSS, JavaScriptを単一ファイルに統合。中央に配置した賞与袋をクリックすると、CSSアニメーション（袋の膨張、光）とJavaScriptによる紙吹雪エフェクトが発動。労働への感謝と労いのメッセージを動的に表示する。
+実装の意図: ユーザーが賞与日の特別な感情（喜び、安堵、自己肯定感）を追体験できるような、シンプルで心温まるインタラクティブな体験を提供する。
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>賞与の日</title>
+    <style>
+        :root {
+            --primary-color: #d4af37; /* Gold */
+            --background-color: #fdfaf6;
+            --text-color: #333;
+            --envelope-color: #f0e68c; /* Khaki */
+            --shine-color: rgba(255, 255, 255, 0.8);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Hiragino Mincho ProN', 'MS PMincho', serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: var(--background-color);
+            overflow: hidden;
+            color: var(--text-color);
+            text-align: center;
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            cursor: pointer;
+            perspective: 1000px;
+        }
+
+        .bonus-envelope {
+            width: 200px;
+            height: 120px;
+            background-color: var(--envelope-color);
+            border: 2px solid var(--primary-color);
+            border-radius: 10px;
+            position: relative;
+            transition: transform 0.5s ease, box-shadow 0.5s ease;
+            transform-style: preserve-3d;
+        }
+        .bonus-envelope:before {
+            content: '賞 与';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .container.active .bonus-envelope {
+            transform: scale(1.2);
+            box-shadow: 0 0 30px var(--primary-color), 0 0 60px var(--shine-color);
+        }
+        
+        .message-area {
+            position: absolute;
+            top: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            opacity: 0;
+            transition: opacity 1s ease 1s;
+        }
+        
+        .container.active .message-area {
+            opacity: 1;
+        }
+
+        .message {
+            font-size: 18px;
+            line-height: 1.8;
+            margin: 0;
+        }
+        
+        .sub-message {
+            font-size: 14px;
+            margin-top: 10px;
+            color: #777;
+        }
+
+        .initial-prompt {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #aaa;
+            font-size: 14px;
+            opacity: 1;
+            transition: opacity 0.5s;
+        }
+        
+        .container.active .initial-prompt {
+            opacity: 0;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            opacity: 0;
+            top: -20px; /* Start from above the screen */
+        }
+
+        #counter-area {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: left;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            z-index: 100;
+        }
+
+        .container.active #counter-area {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .counter-label {
+            font-size: 14px;
+            color: #555;
+            margin: 0;
+        }
+
+        .counter-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 0;
+        }
+        
+        .coin {
+            position: absolute;
+            font-size: 24px;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.5); /* Make shadow stronger */
+        }
+        
+        .pulse {
+            animation: big-pulse 0.4s ease-out;
+        }
+
+        @keyframes big-pulse {
+            0% { transform: scale(1.2); }
+            50% { transform: scale(1.4); }
+            100% { transform: scale(1.2); }
+        }
+
+        .sparkle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.7;
+            transition: transform 1s ease-out, opacity 1s ease-out;
+        }
+
+        .screen-flash {
+            animation: screen-flash 0.3s ease-out;
+        }
+
+        @keyframes screen-flash {
+            0% { background-color: var(--background-color); }
+            50% { background-color: #fff; }
+            100% { background-color: var(--background-color); }
+        }
+
+
+    </style>
+</head>
+<body id="body">
+    <div id="counter-area">
+        <p class="counter-label">獲得賞与額</p>
+        <p class="counter-value" id="bonus-counter">¥0</p>
+    </div>
+
+    <div class="container" id="container">
+        <div class="bonus-envelope" id="envelope"></div>
+        <div class="message-area">
+            <p class="message" id="mainMessage"></p>
+            <p class="sub-message" id="subMessage"></p>
+        </div>
+        <div class="initial-prompt">賞与袋をクリック</div>
+    </div>
+    
+    <audio id="coin-sound" preload="auto"></audio>
+    <audio id="fanfare-sound" preload="auto"></audio>
+
+    <script>
+        const body = document.getElementById('body');
+        const container = document.getElementById('container');
+        const envelope = document.getElementById('envelope');
+        const mainMessage = document.getElementById('mainMessage');
+        const subMessage = document.getElementById('subMessage');
+        const bonusCounter = document.getElementById('bonus-counter');
+        const coinSound = document.getElementById('coin-sound');
+        const fanfareSound = document.getElementById('fanfare-sound');
+        
+        let isFirstClick = true;
+        let totalBonus = 0;
+
+        const messages = [
+            { main: "これまでの頑張りが、今、形になる。", sub: "ありがとう、未来の私。" },
+            { main: "この日のために、走り抜けてきた。", sub: "時には、少し休んでもいいんだよ。" },
+            { main: "嬉しい日も、辛かった日も、全てに意味があった。", sub: "今日の喜びを、力に変えて。" },
+            { main: "自分の頑張りを、一番知っているのは自分自身。", sub: "本当にお疲れ様。" },
+            { main: "一杯のコーヒーが、一日を支えてくれた。", sub: "小さなご褒美も忘れずに。" },
+            { main: "満員電車に揺られた日々も、報われる。", sub: "窓の外の景色は、いつもと違うかい？" },
+            { main: "深夜まで灯したデスクの光。", sub: "その一つ一つが、今日の輝きになった。" },
+            { main: "「もう無理だ」と思った、あの夜。", sub: "乗り越えた自分を、誇りに思う。" },
+            { main: "同僚の笑顔に救われた日。", sub: "次は自分が、誰かの力になろう。" },
+            { main: "この喜びを、誰と分かち合おうか。", sub: "大切な人の顔が浮かんでくる。" }
+        ];
+
+        container.addEventListener('click', () => {
+            if (isFirstClick) {
+                isFirstClick = false;
+                container.classList.add('active');
+                launchConfetti();
+            }
+            
+            // Screen Flash
+            body.classList.add('screen-flash');
+            setTimeout(() => body.classList.remove('screen-flash'), 300);
+
+            // Update message
+            const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+            mainMessage.textContent = randomMessage.main;
+            subMessage.textContent = randomMessage.sub;
+
+            // Add bonus amount
+            const amount = Math.floor(Math.random() * 20000) + 5000;
+            totalBonus += amount;
+            bonusCounter.textContent = `¥${totalBonus.toLocaleString()}`;
+
+            // Create a burst of treasures
+            const treasureCount = 15 + Math.floor(Math.random() * 10);
+            for (let i = 0; i < treasureCount; i++) {
+                createTreasure();
+            }
+            
+            // Play sound
+            if (Math.random() < 0.1) { // 10% chance for fanfare
+                fanfareSound.currentTime = 0;
+                fanfareSound.play().catch(() => {});
+            } else {
+                coinSound.currentTime = 0;
+                coinSound.play().catch(() => {});
+            }
+
+            // Pulse animation
+            envelope.classList.add('pulse');
+            setTimeout(() => {
+                envelope.classList.remove('pulse');
+            }, 400);
+        });
+        
+        function createTreasure() {
+            const treasures = [ '🪙', '💵', '💎' ];
+            const treasure = document.createElement('div');
+            treasure.classList.add('coin'); // Use coin class for basic styling
+            treasure.textContent = treasures[Math.floor(Math.random() * treasures.length)];
+            
+            const startX = container.offsetLeft + (container.offsetWidth / 2) + (Math.random() - 0.5) * 80;
+            const startY = container.offsetTop + (container.offsetHeight / 2);
+            
+            treasure.style.left = startX + 'px';
+            treasure.style.top = startY + 'px';
+            treasure.style.fontSize = `${28 + Math.random() * 20}px`; /* Bigger size */
+
+
+            document.body.appendChild(treasure);
+
+            const animation = treasure.animate([
+                { opacity: 1, transform: `translateY(0) translateX(0) rotate(0deg)` },
+                { opacity: 0, transform: `translateY(${ (Math.random() - 0.8) * 600}px) translateX(${ (Math.random() - 0.5) * 500}px) rotate(${ (Math.random() - 0.5) * 1440}deg)` } /* Bigger movement */
+            ], {
+                duration: 2000 + Math.random() * 1000, /* Longer duration */
+                easing: 'cubic-bezier(0.1, 0.9, 0.2, 1)'
+            });
+
+            animation.onfinish = () => {
+                treasure.remove();
+            };
+        }
+
+        function launchConfetti() {
+            const confettiCount = 200;
+            const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800'];
+
+            for (let i = 0; i < confettiCount; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                
+                const x = Math.random() * window.innerWidth;
+                const y = -20 - Math.random() * 50; // Start above screen
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const size = 5 + Math.random() * 10;
+                const rotation = Math.random() * 360;
+
+                confetti.style.left = x + 'px';
+                confetti.style.top = y + 'px';
+                confetti.style.backgroundColor = color;
+                confetti.style.width = size + 'px';
+                confetti.style.height = size + 'px';
+                confetti.style.transform = `rotate(${rotation}deg)`;
+                
+                document.body.appendChild(confetti);
+
+                animateConfetti(confetti);
+            }
+        }
+
+        function animateConfetti(confetti) {
+            const duration = 4000 + Math.random() * 3000;
+            const finalY = window.innerHeight + 20;
+            const finalX = confetti.offsetLeft + (Math.random() - 0.5) * 400;
+            const finalRotation = 720 + Math.random() * 720;
+            
+            confetti.animate([
+                { transform: `translate(0, 0) rotate(${confetti.style.transform})`, opacity: 1 },
+                { transform: `translate(${finalX - confetti.offsetLeft}px, ${finalY - confetti.offsetTop}px) rotate(${finalRotation}deg)`, opacity: 0 }
+            ], {
+                duration: duration,
+                easing: 'ease-out',
+                fill: 'forwards'
+            }).onfinish = () => {
+                confetti.remove();
+            };
+        }
+        
+        // Base64 encoded audio files
+        coinSound.src = "data:audio/wav;base64,UklGRlIAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAAABkYXRhSAAAAAD//v/9//7/AP8A/wD/AP8A/wD//P/9//3//f/9//z//P/8//z//P/8//z//P/9//3//f/9//3//QABAAEAAQABAAAAAP//AAD//wAA//8AAAEAAQAAAAEAAQAAAAAAAP/+//z//P/8//z//P/8//z//P/8//z//f/9//3//f/9//3//f/9//0AAQAAAAEAAQAAAAAAAAD//wAA//8A//8A//8A//8A//8A//8A//8A//8AAAEAAQABAAEAAQAAAAAAAP/9//3//f/9//3//f/9//3//f/9//3//QABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAAAAAAAP///wD//wD//wD//wD//wD//wD//wD//wD//wD//wAAAAAAAP/9//3//f/9//3//f/8//z//P/8//z//P/8//z//P/8//z//P/9//3//f/9//3//QAAAAAAAAAAAAAAAP/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//QABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAAAAP//AAD//wAA//8A//8A//8A//8A//8A//8A//8AAAEAAQAAAAAAAAD//wAA//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A//8A";
+        fanfareSound.src = "data:audio/wav;base64,UklGRqxKAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAAABkYXRhZElKAAAYAAAAGgAAABwAAAAgAAAAIgAAACYAAAAoAAAAMgAAADgAAAA+AAAARAAAAEgAAABQAAAAVgAAAFoAAABfAAAAYgAAAGcAAABqAAAAawAAAGoAAABnAAAAYgAAAF8AAABaAAAAVgAAAFEAAABMAAAARAAAAEIAAABBAAAAPgAAADsAAAA2AAAAMgAAAC0AAAAnAAAAIgAAAB8AAAAbAAAAGgAAABkAAAAZAAAAGQAAABkAAAAZAAAAGQAAABoAAAAbAAAAHQAAAB8AAAAgAAAAIgAAACQAAAAmAAAAJwAAACgAAAApAAAAKgAAACoAAAArAAAAKwAAACsAAAArAAAAKgAAACoAAAAqAAAAKQAAACgAAAAnAAAAJgAAACUAAAAjAAAAIQAAAB8AAAAdAAAAGwAAABoAAAAZAAAAGAAAABYAAAAWAAAAFgAAABYAAAAWAAAAFgAAABcAAAAXAAAAGAAAABkAAAAaAAAAGwAAABwAAAAdAAAAHgAAAB8AAAAfAAAAIAAAACAAAAAgAAAAHwAAAB8AAAAeAAAAHQAAABwAAAAbAAAAGgAAABkAAAAXAAAAFQAAABMAAAARAAAAEAAAABD/AAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAAAPAAAADwAAAA8AAA/eGAAAAZgAAAGoAAABtAAAAbgAAAG8AAABwAAAAcQAAAHIAAAByAAAAcgAAAHIAAAByAAAAcQAAAHAAAABvAAAAbgAAAG0AAABqAAAAaAAAAF8AAABdAAAAWwAAAFkAAABZAAAAWAAAAFIAAAA/AAAA7AAAANgAAADAAAAAqAAAACAAAAPf///3AAAAA/wAAAP8AAADrAAAA2AAAAL4AAACyAAAAqgAAAKIAAAB8AAAAcgAAAGsAAABgAAAAVAAAADsAAAAqAAAAEwAAAPv///oAAADsAAAA5gAAANAAAAC/AAAAswAAAK8AAACqAAAAoQAAAHoAAABzAAAAcwAAAHAAAAByAAAAbAAAAGUAAABdAAAATwAAAD8AAAAqAAAAFwAAAPz///cAAADoAAAA4AAAAMsAAAC3AAAAswAAAKwAAACjAAAAggAAAHkAAAB1AAAAcwAAAHMAAABxAAAAawAAAF4AAABQAAAAPgAAACsAAAAZAAAAAPz///YAAADfAAAA0AAAALsAAACzAAAAqgAAAKIAAAB+AAAAegAAAHUAAABzAAAAcwAAAHIAAAByAAAAawAAAFsAAABJAAAANgAAACQAAAATAAAAAP3///cAAADhAAAAywAAALAAAACrAAAAoQAAAH4AAAB5AAAAcwAAAHQAAABzAAAAcwAAAHIAAABrAAAAWwAAAEkAAAA3AAAAJgAAABMAAAD//gD3AAAA5AAAALwAAACrAAAAoAAAAHoAAAB0AAAAcwAAAHMAAABxAAAAagAAAFsAAABIAAAANQAAACMAAAASAAAAAP///AD0AAAA3AAAALAAAACoAAAAfgAAAHcAAABzAAAAcgAAAHAAAAFqAAAAWgAAAEcAAAAzAAAAIgAAABAAAAAAAP///AD0AAAA2QAAAK4AAACdAAAAewAAAHYAAABxAAAAcAAAAGgAAABZAAAARgAAADIAAAAhAAAAEAAAAAAAAP///AD1AAAAvgAAAJgAAAB2AAAAcQAAAGgAAABYAAAARQAAADEAAAAgAAAAEQAAAAAAAAAAAP/++AEAALAAAADvAAAA0gAAANgAAADgAAAA5wAAAPsAAAD7AAAA9gAAAPUAAADyAAAA6wAAAN8AAADJAAAAsQAAAJ4AAACMAAAAVwAAADsAAAAeAAAAAAD//gD+AAAA/AAAAP8AAAD/AAAA/AAAAPcAAADqAAAA2wAAALkAAACfAAAAggAAAF0AAABOAAAANgAAAB0AAAAJAAAA9v///AD++/AAAANoAAACxAAAAkgAAAG0AAABTAAAANQAAABoAAAAHAAAA9///APz++AAAA5QAAALIAAACMAAAAZAAAADkAAAAYAAAABAD4AP4A//8AAAD0AAAA3gAAANQAAADmAAAA+gAAAPsAAAD1AAAAOwAAAAIAAADiAAAA5QAAANkAAADRAAAAvQAAAKsAAACfAAAAggAAAIgAAACDAAAAfwAAAHYAAABsAAAAYAAAADkAAAAQAAAA+v///v///AD1AAAA2QAAALIAAACcAAAAgAAAAGIAAABEAAAAIgAAAP7///4A+gD/APgA+AAAAN8AAADZAAAAzgAAAMIAAACxAAAApwAAAJcAAACAAAAATgAAADVAAAAeAAAACgAAAPb+/gD6APkAAAD/AAAA/wAAAP8AAAD+AAAA+AAAAPUAAADqAAAA4gAAANAAAACyAAAAnQAAAIMAAAB5AAAAcQAAAGYAAABVAAAAOgAAACEAAAAOAAAA/v8A/AD7APwA+gD3APMA7gDmANEAswCfAHwAbgBhAFIAOAAfAAD5/v8A/v7/AAAAAQABAAAAAQABAAAAAQABAAAAAQABAAAAAgACAAIAAgADAAQABQAGAAcACAAJAAoACwAMAA0ADgAPABAAEQASABMAFAAVABYAFwAYABkAGgAbABwAHQAeAB8AIAAhACIAIwAkACUAJgAnACgAKQAqACsALAAtAC4ALwAwADEAMgAzADQANQA2ADcAOAA5ADoAOwA8AD0APgA9ADwAOwA6ADkAOAAsACMAEgD0APQA+AAAANQAAAC/AAAAkwAAAHcAAABqAAAATwAAACsAAAAKAAAA6v/++AAAAAD2AAAA3QAAALAAAACZAAAAegAAAGkAAABQAAAAOQAAACAAAAANAAAA+AD7AAAA8wDeANEAswCbAH0AdgBtAGMAUgA4ACIAAPz//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/9//3//f/aAAAA";
+
+        document.body.addEventListener('mousemove', (e) => {
+            createSparkle(e.clientX, e.clientY);
+        });
+
+        function createSparkle(x, y) {
+            const sparkle = document.createElement('div');
+            sparkle.classList.add('sparkle');
+            
+            sparkle.style.left = x + 'px';
+            sparkle.style.top = y + 'px';
+
+            const size = Math.random() * 8 + 4;
+            sparkle.style.width = size + 'px';
+            sparkle.style.height = size + 'px';
+            
+            document.body.appendChild(sparkle);
+            
+            setTimeout(() => {
+                const randomX = (Math.random() - 0.5) * 100;
+                const randomY = (Math.random() - 0.5) * 100;
+                sparkle.style.transform = `translate(${randomX}px, ${randomY}px) scale(0)`;
+                sparkle.style.opacity = 0;
+            }, 10);
+
+            setTimeout(() => {
+                sparkle.remove();
+            }, 1000);
+        }
+    </script>
+
+</body>
+</html>
