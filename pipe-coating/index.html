@@ -14,15 +14,31 @@
     <title>Pipe Coating</title>
     <style>
         :root {
-            --background-color: #2c2c2c;
-            --terminal-bg-color: #1a1a1a;
-            --text-color: #e0e0e0;
+            /* Gemini-like Color Palette */
+            --background-color: #131314;
+            --terminal-bg-color: #1e1f22;
+            --prompt-bg-color: #282a2e;
+            --code-bg-color: #282a2e;
+            --text-color: #e8eaed;
+            --thinking-color: #9aa0a6;
+            --prompt-color: #bdc1c6;
+            --prompt-label-color: #8ab4f8;
+            --error-color: #f28b82;
+            --caret-color: #8ab4f8;
+            --border-color: #3c4043;
+
+            /* Pseudo-code syntax colors */
+            --code-keyword: #c586c0;
+            --code-fn: #dcdcaa;
+            --code-comment: #6a9955;
+            --code-value: #9cdcfe;
+            --code-bool-true: #569cd6;
+            --code-bool-false: #ce9178;
+
+            /* Industrial Theme */
             --pipe-color-start: #888;
             --pipe-color-end: #ccc;
             --coating-color: rgba(255, 165, 0, 0.7);
-            --highlight-color: #ffa500;
-            --prompt-color: #4af626;
-            --caret-color: #00ff00; /* Green caret for CLI feel */
         }
 
         body {
@@ -41,35 +57,61 @@
         .container {
             display: flex;
             width: 100%;
-            max-width: 1400px;
+            max-width: 1600px; /* Increased max-width */
             height: 90vh;
-            border: 2px solid #555;
-            overflow: hidden; /* Prevent content overflow */
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
         }
 
         .canvas-container {
-            flex: 2;
+            flex: 3; /* Give more space to the canvas + code editor */
+            display: flex;
+            flex-direction: column; /* Align canvas and code editor vertically */
+            background-color: var(--background-color);
+            border-right: 1px solid var(--border-color);
+        }
+        
+        .canvas-wrapper {
+            flex-grow: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: #444;
             padding: 20px;
-            border-right: 2px solid #555;
         }
 
         #pipeCanvas {
-            border: 1px solid #666;
+            border: 1px solid var(--border-color);
             cursor: crosshair;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        #pseudoCodeEditor {
+            background-color: var(--code-bg-color);
+            height: 40%;
+            border-top: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 15px;
+            font-size: 14px;
+            white-space: pre;
         }
         
+        #pseudoCodeEditor .code-keyword { color: var(--code-keyword); }
+        #pseudoCodeEditor .code-fn { color: var(--code-fn); }
+        #pseudoCodeEditor .code-comment { color: var(--code-comment); }
+        #pseudoCodeEditor .code-value { color: var(--code-value); }
+        #pseudoCodeEditor .code-bool-true { color: var(--code-bool-true); }
+        #pseudoCodeEditor .code-bool-false { color: var(--code-bool-false); }
+
         .terminal {
             flex: 1;
             background-color: var(--terminal-bg-color);
             display: flex;
             flex-direction: column;
-            padding: 15px;
+            padding: 0;
             overflow-y: hidden;
-            position: relative; /* For loading messages */
+            position: relative;
         }
 
         .messages {
@@ -77,55 +119,34 @@
             overflow-y: auto;
             font-size: 14px;
             line-height: 1.5;
+            padding: 15px;
             white-space: pre-wrap;
-            margin-bottom: 10px;
-            /* Scrollbar styling for better CLI feel */
             scrollbar-width: thin;
-            scrollbar-color: #555 #1a1a1a;
+            scrollbar-color: var(--border-color) var(--terminal-bg-color);
         }
-        .messages::-webkit-scrollbar {
-            width: 8px;
-        }
-        .messages::-webkit-scrollbar-track {
-            background: #1a1a1a;
-        }
-        .messages::-webkit-scrollbar-thumb {
-            background-color: #555;
-            border-radius: 4px;
-            border: 2px solid #1a1a1a;
-        }
+        .messages::-webkit-scrollbar { width: 8px; }
+        .messages::-webkit-scrollbar-track { background: var(--terminal-bg-color); }
+        .messages::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 4px; border: 2px solid var(--terminal-bg-color); }
 
-
-        .messages .gemini-response {
+        .messages .gemini-response, .messages .user-prompt, .messages .error, .messages .thinking {
             color: var(--text-color);
         }
-        
-        .messages .user-prompt {
-            color: var(--prompt-color);
-        }
-        
-        .messages .error {
-            color: #ff4d4d;
-        }
-        
-        .messages .thinking {
-            color: #888;
-            font-style: italic;
-        }
+        .messages .user-prompt { color: var(--prompt-color); }
+        .messages .error { color: var(--error-color); }
+        .messages .thinking { color: var(--thinking-color); font-style: italic; }
 
         .prompt-container {
             display: flex;
             align-items: center;
-            background-color: #2a2a2a; /* Slightly lighter background for prompt */
-            border-top: 1px solid #444;
-            padding: 8px 0;
-            margin-top: auto; /* Push to bottom */
+            background-color: var(--prompt-bg-color);
+            border-top: 1px solid var(--border-color);
+            padding: 8px 15px;
+            margin-top: auto;
         }
 
         .prompt-label {
-            color: var(--prompt-color);
+            color: var(--prompt-label-color);
             margin-right: 8px;
-            margin-left: 10px; /* Padding on left */
         }
 
         #promptInput {
@@ -136,14 +157,17 @@
             font-size: 16px;
             flex-grow: 1;
             outline: none;
-            caret-color: var(--caret-color); /* Custom caret color */
+            caret-color: var(--caret-color);
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="canvas-container">
-            <canvas id="pipeCanvas" width="800" height="200"></canvas>
+            <div class="canvas-wrapper">
+                <canvas id="pipeCanvas" width="800" height="200"></canvas>
+            </div>
+            <div id="pseudoCodeEditor"></div>
         </div>
         <div class="terminal">
             <div class="messages" id="messages"></div>
@@ -161,6 +185,7 @@
             const ctx = canvas.getContext('2d');
             const messagesEl = document.getElementById('messages');
             const promptInput = document.getElementById('promptInput');
+            const pseudoCodeEditor = document.getElementById('pseudoCodeEditor');
 
             // --- Configuration ---
             const pipe = {
@@ -171,7 +196,16 @@
                 sections: 10
             };
             const typingSpeed = 20;
-            const thinkingTime = 1000; // 1 second
+            const thinkingTime = 1000;
+            const thinkingMessages = [
+                "Analyzing pipe integrity...",
+                "Calibrating coating parameters...",
+                "Refactoring pipe_coating_logic.rs...",
+                "Calculating material requirements...",
+                "Accessing coating knowledge base...",
+                "Formulating coating solution...",
+                "Pondering the meaning of coating..."
+            ];
 
             // --- State ---
             let isPainting = false;
@@ -181,23 +215,46 @@
 
             // --- Color Palette ---
             const computedStyle = getComputedStyle(document.documentElement);
-            const pipeColorStart = computedStyle.getPropertyValue('--pipe-color-start').trim();
-            const pipeColorEnd = computedStyle.getPropertyValue('--pipe-color-end').trim();
             const coatingColor = computedStyle.getPropertyValue('--coating-color').trim();
 
             // --- Core Functions ---
 
-            function resetCanvas() {
-                // Reset the canvas context (size hack) and clipping
-                canvas.width = canvas.width;
-                drawPipe();
-                ctx.beginPath();
-                ctx.rect(pipe.x, pipe.y, pipe.width, pipe.height);
-                ctx.clip();
-                coatedSections.fill(false);
+            function renderPseudoCode() {
+                let code = `<span class="code-comment">// pipe_coating_logic.rs</span>\n`;
+                code += `<span class="code-keyword">fn</span> <span class="code-fn">apply_coating</span>(<span class="code-value">pipe</span>: &<span class="code-keyword">mut</span> Pipe) {\n`;
+                code += `    <span class="code-keyword">let</span> sections = [\n`;
+                for (let i = 0; i < pipe.sections; i++) {
+                    const coated = coatedSections[i];
+                    const boolClass = coated ? 'code-bool-true' : 'code-bool-false';
+                    code += `        Section { coated: <span class="${boolClass}">${coated}</span> }, <span class="code-comment">// section ${i}</span>\n`;
+                }
+                code += `    ];\n`;
+                code += `\n`;
+                code += `    <span class="code-comment">// Begin highly optimized and complex coating logic (Rust-like)</span>\n`;
+                code += `    <span class="code-keyword">let</span> <span class="code-fn">coating_material</span> = <span class="code-fn">fetch_from_supply_chain</span>(<span class="code-value">material_id</span>); <span class="code-comment">// Asynchronous fetch</span>\n`;
+                code += `    <span class="code-keyword">match</span> <span class="code-fn">validate_purity</span>(&<span class="code-fn">coating_material</span>) {\n`;
+                code += `        <span class="code-keyword">Ok</span>(<span class="code-bool-true">true</span>) => <span class="code-comment">// Proceed with application</span>\n`;
+                code += `            <span class="code-keyword">for</span> <span class="code-value">section</span> <span class="code-keyword">in</span> <span class="code-value">sections.iter_mut</span>() {\n`;
+                code += `                <span class="code-keyword">if</span> !<span class="code-value">section.coated</span> {\n`;
+                code += `                    <span class="code-fn">apply_layer</span>(&<span class="code-keyword">mut</span> <span class="code-value">section</span>, &<span class="code-fn">coating_material</span>, <span class="code-value">100.0</span>); <span class="code-comment">// 100% coverage</span>\n`;
+                code += `                    <span class="code-value">section.coated</span> = <span class="code-bool-true">true</span>;\n`;
+                code += `                    <span class="code-keyword">let</span> <span class="code-fn">checksum</span> = <span class="code-fn">calculate_integrity_checksum</span>(&<span class="code-value">section</span>); \n`;
+                code += `                    <span class="code-fn">report_status</span>(<span class="code-value">section.id</span>, <span class="code-value">checksum</span>);\n`;
+                code += `                }\n`;
+                code += `            }\n`;
+                code += `        <span class="code-keyword">Err</span>(<span class="code-value">e</span>) => <span class="code-fn">log_error</span>(<span class="code-string">"Coating material impure"</span>, <span class="code-value">e</span>),\n`;
+                code += `        <span class="code-keyword">_</span> => <span class="code-fn">panic</span>!(<span class="code-string">"Unexpected validation result"</span>),\n`;
+                code += `    }\n`;
+                code += `    <span class="code-fn">optimize_coating_flow</span>(<span class="code-value">pipe</span>);\n`;
+                code += `    <span class="code-comment">// End highly optimized and complex coating logic</span>\n`;
+                code += `}`;
+                pseudoCodeEditor.innerHTML = code;
             }
-            
-            function drawPipe() {
+
+            function resetCanvas() {
+                canvas.width = canvas.width;
+                const pipeColorStart = computedStyle.getPropertyValue('--pipe-color-start').trim();
+                const pipeColorEnd = computedStyle.getPropertyValue('--pipe-color-end').trim();
                 const gradient = ctx.createLinearGradient(pipe.x, pipe.y, pipe.x, pipe.y + pipe.height);
                 gradient.addColorStop(0, pipeColorStart);
                 gradient.addColorStop(0.5, pipeColorEnd);
@@ -206,6 +263,12 @@
                 ctx.fillRect(pipe.x, pipe.y, pipe.width, pipe.height);
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
                 ctx.fillRect(pipe.x, pipe.y + 5, pipe.width, 10);
+                
+                ctx.beginPath();
+                ctx.rect(pipe.x, pipe.y, pipe.width, pipe.height);
+                ctx.clip();
+                coatedSections.fill(false);
+                renderPseudoCode();
             }
 
             function typeMessage(text, className, callback) {
@@ -226,21 +289,12 @@
                 type();
             }
 
-            const thinkingMessages = [
-                "Analyzing pipe integrity...",
-                "Calibrating coating parameters...",
-                "Consulting optimal coating strategies...",
-                "Calculating material requirements...",
-                "Accessing coating knowledge base...",
-                "Formulating coating solution...",
-                "Pondering the meaning of coating..."
-            ];
-
             function showThinkingMessage(callback) {
                 const randomMessage = thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)];
                 typeMessage(randomMessage, 'thinking', () => {
                     setTimeout(() => {
-                        messagesEl.lastChild.remove(); // Remove thinking message
+                        const thinkingMessageEl = messagesEl.querySelector('.thinking');
+                        if(thinkingMessageEl) thinkingMessageEl.remove();
                         if (callback) callback();
                     }, thinkingTime);
                 });
@@ -256,10 +310,11 @@
                 
                 ctx.fillStyle = coatingColor;
                 ctx.fillRect(x, pipe.y, sectionWidth, pipe.height);
-                coatedSections[sectionIndex] = true;
+                if (!coatedSections[sectionIndex]) {
+                    coatedSections[sectionIndex] = true;
+                    renderPseudoCode();
+                }
             }
-
-            // --- Command Handling ---
 
             function handleCommand(command) {
                 const parts = command.toLowerCase().split(' ').filter(p => p);
@@ -268,23 +323,16 @@
 
                 switch (cmd) {
                     case 'help':
-                        typeMessage(
-`Available commands:
-- /help: Shows this message.
-- /coat <section|all>: Coats a specific section (0-9) or all sections.
-- /status: Shows the current coating status.
-- /clear: Resets all coating on the pipe.
-- /manual: Provides instructions for manual coating.`
-                        , 'gemini-response');
+                        typeMessage(`Available commands:\n- /help: Shows this message.\n- /coat <section|all>: Coats a specific section (0-9) or all sections.\n- /status: Shows the current coating status.\n- /clear: Resets all coating on the pipe.\n- /manual: Provides instructions for manual coating.`, 'gemini-response');
                         break;
                     
                     case 'coat':
                         if (args.length === 0) {
-                            typeMessage('Usage: coat <section_number|all>', 'error');
+                            typeMessage('Usage: /coat <section_number|all>', 'error');
                             break;
                         }
                         if (args[0] === 'all') {
-                            typeMessage('Coating all sections...', 'gemini-response', () => {
+                            typeMessage('Refactoring all sections in pipe_coating_logic.rs...', 'gemini-response', () => {
                                 for (let i = 0; i < pipe.sections; i++) {
                                     autoCoatSection(i, true);
                                 }
@@ -293,7 +341,7 @@
                         } else {
                             const section = parseInt(args[0], 10);
                             if (!isNaN(section)) {
-                                typeMessage(`Coating section ${section}...`, 'gemini-response', () => {
+                                typeMessage(`Refactoring section ${section} in pipe_coating_logic.rs...`, 'gemini-response', () => {
                                     autoCoatSection(section);
                                 });
                             } else {
@@ -311,24 +359,22 @@
                         break;
 
                     case 'clear':
-                        typeMessage('Resetting pipe coating...', 'gemini-response', () => {
+                        typeMessage('Reverting changes in pipe_coating_logic.rs...', 'gemini-response', () => {
                              resetCanvas();
                              typeMessage('Pipe is now clear.', 'gemini-response');
                         });
                         break;
                     
                     case 'manual':
-                        typeMessage('You can coat the pipe manually by clicking and dragging the mouse over the canvas on the left.', 'gemini-response');
+                        typeMessage('You can coat the pipe manually by clicking and dragging the mouse over the canvas.', 'gemini-response');
                         break;
 
                     default:
-                        typeMessage(`Unknown command: '${command}'. Type 'help' for a list of commands.`, 'error');
+                        typeMessage(`Unknown command: '${command}'. Type '/help' for a list of commands.`, 'error');
                         break;
                 }
             }
             
-            // --- Manual Painting ---
-
             function getMousePos(canvas, evt) {
                 const rect = canvas.getBoundingClientRect();
                 return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
@@ -352,17 +398,23 @@
                 ctx.moveTo(lastX, lastY);
                 ctx.lineTo(pos.x, pos.y);
                 ctx.stroke();
+
+                const midX = (lastX + pos.x) / 2;
+                if (midX >= pipe.x && midX <= pipe.x + pipe.width) {
+                    const sectionIndex = Math.floor(((midX - pipe.x) / pipe.width) * pipe.sections);
+                    if (sectionIndex >= 0 && sectionIndex < pipe.sections && !coatedSections[sectionIndex]) {
+                        coatedSections[sectionIndex] = true;
+                        renderPseudoCode();
+                    }
+                }
                 [lastX, lastY] = [pos.x, pos.y];
             }
-
-            // --- Initialization ---
 
             function init() {
                 resetCanvas();
                 typeMessage('--- Pipe Coating Simulation v1.0 ---', 'gemini-response');
                 typeMessage("Welcome. Type '/help' for available commands or '/manual' for manual mode instructions.", 'gemini-response');
                 
-                // Event Listeners
                 promptInput.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         const rawCommand = promptInput.value.trim();
@@ -373,18 +425,13 @@
                             messagesEl.appendChild(p);
 
                             if (rawCommand.startsWith('/')) {
-                                const command = rawCommand.substring(1); // Remove the leading '/'
-                                // Show thinking message before executing command
+                                const command = rawCommand.substring(1);
                                 showThinkingMessage(() => {
                                     handleCommand(command);
                                 });
                             } else {
-                                // Non-command input, perform a "random" action
                                 showThinkingMessage(() => {
-                                    const uncoatedSections = coatedSections
-                                        .map((isCoated, index) => isCoated ? -1 : index)
-                                        .filter(index => index !== -1);
-                                    
+                                    const uncoatedSections = coatedSections.map((isCoated, index) => isCoated ? -1 : index).filter(index => index !== -1);
                                     if (uncoatedSections.length > 0) {
                                         const randomSection = uncoatedSections[Math.floor(Math.random() * uncoatedSections.length)];
                                         typeMessage(`Based on my analysis of your input, section ${randomSection} requires immediate attention.`, 'gemini-response', () => {
