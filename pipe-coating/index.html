@@ -220,11 +220,11 @@
                     case 'help':
                         typeMessage(
 `Available commands:
-- help: Shows this message.
-- coat <section|all>: Coats a specific section (0-9) or all sections.
-- status: Shows the current coating status.
-- clear: Resets all coating on the pipe.
-- manual: Provides instructions for manual coating.`
+- /help: Shows this message.
+- /coat <section|all>: Coats a specific section (0-9) or all sections.
+- /status: Shows the current coating status.
+- /clear: Resets all coating on the pipe.
+- /manual: Provides instructions for manual coating.`
                         , 'gemini-response');
                         break;
                     
@@ -310,18 +310,24 @@
             function init() {
                 resetCanvas();
                 typeMessage('--- Pipe Coating Simulation v1.0 ---', 'gemini-response');
-                typeMessage("Welcome. Type 'help' for available commands or 'manual' for manual mode instructions.", 'gemini-response');
+                typeMessage("Welcome. Type '/help' for available commands or '/manual' for manual mode instructions.", 'gemini-response');
                 
                 // Event Listeners
                 promptInput.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
-                        const command = promptInput.value.trim();
-                        if (command) {
+                        const rawCommand = promptInput.value.trim();
+                        if (rawCommand) {
                             const p = document.createElement('p');
                             p.className = 'user-prompt';
-                            p.textContent = `> ${command}`;
+                            p.textContent = `> ${rawCommand}`;
                             messagesEl.appendChild(p);
-                            handleCommand(command);
+
+                            if (rawCommand.startsWith('/')) {
+                                const command = rawCommand.substring(1); // Remove the leading '/'
+                                handleCommand(command);
+                            } else {
+                                typeMessage(`Error: Commands must start with '/'. Type '/help' for options.`, 'error');
+                            }
                         }
                         promptInput.value = '';
                         messagesEl.scrollTop = messagesEl.scrollHeight;
