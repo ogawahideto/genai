@@ -22,6 +22,7 @@
             --coating-color: rgba(255, 165, 0, 0.7);
             --highlight-color: #ffa500;
             --prompt-color: #4af626;
+            --caret-color: #00ff00; /* Green caret for CLI feel */
         }
 
         body {
@@ -43,6 +44,7 @@
             max-width: 1400px;
             height: 90vh;
             border: 2px solid #555;
+            overflow: hidden; /* Prevent content overflow */
         }
 
         .canvas-container {
@@ -67,6 +69,7 @@
             flex-direction: column;
             padding: 15px;
             overflow-y: hidden;
+            position: relative; /* For loading messages */
         }
 
         .messages {
@@ -76,7 +79,22 @@
             line-height: 1.5;
             white-space: pre-wrap;
             margin-bottom: 10px;
+            /* Scrollbar styling for better CLI feel */
+            scrollbar-width: thin;
+            scrollbar-color: #555 #1a1a1a;
         }
+        .messages::-webkit-scrollbar {
+            width: 8px;
+        }
+        .messages::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        .messages::-webkit-scrollbar-thumb {
+            background-color: #555;
+            border-radius: 4px;
+            border: 2px solid #1a1a1a;
+        }
+
 
         .messages .gemini-response {
             color: var(--text-color);
@@ -89,15 +107,25 @@
         .messages .error {
             color: #ff4d4d;
         }
+        
+        .messages .thinking {
+            color: #888;
+            font-style: italic;
+        }
 
         .prompt-container {
             display: flex;
             align-items: center;
+            background-color: #2a2a2a; /* Slightly lighter background for prompt */
+            border-top: 1px solid #444;
+            padding: 8px 0;
+            margin-top: auto; /* Push to bottom */
         }
 
         .prompt-label {
             color: var(--prompt-color);
             margin-right: 8px;
+            margin-left: 10px; /* Padding on left */
         }
 
         #promptInput {
@@ -108,6 +136,7 @@
             font-size: 16px;
             flex-grow: 1;
             outline: none;
+            caret-color: var(--caret-color); /* Custom caret color */
         }
     </style>
 </head>
@@ -142,6 +171,7 @@
                 sections: 10
             };
             const typingSpeed = 20;
+            const thinkingTime = 1000; // 1 second
 
             // --- State ---
             let isPainting = false;
@@ -194,6 +224,26 @@
                     }
                 }
                 type();
+            }
+
+            const thinkingMessages = [
+                "Analyzing pipe integrity...",
+                "Calibrating coating parameters...",
+                "Consulting optimal coating strategies...",
+                "Calculating material requirements...",
+                "Accessing coating knowledge base...",
+                "Formulating coating solution...",
+                "Pondering the meaning of coating..."
+            ];
+
+            function showThinkingMessage(callback) {
+                const randomMessage = thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)];
+                typeMessage(randomMessage, 'thinking', () => {
+                    setTimeout(() => {
+                        messagesEl.lastChild.remove(); // Remove thinking message
+                        if (callback) callback();
+                    }, thinkingTime);
+                });
             }
 
             function autoCoatSection(sectionIndex, silent = false) {
@@ -324,9 +374,26 @@
 
                             if (rawCommand.startsWith('/')) {
                                 const command = rawCommand.substring(1); // Remove the leading '/'
-                                handleCommand(command);
+                                // Show thinking message before executing command
+                                showThinkingMessage(() => {
+                                    handleCommand(command);
+                                });
                             } else {
-                                typeMessage(`Error: Commands must start with '/'. Type '/help' for options.`, 'error');
+                                // Non-command input, perform a "random" action
+                                showThinkingMessage(() => {
+                                    const uncoatedSections = coatedSections
+                                        .map((isCoated, index) => isCoated ? -1 : index)
+                                        .filter(index => index !== -1);
+                                    
+                                    if (uncoatedSections.length > 0) {
+                                        const randomSection = uncoatedSections[Math.floor(Math.random() * uncoatedSections.length)];
+                                        typeMessage(`Based on my analysis of your input, section ${randomSection} requires immediate attention.`, 'gemini-response', () => {
+                                            autoCoatSection(randomSection);
+                                        });
+                                    } else {
+                                        typeMessage('Pipe is fully coated. My work here is done.', 'gemini-response');
+                                    }
+                                });
                             }
                         }
                         promptInput.value = '';
