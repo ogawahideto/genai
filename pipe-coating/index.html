@@ -187,49 +187,94 @@
             const promptInput = document.getElementById('promptInput');
             const pseudoCodeEditor = document.getElementById('pseudoCodeEditor');
 
-            // --- Configuration ---
+            // --- New Pipe Configuration ---
             const pipe = {
-                x: 50,
-                y: 75,
-                width: canvas.width - 100,
-                height: 50,
-                sections: 10
+                sections: 10,
+                amplitude: 70,  // How much the pipe curves
+                frequency: 0.01, // How many curves
+                start: { x: 50, y: 100 },
+                length: canvas.width - 100,
+                numPoints: 200, // Number of points for polygon approximation
+                thickness: 30 // Pipe thickness
             };
+            const pathPoints = []; // Array to store {x, y}
+            
+            // --- General Config ---
             const typingSpeed = 20;
             const thinkingTime = 1000;
             const thinkingMessages = [
                 "Analyzing pipe integrity...",
-                "Calibrating coating parameters...",
-                "Refactoring pipe_coating_logic.rs...",
-                "Calculating material requirements...",
-                "Accessing coating knowledge base...",
-                "Formulating coating solution...",
-                "Pondering the meaning of coating..."
+                "Calibrating nonlinear coating parameters...",
+                "Refactoring pipe_coating_logic.rs for spline support...",
+                "Calculating material requirements for complex geometry...",
+                "Accessing fluid dynamics knowledge base...",
             ];
 
             // --- State ---
             let isPainting = false;
-            let lastX = 0;
-            let lastY = 0;
             const coatedSections = new Array(pipe.sections).fill(false);
 
             // --- Color Palette ---
             const computedStyle = getComputedStyle(document.documentElement);
             const coatingColor = computedStyle.getPropertyValue('--coating-color').trim();
+            const pipeColorStart = computedStyle.getPropertyValue('--pipe-color-start').trim();
+            const pipeColorEnd = computedStyle.getPropertyValue('--pipe-color-end').trim();
 
-            // --- Core Functions ---
+            // --- NEW: Pipe Path Generation and Drawing ---
+
+            function generatePipePath() {
+                pathPoints.length = 0; // Clear existing points
+                for (let i = 0; i <= pipe.numPoints; i++) {
+                    const x = pipe.start.x + (i / pipe.numPoints) * pipe.length;
+                    const y = pipe.start.y + Math.sin(i * pipe.frequency) * pipe.amplitude;
+                    pathPoints.push({ x, y });
+                }
+            }
+
+            function drawPath(points, color, thickness) {
+                if (points.length < 2) return;
+
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < points.length; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+                
+                if (color === 'pipe-gradient') {
+                    const gradient = ctx.createLinearGradient(0, canvas.height / 2 - 50, 0, canvas.height / 2 + 50);
+                    gradient.addColorStop(0, pipeColorStart);
+                    gradient.addColorStop(0.5, pipeColorEnd);
+                    gradient.addColorStop(1, pipeColorStart);
+                    ctx.strokeStyle = gradient;
+                } else {
+                    ctx.strokeStyle = color;
+                }
+
+                ctx.lineWidth = thickness;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+            }
+            
+            function drawPipe() {
+                drawPath(pathPoints, 'pipe-gradient', pipe.thickness);
+                drawPath(pathPoints.map(p => ({x: p.x, y: p.y - pipe.thickness * 0.2})), 'rgba(255, 255, 255, 0.1)', pipe.thickness * 0.3);
+            }
+
+            // --- UPDATED Core Functions ---
 
             function renderPseudoCode() {
-                let code = `<span class="code-comment">// pipe_coating_logic.rs</span>\n`;
+                let code = `<span class="code-comment">// pipe_coating_logic.rs (with spline support)</span>\n`;
+                code += `<span class="code-keyword">struct</span> PathPoint { x: <span class="code-value">f64</span>, y: <span class="code-value">f64</span> }\n\n`;
                 code += `<span class="code-keyword">fn</span> <span class="code-fn">apply_coating</span>(<span class="code-value">pipe</span>: &<span class="code-keyword">mut</span> Pipe) {\n`;
+                code += `    <span class="code-comment">// Coating status for each path segment group</span>\n`;
                 code += `    <span class="code-keyword">let</span> sections = [\n`;
                 for (let i = 0; i < pipe.sections; i++) {
                     const coated = coatedSections[i];
                     const boolClass = coated ? 'code-bool-true' : 'code-bool-false';
-                    code += `        Section { coated: <span class="${boolClass}">${coated}</span> }, <span class="code-comment">// section ${i}</span>\n`;
+                    code += `        Section { id: ${i}, coated: <span class="${boolClass}">${coated}</span> },\n`;
                 }
-                code += `    ];\n`;
-                code += `\n`;
+                code += `    ];\n\n`;
                 code += `    <span class="code-comment">// Begin highly optimized and complex coating logic (Rust-like)</span>\n`;
                 code += `    <span class="code-keyword">let</span> <span class="code-fn">coating_material</span> = <span class="code-fn">fetch_from_supply_chain</span>(<span class="code-value">material_id</span>); <span class="code-comment">// Asynchronous fetch</span>\n`;
                 code += `    <span class="code-keyword">match</span> <span class="code-fn">validate_purity</span>(&<span class="code-fn">coating_material</span>) {\n`;
@@ -252,25 +297,64 @@
             }
 
             function resetCanvas() {
-                canvas.width = canvas.width;
-                const pipeColorStart = computedStyle.getPropertyValue('--pipe-color-start').trim();
-                const pipeColorEnd = computedStyle.getPropertyValue('--pipe-color-end').trim();
-                const gradient = ctx.createLinearGradient(pipe.x, pipe.y, pipe.x, pipe.y + pipe.height);
-                gradient.addColorStop(0, pipeColorStart);
-                gradient.addColorStop(0.5, pipeColorEnd);
-                gradient.addColorStop(1, pipeColorStart);
-                ctx.fillStyle = gradient;
-                ctx.fillRect(pipe.x, pipe.y, pipe.width, pipe.height);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-                ctx.fillRect(pipe.x, pipe.y + 5, pipe.width, 10);
-                
-                ctx.beginPath();
-                ctx.rect(pipe.x, pipe.y, pipe.width, pipe.height);
-                ctx.clip();
+                canvas.width = canvas.width; // Clears the canvas and resets context
+                drawPipe();
                 coatedSections.fill(false);
                 renderPseudoCode();
             }
+            
+            function autoCoatSection(sectionIndex) {
+                 if (sectionIndex < 0 || sectionIndex >= pipe.sections) return;
 
+                const pointsPerSection = Math.floor(pipe.numPoints / pipe.sections);
+                const start = sectionIndex * pointsPerSection;
+                const end = (sectionIndex === pipe.sections - 1) ? pathPoints.length : start + pointsPerSection + 1;
+                
+                const sectionPoints = pathPoints.slice(start, end);
+                
+                drawPath(sectionPoints, coatingColor, pipe.thickness);
+
+                if (!coatedSections[sectionIndex]) {
+                    coatedSections[sectionIndex] = true;
+                    renderPseudoCode();
+                }
+            }
+            
+            function getClosestPointOnPath(x, y) {
+                let minDistance = Infinity;
+                let closestIndex = -1;
+                for (let i = 0; i < pathPoints.length; i++) {
+                    const point = pathPoints[i];
+                    const dx = x - point.x;
+                    const dy = y - point.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestIndex = i;
+                    }
+                }
+                return { index: closestIndex, distance: minDistance };
+            }
+
+            function paint(start, end) {
+                const { index: startIndex, distance: startDist } = getClosestPointOnPath(start.x, start.y);
+                const { index: endIndex, distance: endDist } = getClosestPointOnPath(end.x, end.y);
+                
+                if (startDist > pipe.thickness || endDist > pipe.thickness) return;
+
+                const pointsToPaint = pathPoints.slice(Math.min(startIndex, endIndex), Math.max(startIndex, endIndex) + 1);
+                if(pointsToPaint.length < 1) return;
+                drawPath(pointsToPaint, coatingColor, pipe.thickness);
+
+                const sectionIndex = Math.floor((startIndex / pipe.numPoints) * pipe.sections);
+                 if (sectionIndex >= 0 && sectionIndex < pipe.sections && !coatedSections[sectionIndex]) {
+                    coatedSections[sectionIndex] = true;
+                    renderPseudoCode();
+                }
+            }
+
+            // --- Command Handling & UI ---
+            
             function typeMessage(text, className, callback) {
                 const p = document.createElement('p');
                 p.className = className;
@@ -300,41 +384,20 @@
                 });
             }
 
-            function autoCoatSection(sectionIndex, silent = false) {
-                if (sectionIndex < 0 || sectionIndex >= pipe.sections) {
-                    if (!silent) typeMessage(`Error: Section ${sectionIndex} is out of bounds. Use 0-${pipe.sections - 1}.`, 'error');
-                    return;
-                }
-                const sectionWidth = pipe.width / pipe.sections;
-                const x = pipe.x + sectionIndex * sectionWidth;
-                
-                ctx.fillStyle = coatingColor;
-                ctx.fillRect(x, pipe.y, sectionWidth, pipe.height);
-                if (!coatedSections[sectionIndex]) {
-                    coatedSections[sectionIndex] = true;
-                    renderPseudoCode();
-                }
-            }
-
             function handleCommand(command) {
-                const parts = command.toLowerCase().split(' ').filter(p => p);
+                 const parts = command.toLowerCase().split(' ').filter(p => p);
                 const cmd = parts[0];
                 const args = parts.slice(1);
-
                 switch (cmd) {
-                    case 'help':
-                        typeMessage(`Available commands:\n- /help: Shows this message.\n- /coat <section|all>: Coats a specific section (0-9) or all sections.\n- /status: Shows the current coating status.\n- /clear: Resets all coating on the pipe.\n- /manual: Provides instructions for manual coating.`, 'gemini-response');
-                        break;
-                    
                     case 'coat':
-                        if (args.length === 0) {
+                         if (args.length === 0) {
                             typeMessage('Usage: /coat <section_number|all>', 'error');
                             break;
                         }
                         if (args[0] === 'all') {
                             typeMessage('Refactoring all sections in pipe_coating_logic.rs...', 'gemini-response', () => {
                                 for (let i = 0; i < pipe.sections; i++) {
-                                    autoCoatSection(i, true);
+                                    autoCoatSection(i);
                                 }
                                 typeMessage('All sections coated.', 'gemini-response');
                             });
@@ -349,7 +412,6 @@
                             }
                         }
                         break;
-                    
                     case 'status':
                         const coatedCount = coatedSections.filter(Boolean).length;
                         const percentage = (coatedCount / pipe.sections) * 100;
@@ -357,64 +419,63 @@
                         statusReport += coatedSections.map((s, i) => s ? `[${i}: coated]` : `[${i}: clear]`).join(' ');
                         typeMessage(statusReport, 'gemini-response');
                         break;
-
                     case 'clear':
-                        typeMessage('Reverting changes in pipe_coating_logic.rs...', 'gemini-response', () => {
+                        typeMessage('Reverting pipe geometry and coating...', 'gemini-response', () => {
+                             generatePipePath(); // Regenerate with original settings if needed or just redraw
                              resetCanvas();
-                             typeMessage('Pipe is now clear.', 'gemini-response');
+                             typeMessage('Pipe has been reset.', 'gemini-response');
                         });
                         break;
-                    
-                    case 'manual':
-                        typeMessage('You can coat the pipe manually by clicking and dragging the mouse over the canvas.', 'gemini-response');
-                        break;
+                    case 'curve':
+                        if (args.length < 2) {
+                            typeMessage('Usage: /curve <amplitude> <frequency>. Ex: /curve 70 0.01', 'error');
+                            break;
+                        }
+                        const amp = parseFloat(args[0]);
+                        const freq = parseFloat(args[1]);
+                        if (isNaN(amp) || isNaN(freq)) {
+                            typeMessage('Error: Amplitude and frequency must be numbers.', 'error');
+                            break;
+                        }
+                        if (amp < 0 || amp > 100) {
+                            typeMessage('Error: Amplitude must be between 0 and 100.', 'error');
+                            return;
+                        }
+                         if (freq < 0 || freq > 0.1) {
+                            typeMessage('Error: Frequency must be between 0 and 0.1.', 'error');
+                            return;
+                        }
 
+                        pipe.amplitude = amp;
+                        pipe.frequency = freq;
+                        
+                        typeMessage(`Re-calibrating pipe geometry to amp: ${amp}, freq: ${freq}...`, 'gemini-response', () => {
+                            generatePipePath();
+                            resetCanvas();
+                        });
+                        break;
                     default:
-                        typeMessage(`Unknown command: '${command}'. Type '/help' for a list of commands.`, 'error');
+                        const helpText = `Available commands:\n- /help: Shows this message.\n- /coat <section|all>: Coats a specific section (0-9).\n- /status: Shows the current coating status.\n- /clear: Resets all coating and geometry.\n- /curve <amp> <freq>: Changes the pipe curvature.\n- /manual: Provides instructions for manual coating.`;
+                        if (cmd === 'help') {
+                            typeMessage(helpText, 'gemini-response');
+                        } else if (cmd === 'manual') {
+                             typeMessage('You can coat the pipe manually by clicking and dragging the mouse over the canvas.', 'gemini-response');
+                        } else {
+                            typeMessage(`Unknown command: '${command}'. Type '/help' for a list of commands.`, 'error');
+                        }
                         break;
                 }
             }
-            
-            function getMousePos(canvas, evt) {
-                const rect = canvas.getBoundingClientRect();
-                return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
-            }
-
-            function startPainting(e) {
-                isPainting = true;
-                const pos = getMousePos(canvas, e);
-                [lastX, lastY] = [pos.x, pos.y];
-            }
-
-            function stopPainting() { isPainting = false; }
-
-            function paint(e) {
-                if (!isPainting) return;
-                const pos = getMousePos(canvas, e);
-                ctx.beginPath();
-                ctx.lineWidth = 20;
-                ctx.lineCap = 'round';
-                ctx.strokeStyle = coatingColor;
-                ctx.moveTo(lastX, lastY);
-                ctx.lineTo(pos.x, pos.y);
-                ctx.stroke();
-
-                const midX = (lastX + pos.x) / 2;
-                if (midX >= pipe.x && midX <= pipe.x + pipe.width) {
-                    const sectionIndex = Math.floor(((midX - pipe.x) / pipe.width) * pipe.sections);
-                    if (sectionIndex >= 0 && sectionIndex < pipe.sections && !coatedSections[sectionIndex]) {
-                        coatedSections[sectionIndex] = true;
-                        renderPseudoCode();
-                    }
-                }
-                [lastX, lastY] = [pos.x, pos.y];
-            }
+             
+            // --- Initialization and Event Listeners ---
 
             function init() {
+                generatePipePath();
                 resetCanvas();
-                typeMessage('--- Pipe Coating Simulation v1.0 ---', 'gemini-response');
-                typeMessage("Welcome. Type '/help' for available commands or '/manual' for manual mode instructions.", 'gemini-response');
+                typeMessage('--- Pipe Coating Simulation v2.0 (Spline Edition) ---', 'gemini-response');
+                typeMessage("Welcome. Pipe geometry has been updated. Type '/help' for commands.", 'gemini-response');
                 
+                let lastPos = null;
                 promptInput.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         const rawCommand = promptInput.value.trim();
@@ -426,9 +487,7 @@
 
                             if (rawCommand.startsWith('/')) {
                                 const command = rawCommand.substring(1);
-                                showThinkingMessage(() => {
-                                    handleCommand(command);
-                                });
+                                showThinkingMessage(() => { handleCommand(command); });
                             } else {
                                 showThinkingMessage(() => {
                                     const uncoatedSections = coatedSections.map((isCoated, index) => isCoated ? -1 : index).filter(index => index !== -1);
@@ -448,14 +507,22 @@
                     }
                 });
 
-                canvas.addEventListener('mousedown', startPainting);
-                canvas.addEventListener('mouseup', stopPainting);
-                canvas.addEventListener('mouseleave', stopPainting);
-                canvas.addEventListener('mousemove', paint);
+                const getMousePos = (canvas, evt) => ({ x: evt.clientX - canvas.getBoundingClientRect().left, y: evt.clientY - canvas.getBoundingClientRect().top });
+
+                canvas.addEventListener('mousedown', (e) => {
+                    isPainting = true;
+                    lastPos = getMousePos(canvas, e);
+                });
+                canvas.addEventListener('mouseup', () => { isPainting = false; lastPos = null; });
+                canvas.addEventListener('mouseleave', () => { isPainting = false; lastPos = null; });
+                canvas.addEventListener('mousemove', (e) => {
+                    if (!isPainting) return;
+                    const currentPos = getMousePos(canvas, e);
+                    paint(lastPos, currentPos);
+                    lastPos = currentPos;
+                });
             }
 
             init();
         });
     </script>
-</body>
-</html>
