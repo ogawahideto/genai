@@ -1,0 +1,283 @@
+
+<!--
+- AIモデル: Gemini
+- Gemini CLIバージョン: 1.0.0
+- 作成日時: 2025年12月13日
+- ユーザープロンプト: 新しいディレクトリに、風雨も強さを感じられるアプリを作ってください。降水量(mm/h)と風速(m/sec)の組み合わせで、どのようになるかをビジュアルに表現してください。できるだけ直感的に理解できる表現を工夫してください。いくつかのタイプの表現を選べるようにしてください。
+- AIのアプローチ: 単一のHTMLファイル内に、HTML、CSS、およびJavaScriptを記述します。外部ライブラリは使用しません。降水量と風速を調整するためのスライダー、および視覚表現タイプを選択するためのラジオボタンを設置します。選択されたタイプに応じて、JavaScriptが動的にCanvas要素や背景、テキストを操作して天候の状態を視覚化します。
+- 実装の意図: ユーザーが降水量と風速のパラメータを直感的に操作し、その組み合わせがもたらす天候の強さや様子を「雨粒アニメーション」「背景色」「テキスト記述」という3つの異なる視点から体感できるようにすることを目的とします。これにより、気象データに対する理解を深める教育的なツールとしても機能します。
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>風雨の強さビジュアライザー</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            flex-direction: column;
+        }
+        #container {
+            width: 90%;
+            max-width: 800px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        #visualization-area {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background-color: #87CEEB; /* Sky Blue */
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 20px 0;
+            transition: background-color 0.5s ease;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #text-description {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 2em;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            display: none; /* Initially hidden */
+        }
+        .controls {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .control-group {
+            margin: 10px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+        #view-options {
+            margin-top: 15px;
+        }
+         #view-options label {
+            display: inline-block;
+            margin-right: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <h1>風雨の強さビジュアライザー</h1>
+
+        <div id="visualization-area">
+            <canvas id="canvas"></canvas>
+            <div id="text-description"></div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="precipitation">降水量 (mm/h): <span id="precipitation-value">1</span></label>
+                <input type="range" id="precipitation" min="0" max="100" value="1">
+            </div>
+            <div class="control-group">
+                <label for="wind-speed">風速 (m/s): <span id="wind-speed-value">1</span></label>
+                <input type="range" id="wind-speed" min="0" max="50" value="1">
+            </div>
+        </div>
+        
+        <div id="view-options">
+            <label><input type="radio" name="view-type" value="animation" checked> 雨粒アニメーション</label>
+            <label><input type="radio" name="view-type" value="background"> 背景色</label>
+            <label><input type="radio" name="view-type" value="text"> テキスト記述</label>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const visualizationArea = document.getElementById('visualization-area');
+        const textDescription = document.getElementById('text-description');
+
+        const precipitationSlider = document.getElementById('precipitation');
+        const windSpeedSlider = document.getElementById('wind-speed');
+        const precipitationValue = document.getElementById('precipitation-value');
+        const windSpeedValue = document.getElementById('wind-speed-value');
+        const viewTypeRadios = document.querySelectorAll('input[name="view-type"]');
+
+        let precipitation = precipitationSlider.value;
+        let windSpeed = windSpeedSlider.value;
+        let viewType = 'animation';
+        
+        let raindrops = [];
+
+        function resizeCanvas() {
+            canvas.width = visualizationArea.clientWidth;
+            canvas.height = visualizationArea.clientHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // --- Raindrop Class ---
+        class Raindrop {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height - canvas.height;
+                this.length = Math.random() * 20 + 10;
+                this.speed = Math.random() * 5 + 2;
+                this.opacity = Math.random() * 0.5 + 0.2;
+            }
+
+            update() {
+                const angle = (windSpeed / 50) * (Math.PI / 4); // Max 45 degrees
+                this.x += Math.tan(angle) * this.speed;
+                this.y += this.speed * Math.cos(angle);
+
+                if (this.y > canvas.height) {
+                    this.y = -this.length;
+                    this.x = Math.random() * canvas.width * 1.5 - (canvas.width * 0.25) ; // Allow starting off-screen
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                const angle = (windSpeed / 50) * (Math.PI / 4);
+                const endX = this.x + Math.tan(angle) * this.length;
+                const endY = this.y + this.length * Math.cos(angle);
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(endX, endY);
+                ctx.strokeStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+        }
+        
+        function createRaindrops() {
+            raindrops = [];
+            const count = precipitation * 10; // More rain = more drops
+            for (let i = 0; i < count; i++) {
+                raindrops.push(new Raindrop());
+            }
+        }
+
+        function animate() {
+            if (viewType !== 'animation') return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            raindrops.forEach(drop => {
+                drop.update();
+                drop.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        function updateVisualization() {
+            // Hide all optional elements first
+            canvas.style.display = 'none';
+            textDescription.style.display = 'none';
+            
+            // Restore default background
+            visualizationArea.style.backgroundColor = '#87CEEB';
+
+            switch (viewType) {
+                case 'animation':
+                    canvas.style.display = 'block';
+                    createRaindrops();
+                    animate();
+                    break;
+                case 'background':
+                    const intensity = (precipitation / 100) * 0.7 + (windSpeed / 50) * 0.3; // Weighted intensity
+                    const calmColor = [135, 206, 235]; // Sky Blue
+                    const intenseColor = [10, 10, 50];   // Dark Slate Blue
+                    const r = calmColor[0] + (intenseColor[0] - calmColor[0]) * intensity;
+                    const g = calmColor[1] + (intenseColor[1] - calmColor[1]) * intensity;
+                    const b = calmColor[2] + (intenseColor[2] - calmColor[2]) * intensity;
+                    visualizationArea.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+                    break;
+                case 'text':
+                    textDescription.style.display = 'block';
+                    textDescription.textContent = getTextDescription(precipitation, windSpeed);
+                    break;
+            }
+        }
+
+        function getTextDescription(p, w) {
+            let pDesc = "霧雨";
+            if (p > 50) pDesc = "滝のような雨";
+            else if (p > 20) pDesc = "非常に強い雨";
+            else if (p > 10) pDesc = "強い雨";
+            else if (p > 5) pDesc = "やや強い雨";
+            else if (p > 2) pDesc = "本降り";
+            else if (p <= 0) pDesc = "雨なし";
+
+            let wDesc = "無風";
+            if (w > 30) wDesc = "猛烈な風";
+            else if (w > 20) wDesc = "非常に強い風";
+            else if (w > 15) wDesc = "強い風";
+            else if (w > 10) wDesc = "やや強い風";
+            else if (w > 5) wDesc = "風あり";
+            else if (w > 0) wDesc = "そよ風";
+
+            if (p <= 0 && w <= 0) return "無風快晴";
+
+            return `${pDesc} (${wDesc})`;
+        }
+
+
+        // --- Event Listeners ---
+        precipitationSlider.addEventListener('input', e => {
+            precipitation = e.target.value;
+            precipitationValue.textContent = precipitation;
+            if (viewType === 'animation') {
+                createRaindrops(); // Adjust drop count on the fly
+            }
+            updateVisualization();
+        });
+
+        windSpeedSlider.addEventListener('input', e => {
+            windSpeed = e.target.value;
+            windSpeedValue.textContent = windSpeed;
+            updateVisualization();
+        });
+
+        viewTypeRadios.forEach(radio => {
+            radio.addEventListener('change', e => {
+                viewType = e.target.value;
+                updateVisualization();
+            });
+        });
+
+        // --- Initial Setup ---
+        resizeCanvas();
+        precipitationValue.textContent = precipitation;
+        windSpeedValue.textContent = windSpeed;
+        updateVisualization();
+    </script>
+</body>
+</html>
