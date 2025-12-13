@@ -48,7 +48,9 @@
             transition: background-color 0.5s ease;
         }
         canvas {
-            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
         }
@@ -62,13 +64,15 @@
             font-weight: bold;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
             display: none; /* Initially hidden */
+            z-index: 10;
         }
         
-        /* --- Funny Visuals CSS --- */
+        /* --- Advanced Visuals CSS --- */
         .visual-element {
             position: absolute;
             bottom: 0;
             display: none; /* Hidden by default */
+            z-index: 2;
         }
         #house {
             left: 50px;
@@ -80,15 +84,20 @@
         #roof {
             left: 40px;
             bottom: 100px;
-            width: 170px;
+            width: 0;
             height: 0;
             border-left: 85px solid transparent;
             border-right: 85px solid transparent;
             border-bottom: 50px solid #B22222;
             transition: transform 0.5s ease-out;
         }
-        #character {
+        #female-character {
             right: 100px;
+            width: 50px;
+            height: 100px;
+        }
+         #male-character {
+            right: 160px;
             width: 50px;
             height: 100px;
         }
@@ -99,73 +108,191 @@
             border-radius: 50%;
             margin: 0 auto;
             border: 2px solid #333;
+            position: relative;
         }
-        .body {
+        .torso {
+            width: 30px;
+            height: 25px;
+            background: #FFC0CB; /* Pink */
+            margin: 0 auto;
+            border: 2px solid #333;
+            border-top: none;
+            position: relative;
+        }
+        .skirt {
+            width: 0px;
+            height: 0px;
+            margin: 0 auto;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 35px solid #FFC0CB; /* Pink */
+            position: relative;
+            transform-origin: top center;
+            transition: transform 0.3s ease-in-out;
+        }
+        .skirt-flying {
+            transform: rotateX(60deg);
+        }
+        #male-character .body {
             width: 30px;
             height: 60px;
-            background: #4682B4;
+            background: #4682B4; /* Blue */
             margin: 0 auto;
             border: 2px solid #333;
             border-top: none;
         }
-        #wig {
-            width: 44px;
-            height: 30px;
-            background: #333;
-            border-radius: 50% 50% 0 0;
-            top: -15px;
-            left: calc(50% - 22px);
+        #umbrella {
+            width: 120px;
+            height: 100px;
             position: absolute;
-            transition: transform 0.5s ease-in;
+            bottom: 40px;
+            left: -110px;
+            transition: transform 0.3s ease-in-out;
+        }
+        .umbrella-handle {
+            width: 6px;
+            height: 80px;
+            background: #666;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .umbrella-canopy {
+            width: 120px;
+            height: 120px;
+            background: #ff4136;
+            border-radius: 60px 60px 0 0;
+            position: absolute;
+            bottom: 60px;
+            left: 0;
+            transition: all 0.3s ease-in-out;
+        }
+        .umbrella-inverted .umbrella-canopy {
+            transform: scaleY(-1);
+            bottom: 100px;
+        }
+        #tree {
+            left: 250px;
+            width: 20px;
+            height: 150px;
+            background: #8B4513;
+            transform-origin: bottom center;
+            transition: transform 0.4s ease;
+        }
+        #tree::after {
+            content: '';
+            position: absolute;
+            top: -50px;
+            left: -40px;
+            width: 100px;
+            height: 100px;
+            background: #228B22;
+            border-radius: 50%;
+        }
+        #bird-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 6;
+        }
+        .bird {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+        }
+        .bird .wing {
+            position: absolute;
+            width: 20px;
+            height: 2px;
+            background-color: #333;
+            left: 0;
+            top: 50%;
+            transform-origin: left center;
+        }
+        .bird .left-wing {
+             animation: flap-left 0.3s linear infinite;
+        }
+        .bird .right-wing {
+             animation: flap-right 0.3s linear infinite;
         }
         #water-level {
             background: rgba(0, 100, 255, 0.5);
             width: 100%;
             height: 0;
             transition: height 0.5s ease;
+            z-index: 3;
+        }
+        #water-wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200px 10px;
+            z-index: 4;
+            opacity: 0;
+        }
+        #debris-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0; left: 0;
+            z-index: 5;
+        }
+        .debris {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #333;
         }
 
         /* Animations */
-        @keyframes fly-wig {
-            0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
-            100% { transform: translate(500px, -200px) rotate(720deg); opacity: 0; }
+        @keyframes flap-left {
+            0%, 100% { transform: rotate(10deg); }
+            50% { transform: rotate(-20deg); }
         }
-        .wig-flying {
-            animation: fly-wig 2s forwards;
+        @keyframes flap-right {
+            0%, 100% { transform: rotate(-10deg); }
+            50% { transform: rotate(20deg); }
         }
-
         @keyframes fly-roof {
              0% { transform: translate(0, 0) rotate(0deg); }
              100% { transform: translate(600px, -300px) rotate(360deg); }
         }
-        .roof-flying {
-            animation: fly-roof 2.5s forwards;
+        .roof-flying { animation: fly-roof 2.5s forwards; }
+
+        @keyframes fly-umbrella {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(400px, -300px) rotate(500deg); }
+        }
+        .umbrella-flying { animation: fly-umbrella 1.5s forwards; }
+
+        @keyframes fly-debris {
+            0% { transform: translateX(-20px); opacity: 1; }
+            100% { transform: translateX(850px); opacity: 1; }
         }
         
-        .controls {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            flex-wrap: wrap;
+        @keyframes wave-animation {
+            0% { background-position: 0 0; }
+            100% { background-position: 200px 0; }
         }
-        .control-group {
-            margin: 10px;
+        .waving {
+            opacity: 1;
+            animation-name: wave-animation;
+            animation-timing-function: linear;
+            animation-iteration-count: infinite;
         }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-        }
-        input[type="range"] {
-            width: 200px;
-        }
-        #view-options {
-            margin-top: 15px;
-        }
-         #view-options label {
-            display: inline-block;
-            margin-right: 15px;
-        }
+        
+        .controls { flex-direction: column; }
+        .control-row { display: flex; justify-content: space-around; width: 100%; }
+        .control-group { margin: 10px; }
+        label { display: block; margin-bottom: 5px; color: #555; }
+        input[type="range"] { width: 200px; }
+        #view-options { margin-top: 15px; }
+        #view-options label { display: inline-block; margin-right: 15px; }
     </style>
 </head>
 <body>
@@ -176,36 +303,49 @@
         <div id="visualization-area">
             <canvas id="canvas"></canvas>
             <div id="text-description"></div>
+            <div id="bird-container"></div>
 
-            <!-- Funny Visuals Elements -->
             <div id="scenery">
+                <div id="tree" class="visual-element"></div>
                 <div id="house" class="visual-element"></div>
                 <div id="roof" class="visual-element"></div>
-                <div id="character" class="visual-element">
-                    <div class="head">
-                        <div id="wig"></div>
+                <div id="female-character" class="visual-element">
+                    <div class="head"></div>
+                    <div class="torso">
+                         <div id="umbrella" class="visual-element">
+                            <div class="umbrella-canopy"></div>
+                            <div class="umbrella-handle"></div>
+                        </div>
                     </div>
+                    <div class="skirt"></div>
+                </div>
+                <div id="male-character" class="visual-element">
+                    <div class="head"></div>
                     <div class="body"></div>
                 </div>
-                <div id="water-level" class="visual-element"></div>
+                <div id="water-level" class="visual-element">
+                    <div id="water-wave"></div>
+                </div>
+                <div id="debris-container"></div>
             </div>
         </div>
 
         <div class="controls">
-            <div class="control-group">
-                <label for="precipitation">降水量 (mm/h): <span id="precipitation-value">1</span></label>
-                <input type="range" id="precipitation" min="0" max="100" value="1">
+            <div class="control-row">
+                <div class="control-group">
+                    <label for="precipitation">降水量 (mm/h): <span id="precipitation-value">1</span></label>
+                    <input type="range" id="precipitation" min="0" max="100" value="1">
+                </div>
+                <div class="control-group">
+                    <label for="wind-speed">風速 (m/s): <span id="wind-speed-value">1</span></label>
+                    <input type="range" id="wind-speed" min="0" max="50" value="1">
+                </div>
             </div>
-            <div class="control-group">
-                <label for="wind-speed">風速 (m/s): <span id="wind-speed-value">1</span></label>
-                <input type="range" id="wind-speed" min="0" max="50" value="1">
+             <div id="view-options">
+                <label><input type="radio" name="view-type" value="animation" checked> アドバンス</label>
+                <label><input type="radio" name="view-type" value="background"> 背景色</label>
+                <label><input type="radio" name="view-type" value="text"> テキスト</label>
             </div>
-        </div>
-        
-        <div id="view-options">
-            <label><input type="radio" name="view-type" value="animation" checked> 雨粒アニメーション</label>
-            <label><input type="radio" name="view-type" value="background"> 背景色</label>
-            <label><input type="radio" name="view-type" value="text"> テキスト記述</label>
         </div>
     </div>
 
@@ -215,11 +355,18 @@
         const visualizationArea = document.getElementById('visualization-area');
         const textDescription = document.getElementById('text-description');
 
-        // Funny visuals elements
         const scenery = document.getElementById('scenery');
-        const wig = document.getElementById('wig');
         const roof = document.getElementById('roof');
         const waterLevel = document.getElementById('water-level');
+        const waterWave = document.getElementById('water-wave');
+        const tree = document.getElementById('tree');
+        const umbrella = document.getElementById('umbrella');
+        const debrisContainer = document.getElementById('debris-container');
+        const skirt = document.querySelector('.skirt');
+        const femaleCharacter = document.getElementById('female-character');
+        const maleCharacter = document.getElementById('male-character');
+        const birdContainer = document.getElementById('bird-container');
+
 
         const precipitationSlider = document.getElementById('precipitation');
         const windSpeedSlider = document.getElementById('wind-speed');
@@ -230,17 +377,16 @@
         let precipitation = precipitationSlider.value;
         let windSpeed = windSpeedSlider.value;
         let viewType = 'animation';
-        
         let raindrops = [];
+        let debrisInterval;
+        let birds = [];
 
         function resizeCanvas() {
             canvas.width = visualizationArea.clientWidth;
             canvas.height = visualizationArea.clientHeight;
         }
-
         window.addEventListener('resize', resizeCanvas);
 
-        // --- Raindrop Class ---
         class Raindrop {
             constructor() {
                 this.x = Math.random() * canvas.width;
@@ -249,18 +395,15 @@
                 this.speed = Math.random() * 5 + 2 + (precipitation / 10);
                 this.opacity = Math.random() * 0.5 + 0.2;
             }
-
             update() {
-                const angle = (windSpeed / 50) * (Math.PI / 4); // Max 45 degrees
+                const angle = (windSpeed / 50) * (Math.PI / 4);
                 this.x += Math.tan(angle) * this.speed;
                 this.y += this.speed * Math.cos(angle);
-
                 if (this.y > canvas.height) {
                     this.y = -this.length;
-                    this.x = Math.random() * canvas.width * 1.5 - (canvas.width * 0.25) ; // Allow starting off-screen
+                    this.x = Math.random() * canvas.width * 1.5 - (canvas.width * 0.25);
                 }
             }
-
             draw() {
                 ctx.beginPath();
                 const angle = (windSpeed / 50) * (Math.PI / 4);
@@ -281,72 +424,121 @@
                 raindrops.push(new Raindrop());
             }
         }
+        
+        function createDebris() {
+            const debris = document.createElement('div');
+            debris.className = 'debris';
+            debris.style.top = `${Math.random() * 100}%`;
+            const duration = Math.random() * 1 + 0.5;
+            debris.style.animation = `fly-debris ${duration}s linear forwards`;
+            debrisContainer.appendChild(debris);
+            setTimeout(() => debris.remove(), duration * 1000);
+        }
 
-        function updateFunnyVisuals() {
-            // Control wig
-            if (windSpeed > 15) {
-                wig.classList.add('wig-flying');
-            } else {
-                wig.classList.remove('wig-flying');
-            }
+        function createBirds() {
+            birdContainer.innerHTML = '';
+            birds = [];
+            for(let i = 0; i < 5; i++) {
+                const birdEl = document.createElement('div');
+                birdEl.className = 'bird';
+                birdEl.innerHTML = '<div class="wing left-wing"></div><div class="wing right-wing"></div>';
+                birdContainer.appendChild(birdEl);
 
-            // Control roof
-            if (windSpeed > 30) {
-                roof.classList.add('roof-flying');
-            } else {
-                roof.classList.remove('roof-flying');
+                birds.push({
+                    el: birdEl,
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * (canvas.height / 2),
+                    speed: Math.random() * 1 + 0.5
+                });
             }
+        }
+
+        function updateBirds() {
+            const windFactor = 0.2;
+            birds.forEach(bird => {
+                bird.x += -bird.speed + windSpeed * windFactor;
+                if (bird.x < -50) {
+                    bird.x = canvas.width;
+                    bird.y = Math.random() * (canvas.height / 2);
+                }
+                bird.el.style.transform = `translate(${bird.x}px, ${bird.y}px)`;
+            });
+        }
+
+        function updateAdvancedVisuals() {
+            const intensity = Math.min( (precipitation / 100) * 0.6 + (windSpeed / 50) * 0.4, 1);
+            const calmSky = [135, 206, 235];
+            const stormySky = [40, 50, 70];
+            const r = calmSky[0] + (stormySky[0] - calmSky[0]) * intensity;
+            const g = calmSky[1] + (stormySky[1] - calmSky[1]) * intensity;
+            const b = calmSky[2] + (stormySky[2] - calmSky[2]) * intensity;
+            visualizationArea.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+
+            tree.style.transform = `rotate(${windSpeed * 0.5}deg)`;
+
+            roof.classList.toggle('roof-flying', windSpeed > 30);
+            skirt.classList.toggle('skirt-flying', windSpeed > 12);
             
-            // Control water level
+            umbrella.style.display = precipitation > 5 ? 'block' : 'none';
+            umbrella.classList.toggle('umbrella-inverted', windSpeed > 18);
+            umbrella.classList.toggle('umbrella-flying', windSpeed > 25);
+            
             const waterHeight = (precipitation / 100) * visualizationArea.clientHeight * 0.8;
             waterLevel.style.height = `${waterHeight}px`;
 
-            // Make character "drown"
-            const character = document.getElementById('character');
-            if(waterHeight > 80) { // If water is higher than character's body
-                 character.style.bottom = `${-100 + (waterHeight - 80)}px`; // sink
+            if (windSpeed > 5 && precipitation > 5) {
+                waterWave.classList.add('waving');
+                const waveSpeed = Math.max(0.2, 2 - windSpeed / 15);
+                waterWave.style.animationDuration = `${waveSpeed}s`;
             } else {
-                 character.style.bottom = '0px';
+                waterWave.classList.remove('waving');
             }
+            
+            const drownOffset = waterHeight > 80 ? `${-100 + (waterHeight - 80)}px` : '0px';
+            femaleCharacter.style.bottom = drownOffset;
+            maleCharacter.style.bottom = drownOffset;
+            
+            if (windSpeed > 35) {
+                if (!debrisInterval) debrisInterval = setInterval(createDebris, 300);
+            } else {
+                clearInterval(debrisInterval);
+                debrisInterval = null;
+            }
+
+            updateBirds();
         }
 
         function animate() {
             if (viewType !== 'animation') return;
-
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
             raindrops.forEach(drop => {
                 drop.update();
                 drop.draw();
             });
-            
-            updateFunnyVisuals();
-
+            updateAdvancedVisuals();
             requestAnimationFrame(animate);
         }
 
         function updateVisualization() {
-            // Hide all optional elements first
-            canvas.style.display = 'none';
-            textDescription.style.display = 'none';
-            scenery.style.display = 'none';
+            [canvas, textDescription, scenery, birdContainer].forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.visual-element').forEach(el => el.style.display = 'none');
+            clearInterval(debrisInterval);
+            debrisInterval = null;
             
-            // Restore default background
             visualizationArea.style.backgroundColor = '#87CEEB';
 
             switch (viewType) {
                 case 'animation':
-                    canvas.style.display = 'block';
-                    scenery.style.display = 'block';
-                    // Make all visual elements visible
+                    [canvas, scenery, birdContainer].forEach(el => el.style.display = 'block');
                     document.querySelectorAll('.visual-element').forEach(el => el.style.display = 'block');
                     createRaindrops();
+                    createBirds();
                     animate();
                     break;
                 case 'background':
-                    const intensity = (precipitation / 100) * 0.7 + (windSpeed / 50) * 0.3; // Weighted intensity
-                    const calmColor = [135, 206, 235]; // Sky Blue
-                    const intenseColor = [10, 10, 50];   // Dark Slate Blue
+                    const intensity = (precipitation / 100) * 0.7 + (windSpeed / 50) * 0.3;
+                    const calmColor = [135, 206, 235];
+                    const intenseColor = [10, 10, 50];
                     const r = calmColor[0] + (intenseColor[0] - calmColor[0]) * intensity;
                     const g = calmColor[1] + (intenseColor[1] - calmColor[1]) * intensity;
                     const b = calmColor[2] + (intenseColor[2] - calmColor[2]) * intensity;
@@ -360,42 +552,41 @@
         }
 
         function getTextDescription(p, w) {
-            let pDesc = "霧雨";
+            let pDesc;
             if (p > 80) pDesc = "溺れるほどの豪雨";
             else if (p > 50) pDesc = "滝のような雨";
             else if (p > 20) pDesc = "びしょ濡れの雨";
             else if (p > 10) pDesc = "強い雨";
-            else if (p > 5) pDesc = "やや強い雨";
-            else if (p > 2) pDesc = "本降り";
-            else if (p <= 0) pDesc = "雨なし";
+            else if (p > 5) pDesc = "傘が欲しくなる雨";
+            else if (p > 0) pDesc = "小雨";
+            else pDesc = "雨なし";
 
-            let wDesc = "無風";
-            if (w > 30) wDesc = "屋根が飛ぶ暴風";
-            else if (w > 15) wDesc = "かつらが飛ぶ強風";
-            else if (w > 10) wDesc = "やや強い風";
-            else if (w > 5) wDesc = "風あり";
+            let wDesc;
+            if (w > 40) wDesc = "瓦礫が飛ぶ猛烈な風";
+            else if (w > 30) wDesc = "屋根が飛ぶ暴風";
+            else if (w > 25) wDesc = "傘が飛ばされる風";
+            else if (w > 18) wDesc = "鳥も前に進めない風";
+            else if (w > 12) wDesc = "スカートがめくれる風";
+            else if (w > 10) wDesc = "木が大きく揺れる風";
+            else if (w > 5) wDesc = "水面が波立つ風";
             else if (w > 0) wDesc = "そよ風";
+            else wDesc = "無風";
 
             if (p <= 0 && w <= 0) return "無風快晴";
-
-            return `${pDesc} (${wDesc})`;
+            return p <= 0 ? wDesc : (w <= 0 ? pDesc : `${pDesc} (${wDesc})`);
         }
 
-
-        // --- Event Listeners ---
         precipitationSlider.addEventListener('input', e => {
             precipitation = e.target.value;
             precipitationValue.textContent = precipitation;
-            if (viewType === 'animation') {
-                createRaindrops(); 
-            }
-            // No need to call updateVisualization() here, it's called in animate()
+            if (viewType === 'animation') createRaindrops(); 
+            else if (viewType !== 'animation') updateVisualization();
         });
 
         windSpeedSlider.addEventListener('input', e => {
             windSpeed = e.target.value;
             windSpeedValue.textContent = windSpeed;
-             // No need to call updateVisualization() here, it's called in animate()
+            if (viewType !== 'animation') updateVisualization();
         });
 
         viewTypeRadios.forEach(radio => {
@@ -405,7 +596,6 @@
             });
         });
 
-        // --- Initial Setup ---
         resizeCanvas();
         precipitationValue.textContent = precipitation;
         windSpeedValue.textContent = windSpeed;
