@@ -63,6 +63,85 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
             display: none; /* Initially hidden */
         }
+        
+        /* --- Funny Visuals CSS --- */
+        .visual-element {
+            position: absolute;
+            bottom: 0;
+            display: none; /* Hidden by default */
+        }
+        #house {
+            left: 50px;
+            width: 150px;
+            height: 100px;
+            background-color: #D2B48C;
+            border: 3px solid #8B4513;
+        }
+        #roof {
+            left: 40px;
+            bottom: 100px;
+            width: 170px;
+            height: 0;
+            border-left: 85px solid transparent;
+            border-right: 85px solid transparent;
+            border-bottom: 50px solid #B22222;
+            transition: transform 0.5s ease-out;
+        }
+        #character {
+            right: 100px;
+            width: 50px;
+            height: 100px;
+        }
+        .head {
+            width: 40px;
+            height: 40px;
+            background: #F5DEB3;
+            border-radius: 50%;
+            margin: 0 auto;
+            border: 2px solid #333;
+        }
+        .body {
+            width: 30px;
+            height: 60px;
+            background: #4682B4;
+            margin: 0 auto;
+            border: 2px solid #333;
+            border-top: none;
+        }
+        #wig {
+            width: 44px;
+            height: 30px;
+            background: #333;
+            border-radius: 50% 50% 0 0;
+            top: -15px;
+            left: calc(50% - 22px);
+            position: absolute;
+            transition: transform 0.5s ease-in;
+        }
+        #water-level {
+            background: rgba(0, 100, 255, 0.5);
+            width: 100%;
+            height: 0;
+            transition: height 0.5s ease;
+        }
+
+        /* Animations */
+        @keyframes fly-wig {
+            0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+            100% { transform: translate(500px, -200px) rotate(720deg); opacity: 0; }
+        }
+        .wig-flying {
+            animation: fly-wig 2s forwards;
+        }
+
+        @keyframes fly-roof {
+             0% { transform: translate(0, 0) rotate(0deg); }
+             100% { transform: translate(600px, -300px) rotate(360deg); }
+        }
+        .roof-flying {
+            animation: fly-roof 2.5s forwards;
+        }
+        
         .controls {
             display: flex;
             justify-content: space-around;
@@ -97,6 +176,19 @@
         <div id="visualization-area">
             <canvas id="canvas"></canvas>
             <div id="text-description"></div>
+
+            <!-- Funny Visuals Elements -->
+            <div id="scenery">
+                <div id="house" class="visual-element"></div>
+                <div id="roof" class="visual-element"></div>
+                <div id="character" class="visual-element">
+                    <div class="head">
+                        <div id="wig"></div>
+                    </div>
+                    <div class="body"></div>
+                </div>
+                <div id="water-level" class="visual-element"></div>
+            </div>
         </div>
 
         <div class="controls">
@@ -123,6 +215,12 @@
         const visualizationArea = document.getElementById('visualization-area');
         const textDescription = document.getElementById('text-description');
 
+        // Funny visuals elements
+        const scenery = document.getElementById('scenery');
+        const wig = document.getElementById('wig');
+        const roof = document.getElementById('roof');
+        const waterLevel = document.getElementById('water-level');
+
         const precipitationSlider = document.getElementById('precipitation');
         const windSpeedSlider = document.getElementById('wind-speed');
         const precipitationValue = document.getElementById('precipitation-value');
@@ -148,7 +246,7 @@
                 this.x = Math.random() * canvas.width;
                 this.y = Math.random() * canvas.height - canvas.height;
                 this.length = Math.random() * 20 + 10;
-                this.speed = Math.random() * 5 + 2;
+                this.speed = Math.random() * 5 + 2 + (precipitation / 10);
                 this.opacity = Math.random() * 0.5 + 0.2;
             }
 
@@ -178,9 +276,37 @@
         
         function createRaindrops() {
             raindrops = [];
-            const count = precipitation * 10; // More rain = more drops
+            const count = precipitation * 10;
             for (let i = 0; i < count; i++) {
                 raindrops.push(new Raindrop());
+            }
+        }
+
+        function updateFunnyVisuals() {
+            // Control wig
+            if (windSpeed > 15) {
+                wig.classList.add('wig-flying');
+            } else {
+                wig.classList.remove('wig-flying');
+            }
+
+            // Control roof
+            if (windSpeed > 30) {
+                roof.classList.add('roof-flying');
+            } else {
+                roof.classList.remove('roof-flying');
+            }
+            
+            // Control water level
+            const waterHeight = (precipitation / 100) * visualizationArea.clientHeight * 0.8;
+            waterLevel.style.height = `${waterHeight}px`;
+
+            // Make character "drown"
+            const character = document.getElementById('character');
+            if(waterHeight > 80) { // If water is higher than character's body
+                 character.style.bottom = `${-100 + (waterHeight - 80)}px`; // sink
+            } else {
+                 character.style.bottom = '0px';
             }
         }
 
@@ -193,6 +319,8 @@
                 drop.update();
                 drop.draw();
             });
+            
+            updateFunnyVisuals();
 
             requestAnimationFrame(animate);
         }
@@ -201,6 +329,7 @@
             // Hide all optional elements first
             canvas.style.display = 'none';
             textDescription.style.display = 'none';
+            scenery.style.display = 'none';
             
             // Restore default background
             visualizationArea.style.backgroundColor = '#87CEEB';
@@ -208,6 +337,9 @@
             switch (viewType) {
                 case 'animation':
                     canvas.style.display = 'block';
+                    scenery.style.display = 'block';
+                    // Make all visual elements visible
+                    document.querySelectorAll('.visual-element').forEach(el => el.style.display = 'block');
                     createRaindrops();
                     animate();
                     break;
@@ -229,17 +361,17 @@
 
         function getTextDescription(p, w) {
             let pDesc = "霧雨";
-            if (p > 50) pDesc = "滝のような雨";
-            else if (p > 20) pDesc = "非常に強い雨";
+            if (p > 80) pDesc = "溺れるほどの豪雨";
+            else if (p > 50) pDesc = "滝のような雨";
+            else if (p > 20) pDesc = "びしょ濡れの雨";
             else if (p > 10) pDesc = "強い雨";
             else if (p > 5) pDesc = "やや強い雨";
             else if (p > 2) pDesc = "本降り";
             else if (p <= 0) pDesc = "雨なし";
 
             let wDesc = "無風";
-            if (w > 30) wDesc = "猛烈な風";
-            else if (w > 20) wDesc = "非常に強い風";
-            else if (w > 15) wDesc = "強い風";
+            if (w > 30) wDesc = "屋根が飛ぶ暴風";
+            else if (w > 15) wDesc = "かつらが飛ぶ強風";
             else if (w > 10) wDesc = "やや強い風";
             else if (w > 5) wDesc = "風あり";
             else if (w > 0) wDesc = "そよ風";
@@ -255,15 +387,15 @@
             precipitation = e.target.value;
             precipitationValue.textContent = precipitation;
             if (viewType === 'animation') {
-                createRaindrops(); // Adjust drop count on the fly
+                createRaindrops(); 
             }
-            updateVisualization();
+            // No need to call updateVisualization() here, it's called in animate()
         });
 
         windSpeedSlider.addEventListener('input', e => {
             windSpeed = e.target.value;
             windSpeedValue.textContent = windSpeed;
-            updateVisualization();
+             // No need to call updateVisualization() here, it's called in animate()
         });
 
         viewTypeRadios.forEach(radio => {
