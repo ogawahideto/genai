@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>99の煩悩タイピング浄化道場 - 99th Meaningless App Special</title>
+    <title>99 Worldly Desires Purification Dojo - 99th Meaningless App Special</title>
     <style>
         * {
             margin: 0;
@@ -12,7 +12,7 @@
         }
 
         body {
-            font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+            font-family: 'Georgia', 'Times New Roman', serif;
             background: linear-gradient(135deg, #1a0a2e 0%, #0f0518 50%, #2a1a3a 100%);
             overflow: hidden;
             color: #fff;
@@ -68,22 +68,22 @@
         }
 
         .title {
-            font-size: 48px;
+            font-size: 42px;
             font-weight: bold;
             text-shadow: 0 0 20px #ff6b9d, 0 0 40px #c44569, 0 0 60px #944e63;
             margin-bottom: 10px;
-            letter-spacing: 8px;
-        }
-
-        .subtitle {
-            font-size: 24px;
-            color: #ffd93d;
-            text-shadow: 0 0 10px #ffd93d;
             letter-spacing: 4px;
         }
 
+        .subtitle {
+            font-size: 22px;
+            color: #ffd93d;
+            text-shadow: 0 0 10px #ffd93d;
+            letter-spacing: 3px;
+        }
+
         .special-badge {
-            font-size: 36px;
+            font-size: 32px;
             color: #ff6b9d;
             text-shadow: 0 0 20px #ff6b9d;
             margin-top: 10px;
@@ -140,7 +140,7 @@
             border-radius: 20px;
             border: 3px solid #ffd93d;
             box-shadow: 0 0 40px rgba(255, 217, 61, 0.5);
-            min-width: 600px;
+            min-width: 650px;
             text-align: center;
         }
 
@@ -291,11 +291,12 @@
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 18px;
+            font-size: 16px;
             color: rgba(255, 255, 255, 0.6);
             text-align: center;
             z-index: 5;
             animation: blink 2s ease-in-out infinite;
+            max-width: 90%;
         }
 
         @keyframes blink {
@@ -352,13 +353,13 @@
     <canvas id="effectCanvas"></canvas>
 
     <div class="lang-switch">
-        <a href="index_en.html">English</a>
+        <a href="index.html">日本語</a>
     </div>
 
     <div class="ui-container">
         <div class="header">
-            <div class="title">九十九の煩悩浄化道場</div>
-            <div class="subtitle">BONNOU PURIFICATION DOJO</div>
+            <div class="title">99 KLESAS PURIFICATION DOJO</div>
+            <div class="subtitle">TYPING MEDITATION</div>
             <div class="special-badge">★ 99th SPECIAL EDITION ★</div>
         </div>
 
@@ -366,15 +367,15 @@
             <div class="counter-display" id="counter">0</div>
 
             <div class="bonnou-display">
-                <div class="bonnou-name" id="bonnouName">煩悩を浄化中...</div>
-                <div class="bonnou-description" id="bonnouDesc">キーボードを打って心を無に...</div>
+                <div class="bonnou-name" id="bonnouName">Purifying Klesas...</div>
+                <div class="bonnou-description" id="bonnouDesc">Type on keyboard to empty the mind...</div>
             </div>
 
-            <div class="typing-area" id="typingArea">無</div>
+            <div class="typing-area" id="typingArea">MU</div>
 
             <div class="progress-container">
                 <div class="progress-label">
-                    <span>浄化進度</span>
+                    <span>Purification Progress</span>
                     <span id="progressText">0/99</span>
                 </div>
                 <div class="progress-bar">
@@ -385,158 +386,158 @@
 
         <div class="stats">
             <div class="stat-item">
-                <div class="stat-label">総打鍵数</div>
+                <div class="stat-label">Total Keystrokes</div>
                 <div class="stat-value" id="totalKeys">0</div>
             </div>
             <div class="stat-item">
-                <div class="stat-label">浄化済煩悩</div>
+                <div class="stat-label">Purified Klesas</div>
                 <div class="stat-value" id="purifiedCount">0</div>
             </div>
             <div class="stat-item">
-                <div class="stat-label">悟りレベル</div>
+                <div class="stat-label">Enlightenment Level</div>
                 <div class="stat-value" id="enlightenmentLevel">0</div>
             </div>
         </div>
     </div>
 
     <div class="zen-quote" id="zenQuote"></div>
-    <div class="instruction">キーボードの任意のキーを打って煩悩を浄化しましょう（何を打っても全て「無」になります）</div>
+    <div class="instruction">Type any key to purify klesas (all keystrokes become "MU" - nothingness)</div>
 
     <div class="enlightenment-screen" id="enlightenmentScreen">
-        <div class="enlightenment-text">✨ ほぼ悟りの境地 ✨</div>
+        <div class="enlightenment-text">✨ Near-Enlightenment ✨</div>
         <div class="enlightenment-message">
-            99の煩悩を浄化されました<br>
-            （残り9つは次の機会に...）<br><br>
-            おめでとうございます！
+            You have purified 99 klesas<br>
+            (9 more remain for another time...)<br><br>
+            Congratulations!
         </div>
     </div>
 
     <script>
         // ========================================
         // AI Model: Claude 3.5 Sonnet
-        // User Prompt: 99回目の作品として、99という数字に意味を持たせた派手な演出のタイピングアプリ
-        // AI Approach: Multi-layer Canvas system, Web Audio API, particle effects, 99 bonnou database
-        // Implementation Intent: 99th special edition - maximum visual effects and meaningless but entertaining experience
+        // User Prompt: Create English version of 99 Bonnou typing app using Zen terminology
+        // AI Approach: Translation with Western Zen terms (klesa, mu, satori, etc.)
+        // Implementation Intent: 99th special edition - English version with language switcher
         // ========================================
 
-        // 99個の煩悩データベース
+        // 99 Klesas (Worldly Desires) Database
         const BONNOU_LIST = [
-            { name: "承認欲求", desc: "SNSのいいねが気になる心" },
-            { name: "二度寝", desc: "アラームを止めてしまう弱き心" },
-            { name: "スマホ依存", desc: "常に画面を見てしまう執着" },
-            { name: "先延ばし", desc: "明日やろうは馬鹿野郎" },
-            { name: "食べ過ぎ", desc: "お腹いっぱいでももう一口" },
-            { name: "夜更かし", desc: "寝る前のYouTubeが止まらない" },
-            { name: "衝動買い", desc: "ポチッとしてしまう指" },
-            { name: "比較癖", desc: "他人と自分を比べる心" },
-            { name: "完璧主義", desc: "100点以外は許せない心" },
-            { name: "心配性", desc: "起きてもいないことを心配する" },
-            { name: "怠惰", desc: "今日くらいサボってもいいか精神" },
-            { name: "嫉妬", desc: "他人の幸せが羨ましい" },
-            { name: "見栄", desc: "良く見られたい気持ち" },
-            { name: "プライド", desc: "負けを認められない心" },
-            { name: "愚痴", desc: "文句を言わずにいられない" },
-            { name: "八つ当たり", desc: "関係ない人に当たる弱さ" },
-            { name: "執着", desc: "手放せない物や思い出" },
-            { name: "後悔", desc: "過去に囚われる心" },
-            { name: "不安", desc: "未来が怖い気持ち" },
-            { name: "焦り", desc: "急がなくてもいいのに急ぐ心" },
-            { name: "怒り", desc: "イライラが止まらない" },
-            { name: "恨み", desc: "許せない気持ち" },
-            { name: "復讐心", desc: "やり返したい衝動" },
-            { name: "傲慢", desc: "自分が一番だと思う心" },
-            { name: "無知の自覚なし", desc: "知らないことを知らない" },
-            { name: "依存", desc: "何かに頼らずにいられない" },
-            { name: "逃避", desc: "現実から目を背ける" },
-            { name: "妄想", desc: "起きてもいないことを考える" },
-            { name: "優柔不断", desc: "決められない心の弱さ" },
-            { name: "八方美人", desc: "みんなに好かれたい欲" },
-            { name: "自己否定", desc: "自分を責めてしまう癖" },
-            { name: "自己中心", desc: "自分のことしか考えない" },
-            { name: "被害妄想", desc: "悪く取りすぎる思考" },
-            { name: "ネガティブ思考", desc: "悪い方にばかり考える" },
-            { name: "取り越し苦労", desc: "心配しすぎる性格" },
-            { name: "ケチ", desc: "出すべき時にも出せない" },
-            { name: "浪費", desc: "使いすぎてしまう癖" },
-            { name: "見返り期待", desc: "何かを期待して動く心" },
-            { name: "独占欲", desc: "自分だけのものにしたい" },
-            { name: "支配欲", desc: "コントロールしたい欲求" },
-            { name: "名誉欲", desc: "有名になりたい気持ち" },
-            { name: "権力欲", desc: "力を持ちたい欲望" },
-            { name: "知識欲の暴走", desc: "知りすぎて行動できない" },
-            { name: "完璧主義の押し付け", desc: "他人にも完璧を求める" },
-            { name: "正義感の暴走", desc: "自分の正義を押し付ける" },
-            { name: "説教癖", desc: "人に教えたがる性質" },
-            { name: "マウント", desc: "上に立ちたい欲求" },
-            { name: "噂好き", desc: "ゴシップが気になる心" },
-            { name: "詮索", desc: "人のことを知りたがる" },
-            { name: "盗み見", desc: "見てはいけないものを見る" },
-            { name: "盗み聞き", desc: "聞いてはいけない話を聞く" },
-            { name: "ドタキャン常習", desc: "約束を守れない弱さ" },
-            { name: "遅刻癖", desc: "時間を守れない甘え" },
-            { name: "言い訳", desc: "自分を正当化する癖" },
-            { name: "責任転嫁", desc: "人のせいにする卑怯さ" },
-            { name: "現実逃避ゲーム", desc: "やるべきことをせずゲーム" },
-            { name: "ドラマ見過ぎ", desc: "次の話が気になって寝不足" },
-            { name: "漫画読破欲", desc: "徹夜で全巻読む衝動" },
-            { name: "SNS巡回", desc: "タイムラインを見続ける" },
-            { name: "通知確認癖", desc: "来てもいない通知をチェック" },
-            { name: "既読スルー恐怖", desc: "すぐ返信しなきゃ不安" },
-            { name: "未読無視罪悪感", desc: "読まないと気になる" },
-            { name: "フォロワー数執着", desc: "数字ばかり気にする" },
-            { name: "バズりたい欲", desc: "バイラルを夢見る心" },
-            { name: "リア充アピール", desc: "充実してると見せたい" },
-            { name: "写真盛りすぎ", desc: "加工しすぎる自分" },
-            { name: "自撮り過多", desc: "何枚も撮り直す執着" },
-            { name: "エアリプ", desc: "直接言えない臆病さ" },
-            { name: "サブ垢", desc: "本音を別垢で言う二面性" },
-            { name: "炎上ウォッチ", desc: "他人の不幸を見てしまう" },
-            { name: "ネットサーフィン", desc: "気づけば3時間経過" },
-            { name: "タブ開きすぎ", desc: "100個開いて収拾つかず" },
-            { name: "ブックマーク溜め込み", desc: "後で読むは読まない" },
-            { name: "メール未読999+", desc: "整理できない性格" },
-            { name: "LINE未読放置", desc: "返すの面倒で放置" },
-            { name: "カート放置", desc: "買い物カゴに入れっぱなし" },
-            { name: "セール依存", desc: "割引じゃないと買えない" },
-            { name: "ポイント執着", desc: "ポイントのために無駄遣い" },
-            { name: "レビュー読み過ぎ", desc: "決められず永遠リサーチ" },
-            { name: "比較サイト巡り", desc: "最安値探しで疲弊" },
-            { name: "無料期間だけ", desc: "課金はしない主義" },
-            { name: "クーポン乞食", desc: "クーポンありきで選ぶ" },
-            { name: "試供品コレクター", desc: "無料サンプル集め" },
-            { name: "ガチャ欲", desc: "あと1回引きたい衝動" },
-            { name: "課金沼", desc: "気づけば諭吉が消える" },
-            { name: "推し活破産", desc: "推しのためなら財布が軽く" },
-            { name: "積みゲー", desc: "買うだけでやらないゲーム" },
-            { name: "積ん読", desc: "買うだけで読まない本" },
-            { name: "サブスク放置", desc: "使ってないのに解約しない" },
-            { name: "ダラダラ視聴", desc: "目的もなくNetflix" },
-            { name: "自動再生の罠", desc: "次の話が勝手に始まる沼" },
-            { name: "おすすめアルゴリズム中毒", desc: "AIに操られる日々" },
-            { name: "無限スクロール", desc: "終わりのないタイムライン" },
-            { name: "今日も何もしなかった", desc: "1日が終わる虚無感" },
-            { name: "明日こそは", desc: "明日も同じことを言う" },
-            { name: "いつかやる", desc: "いつかは永遠に来ない" },
-            { name: "なんとかなる精神", desc: "準備不足の楽観主義" }
+            { name: "Desire for Validation", desc: "Craving likes on social media" },
+            { name: "Snooze Addiction", desc: "Weak mind hitting the alarm" },
+            { name: "Smartphone Attachment", desc: "Constant screen gazing" },
+            { name: "Procrastination", desc: "Tomorrow never comes" },
+            { name: "Overeating", desc: "Just one more bite" },
+            { name: "Night Owl Syndrome", desc: "YouTube rabbit hole at 3am" },
+            { name: "Impulse Buying", desc: "One-click purchase curse" },
+            { name: "Comparison Mind", desc: "Measuring self against others" },
+            { name: "Perfectionism", desc: "Only 100% is acceptable" },
+            { name: "Anxiety", desc: "Worrying about what hasn't happened" },
+            { name: "Sloth", desc: "Skip today, I deserve it" },
+            { name: "Envy", desc: "Others' happiness stings" },
+            { name: "Vanity", desc: "Need to look good" },
+            { name: "Pride", desc: "Cannot admit defeat" },
+            { name: "Complaining", desc: "Can't stop whining" },
+            { name: "Displaced Anger", desc: "Taking it out on innocents" },
+            { name: "Clinging", desc: "Unable to let go" },
+            { name: "Regret", desc: "Trapped in the past" },
+            { name: "Fear", desc: "Dreading the future" },
+            { name: "Impatience", desc: "Rushing unnecessarily" },
+            { name: "Anger", desc: "Irritation won't stop" },
+            { name: "Resentment", desc: "Unable to forgive" },
+            { name: "Revenge", desc: "Must retaliate" },
+            { name: "Arrogance", desc: "I am superior" },
+            { name: "Ignorance of Ignorance", desc: "Don't know what you don't know" },
+            { name: "Dependency", desc: "Can't stand alone" },
+            { name: "Escapism", desc: "Avoiding reality" },
+            { name: "Fantasy", desc: "Lost in imagination" },
+            { name: "Indecision", desc: "Cannot choose" },
+            { name: "People-Pleasing", desc: "Need everyone to like me" },
+            { name: "Self-Criticism", desc: "Blaming yourself constantly" },
+            { name: "Self-Centeredness", desc: "Only thinking of self" },
+            { name: "Victim Mentality", desc: "Taking everything personally" },
+            { name: "Negative Thinking", desc: "Seeing only the bad" },
+            { name: "Overthinking", desc: "Worrying too much" },
+            { name: "Stinginess", desc: "Can't spend when needed" },
+            { name: "Wastefulness", desc: "Spending too much" },
+            { name: "Expectation of Return", desc: "Giving to receive" },
+            { name: "Possessiveness", desc: "Must own exclusively" },
+            { name: "Control Freak", desc: "Need to control everything" },
+            { name: "Fame-Seeking", desc: "Want to be famous" },
+            { name: "Power-Hunger", desc: "Desire for authority" },
+            { name: "Analysis Paralysis", desc: "Knowing too much, doing nothing" },
+            { name: "Forcing Perfection", desc: "Demanding perfection from others" },
+            { name: "Righteous Crusading", desc: "Imposing your justice" },
+            { name: "Preaching", desc: "Must teach everyone" },
+            { name: "One-Upping", desc: "Need to be on top" },
+            { name: "Gossip Craving", desc: "Hungry for rumors" },
+            { name: "Prying", desc: "Need to know others' business" },
+            { name: "Snooping", desc: "Looking at what shouldn't be seen" },
+            { name: "Eavesdropping", desc: "Listening to what shouldn't be heard" },
+            { name: "Serial Canceling", desc: "Can't keep promises" },
+            { name: "Chronic Lateness", desc: "Can't be on time" },
+            { name: "Making Excuses", desc: "Justifying everything" },
+            { name: "Blame-Shifting", desc: "It's always someone else's fault" },
+            { name: "Gaming Escapism", desc: "Playing instead of working" },
+            { name: "Binge-Watching", desc: "Just one more episode" },
+            { name: "Marathon Reading", desc: "All-nighter to finish series" },
+            { name: "Social Media Scrolling", desc: "Endless timeline checking" },
+            { name: "Notification Checking", desc: "Phantom notification syndrome" },
+            { name: "Read Receipt Anxiety", desc: "Must reply immediately" },
+            { name: "Unread Message Guilt", desc: "Bothered by unread messages" },
+            { name: "Follower Count Obsession", desc: "Numbers matter too much" },
+            { name: "Viral Dreams", desc: "Want to go viral" },
+            { name: "Highlight Reel Life", desc: "Showing only the good" },
+            { name: "Photo Filtering", desc: "Over-editing yourself" },
+            { name: "Selfie Madness", desc: "Taking 100 shots" },
+            { name: "Subtweeting", desc: "Can't say it directly" },
+            { name: "Alt Account", desc: "Two-faced online persona" },
+            { name: "Drama-Watching", desc: "Enjoying others' misfortune" },
+            { name: "Infinite Surfing", desc: "3 hours gone unnoticed" },
+            { name: "Tab Hoarding", desc: "100 tabs, total chaos" },
+            { name: "Bookmark Hoarding", desc: "Will read later = never" },
+            { name: "Email 999+ Unread", desc: "Can't organize" },
+            { name: "Message Ghosting", desc: "Too lazy to reply" },
+            { name: "Cart Abandonment", desc: "Left in shopping cart forever" },
+            { name: "Sale Addiction", desc: "Only buy on discount" },
+            { name: "Point Obsession", desc: "Spending for points" },
+            { name: "Review Paralysis", desc: "Eternal research, no decision" },
+            { name: "Price Comparison Hell", desc: "Exhausted finding lowest price" },
+            { name: "Free Trial Hopping", desc: "Never actually pay" },
+            { name: "Coupon Hunting", desc: "Choose based on coupons" },
+            { name: "Free Sample Collecting", desc: "Gathering freebies" },
+            { name: "Gacha Fever", desc: "Just one more pull" },
+            { name: "Microtransaction Trap", desc: "Money vanishing mysteriously" },
+            { name: "Stan Bankruptcy", desc: "Wallet empty for idol" },
+            { name: "Game Backlog", desc: "Buying games, never playing" },
+            { name: "Book Pile", desc: "Buying books, never reading" },
+            { name: "Subscription Neglect", desc: "Paying but not using" },
+            { name: "Mindless Streaming", desc: "Netflix with no purpose" },
+            { name: "Autoplay Trap", desc: "Next episode starts automatically" },
+            { name: "Algorithm Addiction", desc: "AI controls your day" },
+            { name: "Infinite Scroll", desc: "Timeline with no end" },
+            { name: "Did Nothing Today", desc: "Day ends with emptiness" },
+            { name: "Tomorrow For Sure", desc: "Saying same thing tomorrow" },
+            { name: "Someday Syndrome", desc: "Someday never arrives" },
+            { name: "It'll Work Out", desc: "Optimism without preparation" }
         ];
 
-        // 禅の名言
+        // Zen Quotes
         const ZEN_QUOTES = [
-            "心頭滅却すれば火もまた涼し",
-            "無心の境地に至る",
-            "一切皆空",
-            "色即是空 空即是色",
-            "煩悩即菩提",
-            "無",
-            "空",
-            "悟",
-            "浄",
-            "解脱への道",
-            "執着を手放す",
-            "今この瞬間に在る",
-            "全ては移ろいゆく",
-            "静寂の中に真理あり",
-            "心を鎮めよ"
+            "Empty your mind",
+            "Be water, my friend",
+            "The obstacle is the path",
+            "Let go or be dragged",
+            "This too shall pass",
+            "MU",
+            "SATORI",
+            "KENSHO",
+            "ZAZEN",
+            "The path to liberation",
+            "Release attachment",
+            "Be here now",
+            "All things are impermanent",
+            "In stillness, truth reveals",
+            "Calm the mind"
         ];
 
         // Canvas setup
@@ -563,7 +564,7 @@
         let purifiedBonnou = 0;
         let currentBonnouIndex = 0;
         let typedText = '';
-        const MAX_TYPED_LENGTH = 10; // 1行に表示する最大文字数
+        const MAX_TYPED_LENGTH = 10;
 
         // Particles
         class Particle {
@@ -583,7 +584,7 @@
                     this.color = `hsl(${Math.random() * 60 + 40}, 100%, 70%)`;
                     this.vy = -Math.random() * 3 - 1;
                 } else if (type === 'kanji') {
-                    this.kanji = ['無', '空', '悟', '浄', '禅'][Math.floor(Math.random() * 5)];
+                    this.kanji = ['MU', 'ZEN', 'KU', 'DO'][Math.floor(Math.random() * 4)];
                     this.size = Math.random() * 30 + 20;
                     this.vx = (Math.random() - 0.5) * 4;
                     this.vy = -Math.random() * 4 - 2;
@@ -623,7 +624,6 @@
                 ctx.rotate(this.rotation);
 
                 if (this.type === 'sakura') {
-                    // 桜の花びら
                     ctx.fillStyle = '#ffb7d5';
                     for (let i = 0; i < 5; i++) {
                         ctx.beginPath();
@@ -639,7 +639,7 @@
                     ctx.fillStyle = gradient;
                     ctx.fillRect(-this.size, -this.size, this.size * 2, this.size * 2);
                 } else if (this.type === 'kanji') {
-                    ctx.font = `${this.size}px serif`;
+                    ctx.font = `bold ${this.size}px Georgia`;
                     ctx.fillStyle = '#ffd93d';
                     ctx.strokeStyle = '#6c5ce7';
                     ctx.lineWidth = 2;
@@ -660,14 +660,12 @@
 
         let particles = [];
 
-        // 常時桜を生成
         setInterval(() => {
             for (let i = 0; i < 3; i++) {
                 particles.push(new Particle(Math.random() * window.innerWidth, -20, 'sakura'));
             }
         }, 200);
 
-        // 光の粒子を生成
         setInterval(() => {
             particles.push(new Particle(
                 Math.random() * window.innerWidth,
@@ -682,7 +680,6 @@
         masterGain.gain.value = 0.3;
         masterGain.connect(audioContext.destination);
 
-        // ベルの音
         function playBell(frequency = 440) {
             const oscillator = audioContext.createOscillator();
             const gain = audioContext.createGain();
@@ -700,15 +697,12 @@
             oscillator.stop(audioContext.currentTime + 2);
         }
 
-        // 特別な効果音
         function playSpecialSound() {
-            // 複数の音を重ねて神秘的な音を作る
             [523.25, 659.25, 783.99].forEach((freq, i) => {
                 setTimeout(() => playBell(freq), i * 100);
             });
         }
 
-        // 環境音（99 BPMのリズム）
         let ambientInterval;
         function startAmbient() {
             const bpm = 99;
@@ -732,7 +726,6 @@
             }, interval);
         }
 
-        // UI更新
         function updateUI() {
             document.getElementById('counter').textContent = keystrokeCount;
             document.getElementById('totalKeys').textContent = totalKeystrokes;
@@ -746,7 +739,6 @@
             document.getElementById('bonnouDesc').textContent = bonnou.description;
         }
 
-        // 禅の言葉を表示
         function showZenQuote() {
             const quote = ZEN_QUOTES[Math.floor(Math.random() * ZEN_QUOTES.length)];
             const element = document.getElementById('zenQuote');
@@ -761,19 +753,16 @@
                 element.style.opacity = '0';
             }, 3000);
 
-            // 音声読み上げ
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(quote);
-                utterance.lang = 'ja-JP';
+                utterance.lang = 'en-US';
                 utterance.rate = 0.8;
                 utterance.pitch = 0.9;
                 speechSynthesis.speak(utterance);
             }
         }
 
-        // 99回の区切りエフェクト
         function triggerPurificationEffect() {
-            // 画面全体にエフェクト
             for (let i = 0; i < 99; i++) {
                 particles.push(new Particle(
                     window.innerWidth / 2,
@@ -782,7 +771,6 @@
                 ));
             }
 
-            // 漢字パーティクル
             for (let i = 0; i < 20; i++) {
                 setTimeout(() => {
                     particles.push(new Particle(
@@ -793,7 +781,6 @@
                 }, i * 50);
             }
 
-            // 画面フラッシュ
             let flashAlpha = 0.8;
             const fadeFlash = setInterval(() => {
                 effectCtx.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
@@ -810,19 +797,16 @@
             playSpecialSound();
             showZenQuote();
 
-            // 祝福テキスト
             const celebration = document.createElement('div');
             celebration.className = 'celebration';
-            celebration.textContent = '✨浄化✨';
+            celebration.textContent = '✨PURIFIED✨';
             document.body.appendChild(celebration);
             setTimeout(() => celebration.remove(), 2000);
         }
 
-        // 最終悟りエフェクト
         function triggerEnlightenment() {
             document.getElementById('enlightenmentScreen').style.display = 'flex';
 
-            // 超派手なエフェクト
             for (let i = 0; i < 200; i++) {
                 setTimeout(() => {
                     particles.push(new Particle(
@@ -833,7 +817,6 @@
                 }, i * 20);
             }
 
-            // 連続ベル
             for (let i = 0; i < 9; i++) {
                 setTimeout(() => {
                     playSpecialSound();
@@ -842,19 +825,17 @@
 
             if ('speechSynthesis' in window) {
                 setTimeout(() => {
-                    const utterance = new SpeechSynthesisUtterance('おめでとうございます。ほぼ悟りの境地に達しました。');
-                    utterance.lang = 'ja-JP';
+                    const utterance = new SpeechSynthesisUtterance('Congratulations. You have reached near-enlightenment.');
+                    utterance.lang = 'en-US';
                     utterance.rate = 0.9;
                     speechSynthesis.speak(utterance);
                 }, 1000);
             }
         }
 
-        // キーボードイベント
         document.addEventListener('keydown', (e) => {
             if (purifiedBonnou >= 99) return;
 
-            // 音声コンテキストを開始（最初のユーザーインタラクションで必要）
             if (audioContext.state === 'suspended') {
                 audioContext.resume();
                 startAmbient();
@@ -863,12 +844,9 @@
             keystrokeCount++;
             totalKeystrokes++;
 
-            // 表示テキストは全て「無」
-            typedText += '無';
-            // 1行がいっぱいになったらクリア
+            typedText += 'MU';
             if (typedText.length > MAX_TYPED_LENGTH) {
-                typedText = '無';
-                // クリア時のエフェクト
+                typedText = 'MU';
                 const typingArea = document.getElementById('typingArea');
                 typingArea.style.transform = 'scale(1.2)';
                 typingArea.style.transition = 'transform 0.2s';
@@ -878,7 +856,6 @@
             }
             document.getElementById('typingArea').textContent = typedText;
 
-            // パーティクル生成
             for (let i = 0; i < 3; i++) {
                 particles.push(new Particle(
                     Math.random() * window.innerWidth,
@@ -887,10 +864,8 @@
                 ));
             }
 
-            // 小さな音
             playBell(440 + Math.random() * 220);
 
-            // 99回ごとに煩悩を浄化
             if (keystrokeCount >= 99) {
                 keystrokeCount = 0;
                 purifiedBonnou++;
@@ -898,7 +873,6 @@
 
                 triggerPurificationEffect();
 
-                // 全て浄化完了
                 if (purifiedBonnou >= 99) {
                     setTimeout(() => {
                         triggerEnlightenment();
@@ -909,7 +883,6 @@
             updateUI();
         });
 
-        // 背景アニメーション
         function drawBackground() {
             const gradient = mainCtx.createLinearGradient(0, 0, 0, mainCanvas.height);
             gradient.addColorStop(0, '#1a0a2e');
@@ -918,7 +891,6 @@
             mainCtx.fillStyle = gradient;
             mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
 
-            // 神秘的な光のオーラ
             const time = Date.now() * 0.001;
             for (let i = 0; i < 3; i++) {
                 const x = mainCanvas.width / 2 + Math.sin(time + i * 2) * 200;
@@ -931,11 +903,9 @@
             }
         }
 
-        // アニメーションループ
         function animate() {
             drawBackground();
 
-            // パーティクル更新
             particleCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
             particles = particles.filter(particle => {
                 const alive = particle.update();
@@ -946,13 +916,11 @@
             requestAnimationFrame(animate);
         }
 
-        // 初期化
         updateUI();
         animate();
 
-        // ローカルストレージから進捗を読み込み
         window.addEventListener('load', () => {
-            const saved = localStorage.getItem('bonnou99Progress');
+            const saved = localStorage.getItem('bonnou99ProgressEN');
             if (saved) {
                 const data = JSON.parse(saved);
                 totalKeystrokes = data.totalKeystrokes || 0;
@@ -962,15 +930,13 @@
             }
         });
 
-        // 進捗を定期保存
         setInterval(() => {
-            localStorage.setItem('bonnou99Progress', JSON.stringify({
+            localStorage.setItem('bonnou99ProgressEN', JSON.stringify({
                 totalKeystrokes,
                 purifiedBonnou
             }));
         }, 5000);
 
-        // 99秒ごとに禅の言葉
         setInterval(() => {
             if (purifiedBonnou < 99 && totalKeystrokes > 0) {
                 showZenQuote();
