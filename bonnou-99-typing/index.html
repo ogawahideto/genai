@@ -94,11 +94,13 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 30px;
+            gap: 20px;
+            max-height: 70vh;
+            overflow: visible;
         }
 
         .counter-display {
-            font-size: 120px;
+            font-size: 100px;
             font-weight: bold;
             color: #fff;
             text-shadow: 0 0 30px #6c5ce7, 0 0 60px #a29bfe, 0 0 90px #74b9ff;
@@ -107,7 +109,7 @@
 
         .bonnou-display {
             background: rgba(0, 0, 0, 0.7);
-            padding: 30px 60px;
+            padding: 20px 40px;
             border-radius: 20px;
             border: 3px solid #ffd93d;
             box-shadow: 0 0 40px rgba(255, 217, 61, 0.5);
@@ -116,30 +118,34 @@
         }
 
         .bonnou-name {
-            font-size: 42px;
+            font-size: 36px;
             color: #ffd93d;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             text-shadow: 0 0 20px #ffd93d;
         }
 
         .bonnou-description {
-            font-size: 20px;
+            font-size: 18px;
             color: #ddd;
-            line-height: 1.6;
+            line-height: 1.5;
         }
 
         .typing-area {
             background: rgba(255, 255, 255, 0.1);
-            padding: 30px;
+            padding: 20px 30px;
             border-radius: 15px;
             border: 2px solid rgba(255, 255, 255, 0.3);
             min-width: 700px;
-            min-height: 120px;
+            max-width: 700px;
+            min-height: 80px;
+            max-height: 150px;
             font-size: 48px;
             text-align: center;
             letter-spacing: 8px;
-            line-height: 1.8;
+            line-height: 1.4;
             box-shadow: 0 0 30px rgba(108, 92, 231, 0.3);
+            overflow: hidden;
+            word-wrap: break-word;
         }
 
         .progress-container {
