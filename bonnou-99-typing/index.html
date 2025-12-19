@@ -137,15 +137,14 @@
             border: 2px solid rgba(255, 255, 255, 0.3);
             min-width: 700px;
             max-width: 700px;
-            min-height: 80px;
-            max-height: 150px;
+            height: 90px;
             font-size: 48px;
             text-align: center;
             letter-spacing: 8px;
-            line-height: 1.4;
+            line-height: 90px;
             box-shadow: 0 0 30px rgba(108, 92, 231, 0.3);
             overflow: hidden;
-            word-wrap: break-word;
+            white-space: nowrap;
         }
 
         .progress-container {
@@ -533,7 +532,7 @@
         let purifiedBonnou = 0;
         let currentBonnouIndex = 0;
         let typedText = '';
-        const MAX_TYPED_LENGTH = 50;
+        const MAX_TYPED_LENGTH = 10; // 1行に表示する最大文字数
 
         // Particles
         class Particle {
@@ -835,8 +834,16 @@
 
             // 表示テキストは全て「無」
             typedText += '無';
+            // 1行がいっぱいになったらクリア
             if (typedText.length > MAX_TYPED_LENGTH) {
-                typedText = typedText.slice(-MAX_TYPED_LENGTH);
+                typedText = '無';
+                // クリア時のエフェクト
+                const typingArea = document.getElementById('typingArea');
+                typingArea.style.transform = 'scale(1.2)';
+                typingArea.style.transition = 'transform 0.2s';
+                setTimeout(() => {
+                    typingArea.style.transform = 'scale(1)';
+                }, 200);
             }
             document.getElementById('typingArea').textContent = typedText;
 
