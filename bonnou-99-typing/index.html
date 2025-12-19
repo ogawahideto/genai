@@ -758,14 +758,17 @@
             }
 
             // 画面フラッシュ
-            effectCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            effectCtx.fillRect(0, 0, effectCanvas.width, effectCanvas.height);
             let flashAlpha = 0.8;
             const fadeFlash = setInterval(() => {
-                flashAlpha -= 0.05;
-                effectCtx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
-                effectCtx.fillRect(0, 0, effectCanvas.width, effectCanvas.height);
-                if (flashAlpha <= 0) clearInterval(fadeFlash);
+                effectCtx.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
+                if (flashAlpha > 0) {
+                    effectCtx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+                    effectCtx.fillRect(0, 0, effectCanvas.width, effectCanvas.height);
+                    flashAlpha -= 0.05;
+                } else {
+                    effectCtx.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
+                    clearInterval(fadeFlash);
+                }
             }, 30);
 
             playSpecialSound();
