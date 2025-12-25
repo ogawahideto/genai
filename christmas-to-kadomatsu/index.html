@@ -1,0 +1,1101 @@
+<!--
+/AIモデル: Gemini 1.5 Pro (CLI)
+/Gemini CLIバージョン: 1.0.0
+/作成日時: 2025年12月25日
+/ユーザープロンプト: 日本で12月25日といえば、街中のクリスマスツリーが一晩で門松に置き換わることが風物詩になっています。これをモチーフにしたWebアプリを全力で作ってください。
+/AIのアプローチ: ユーザーの追加要件である「ドラマチックな演出」を盛り込むため、HTML、CSS、JavaScriptを単一ファイルに統合して実装します。CSSアニメーションで視覚効果を、Web Audio APIで音響効果を制御し、クリスマスから正月への文化的移行を感動的に表現します。
+/実装の意図: このアプリケーションは、日本のユニークな年末年始の文化を、インタラクティブで楽しい体験として提供することを目的としています。単なる視覚的な切り替えだけでなく、アニメーションと音楽によって感情的なインパクトを最大化することを目指します。
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Christmas to Kadomatsu Transformer</title>
+    <style>
+        :root {
+            --transition-duration: 5s;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000020;
+            color: white;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .scene-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #christmas-scene, #kadomatsu-scene {
+            position: absolute;
+            font-size: 15rem;
+            transition: opacity 1s ease-in-out;
+        }
+        
+        #kadomatsu-scene {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #control-panel {
+            position: absolute;
+            bottom: 50px;
+            z-index: 100;
+        }
+
+        #transform-button {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border: 2px solid white;
+            background-color: transparent;
+            color: white;
+            border-radius: 5px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #transform-button:hover {
+            background-color: white;
+            color: #000020;
+        }
+
+        #transform-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #background-effects {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Animation definitions */
+        @keyframes tree-disappear {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+                filter: brightness(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.1);
+                filter: brightness(0.3) blur(2px);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.1) rotate(-15deg);
+                filter: brightness(0);
+            }
+        }
+
+        @keyframes kadomatsu-appear {
+            0% {
+                opacity: 0;
+                transform: translateY(50px) scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .tree-disappear {
+            animation: tree-disappear 2.5s ease-in-out forwards;
+        }
+
+        .kadomatsu-appear {
+            animation: kadomatsu-appear 2s ease-out forwards;
+            animation-delay: 2.5s; /* Delay to start after tree disappears */
+        }
+
+        .snow-particle, .sakura-particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .snow-particle {
+            background-color: white;
+            animation: fall linear infinite;
+        }
+
+        .sakura-particle {
+            background-color: pink;
+            /* A bit of horizontal movement for sakura */
+             animation: fall-sway linear infinite;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes fall-sway {
+            from {
+                transform: translateY(-10vh) translateX(0px);
+            }
+            to {
+                transform: translateY(110vh) translateX(var(--sway));
+                opacity: 0;
+            }
+        }
+
+        /* Worker and Shake animations */
+        #workers-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        .worker {
+            position: absolute;
+            bottom: 40%;
+            width: 20px;
+            height: 30px;
+            background-color: #ffab40; /* Orange suit */
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+
+        .worker::before { /* Head */
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 5px;
+            width: 10px;
+            height: 10px;
+            background-color: #f7e0b2; /* Skin tone */
+            border-radius: 50%;
+        }
+
+        .shake {
+            animation: shake 0.5s infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0) rotate(0); }
+            25% { transform: translateX(-5px) rotate(-1deg); }
+            50% { transform: translateX(5px) rotate(1deg); }
+            75% { transform: translateX(-3px) rotate(-0.5deg); }
+        }
+
+        @keyframes worker-enter-left {
+            from { transform: translateX(-100vw); }
+            to { transform: translateX(0); }
+        }
+
+        @keyframes worker-enter-right {
+            from { transform: translateX(100vw); }
+            to { transform: translateX(0); }
+        }
+        
+        @keyframes work-around {
+            0% { transform: rotate(0deg) translateX(150px) rotate(0deg); }
+            100% { transform: rotate(360deg) translateX(150px) rotate(360deg); }
+        }
+        
+        @keyframes worker-exit-left {
+            from { transform: translateX(0); }
+            to { transform: translateX(-100vw); }
+        }
+        
+        @keyframes worker-exit-right {
+            from { transform: translateX(0); }
+            to { transform: translateX(100vw); }
+        }
+
+
+    </style>
+</head>
+<body>
+
+    <div class="scene-container">
+        <div id="christmas-scene">🎄</div>
+        <div id="kadomatsu-scene">🎍</div>
+    </div>
+
+    <div id="workers-container"></div>
+    <div id="background-effects"></div>
+
+    <div id="control-panel">
+        <h1 id="title">Christmas Night</h1>
+        <button id="transform-button">クリスマスツリーを楽しむ</button>
+    </div>
+    
+    <!-- Audio Elements -->
+    <audio id="bgm-christmas" loop src="https://www.chosic.com/wp-content/uploads/2020/11/jingle-bells-calm.mp3"></audio> <!-- Placeholder URL -->
+    <audio id="bgm-newyear" loop src="https://www.chosic.com/wp-content/uploads/2022/12/Japanese-Koto-Music.mp3"></audio> <!-- Placeholder URL -->
+    <audio id="sfx-whoosh" src="https://www.chosic.com/wp-content/uploads/2022/03/whoosh-1.mp3"></audio> <!-- Placeholder URL -->
+    <audio id="sfx-chime" src="https://www.chosic.com/wp-content/uploads/2021/04/chime-sound-7.mp3"></audio> <!-- Placeholder URL -->
+    <audio id="sfx-work" loop src="https://www.chosic.com/wp-content/uploads/2021/07/hammering-on-wood.mp3"></audio> <!-- Placeholder URL -->
+
+
+        <script>
+
+
+            const transformButton = document.getElementById('transform-button');
+
+
+            const christmasScene = document.getElementById('christmas-scene');
+
+
+            const kadomatsuScene = document.getElementById('kadomatsu-scene');
+
+
+            const title = document.getElementById('title');
+
+
+            const backgroundEffects = document.getElementById('background-effects');
+
+
+            const workersContainer = document.getElementById('workers-container');
+
+
+    
+
+
+            const bgmChristmas = document.getElementById('bgm-christmas');
+
+
+            const bgmNewYear = document.getElementById('bgm-newyear');
+
+
+            const sfxWhoosh = document.getElementById('sfx-whoosh');
+
+
+            const sfxChime = document.getElementById('sfx-chime');
+
+
+            const sfxWork = document.getElementById('sfx-work');
+
+
+    
+
+
+            let initialClick = true;
+
+
+            let particleInterval;
+
+
+    
+
+
+            transformButton.addEventListener('click', () => {
+
+
+                if (initialClick) {
+
+
+                    // First click starts the ambiance
+
+
+                    bgmChristmas.volume = 0.5;
+
+
+                    bgmChristmas.play().catch(e => console.error("Audio play failed:", e));
+
+
+                    createParticles('snow');
+
+
+                    title.textContent = "Christmas Night";
+
+
+                    transformButton.textContent = "門松に替える";
+
+
+                    initialClick = false;
+
+
+                } else {
+
+
+                    startTransformation();
+
+
+                }
+
+
+            });
+
+
+            
+
+
+            // --- Helper Functions ---
+
+
+    
+
+
+            function fadeOutAudio(audio, duration) {
+
+
+                if (!audio) return;
+
+
+                let vol = audio.volume;
+
+
+                const interval = 50;
+
+
+                const step = vol / (duration / interval);
+
+
+                const fade = setInterval(() => {
+
+
+                    vol -= step;
+
+
+                    if (vol <= 0) {
+
+
+                        vol = 0;
+
+
+                        audio.pause();
+
+
+                        clearInterval(fade);
+
+
+                    }
+
+
+                    audio.volume = vol;
+
+
+                }, interval);
+
+
+            }
+
+
+    
+
+
+            function fadeInAudio(audio, duration, maxVolume = 0.5) {
+
+
+                if (!audio) return;
+
+
+                audio.volume = 0;
+
+
+                audio.play().catch(e => console.error("Audio play failed:", e));
+
+
+                let vol = 0;
+
+
+                const interval = 50;
+
+
+                const step = maxVolume / (duration / interval);
+
+
+                 const fade = setInterval(() => {
+
+
+                    vol += step;
+
+
+                    if (vol >= maxVolume) {
+
+
+                        vol = maxVolume;
+
+
+                        clearInterval(fade);
+
+
+                    }
+
+
+                    audio.volume = vol;
+
+
+                }, interval);
+
+
+            }
+
+
+            
+
+
+            function createParticles(type) {
+
+
+                stopParticles();
+
+
+                const particleCount = 100;
+
+
+                particleInterval = setInterval(() => {
+
+
+                    if (backgroundEffects.childElementCount > particleCount) return;
+
+
+                    const particle = document.createElement('div');
+
+
+                    particle.className = type === 'snow' ? 'snow-particle' : 'sakura-particle';
+
+
+                    
+
+
+                    const size = Math.random() * 5 + 2;
+
+
+                    particle.style.width = `${size}px`;
+
+
+                    particle.style.height = `${size}px`;
+
+
+                    
+
+
+                    particle.style.left = `${Math.random() * 100}vw`;
+
+
+                    const duration = Math.random() * 5 + 5;
+
+
+                    particle.style.animationDuration = `${duration}s`;
+
+
+                    particle.style.animationDelay = `${Math.random() * -duration}s`;
+
+
+                    
+
+
+                    if(type === 'sakura') {
+
+
+                        particle.style.setProperty('--sway', `${(Math.random() - 0.5) * 200}px`);
+
+
+                    }
+
+
+    
+
+
+                    backgroundEffects.appendChild(particle);
+
+
+    
+
+
+                     setTimeout(() => {
+
+
+                        if (particle.parentElement) particle.remove();
+
+
+                    }, duration * 1000);
+
+
+                }, 50);
+
+
+            }
+
+
+    
+
+
+            function stopParticles() {
+
+
+                clearInterval(particleInterval);
+
+
+                backgroundEffects.innerHTML = '';
+
+
+            }
+
+
+    
+
+
+            function createWorkers(count) {
+
+
+                clearWorkers();
+
+
+                for (let i = 0; i < count; i++) {
+
+
+                    const worker = document.createElement('div');
+
+
+                    worker.className = 'worker';
+
+
+                    worker.id = `worker-${i}`;
+
+
+                    const side = i < count / 2 ? 'left' : 'right';
+
+
+                    const destination = (window.innerWidth / 2) + (Math.random() - 0.5) * 200;
+
+
+                    
+
+
+                    worker.style.left = side === 'left' ? '-50px' : `${window.innerWidth + 50}px`;
+
+
+                    worker.style.bottom = `${30 + Math.random() * 30}%`;
+
+
+                    
+
+
+                    workersContainer.appendChild(worker);
+
+
+    
+
+
+                    // Animate entrance
+
+
+                    setTimeout(() => {
+
+
+                        worker.style.transition = 'transform 1.5s ease-out';
+
+
+                        worker.style.transform = `translateX(${side === 'left' ? destination : destination - window.innerWidth}px)`;
+
+
+                    }, 100);
+
+
+                }
+
+
+            }
+
+
+            
+
+
+            function clearWorkers() {
+
+
+                workersContainer.innerHTML = '';
+
+
+            }
+
+
+    
+
+
+                    // --- Main Transformation Logic ---
+
+
+    
+
+
+                    function startTransformation() {
+
+
+    
+
+
+                        transformButton.disabled = true;
+
+
+    
+
+
+                        transformButton.style.display = 'none'; // Hide button immediately
+
+
+    
+
+
+                        title.textContent = "A crew has arrived!";
+
+
+    
+
+
+                        
+
+
+    
+
+
+                        // 1. Initial sounds and stop snow
+
+
+    
+
+
+                        fadeOutAudio(bgmChristmas, 1500);
+
+
+    
+
+
+                        stopParticles();
+
+
+    
+
+
+                        
+
+
+    
+
+
+                        // 2. Workers appear for removal
+
+
+    
+
+
+                        createWorkers(8);
+
+
+    
+
+
+                        
+
+
+    
+
+
+                        // 3. Workers start "working" on the tree
+
+
+    
+
+
+                        setTimeout(() => {
+
+
+    
+
+
+                            title.textContent = "Removing the tree...";
+
+
+    
+
+
+                            christmasScene.classList.add('shake');
+
+
+    
+
+
+                            fadeInAudio(sfxWork, 1000, 0.3);
+
+
+    
+
+
+                        }, 1500); // After workers arrive
+
+
+    
+
+
+            
+
+
+    
+
+
+                        // 4. Tree and removal workers disappear
+
+
+    
+
+
+                        setTimeout(() => {
+
+
+    
+
+
+                            title.textContent = "Making way for the new year!";
+
+
+    
+
+
+                            christmasScene.classList.remove('shake');
+
+
+    
+
+
+                            christmasScene.classList.add('tree-disappear');
+
+
+    
+
+
+                            fadeOutAudio(sfxWork, 1000);
+
+
+    
+
+
+                            
+
+
+    
+
+
+                            // Animate workers out with the tree
+
+
+    
+
+
+                            Array.from(workersContainer.children).forEach((worker, i) => {
+
+
+    
+
+
+                                const side = i < 4 ? 'left' : 'right';
+
+
+    
+
+
+                                worker.style.transition = 'transform 1.5s ease-in';
+
+
+    
+
+
+                                worker.style.transform = `translateX(${side === 'left' ? -window.innerWidth-50 : window.innerWidth+50}px) rotate(360deg)`;
+
+
+    
+
+
+                            });
+
+
+    
+
+
+            
+
+
+    
+
+
+                        }, 4500); // After 3s of work
+
+
+    
+
+
+            
+
+
+    
+
+
+                        // 5. Kadomatsu and setup workers appear
+
+
+    
+
+
+                        setTimeout(() => {
+
+
+    
+
+
+                            christmasScene.style.display = 'none';
+
+
+    
+
+
+                            clearWorkers(); // Clear removal crew
+
+
+    
+
+
+                            
+
+
+    
+
+
+                            title.textContent = "Setting up for the new year!";
+
+
+    
+
+
+                            createWorkers(6); // New setup crew
+
+
+    
+
+
+                            
+
+
+    
+
+
+                            kadomatsuScene.style.opacity = '1';
+
+
+    
+
+
+                            kadomatsuScene.style.transform = 'translateY(20px) scale(0.9)';
+
+
+    
+
+
+                            kadomatsuScene.style.transition = 'transform 1s ease-out';
+
+
+    
+
+
+            
+
+
+    
+
+
+                            // Workers do a final placement animation
+
+
+    
+
+
+                            setTimeout(() => {
+
+
+    
+
+
+                                sfxChime.volume = 0.6;
+
+
+    
+
+
+                                sfxChime.play().catch(e => console.error("SFX play failed:", e));
+
+
+    
+
+
+                                kadomatsuScene.style.transform = 'translateY(0) scale(1)';
+
+
+    
+
+
+                                fadeInAudio(bgmNewYear, 3000);
+
+
+    
+
+
+                                createParticles('sakura');
+
+
+    
+
+
+                            }, 500);
+
+
+    
+
+
+            
+
+
+    
+
+
+            
+
+
+    
+
+
+                        }, 6500); // After tree is removed
+
+
+    
+
+
+            
+
+
+    
+
+
+                        // 6. Setup is complete, workers prepare to leave
+
+
+    
+
+
+                        setTimeout(() => {
+
+
+    
+
+
+                            title.textContent = "A Happy New Year!";
+
+
+    
+
+
+                            
+
+
+    
+
+
+                            // Animate setup workers out
+
+
+    
+
+
+                             Array.from(workersContainer.children).forEach((worker, i) => {
+
+
+    
+
+
+                                const side = i < 3 ? 'left' : 'right';
+
+
+    
+
+
+                                worker.style.transition = 'transform 2s ease-in';
+
+
+    
+
+
+                                worker.style.transform = `translateX(${side === 'left' ? -window.innerWidth-50 : window.innerWidth+50}px)`;
+
+
+    
+
+
+                            });
+
+
+    
+
+
+            
+
+
+    
+
+
+                        }, 8500); // After setup is done
+
+
+    
+
+
+            
+
+
+    
+
+
+                        // 7. Final cleanup
+
+
+    
+
+
+                        setTimeout(() => {
+
+
+    
+
+
+                            clearWorkers();
+
+
+    
+
+
+                        }, 10500); // After workers have left
+
+
+    
+
+
+                    }
+
+
+        </script>
+
+</body>
+</html>
