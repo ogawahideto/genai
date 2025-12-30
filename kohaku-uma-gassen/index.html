@@ -501,8 +501,8 @@
         nextNoteTime: 0.0,
         timerID: null,
         tempo: 120,
-        lookahead: 25.0, // ms
-        scheduleAheadTime: 0.1, // s
+        lookahead: 100.0, // ms - Increased to prevent blocking during speech
+        scheduleAheadTime: 0.5, // s - Increased buffer to keep music playing
         currentStyle: 'pop',
         beatCount: 0,
         
@@ -657,6 +657,11 @@
 
         scheduler: function() {
             if (!this.isPlaying) return;
+            
+            // Auto-resume if context suspended unexpectedly
+            if (this.ctx.state === 'suspended') this.ctx.resume();
+
+            // Schedule ahead
             while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
                 this.scheduleBeat(this.beatCount, this.nextNoteTime);
                 this.nextBeat();
