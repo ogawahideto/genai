@@ -400,7 +400,7 @@
             type: 'battle',
             title: '第1回戦：アイドル対決',
             red: {
-                name: 'きゃりーぱみゅぱみゅ馬',
+                name: 'キャリー・ポニーポニー',
                 song: 'ニンジン・ポイポイ',
                 icon: '🦄',
                 color: 'red',
@@ -428,7 +428,7 @@
             type: 'battle',
             title: '第2回戦：演歌の心',
             red: {
-                name: '石川さゆり馬',
+                name: '石馬 サユリ',
                 song: '津軽海峡・冬放牧',
                 icon: '🦓', // Zebra as a veteran? Or just a unique horse
                 color: 'red',
@@ -440,7 +440,7 @@
                 animation: 'dance-shake'
             },
             white: {
-                name: '北島サブロウマ',
+                name: '北牧 サブロー',
                 song: '牧場の祭り',
                 icon: '🐎',
                 color: 'white',
@@ -456,14 +456,14 @@
             type: 'finale',
             title: '大トリ：伝説の輝き',
             performer: {
-                name: 'マツケン・サラブレッド',
-                song: 'マツケン・サンバⅡ (馬Ver)',
+                name: 'マツ・ケンタウロス',
+                song: 'ケンタウロス・サンバ',
                 icon: '✨🐴✨',
                 color: 'gold', // Special
                 lyrics: [
                     { original: 'オレ！ オレ！', sub: '叩けボンゴ！ 響け蹄！' },
                     { original: 'ヒヒーン！ サンバ！', sub: '踊れ南のカーニバル！' },
-                    { original: 'マツケン・サンバ！ ヒヒーン！', sub: 'あぁ 恋せよ暴れ馬！' }
+                    { original: 'ケンタウロス・サンバ！ ヒヒーン！', sub: 'あぁ 恋せよ暴れ馬！' }
                 ],
                 animation: 'dance-spin'
             }
@@ -832,7 +832,7 @@
         const now = MusicEngine.ctx.currentTime;
         [523, 659, 783, 1046].forEach((f, i) => MusicEngine.playTone(f, now + i*0.1, 0.5, 'triangle', 0.3));
         
-        showDialog('司会: ウマ・タモリ', 'いよいよ始まりました、第777回紅白馬合戦！<br>今年は午年（予定）ということで、馬たちの熱い戦いをお届けします。', 'スタート！', () => {
+        showDialog('司会: タモ・ステークス', 'いよいよ始まりました、第777回紅白馬合戦！<br>今年は午年（予定）ということで、馬たちの熱い戦いをお届けします。', 'スタート！', () => {
             nextPhase();
         });
     }
