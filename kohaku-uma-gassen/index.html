@@ -501,8 +501,8 @@
         nextNoteTime: 0.0,
         timerID: null,
         tempo: 120,
-        lookahead: 100.0, // ms - Increased to prevent blocking during speech
-        scheduleAheadTime: 0.5, // s - Increased buffer to keep music playing
+        lookahead: 100.0, // ms
+        scheduleAheadTime: 1.5, // s - Increased significantly to bridge the speech blocking gap
         currentStyle: 'pop',
         beatCount: 0,
         
@@ -666,6 +666,9 @@
                 this.scheduleBeat(this.beatCount, this.nextNoteTime);
                 this.nextBeat();
             }
+            // Use setTimeout only if not called manually for immediate buffering
+            // We clear previous timer to avoid double-scheduling if called manually
+            clearTimeout(this.timerID);
             this.timerID = setTimeout(() => this.scheduler(), this.lookahead);
         },
 
@@ -789,19 +792,28 @@
         // --- Speech ---
         speak: function(text, type) {
             if (!window.speechSynthesis) return;
-            window.speechSynthesis.cancel();
+            
+            // 1. Force Scheduler to run NOW and fill the buffer ahead of the speech block
+            if (this.isPlaying) {
+                this.scheduler(); 
+            }
 
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.lang = 'ja-JP';
-            msg.volume = 1.0;
+            // 2. Wrap speech in timeout to let the scheduler's pushed events register
+            setTimeout(() => {
+                window.speechSynthesis.cancel();
 
-            if (type === 'host') { msg.pitch = 0.8; msg.rate = 1.1; }
-            else if (type === 'red') { msg.pitch = 1.5; msg.rate = 1.2; }
-            else if (type === 'white') { msg.pitch = 0.6; msg.rate = 1.0; }
-            else if (type === 'gold') { msg.pitch = 1.2; msg.rate = 1.3; }
-            else { msg.pitch = 1.8; msg.rate = 1.5; }
+                const msg = new SpeechSynthesisUtterance(text);
+                msg.lang = 'ja-JP';
+                msg.volume = 1.0;
 
-            window.speechSynthesis.speak(msg);
+                if (type === 'host') { msg.pitch = 0.8; msg.rate = 1.1; }
+                else if (type === 'red') { msg.pitch = 1.5; msg.rate = 1.2; }
+                else if (type === 'white') { msg.pitch = 0.6; msg.rate = 1.0; }
+                else if (type === 'gold') { msg.pitch = 1.2; msg.rate = 1.3; }
+                else { msg.pitch = 1.8; msg.rate = 1.5; }
+
+                window.speechSynthesis.speak(msg);
+            }, 50); // Small delay to prioritize audio scheduling
         }
     };
 
