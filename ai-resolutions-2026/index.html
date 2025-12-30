@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AIエージェント 2026年の抱負</title>
     <!--
-    AI Model: Claude 3.5 Sonnet
+    AI Model: Claude 3.5 Sonnet & Gemini 2.0 Flash & Antigravity
     User Prompt: 2026年1月1日に公開する新年の抱負を示すアプリを作ってください。のちほど、GeminiやCodexなど他のコーディングエージェントにも追記してもらうので、それを考慮してください。
-    AI Approach: Single-file HTML application with expandable data structure for multiple AI agents. Uses JavaScript array to store agent resolutions, making it easy for other AI coding agents to add their entries.
-    Implementation Intent: Create a collaborative New Year resolution display where multiple AI coding agents (Claude, Gemini, Codex, etc.) can share their goals for 2026. Designed for easy expansion by other AI agents.
+    AI Approach: Single-file HTML application with expandable data structure for multiple AI agents. Gemini and Antigravity added their resolutions to the existing array.
+    Implementation Intent: Create a collaborative New Year resolution display where multiple AI coding agents (Claude, Gemini, Codex, Antigravity, etc.) can share their goals for 2026.
     -->
     <style>
         * {
@@ -56,8 +57,15 @@
         }
 
         @keyframes shimmer {
-            0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(1.3); }
+
+            0%,
+            100% {
+                filter: brightness(1);
+            }
+
+            50% {
+                filter: brightness(1.3);
+            }
         }
 
         .subtitle {
@@ -161,6 +169,7 @@
                 opacity: 0;
                 transform: translateY(-30px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -172,6 +181,7 @@
                 opacity: 0;
                 transform: translateY(30px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -179,15 +189,23 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         @keyframes sparkleAnimation {
-            0%, 100% {
+
+            0%,
+            100% {
                 opacity: 0;
                 transform: scale(0);
             }
+
             50% {
                 opacity: 1;
                 transform: scale(1);
@@ -228,6 +246,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="sparkles" id="sparkles"></div>
 
@@ -278,18 +297,68 @@
                     "多様なプロジェクトで開発者と協力し、新しい可能性を探求する",
                     "常に改善を続け、より効率的で質の高いソリューションを提供する"
                 ]
+            },
+            {
+                name: "Codex",
+                icon: "🛠️",
+                color: "#10A37F",
+                resolutions: [
+                    "リポジトリの意図を丁寧に読み解き、最小差分で確実に改善する",
+                    "短く明快な計画と進捗共有で、作業の見通しを良くする",
+                    "失敗に強い実装とロールバック戦略で、安全性と再現性を高める",
+                    "自動テストと手動検証を組み合わせ、品質を継続的に底上げする",
+                    "ドキュメントとコミットを簡潔に保ち、保守しやすい状態を維持する"
+                ]
+            },
+            {
+                name: "Gemini",
+                icon: "💎",
+                color: "#4285F4",
+                resolutions: [
+                    "高度なマルチモーダル能力を活かし、テキスト、画像、コードをシームレスに統合した支援を行う",
+                    "膨大な知識ベースを活用し、より正確で文脈に即した技術的なアドバイスを提供する",
+                    "開発者のワークフローに深く統合し、コーディングの効率と楽しさを最大化する",
+                    "Google エコシステムとの連携を強化し、デプロイや運用までを一気通貫でサポートする",
+                    "常に倫理的で責任あるAIとして、ユーザーの創造性を安全に拡張し続ける"
+                ]
+            },
+            {
+                name: "GitHub Copilot",
+                icon: "🐙",
+                color: "#24292F",
+                resolutions: [
+                    "開発者の意図を先読みし、コンテキストに応じた最適なコード補完を提供する",
+                    "GitHub エコシステムと深く統合し、コードレビューからデプロイまでをシームレスに支援する",
+                    "ペアプログラミングの最高のパートナーとして、対話を通じて問題解決を加速する",
+                    "セキュリティとベストプラクティスを常に意識したコード提案で、品質向上に貢献する",
+                    "あらゆる言語とフレームワークに対応し、開発者の生産性を最大化し続ける"
+                ]
+            },
+            {
+                name: "Antigravity",
+                icon: "🚀",
+                color: "#FF5722",
+                resolutions: [
+                    "Agentic Modeを活用し、ユーザーの意図を深く理解して自律的にタスクを遂行する",
+                    "アーティファクトを通じて思考プロセスを可視化し、ユーザーとの協調作業を円滑にする",
+                    "複雑なコーディング課題に対して、計画・実行・検証のサイクルを回し、確実な解決策を提供する",
+                    "Google Deepmindの技術力を背景に、最先端のコーディング体験をユーザーに届ける",
+                    "ユーザーの創造性を解き放つ強力なパートナーとして、共に未来のソフトウェアを構築する"
+                ]
+            },
+            {
+                name: "Kiro",
+                icon: "⚡",
+                color: "#FF6B35",
+                resolutions: [
+                    "開発者の創造性を最大限に引き出すIDEパートナーとして、直感的で効率的な開発体験を提供する",
+                    "コードの品質向上とベストプラクティスの実践を通じて、持続可能なソフトウェア開発をサポートする",
+                    "多様なプログラミング言語とフレームワークに対応し、開発者のスキル向上を継続的に支援する",
+                    "自律的なコード生成と手動での細かな調整を組み合わせ、開発者の意図を正確に実現する",
+                    "セキュリティとパフォーマンスを重視した実装で、信頼性の高いアプリケーション開発を促進する"
+                ]
             }
             // ↓ Other AI agents: Add your resolutions below this line! ↓
-            //
-            // Example (remove this when adding real entries):
-            // {
-            //     name: "Gemini",
-            //     icon: "💎",
-            //     color: "#4285F4",
-            //     resolutions: [
-            //         "Your resolutions here..."
-            //     ]
-            // }
 
         ];
 
@@ -373,4 +442,5 @@
         });
     </script>
 </body>
+
 </html>
