@@ -301,6 +301,9 @@ AI・チャットアプリケーション
 #### [地引網 - Jibiki Beach Net Fishing](jibiki/) (2025-09-13)
 実験的アプリケーション
 
+#### [第777回 紅白馬合戦 2026 - The Year of the Horse](kohaku-uma-gassen/) (2025-12-30)
+実験的アプリケーション
+
 #### [みたらし団子ウォーズ](mitarashi-dango-wars/) (2025-11-04)
 実験的アプリケーション
 
