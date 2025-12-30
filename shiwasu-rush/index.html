@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>師走ラッシュ - 師も走る年末猛ダッシュ</title>
+  <meta name="description" content="年末の“師走”をテーマにしたカオスで忙しいアクションゲーム。師が走る、あなたも走る、時間との戦い！" />
+  <style>
+    :root {
+      --bg: #0e1320;
+      --panel: #121a2b;
+      --accent: #00e5ff;
+      --good: #7CFF6B;
+      --bad: #FF6B6B;
+      --text: #e6f0ff;
+      --gold: #ffd166;
+    }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: radial-gradient(1200px 800px at 70% -10%, #1a2550 0%, var(--bg) 60%) fixed;
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Helvetica, Arial, "Hiragino Kaku Gothic ProN", Meiryo, "Noto Sans JP", sans-serif;
+    }
+
+    header {
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      background: linear-gradient(180deg, rgba(10,15,30,0.9), rgba(10,15,30,0.5), transparent);
+      backdrop-filter: blur(6px);
+      z-index: 2;
+      user-select: none;
+    }
+
+    .logo {
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      font-size: 18px;
+      color: var(--accent);
+      text-shadow: 0 0 12px rgba(0,229,255,0.4);
+    }
+
+    .hud {
+      margin-left: auto;
+      display: flex;
+      gap: 16px;
+      align-items: baseline;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hud .val { color: var(--gold); font-weight: 800; }
+    .hud small { opacity: 0.75; }
+
+    main {
+      position: fixed;
+      inset: 64px 0 0 0;
+      display: grid;
+      place-items: center;
+    }
+
+    .stage-wrap {
+      position: relative;
+      width: min(96vw, 960px);
+      aspect-ratio: 16 / 9;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.3)),
+                  radial-gradient(1000px 500px at 50% 120%, rgba(0,229,255,0.08), transparent 60%);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+
+    canvas { width: 100%; height: 100%; display: block; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(180deg, rgba(10,15,30,0.7), rgba(10,15,30,0.6));
+      z-index: 3;
+    }
+    /* Ensure the HTML hidden attribute truly hides overlays */
+    .overlay[hidden] { display: none !important; }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(18,26,43,0.9), rgba(18,26,43,0.7));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 20px 20px 16px;
+      width: min(92%, 680px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(20px, 3.6vw, 36px);
+      letter-spacing: 0.05em;
+    }
+
+    .sub { opacity: 0.8; margin-bottom: 12px; }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 16px;
+      text-align: left;
+      margin: 12px 0 16px;
+    }
+    .chip { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; font-weight: 800; }
+    .chip.good { background: rgba(124,255,107,0.15); color: var(--good); border: 1px solid rgba(124,255,107,0.4); }
+    .chip.bad  { background: rgba(255,107,107,0.12); color: var(--bad);  border: 1px solid rgba(255,107,107,0.35); }
+
+    .btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    button {
+      background: linear-gradient(180deg, #00e5ff, #00bedd);
+      color: #001018;
+      border: none;
+      border-radius: 12px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      padding: 10px 16px;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,229,255,0.3), inset 0 -3px 0 rgba(0,0,0,0.2);
+    }
+    button.secondary {
+      background: linear-gradient(180deg, #303a55, #232c44);
+      color: var(--text);
+      box-shadow: inset 0 -3px 0 rgba(0,0,0,0.25);
+    }
+
+    footer {
+      position: fixed; inset: auto 0 8px 0; text-align: center; font-size: 12px; opacity: 0.6; user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">師走ラッシュ</div>
+    <div class="hud">
+      <div>得点: <span id="score" class="val">0</span></div>
+      <div>残り: <span id="time" class="val">60.0</span><small> 秒</small></div>
+      <div>速度: <span id="spd" class="val">1.0x</span></div>
+    </div>
+  </header>
+  <main>
+    <div class="stage-wrap">
+      <canvas id="game" width="960" height="540" aria-label="師走アクションゲーム画面"></canvas>
+
+      <div id="startOverlay" class="overlay" role="dialog" aria-modal="true">
+        <div class="panel">
+          <h1>師走ラッシュ — 師も走る年末猛ダッシュ</h1>
+          <div class="sub">年末は忙しすぎて「師」も走る。あなたも走ってやりきろう！</div>
+          <div class="legend">
+            <div><span class="chip good">✓</span> 良いことを集める: 年賀状・大掃除・買い出し・帰省準備 など</div>
+            <div><span class="chip bad">×</span> 誘惑は回避: 寝落ち・スマホ沼・飲み会連投・動画見すぎ など</div>
+            <div>操作: 矢印/WASD で移動, Space で短距離ダッシュ</div>
+            <div>目標: 60秒でなるべく多くこなす。焦るほど速度が上がる！</div>
+          </div>
+          <div class="btns">
+            <button id="startBtn">ゲーム開始</button>
+            <button id="howBtn" class="secondary">遊び方</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="howOverlay" class="overlay" hidden>
+        <div class="panel">
+          <h1>遊び方</h1>
+          <div class="sub">
+            盤面は16:9のフィールド。プレイヤー「師」を操作して“良いタスク”を集め、“誘惑”を避けます。<br />
+            スタミナがあるうちは Space でダッシュ可能。連続で取り続けるとコンボで高得点！
+          </div>
+          <div class="btns"><button id="backBtn" class="secondary">戻る</button></div>
+        </div>
+      </div>
+
+      <div id="gameOver" class="overlay" hidden>
+        <div class="panel">
+          <h1>おつかれ師！</h1>
+          <div class="sub" id="resultText">結果を集計中…</div>
+          <div class="btns">
+            <button id="retryBtn">もう一度</button>
+            <button id="shareBtn" class="secondary">結果を共有</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer>Created with codex — 師走エネルギーで走り切ろう</footer>
+
+  <script>
+    // Game constants
+    const WIDTH = 960, HEIGHT = 540;
+    const STATE = { TITLE: 0, PLAY: 1, OVER: 2 };
+    const GOOD_ITEMS = [
+      { label: '年賀状', score: 120, color: '#7CFF6B' },
+      { label: '大掃除', score: 150, color: '#8CFF9E' },
+      { label: '買い出し', score: 110, color: '#7CF7FF' },
+      { label: '帰省準備', score: 130, color: '#FFD166' },
+      { label: '仕事納め', score: 200, color: '#B6FF6B' },
+      { label: '家計整理', score: 160, color: '#A6F0FF' },
+    ];
+    const BAD_ITEMS = [
+      { label: '寝落ち', time: -4, color: '#FF6B6B' },
+      { label: 'スマホ沼', time: -3, color: '#FF8B8B' },
+      { label: '飲み会∞', time: -5, color: '#FF7B9E' },
+      { label: '動画沼', time: -4, color: '#FF9B7B' },
+    ];
+
+    /** @type {HTMLCanvasElement} */
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    const ui = {
+      score: document.getElementById('score'),
+      time: document.getElementById('time'),
+      spd: document.getElementById('spd'),
+      startOverlay: document.getElementById('startOverlay'),
+      howOverlay: document.getElementById('howOverlay'),
+      gameOver: document.getElementById('gameOver'),
+      result: document.getElementById('resultText'),
+      startBtn: document.getElementById('startBtn'),
+      howBtn: document.getElementById('howBtn'),
+      backBtn: document.getElementById('backBtn'),
+      retryBtn: document.getElementById('retryBtn'),
+      shareBtn: document.getElementById('shareBtn'),
+    };
+
+    // Input
+    const keys = new Set();
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+      keys.add(e.key);
+    });
+    window.addEventListener('keyup', (e) => keys.delete(e.key));
+
+    // Core game objects
+    let gameState = STATE.TITLE;
+    let score = 0;
+    let timeLeft = 60;
+    let difficulty = 1;
+    let combo = 0, comboTimer = 0;
+    let items = [];
+    let t = 0;
+
+    const player = {
+      x: WIDTH/2, y: HEIGHT/2,
+      vx: 0, vy: 0,
+      baseSpeed: 2.1,
+      stamina: 1.0,
+      r: 18,
+    };
+
+    function resetGame() {
+      score = 0; timeLeft = 60; difficulty = 1; combo = 0; comboTimer = 0; items = []; t = 0;
+      player.x = WIDTH/2; player.y = HEIGHT/2; player.vx = 0; player.vy = 0; player.stamina = 1.0;
+      ui.score.textContent = '0'; ui.time.textContent = timeLeft.toFixed(1); ui.spd.textContent = '1.0x';
+    }
+
+    // Utility
+    const rand = (a,b) => a + Math.random()*(b-a);
+    const choice = (arr) => arr[(Math.random()*arr.length)|0];
+
+    function spawnItem() {
+      const isGood = Math.random() < 0.65; // 65% good, 35% bad
+      const side = Math.random();
+      const speed = rand(0.5, 1.6) * (1 + difficulty*0.15);
+      const angle = rand(0, Math.PI*2);
+      const radius = rand(12, 22);
+      const spread = 40;
+      let x,y,vx,vy;
+      // Spawn slightly off-screen and move inward
+      if (side < 0.25) { x = -spread; y = rand(0, HEIGHT); }
+      else if (side < 0.5) { x = WIDTH+spread; y = rand(0, HEIGHT); }
+      else if (side < 0.75) { x = rand(0, WIDTH); y = -spread; }
+      else { x = rand(0, WIDTH); y = HEIGHT+spread; }
+      const cx = WIDTH/2, cy = HEIGHT/2;
+      const dirx = cx - x, diry = cy - y;
+      const len = Math.hypot(dirx, diry) || 1;
+      vx = (dirx/len) * speed;
+      vy = (diry/len) * speed;
+      const base = isGood ? choice(GOOD_ITEMS) : choice(BAD_ITEMS);
+      items.push({ x, y, vx, vy, r: radius, ...base, kind: isGood ? 'good':'bad', life: rand(8, 16) });
+    }
+
+    function update(dt) {
+      if (gameState !== STATE.PLAY) return;
+      t += dt;
+      // Timer and dynamic difficulty
+      timeLeft -= dt; if (timeLeft <= 0) { timeLeft = 0; endGame(); }
+      const rush = 1 + Math.max(0, (60 - timeLeft)) * 0.01; // ramps up over time
+      difficulty = 1 + (60 - timeLeft) * 0.03; // more spawn, faster
+      ui.time.textContent = timeLeft.toFixed(1);
+      ui.spd.textContent = rush.toFixed(1) + 'x';
+
+      // Player movement
+      const accel = 0.25 * rush;
+      const maxSpeed = player.baseSpeed * rush * (keys.has(' ')? 1.7 : 1.0);
+
+      let ax = 0, ay = 0;
+      if (keys.has('ArrowLeft') || keys.has('a')) ax -= accel;
+      if (keys.has('ArrowRight')|| keys.has('d')) ax += accel;
+      if (keys.has('ArrowUp')   || keys.has('w')) ay -= accel;
+      if (keys.has('ArrowDown') || keys.has('s')) ay += accel;
+
+      // stamina for dash
+      if (keys.has(' ') && (ax !== 0 || ay !== 0)) {
+        player.stamina = Math.max(0, player.stamina - dt*0.7);
+      } else {
+        player.stamina = Math.min(1.0, player.stamina + dt*0.35);
+      }
+      // If stamina depleted, no dash bonus
+      const dashFactor = (keys.has(' ') && player.stamina > 0.05) ? 1.0 : 0.0;
+
+      player.vx += ax * (1 + dashFactor*0.6);
+      player.vy += ay * (1 + dashFactor*0.6);
+      // Clamp speed
+      const spd = Math.hypot(player.vx, player.vy);
+      if (spd > maxSpeed) { player.vx *= maxSpeed/spd; player.vy *= maxSpeed/spd; }
+      // Friction
+      player.vx *= 0.90; player.vy *= 0.90;
+      player.x += player.vx; player.y += player.vy;
+      // Bounds
+      player.x = Math.max(player.r, Math.min(WIDTH - player.r, player.x));
+      player.y = Math.max(player.r, Math.min(HEIGHT - player.r, player.y));
+
+      // Spawn logic
+      const targetCount = 10 + Math.floor(difficulty*0.6);
+      if (items.length < targetCount && Math.random() < 0.8) spawnItem();
+
+      // Update items
+      for (let it of items) {
+        it.x += it.vx; it.y += it.vy; it.life -= dt;
+      }
+      items = items.filter(it => it.life > 0 && it.x > -60 && it.x < WIDTH+60 && it.y > -60 && it.y < HEIGHT+60);
+
+      // Collisions
+      let took = false;
+      for (let i = items.length - 1; i >= 0; i--) {
+        const it = items[i];
+        const d = Math.hypot(it.x - player.x, it.y - player.y);
+        if (d < player.r + it.r) {
+          if (it.kind === 'good') {
+            combo = Math.min(20, combo + 1);
+            comboTimer = 1.6;
+            const gain = Math.round(it.score * (1 + combo*0.08));
+            score += gain;
+            timeLeft = Math.min(60, timeLeft + 0.8);
+            pulse(gain, it.color, it.label);
+          } else {
+            combo = 0; comboTimer = 0;
+            timeLeft = Math.max(0, timeLeft + it.time);
+            shake(6);
+            pulse(it.time + '秒', it.color, it.label);
+          }
+          items.splice(i,1);
+          took = true;
+        }
+      }
+      if (took) ui.score.textContent = score.toString();
+
+      // Combo timer decay
+      if (comboTimer > 0) comboTimer -= dt; else combo = 0;
+    }
+
+    // Screen shake & floating text effects
+    let shakePower = 0;
+    const floaters = [];
+    function shake(p) { shakePower = Math.max(shakePower, p); }
+    function pulse(text, color, label) {
+      floaters.push({ text: label + ' +' + text, color, x: player.x, y: player.y - 24, vy: -20, life: 1.2 });
+    }
+
+    function draw() {
+      // Background grid and rush tint
+      ctx.save();
+      const rush = 1 + Math.max(0, (60 - timeLeft)) * 0.01;
+
+      // Shake camera
+      const sx = (Math.random()*2-1) * shakePower;
+      const sy = (Math.random()*2-1) * shakePower;
+      shakePower *= 0.88;
+      ctx.translate(sx, sy);
+
+      // Backdrop
+      ctx.fillStyle = '#0f1424';
+      ctx.fillRect(0,0,WIDTH,HEIGHT);
+      // Grid
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.lineWidth = 1;
+      const grid = 40;
+      ctx.beginPath();
+      for (let x=0; x<WIDTH; x+=grid) { ctx.moveTo(x,0); ctx.lineTo(x,HEIGHT); }
+      for (let y=0; y<HEIGHT; y+=grid) { ctx.moveTo(0,y); ctx.lineTo(WIDTH,y); }
+      ctx.stroke();
+
+      // Items
+      for (let it of items) {
+        ctx.fillStyle = (it.kind==='good')? 'rgba(124,255,107,0.12)' : 'rgba(255,107,107,0.10)';
+        ctx.beginPath(); ctx.arc(it.x, it.y, it.r+6, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = it.color;
+        ctx.beginPath(); ctx.arc(it.x, it.y, it.r, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#09101f';
+        ctx.font = 'bold 14px system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(it.label, it.x, it.y);
+      }
+
+      // Player
+      const p = player;
+      // Aura
+      ctx.fillStyle = 'rgba(0,229,255,0.12)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r+14, 0, Math.PI*2); ctx.fill();
+      // Body
+      ctx.fillStyle = '#00e5ff'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+      // Face: 師
+      ctx.fillStyle = '#001018'; ctx.font = 'bold 18px "Noto Sans JP", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('師', p.x, p.y+1);
+
+      // Stamina bar
+      const w = 80, h = 6;
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(p.x - w/2, p.y + p.r + 14, w, h);
+      ctx.fillStyle = '#7CFF6B'; ctx.fillRect(p.x - w/2, p.y + p.r + 14, w * p.stamina, h);
+
+      // Floaters
+      for (let f of floaters) {
+        f.y += f.vy * (1/60); f.life -= 1/60;
+        ctx.globalAlpha = Math.max(0, f.life);
+        ctx.fillStyle = f.color; ctx.font = 'bold 16px system-ui, sans-serif';
+        ctx.fillText(f.text, f.x, f.y);
+        ctx.globalAlpha = 1;
+      }
+      for (let i=floaters.length-1; i>=0; i--) if (floaters[i].life<=0) floaters.splice(i,1);
+
+      // HUD overlays (combo, timer ring)
+      if (combo > 0) {
+        const cx = WIDTH-80, cy = 60; const rad = 22;
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI*2); ctx.stroke();
+        ctx.strokeStyle = '#ffd166'; ctx.beginPath(); ctx.arc(cx, cy, rad, -Math.PI/2, -Math.PI/2 + Math.PI*2*(comboTimer/1.6)); ctx.stroke();
+        ctx.fillStyle = '#ffd166'; ctx.font = 'bold 14px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('x'+(1+combo*0.08).toFixed(2), cx, cy);
+      }
+
+      // Rush vignette
+      ctx.fillStyle = `rgba(255, 209, 102, ${Math.min(0.35, (rush-1)*0.08)})`;
+      ctx.fillRect(0,0,WIDTH,HEIGHT);
+
+      ctx.restore();
+    }
+
+    // Game loop
+    let last = performance.now();
+    function loop(now) {
+      const dt = Math.min(0.05, (now - last)/1000); last = now;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    function endGame() {
+      gameState = STATE.OVER;
+      ui.result.textContent = `総合得点 ${score} 点 — 来年はもっと余裕を…？`;
+      ui.gameOver.hidden = false;
+    }
+
+    // UI interactions
+    ui.startBtn.addEventListener('click', () => {
+      ui.startOverlay.hidden = true; ui.howOverlay.hidden = true; ui.gameOver.hidden = true;
+      resetGame(); gameState = STATE.PLAY;
+    });
+    ui.howBtn.addEventListener('click', () => { ui.howOverlay.hidden = false; });
+    ui.backBtn?.addEventListener('click', () => { ui.howOverlay.hidden = true; });
+    ui.retryBtn.addEventListener('click', () => { ui.gameOver.hidden = true; resetGame(); gameState = STATE.PLAY; });
+    ui.shareBtn.addEventListener('click', async () => {
+      const text = `師走ラッシュで総合得点 ${score} 点！#師走 #年末ダッシュ`;
+      try {
+        if (navigator.share) await navigator.share({ text, title: '師走ラッシュ' });
+        else await navigator.clipboard.writeText(text);
+        ui.result.textContent = `総合得点 ${score} 点 — 共有しました！`;
+      } catch {}
+    });
+
+    // Resize handling keeps crisp canvas
+    function onResize() {
+      // No need to adjust drawing size — CSS scales. Keep HUD numbers readable.
+    }
+    window.addEventListener('resize', onResize);
+  </script>
+</body>
+</html>
