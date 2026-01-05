@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 丙午 - Year of the Fire Horse</title>
+    <!--
+    AI Model: Gemini 2.0 Flash
+    Gemini CLI Version: 1.0.0
+    Date: 2025-12-31
+    User Prompt: Create a website for the start of 2026 symbolizing the Year of the Horse (午年). Interactive, modern UI, single file.
+    AI Approach: Single-file HTML/CSS/JS. Uses HTML5 Canvas for a "Fire Particle" background to symbolize Hinoe Uma (Fire Horse). Includes a custom-built endless runner game and a DOM-based resolution board.
+    Intent: To provide an engaging, aesthetically pleasing experience that educates users about the Year of the Horse while offering interactive entertainment.
+    -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Zen+Kaku+Gothic+New:wght@300;500&display=swap');
+
+        :root {
+            --primary: #B22222; /* Fire Red */
+            --secondary: #D4AF37; /* Gold */
+            --dark: #0f0f12; /* Charcoal */
+            --text: #f0f0f0;
+            --accent: #ff4500; /* Orange Red */
+            --glass: rgba(255, 255, 255, 0.05);
+            --border: rgba(212, 175, 55, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Zen Kaku Gothic New', sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Noto Serif JP', serif;
+            letter-spacing: 0.05em;
+        }
+
+        /* --- Layout & Utility --- */
+        section {
+            padding: 80px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid var(--secondary);
+            color: var(--secondary);
+            padding: 12px 30px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Noto Serif JP', serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .btn:hover {
+            background: var(--secondary);
+            color: var(--dark);
+            box-shadow: 0 0 15px var(--secondary);
+        }
+
+        /* --- Hero Section --- */
+        #hero {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        #hero-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .hero-content {
+            z-index: 2;
+            pointer-events: none; /* Let clicks pass to canvas if needed */
+            mix-blend-mode: overlay;
+        }
+
+        .hero-title {
+            font-size: clamp(3rem, 10vw, 8rem);
+            color: var(--secondary);
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+            margin-bottom: 10px;
+            animation: fadeUp 1.5s ease-out;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1rem, 3vw, 2rem);
+            color: #fff;
+            font-weight: 300;
+            letter-spacing: 0.5em;
+            animation: fadeUp 1.5s ease-out 0.3s backwards;
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            animation: bounce 2s infinite;
+            color: var(--secondary);
+            font-size: 2rem;
+        }
+
+        /* --- About Section --- */
+        .grid-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+
+        .card {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            padding: 30px;
+            border-radius: 4px;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .card h3 {
+            color: var(--secondary);
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        /* --- Game Section --- */
+        #game-section {
+            text-align: center;
+            background: linear-gradient(to bottom, var(--dark), #1a0505);
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            height: 300px;
+            margin: 40px auto;
+            border: 2px solid var(--border);
+            background: #000;
+            overflow: hidden;
+            border-radius: 8px;
+        }
+
+        #game-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #game-ui {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+
+        .score-display {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.5rem;
+            color: var(--secondary);
+            z-index: 5;
+        }
+
+        /* --- Resolution Section --- */
+        #resolutions {
+            background: radial-gradient(circle at center, #2a0a0a, var(--dark));
+            min-height: 80vh;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 50px;
+            justify-content: center;
+        }
+
+        input[type="text"] {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 12px 20px;
+            font-size: 1rem;
+            width: 300px;
+            font-family: 'Zen Kaku Gothic New', sans-serif;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--secondary);
+        }
+
+        .ema-board {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .ema {
+            width: 160px;
+            height: 120px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80"><path d="M50 0 L100 20 L100 80 L0 80 L0 20 Z" fill="%23e8d5b5" stroke="%238b4513" stroke-width="2"/></svg>') no-repeat center center;
+            background-size: contain;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #5a3a22;
+            font-family: 'Noto Serif JP', serif;
+            font-weight: bold;
+            padding: 20px 10px 0;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            animation: swing 3s ease-in-out infinite alternate;
+            transform-origin: top center;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .ema:hover {
+            transform: scale(1.1) rotate(0deg) !important;
+            z-index: 10;
+        }
+
+        /* --- Footer --- */
+        footer {
+            text-align: center;
+            padding: 40px;
+            border-top: 1px solid var(--glass);
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* --- Animations --- */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateX(-50%) translateY(0);}
+            40% {transform: translateX(-50%) translateY(-10px);}
+            60% {transform: translateX(-50%) translateY(-5px);}
+        }
+
+        @keyframes swing {
+            from { transform: rotate(-2deg); }
+            to { transform: rotate(2deg); }
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 600px) {
+            .hero-title { font-size: 3.5rem; }
+            .input-group { flex-direction: column; align-items: center; }
+            input[type="text"] { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hero Section -->
+    <section id="hero">
+        <canvas id="hero-canvas"></canvas>
+        <div class="hero-content">
+            <h1 class="hero-title">丙午</h1>
+            <h2 class="hero-subtitle">2026 YEAR OF THE HORSE</h2>
+            <p style="margin-top: 20px; color: #ccc; font-size: 0.9rem;">情熱と行動力の年</p>
+        </div>
+        <div class="scroll-indicator">⇩</div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about">
+        <div class="container">
+            <h2 style="text-align: center; color: var(--secondary); font-size: 2.5rem;">午年の特徴</h2>
+            <p style="text-align: center; max-width: 600px; margin: 20px auto; color: #aaa;">
+                2026年は「丙午（ひのえうま）」にあたります。十干の「丙」は火の兄、十二支の「午」も火の属性を持ちます。
+                これまで以上に情熱的で、変化の激しい、エネルギーに満ち溢れた一年となるでしょう。
+            </p>
+            <div class="grid-cards">
+                <div class="card">
+                    <span class="card-icon">🔥</span>
+                    <h3>性格</h3>
+                    <p>陽気で派手好き、開放的な性格。頭の回転が速く、行動力に優れています。社交的で人を楽しませる才能があります。</p>
+                </div>
+                <div class="card">
+                    <span class="card-icon">⚡</span>
+                    <h3>運勢</h3>
+                    <p>劇的な変化が起こりやすい年。古いものを焼き尽くし、新しい芽が出るような、激しくも創造的なエネルギーに満ちています。</p>
+                </div>
+                <div class="card">
+                    <span class="card-icon">📖</span>
+                    <h3>歴史</h3>
+                    <p>古来より馬は「神の乗り物」とされ、勝利や飛躍の象徴です。丙午の年は60年に一度の強力なパワーを持つと言われています。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mini Game Section -->
+    <section id="game-section">
+        <div class="container">
+            <h2 style="margin-bottom: 10px; color: var(--secondary);">HORSE RUSH</h2>
+            <p style="margin-bottom: 30px; color: #aaa;">障害物を避けて、新年の荒野を駆け抜けろ！</p>
+            
+            <div id="game-container">
+                <canvas id="game-canvas"></canvas>
+                <div class="score-display">SCORE: <span id="score-val">0</span></div>
+                <div id="game-ui">
+                    <h3 id="game-msg" style="font-size: 2rem; color: #fff; text-shadow: 2px 2px 0 #000; margin-bottom: 20px;">READY?</h3>
+                    <button class="btn" id="start-btn">START RUN</button>
+                    <p style="margin-top: 10px; font-size: 0.8rem; color: #ccc;">[SPACE] or [TAP] to Jump</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Resolutions Section -->
+    <section id="resolutions">
+        <div class="container">
+            <h2 style="text-align: center; color: var(--secondary); margin-bottom: 40px;">2026年の抱負</h2>
+            <div class="input-group">
+                <input type="text" id="res-input" placeholder="ここに今年の抱負を入力..." maxlength="20">
+                <button class="btn" id="add-res-btn">絵馬を奉納</button>
+            </div>
+            <div class="ema-board" id="ema-board">
+                <!-- Emas will appear here -->
+                <div class="ema" style="animation-delay: 0s;">家内安全</div>
+                <div class="ema" style="animation-delay: -1s;">飛躍の年</div>
+                <div class="ema" style="animation-delay: -2s;">健康第一</div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>© 2026 Year of the Horse Project | Created with Gemini CLI</p>
+    </footer>
+
+    <script>
+        /* --- Hero Canvas Particle System --- */
+        const canvas = document.getElementById('hero-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let width, height;
+
+        // Resize handling
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Mouse interaction
+        const mouse = { x: width / 2, y: height / 2 };
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.size = Math.random() * 2 + 1;
+                this.color = Math.random() > 0.9 ? '#D4AF37' : (Math.random() > 0.5 ? '#B22222' : '#ff4500');
+                this.life = Math.random() * 100;
+                this.maxLife = 100 + Math.random() * 100;
+            }
+
+            update() {
+                // Move towards mouse slightly
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if (dist < 300) {
+                    this.vx += dx * 0.0001;
+                    this.vy += dy * 0.0001;
+                }
+
+                // Drag
+                this.vx *= 0.99;
+                this.vy *= 0.99;
+
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life++;
+
+                if (this.life > this.maxLife || this.x < 0 || this.x > width || this.y < 0 || this.y > height) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Initialize particles
+        for (let i = 0; i < 150; i++) {
+            particles.push(new Particle());
+        }
+
+        function animateHero() {
+            ctx.fillStyle = 'rgba(11, 30, 59, 0.1)'; // Trail effect
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw connections
+            particles.forEach((p, index) => {
+                p.update();
+                p.draw();
+
+                // Connect particles if close
+                for (let j = index + 1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const dx = p.x - p2.x;
+                    const dy = p.y - p2.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+
+                    if (dist < 100) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(212, 175, 55, ${1 - dist/100})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                }
+            });
+            requestAnimationFrame(animateHero);
+        }
+        animateHero();
+
+
+        /* --- Mini Game Logic --- */
+        const gCanvas = document.getElementById('game-canvas');
+        const gCtx = gCanvas.getContext('2d');
+        const startBtn = document.getElementById('start-btn');
+        const gameUI = document.getElementById('game-ui');
+        const gameMsg = document.getElementById('game-msg');
+        const scoreEl = document.getElementById('score-val');
+
+        let gameRunning = false;
+        let gameScore = 0;
+        let gameSpeed = 5;
+        let obstacles = [];
+        let frame = 0;
+
+        // Set fixed game resolution
+        gCanvas.width = 800;
+        gCanvas.height = 300;
+
+        const horse = {
+            x: 50,
+            y: 220,
+            width: 40,
+            height: 40,
+            dy: 0,
+            jumpPower: -12,
+            gravity: 0.6,
+            grounded: true,
+            draw() {
+                gCtx.fillStyle = '#D4AF37';
+                // Simple Horse Shape
+                gCtx.beginPath();
+                gCtx.moveTo(this.x, this.y); 
+                gCtx.lineTo(this.x + 20, this.y - 20); // neck
+                gCtx.lineTo(this.x + 35, this.y - 15); // head
+                gCtx.lineTo(this.x + 40, this.y + 10); // nose
+                gCtx.lineTo(this.x + 20, this.y + 10); // jaw
+                gCtx.lineTo(this.x + 30, this.y + 40); // front leg
+                gCtx.lineTo(this.x + 10, this.y + 40);
+                gCtx.lineTo(this.x, this.y + 20); // body
+                gCtx.lineTo(this.x - 20, this.y + 20); // body
+                gCtx.lineTo(this.x - 30, this.y + 40); // back leg
+                gCtx.lineTo(this.x - 40, this.y + 40);
+                gCtx.lineTo(this.x - 30, this.y); // back
+                gCtx.fill();
+            },
+            update() {
+                if (!gameRunning) return;
+                
+                // Physics
+                this.dy += this.gravity;
+                this.y += this.dy;
+
+                // Ground collision
+                if (this.y > 220) {
+                    this.y = 220;
+                    this.dy = 0;
+                    this.grounded = true;
+                } else {
+                    this.grounded = false;
+                }
+            },
+            jump() {
+                if (this.grounded && gameRunning) {
+                    this.dy = this.jumpPower;
+                }
+            }
+        };
+
+        class Obstacle {
+            constructor() {
+                this.x = gCanvas.width;
+                this.y = 230;
+                this.width = 20 + Math.random() * 20;
+                this.height = 30 + Math.random() * 20;
+                this.marked = false;
+            }
+            draw() {
+                gCtx.fillStyle = '#B22222';
+                gCtx.fillRect(this.x, this.y - this.height, this.width, this.height);
+                // Top accent
+                gCtx.fillStyle = '#ff4500';
+                gCtx.fillRect(this.x, this.y - this.height, this.width, 5);
+            }
+            update() {
+                this.x -= gameSpeed;
+            }
+        }
+
+        function startGame() {
+            gameRunning = true;
+            gameScore = 0;
+            gameSpeed = 5;
+            obstacles = [];
+            scoreEl.innerText = '0';
+            gameUI.style.display = 'none';
+            horse.y = 220;
+            horse.dy = 0;
+            animateGame();
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            gameUI.style.display = 'block';
+            gameMsg.innerText = "GAME OVER";
+            startBtn.innerText = "TRY AGAIN";
+        }
+
+        function animateGame() {
+            if (!gameRunning) return;
+
+            gCtx.clearRect(0, 0, gCanvas.width, gCanvas.height);
+
+            // Ground
+            gCtx.fillStyle = '#222';
+            gCtx.fillRect(0, 260, gCanvas.width, 40);
+
+            // Horse
+            horse.update();
+            horse.draw();
+
+            // Obstacles
+            if (frame % 100 === 0) {
+                if (Math.random() > 0.3) obstacles.push(new Obstacle());
+            }
+            frame++;
+            gameSpeed += 0.001; // Increase difficulty
+
+            obstacles.forEach((obs, index) => {
+                obs.update();
+                obs.draw();
+
+                // Collision Detection
+                // Approximate hit box
+                if (
+                    horse.x + 20 > obs.x && 
+                    horse.x - 20 < obs.x + obs.width &&
+                    horse.y + 40 > obs.y - obs.height
+                ) {
+                    gameOver();
+                }
+
+                // Cleanup
+                if (obs.x + obs.width < 0) {
+                    obstacles.splice(index, 1);
+                }
+                
+                // Score
+                if (obs.x < horse.x && !obs.marked) {
+                    gameScore += 10;
+                    scoreEl.innerText = gameScore;
+                    obs.marked = true;
+                }
+            });
+
+            requestAnimationFrame(animateGame);
+        }
+
+        // Controls
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                horse.jump();
+            }
+        });
+        gCanvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            horse.jump();
+        }, {passive: false});
+        gCanvas.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            horse.jump();
+        });
+
+        startBtn.addEventListener('click', startGame);
+
+        // Initial draw
+        horse.draw();
+        gCtx.fillStyle = '#222';
+        gCtx.fillRect(0, 260, gCanvas.width, 40);
+
+
+        /* --- Resolutions Board --- */
+        const resInput = document.getElementById('res-input');
+        const addResBtn = document.getElementById('add-res-btn');
+        const emaBoard = document.getElementById('ema-board');
+
+        function addEma() {
+            const text = resInput.value.trim();
+            if (text) {
+                const ema = document.createElement('div');
+                ema.className = 'ema';
+                ema.innerText = text;
+                // Random swing offset
+                ema.style.animationDelay = `-${Math.random() * 2}s`;
+                // Add to board
+                emaBoard.insertBefore(ema, emaBoard.firstChild);
+                resInput.value = '';
+            }
+        }
+
+        addResBtn.addEventListener('click', addEma);
+        resInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addEma();
+        });
+
+    </script>
+</body>
+</html>
