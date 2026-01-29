@@ -1,0 +1,755 @@
+<!--
+AI Model: Claude Opus 4.5
+User Prompt: 人生相談サイトを作って欲しい
+AI Approach: 種田山頭火の文体・精神で人生相談に答える対話型Webアプリ。自由律俳句と日記風散文で悩みに寄り添う。
+Implementation Intent: 山頭火の語彙・文体・世界観を忠実に再現し、現代人の悩みに放浪の俳人として応答する人生相談サイト
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>山頭火の人生相談 ― 歩くほかない道がある</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500;600&display=swap');
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :root {
+    --bg: #f5f0e8;
+    --bg-dark: #e8e0d0;
+    --ink: #2c2418;
+    --ink-light: #5c4a34;
+    --ink-faint: #8a7a66;
+    --accent: #6b4423;
+    --paper: #faf6ee;
+    --paper-shadow: #d4cbb8;
+    --green-faint: #4a5540;
+  }
+
+  body {
+    font-family: 'Noto Serif JP', 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', serif;
+    background-color: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.9;
+    font-size: 16px;
+    font-weight: 400;
+  }
+
+  header {
+    text-align: center;
+    padding: 48px 20px 32px;
+    max-width: 640px;
+    width: 100%;
+  }
+
+  header h1 {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    margin-bottom: 12px;
+    color: var(--accent);
+  }
+
+  header .subtitle {
+    font-size: 14px;
+    color: var(--ink-faint);
+    letter-spacing: 0.08em;
+  }
+
+  header .ku {
+    margin-top: 20px;
+    font-size: 17px;
+    color: var(--ink-light);
+    letter-spacing: 0.12em;
+    font-style: italic;
+  }
+
+  .main-container {
+    max-width: 640px;
+    width: 100%;
+    padding: 0 20px 60px;
+  }
+
+  .intro-text {
+    background: var(--paper);
+    border-radius: 4px;
+    padding: 24px 28px;
+    margin-bottom: 32px;
+    font-size: 14.5px;
+    line-height: 2;
+    color: var(--ink-light);
+    border-left: 3px solid var(--paper-shadow);
+  }
+
+  .intro-text p {
+    margin-bottom: 8px;
+  }
+
+  .intro-text p:last-child {
+    margin-bottom: 0;
+  }
+
+  .consultation-area {
+    margin-bottom: 32px;
+  }
+
+  .consultation-area label {
+    display: block;
+    font-size: 15px;
+    color: var(--ink-light);
+    margin-bottom: 12px;
+    letter-spacing: 0.06em;
+  }
+
+  .consultation-area textarea {
+    width: 100%;
+    min-height: 140px;
+    padding: 18px 20px;
+    font-family: 'Noto Serif JP', 'Yu Mincho', serif;
+    font-size: 15px;
+    line-height: 2;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--paper-shadow);
+    border-radius: 4px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+
+  .consultation-area textarea:focus {
+    border-color: var(--accent);
+  }
+
+  .consultation-area textarea::placeholder {
+    color: var(--ink-faint);
+    font-size: 14px;
+  }
+
+  .submit-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .category-select {
+    font-family: 'Noto Serif JP', 'Yu Mincho', serif;
+    font-size: 13.5px;
+    color: var(--ink-light);
+    background: var(--paper);
+    border: 1px solid var(--paper-shadow);
+    border-radius: 4px;
+    padding: 10px 14px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .submit-btn {
+    font-family: 'Noto Serif JP', 'Yu Mincho', serif;
+    font-size: 14.5px;
+    letter-spacing: 0.1em;
+    color: var(--paper);
+    background: var(--accent);
+    border: none;
+    border-radius: 4px;
+    padding: 10px 28px;
+    cursor: pointer;
+    transition: background 0.3s, opacity 0.3s;
+  }
+
+  .submit-btn:hover {
+    background: var(--ink);
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .response-area {
+    display: none;
+    margin-top: 8px;
+  }
+
+  .response-area.visible {
+    display: block;
+  }
+
+  .response-card {
+    background: var(--paper);
+    border-radius: 4px;
+    padding: 32px 28px;
+    border-left: 3px solid var(--accent);
+    margin-bottom: 24px;
+    animation: fadeIn 1s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .response-date {
+    font-size: 13px;
+    color: var(--ink-faint);
+    margin-bottom: 16px;
+    letter-spacing: 0.06em;
+  }
+
+  .response-body {
+    font-size: 15px;
+    line-height: 2.1;
+    color: var(--ink);
+  }
+
+  .response-body p {
+    margin-bottom: 12px;
+  }
+
+  .response-body p:last-child {
+    margin-bottom: 0;
+  }
+
+  .response-body .ku-line {
+    display: block;
+    margin: 16px 0;
+    padding-left: 16px;
+    font-size: 16px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    border-left: 2px solid var(--paper-shadow);
+  }
+
+  .response-body .inner-voice {
+    color: var(--ink-faint);
+    font-size: 14px;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--ink-faint);
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    animation: pulse 2s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  .past-consultations {
+    margin-top: 40px;
+    border-top: 1px solid var(--paper-shadow);
+    padding-top: 24px;
+  }
+
+  .past-consultations h2 {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--ink-light);
+    margin-bottom: 20px;
+    letter-spacing: 0.08em;
+  }
+
+  .past-item {
+    background: var(--paper);
+    border-radius: 4px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: border-left 0.3s;
+    border-left: 3px solid transparent;
+  }
+
+  .past-item:hover {
+    border-left-color: var(--accent);
+  }
+
+  .past-item .past-q {
+    font-size: 13.5px;
+    color: var(--ink-faint);
+    margin-bottom: 6px;
+  }
+
+  .past-item .past-ku {
+    font-size: 15px;
+    color: var(--ink-light);
+    letter-spacing: 0.08em;
+  }
+
+  footer {
+    text-align: center;
+    padding: 32px 20px 40px;
+    font-size: 12px;
+    color: var(--ink-faint);
+    letter-spacing: 0.06em;
+    line-height: 1.8;
+  }
+
+  @media (max-width: 480px) {
+    header { padding: 32px 16px 24px; }
+    header h1 { font-size: 22px; }
+    .main-container { padding: 0 16px 40px; }
+    .intro-text { padding: 18px 20px; }
+    .response-card { padding: 24px 20px; }
+    .submit-row { flex-direction: column; align-items: stretch; }
+    .submit-btn { text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>山頭火の人生相談</h1>
+  <div class="subtitle">― 歩くほかない道がある ―</div>
+  <div class="ku">まつすぐな道でさみしい</div>
+</header>
+
+<div class="main-container">
+
+  <div class="intro-text">
+    <p>私は種田山頭火。――放浪の俳人、乞食坊主、酒飲み、どうしようもない男である。</p>
+    <p>人生の答へなど持つてはゐない。けれども、歩いて歩いて、水を飲み、風に吹かれて、いくらかのことは知つた。</p>
+    <p>あなたの悩みを聞かせてください。――句をひとつ、差し上げませう。</p>
+  </div>
+
+  <div class="consultation-area">
+    <label>あなたの悩みを、ここにお書きください。</label>
+    <textarea id="userInput" placeholder="仕事がつらい、人間関係に疲れた、生きる意味がわからない……何でも構ひません。"></textarea>
+    <div class="submit-row">
+      <select class="category-select" id="categorySelect">
+        <option value="auto">自動で読み取る</option>
+        <option value="work">仕事の悩み</option>
+        <option value="relationship">人間関係</option>
+        <option value="loneliness">孤独・さみしさ</option>
+        <option value="life">生きること</option>
+        <option value="future">将来への不安</option>
+        <option value="self">自分が嫌い</option>
+        <option value="tired">疲れた</option>
+        <option value="loss">喪失・別れ</option>
+      </select>
+      <button class="submit-btn" id="submitBtn" onclick="submitConsultation()">相談する</button>
+    </div>
+  </div>
+
+  <div class="response-area" id="responseArea">
+    <div id="responseContent"></div>
+  </div>
+
+  <div class="past-consultations" id="pastArea" style="display:none;">
+    <h2>これまでの相談</h2>
+    <div id="pastList"></div>
+  </div>
+
+</div>
+
+<footer>
+  種田山頭火（1882-1940）の文体と精神に基づく人生相談<br>
+  「どうしようもないわたしが歩いてゐる」
+</footer>
+
+<script>
+// ============================
+// 山頭火人生相談 ― 応答エンジン
+// ============================
+
+const responses = {
+
+  work: [
+    {
+      body: [
+        "仕事がつらいか。――さうだらう。私も寺の住職をやつてみた。酒屋もやつた。どれもうまくゆかなかつた。",
+        "けれども、うまくゆかないことが、すなはち駄目だといふことではない。",
+        '<span class="ku-line">・はたらく手のひらに秋の風がくる</span>',
+        "あなたの手が疲れてゐるなら、それは手を使つてゐる証拠だ。――手を使はない人間に疲れはない。",
+        "水を一杯、飲みなさい。冷たい水がからだを通つてゆく。――それだけのことが、ありがたい。",
+        '<span class="inner-voice">（仕事を捨てろとは言はない。捨てられるものなら、とうに捨ててゐるだらう。歩くほかないのだ）</span>'
+      ],
+      ku: "はたらく手のひらに秋の風がくる"
+    },
+    {
+      body: [
+        "仕事か。――私には仕事がなかつた。仕事がないことは、自由ではなく、さみしさであつた。",
+        "あなたには仕事がある。それは重荷であると同時に、あなたをこの世につなぎとめてゐるものだ。",
+        '<span class="ku-line">・重い荷をおろせばそこに草がある</span>',
+        "草はだまつて生えてゐる。あなたもだまつて、けふ一日を歩けばよい。明日のことは明日の風が吹く。",
+        "一日一日。――それだけである。"
+      ],
+      ku: "重い荷をおろせばそこに草がある"
+    },
+    {
+      body: [
+        "働くことに意味があるのかと、さう問ふのだらう。――わからない。私にはわからない。",
+        "ただ、鉄鉢を差し出して米をいただく。それが私の仕事だつた。恥づかしい仕事だつた。けれども、それが私の道であつた。",
+        '<span class="ku-line">・けふの道まつすぐにつづいてゐる</span>',
+        "道がつづいてゐるといふことは、まだ歩けるといふことだ。歩けるうちは、歩きなさい。",
+        '<span class="inner-voice">（意味は、あとからついてくるものだ。先に意味を求めてはならない）</span>'
+      ],
+      ku: "けふの道まつすぐにつづいてゐる"
+    }
+  ],
+
+  relationship: [
+    {
+      body: [
+        "人づきあひか。――私は妻も子も捨てた男である。友人の世話にばかりなつて、返すものを何も持たなかつた。",
+        "それでも、友はありがたかつた。緑平老、樹明君、――あの人たちの温情が、どれだけ私を生かしたか。",
+        '<span class="ku-line">・人を恋しいと思ふ水のうまさ</span>',
+        "人に疲れるのは、人を大切にしてゐるからだ。――どうでもよい相手には疲れない。",
+        "すこし離れなさい。離れて、水の音を聴きなさい。――さうすれば、また会ひたくなる。"
+      ],
+      ku: "人を恋しいと思ふ水のうまさ"
+    },
+    {
+      body: [
+        "人の間で生きることは、まことにむづかしい。私はそれが出来なかつた。だから歩いた。",
+        "けれども、歩いた先にも人がゐた。宿の女将、同宿の旅人、托鉢で米をくれる老婆。――人から逃げても人に出会ふ。",
+        '<span class="ku-line">・ひとりでゐてもふたりでゐても草がのびる</span>',
+        "草は、人の事情など知らずに伸びてゐる。あなたも、あなたのまま伸びればよい。合はない人とは、合はないのだ。",
+        '<span class="inner-voice">（それでも人が恋しくなる。それが人間といふものだ）</span>'
+      ],
+      ku: "ひとりでゐてもふたりでゐても草がのびる"
+    }
+  ],
+
+  loneliness: [
+    {
+      body: [
+        "さみしいか。――さうだらう。私もさみしい。いつもさみしい。",
+        "やつぱり一人がよろしい雑草。――さう詠んでおきながら、やつぱり一人はさみしい枯草、とも詠んだ。矛盾してゐる。けれども、それが本当なのだ。",
+        '<span class="ku-line">・さみしさの底がぬけてあをぞら</span>',
+        "さみしさの底を抜けると、不思議なあをぞらがある。――私はさう信じてゐる。信じてゐるといふより、さういふ日があつた。",
+        "さみしいまま、茶を一杯いれなさい。湯気を見なさい。――湯気はまつすぐに立ちのぼつて、消える。それだけのことが、うつくしい。"
+      ],
+      ku: "さみしさの底がぬけてあをぞら"
+    },
+    {
+      body: [
+        "ひとりぼつちだと思つてゐるのか。――私もさうだつた。何十年もさうだつた。",
+        "けれども、ひとりで歩いてゐると、風が来る。鳥が鳴く。水が流れてゐる。――それは、ひとりではないといふことではないか。",
+        '<span class="ku-line">・ひとりの火のしづかにもえてゐる</span>',
+        "あなたのなかに、しづかに燃えてゐる火がある。それが消えないかぎり、あなたは大丈夫だ。",
+        '<span class="inner-voice">（さみしさは消えない。消えないが、それでゐいのだ）</span>'
+      ],
+      ku: "ひとりの火のしづかにもえてゐる"
+    }
+  ],
+
+  life: [
+    {
+      body: [
+        "生きる意味か。――大きな問ひだ。私にはわからない。わからないまま、五十八年を生きた。",
+        "ただ、水を飲んだとき「うまい」と思つた。それは確かだつた。朝の光がさしたとき「あたたかい」と思つた。それも確かだつた。",
+        '<span class="ku-line">・生きてゐるからだを掻いてゐる</span>',
+        "からだを掻く。――それだけのことが、生きてゐる証拠である。意味は、さういふところにしかない。",
+        "大きな意味を探してはならない。水のうまさ、風のすずしさ、飯のあたたかさ。――そこに在るものにおちつくことだ。",
+        '<span class="inner-voice">（私は雑草的存在に過ぎないけれど、それで満ち足りてゐる。雑草は雑草として、生え伸び咲き実り、枯れてしまへばそれでよろしいのである）</span>'
+      ],
+      ku: "生きてゐるからだを掻いてゐる"
+    },
+    {
+      body: [
+        "なぜ生きるのか。――私はしばしば死なうとした。けれども死ねなかつた。死にそこなつて、虫の声を聴いた。",
+        '<span class="ku-line">・いつでも死ねる草が咲いたり実つたり</span>',
+        "いつでも死ねると思へば、すこし楽になる。――逆説のやうだが、本当だ。",
+        "草は、いつ枯れてもよいやうに生えてゐる。だから自由に咲ける。あなたもさうだ。",
+        "けふ一日を歩きなさい。けふ一日だけでよい。明日はまた明日のことだ。"
+      ],
+      ku: "いつでも死ねる草が咲いたり実つたり"
+    }
+  ],
+
+  future: [
+    {
+      body: [
+        "将来が不安か。――私には将来がなかつた。明日の宿もわからなかつた。財布には五銭か十銭しかなかつた。",
+        "けれども、歩いた。歩けば道がある。道があれば、どこかに着く。",
+        '<span class="ku-line">・この道しかない春の雪ふる</span>',
+        "この道しかない。――さう思つたとき、不思議にこころが定まる。選べないといふことは、迷はなくてよいといふことだ。",
+        "あなたの不安は、選べるものが多すぎるからではないか。――すこし捨てなさい。荷物を軽くしなさい。",
+        '<span class="inner-voice">（明日のことは明日の風が知つてゐる。けふの風を、けふ感じなさい）</span>'
+      ],
+      ku: "この道しかない春の雪ふる"
+    },
+    {
+      body: [
+        "先が見えないと言ふのか。――あたりまへだ。先が見える人間などゐない。ゐたら、それは嘘つきだ。",
+        "私は五十八年、先が見えないまま歩いた。見えたのは、けふの空と、けふの草と、けふの水だけだつた。",
+        '<span class="ku-line">・霧の中から霧の中へあるいてゆく</span>',
+        "霧の中を歩いてゐるのだ。――あなたも私も。けれども、足もとだけは見える。足もとだけを見て、一歩を踏みなさい。",
+        "一歩、一歩。――それ以外に、歩き方はない。"
+      ],
+      ku: "霧の中から霧の中へあるいてゆく"
+    }
+  ],
+
+  self: [
+    {
+      body: [
+        "自分が嫌ひか。――私も自分が嫌ひだつた。酒に溺れ、家族を捨て、友人に迷惑をかけ、句もろくに出来ず。",
+        "「私の愚劣を恥ぢるより外ない」――何度さう書いたことか。",
+        '<span class="ku-line">・どうしようもないわたしが歩いてゐる</span>',
+        "どうしようもない。――さう認めたとき、すこし楽になる。どうしようもない自分を、どうしようとするから苦しいのだ。",
+        "あなたはあなただ。私は山頭火だ。芭蕉は芭蕉、良寛は良寛。――自分になりきればよろしい。",
+        '<span class="inner-voice">（嫌ひな自分も自分である。好きにならなくてよい。ただ、ゐることを許しなさい）</span>'
+      ],
+      ku: "どうしようもないわたしが歩いてゐる"
+    },
+    {
+      body: [
+        "自分を責めてゐるのだらう。――やめなさい、とは言はない。私もやめられなかつた。",
+        "ただ、雑草を見なさい。雑草は自分を責めない。踏まれても抜かれても、また生えてくる。あれは強さではない。ただ、生えるほかないから生えてゐるのだ。",
+        '<span class="ku-line">・雑草の中にまぎれてしまひたい私</span>',
+        "あなたも雑草のやうに在ればよい。立派でなくてよい。きれいでなくてよい。ただ、在ればよい。",
+        "・ともかくも生かされてはゐる雑草の中"
+      ],
+      ku: "雑草の中にまぎれてしまひたい私"
+    }
+  ],
+
+  tired: [
+    {
+      body: [
+        "疲れたか。――さうか。疲れたら休みなさい。それだけのことだ。",
+        "私は歩きすぎて足が動かなくなつたことがある。そのとき、道ばたに坐つた。草があつた。虫が鳴いてゐた。それだけのことが、ありがたかつた。",
+        '<span class="ku-line">・つかれた足を投げだして山がある</span>',
+        "足を投げだしなさい。山は逃げない。水は涸れない。あなたが休んでゐるあひだも、世界はしづかにまはつてゐる。",
+        "茶を一杯。――いや、酒でもよい。ともかく、何か温かいものを腹に入れなさい。",
+        '<span class="inner-voice">（休むことを怠惰と思ふな。休むことは、歩くための準備である）</span>'
+      ],
+      ku: "つかれた足を投げだして山がある"
+    },
+    {
+      body: [
+        "「もう歩けない」と思つたことが、何度あつたか。――数へきれない。",
+        "けれども、不思議なもので、すこし休むとまた歩けるのだ。からだといふものは、さういふふうに出来てゐる。",
+        '<span class="ku-line">・水を飲んでまた歩きだす草のなか</span>',
+        "水を飲みなさい。冷たい水がいい。からだの奥にしみわたるやうな水を。",
+        "さうして、けふはもう休みなさい。明日の朝、また考へればよい。"
+      ],
+      ku: "水を飲んでまた歩きだす草のなか"
+    }
+  ],
+
+  loss: [
+    {
+      body: [
+        "大切な人を失つたのか。――つらいことだ。私は母を失つた。自ら命を絶つた母の姿を、一生忘れることが出来なかつた。",
+        "「若うして死をいそぎたまへる母上の霊前に」――私の句集は、さう始まる。",
+        '<span class="ku-line">・失くしたものを数へて落葉ひとつひとつ</span>',
+        "落葉が一枚づつ散るやうに、悲しみもすこしづつ降りつもる。それを止めることは出来ない。止めようとしなくてよい。",
+        "泣きたければ泣きなさい。――泣くことは恥ではない。涙もまた、水である。",
+        '<span class="inner-voice">（いなくなつた人は、ゐなくなつたのではない。あなたのなかにゐるのだ）</span>'
+      ],
+      ku: "失くしたものを数へて落葉ひとつひとつ"
+    },
+    {
+      body: [
+        "別れか。――別れは、出会ひの裏がはである。出会つたから別れる。出会はなければ別れもない。",
+        "私は多くの人と別れた。妻と。子と。友と。――そのたびに、すこし軽くなり、すこしさみしくなつた。",
+        '<span class="ku-line">・うしろすがたのしぐれてゆくか</span>',
+        "去つてゆく人の後ろ姿に、時雨が降つてゐる。――それはうつくしい景色だ。悲しいけれど、うつくしい。",
+        "あなたの別れも、いつかうつくしい景色になる。――今はまだ、雨の中にゐなさい。"
+      ],
+      ku: "うしろすがたのしぐれてゆくか"
+    }
+  ],
+
+  general: [
+    {
+      body: [
+        "さうか。――何に悩んでゐるのか、はつきりとはわからないが、悩んでゐることだけは伝はつてくる。",
+        "私も多くを悩んだ。酒のこと、金のこと、句のこと、生きることそのもの。――悩みの種は尽きなかつた。",
+        '<span class="ku-line">・あるけばあるくほど風がくる</span>',
+        "歩きなさい。――からだを動かしなさい。頭で考へてゐるうちは堂々めぐりだ。足を動かせば、景色が変はる。景色が変はれば、こころも動く。",
+        "むづかしく考へなくてよい。水を飲み、飯を食ひ、眠る。――それが出来てゐるなら、あなたは大丈夫だ。",
+        '<span class="inner-voice">（在るものにおちつくこと。それがいちばんむづかしく、いちばん大切なことだ）</span>'
+      ],
+      ku: "あるけばあるくほど風がくる"
+    },
+    {
+      body: [
+        "何かに困つてゐるのだらう。――人は誰でも困つてゐる。困つてゐない人間など、ゐないのだ。",
+        "私はいつも困つてゐた。金がない、酒がやめられない、句が出来ない。――三拍子そろつた駄目な男だ。",
+        '<span class="ku-line">・しかたがないから歩いてゐる雨である</span>',
+        "しかたがないことは、しかたがない。――それを受け入れたところから、何かが始まる。",
+        "けふは茶を飲んで、早く寝なさい。明日はまた、明日の風が吹く。"
+      ],
+      ku: "しかたがないから歩いてゐる雨である"
+    }
+  ]
+};
+
+// キーワードから悩みのカテゴリを推定する
+const keywords = {
+  work: ['仕事', '会社', '上司', '部下', '同僚', '職場', '残業', '転職', '退職', 'キャリア', '働', 'はたら', '給料', '給与', 'ブラック', '出勤', '通勤', '業務', '昇進', 'リストラ', '解雇', 'パワハラ', '社長'],
+  relationship: ['人間関係', '友達', '友人', '家族', '親', '母', '父', '兄弟', '姉妹', '恋人', '彼氏', '彼女', '夫', '妻', '結婚', '離婚', 'ママ友', '嫁', '姑', '義母', '付き合', 'つきあ', '裏切', '喧嘩', 'けんか', '嫌はれ', '嫌われ', '信頼', '信用'],
+  loneliness: ['さみしい', '寂しい', '淋しい', 'ひとりぼっち', '一人ぼっち', '孤独', '孤立', '居場所', '独り', 'ひとり', '誰もいない', '話す人', '友達がいない', '理解されない', 'わかってもらえない'],
+  life: ['生きる', '意味', '死にたい', '死', '生きてる', '存在', '何のため', '目的', '価値', '虚しい', 'むなしい', '空しい', '空虚', '人生', '生まれて', '存在意義'],
+  future: ['将来', '未来', '不安', '心配', 'どうなる', 'これから', '老後', '年金', '就職', '受験', '進路', '夢', '目標', '希望がない', '先が見えない', '見通し'],
+  self: ['自分が嫌', '自己嫌悪', '自信がない', '劣等感', '自分なんて', '駄目', 'ダメ', '情けない', '恥ずかしい', '変われない', 'コンプレックス', '短所', '欠点', '才能がない', '自分を好き'],
+  tired: ['疲れ', 'つかれ', 'しんどい', '辛い', 'つらい', 'きつい', '限界', '頑張れない', 'がんばれない', '燃え尽き', 'バーンアウト', '休みたい', '逃げたい', '無理', 'もう嫌', '苦しい', 'くるしい'],
+  loss: ['失', '亡くな', '死んだ', '別れ', '離れ', '失恋', '振られ', 'ペット', '喪失', '悲しい', 'かなしい', '忘れられない', '会いたい', '戻りたい', '取り戻', '遺']
+};
+
+function detectCategory(text) {
+  let maxScore = 0;
+  let detected = 'general';
+
+  for (const [category, words] of Object.entries(keywords)) {
+    let score = 0;
+    for (const word of words) {
+      if (text.includes(word)) {
+        score++;
+      }
+    }
+    if (score > maxScore) {
+      maxScore = score;
+      detected = category;
+    }
+  }
+
+  return detected;
+}
+
+function getRandomItem(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function getJapaneseDate() {
+  const now = new Date();
+  const months = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
+  const day = now.getDate();
+  const weather = getRandomItem(['晴', '曇', '曇、風すこし', '雨', '晴れたり曇つたり', '薄曇', '快晴', '小雨']);
+
+  // 日を漢数字に
+  let dayStr;
+  if (day <= 10) {
+    const nums = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+    dayStr = nums[day];
+  } else if (day < 20) {
+    const nums = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+    dayStr = '十' + nums[day - 10];
+  } else if (day === 20) {
+    dayStr = '廿';
+  } else if (day < 30) {
+    const nums = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+    dayStr = '廿' + nums[day - 20];
+  } else {
+    dayStr = '三十';
+    if (day === 31) dayStr = '三十一';
+  }
+
+  return `${months[now.getMonth()]}月${dayStr}日　${weather}。`;
+}
+
+// 過去の相談を保存
+let pastConsultations = [];
+try {
+  const saved = localStorage.getItem('santoka_consultations');
+  if (saved) pastConsultations = JSON.parse(saved);
+} catch(e) {}
+
+function savePast(question, ku) {
+  pastConsultations.unshift({ question: question.substring(0, 40), ku });
+  if (pastConsultations.length > 10) pastConsultations.length = 10;
+  try {
+    localStorage.setItem('santoka_consultations', JSON.stringify(pastConsultations));
+  } catch(e) {}
+}
+
+function renderPast() {
+  const area = document.getElementById('pastArea');
+  const list = document.getElementById('pastList');
+  if (pastConsultations.length === 0) {
+    area.style.display = 'none';
+    return;
+  }
+  area.style.display = 'block';
+  list.innerHTML = pastConsultations.map(item =>
+    `<div class="past-item">
+      <div class="past-q">「${item.question}${item.question.length >= 40 ? '……' : '」'}</div>
+      <div class="past-ku">・${item.ku}</div>
+    </div>`
+  ).join('');
+}
+
+function submitConsultation() {
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+
+  const responseArea = document.getElementById('responseArea');
+  const responseContent = document.getElementById('responseContent');
+
+  // 読み込み中
+  responseArea.classList.add('visible');
+  responseContent.innerHTML = '<div class="loading">……歩いてゐる、歩いてゐる……</div>';
+
+  // カテゴリ判定
+  const selectEl = document.getElementById('categorySelect');
+  let category = selectEl.value;
+  if (category === 'auto') {
+    category = detectCategory(text);
+  }
+
+  const categoryResponses = responses[category] || responses.general;
+  const chosen = getRandomItem(categoryResponses);
+
+  // 少し間を置いて応答を表示する（山頭火が考へてゐる）
+  setTimeout(() => {
+    const dateStr = getJapaneseDate();
+    const bodyHtml = chosen.body.map(line => {
+      if (line.includes('ku-line') || line.includes('inner-voice')) {
+        return `<p>${line}</p>`;
+      }
+      return `<p>${line}</p>`;
+    }).join('');
+
+    responseContent.innerHTML = `
+      <div class="response-card">
+        <div class="response-date">　${dateStr}</div>
+        <div class="response-body">
+          ${bodyHtml}
+        </div>
+      </div>
+    `;
+
+    btn.disabled = false;
+    savePast(text, chosen.ku);
+    renderPast();
+
+    // スクロール
+    responseArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 1500 + Math.random() * 1000);
+}
+
+// Enterキーで送信（Shift+Enterは改行）
+document.getElementById('userInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    submitConsultation();
+  }
+});
+
+// 初期表示
+renderPast();
+</script>
+</body>
+</html>
