@@ -1,0 +1,141 @@
+:root {
+    --monitor-bg: #050505;
+    --osd-color: #00ffcc; /* Cyan/Greenish typical of medical scopes */
+    --osd-font: 'Courier New', Courier, monospace;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: var(--monitor-bg);
+    color: var(--osd-color);
+    font-family: var(--osd-font);
+    user-select: none;
+}
+
+#canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+}
+
+#ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 2;
+    pointer-events: none; /* Let clicks pass through to canvas if needed */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Circular Mask for the Scope View */
+.monitor-mask {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, transparent 40%, #000 42%, #000 100%);
+    z-index: 3;
+}
+
+/* On-Screen Display (OSD) Info */
+.osd-layer {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    z-index: 4;
+    text-shadow: 0 0 2px var(--osd-color);
+}
+
+.osd-top-left { position: absolute; top: 0; left: 0; }
+.osd-top-right { position: absolute; top: 0; right: 0; text-align: right; }
+.osd-bottom-left { position: absolute; bottom: 0; left: 0; }
+.osd-bottom-right { position: absolute; bottom: 0; right: 0; text-align: right; }
+
+.label {
+    color: #aaa;
+    font-weight: bold;
+}
+
+/* Scanlines and Noise for realism */
+.scanlines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 4px, 6px 100%;
+    z-index: 5;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.noise {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+    z-index: 6;
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* Instructions Screen */
+#instructions {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 20, 0, 0.9);
+    border: 2px solid var(--osd-color);
+    padding: 2rem;
+    z-index: 10;
+    text-align: center;
+    color: white;
+    box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+    cursor: pointer;
+    transition: opacity 0.5s;
+}
+
+#instructions h2 { margin-top: 0; color: var(--osd-color); }
+
+/* Blinking record indicator */
+.rec-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background-color: red;
+    border-radius: 50%;
+    margin-right: 5px;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+/* Water flush effect */
+.water-flush {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(200, 230, 255, 0.4);
+    z-index: 8;
+    backdrop-filter: blur(5px);
+    display: none; /* Hidden by default */
+}

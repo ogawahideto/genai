@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Gastroscopy Simulator v6.1 (Fixed Tracker)</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+        
+        /* Fixed Mini-map Container */
+        #minimap-container {
+            position: absolute; bottom: 20px; right: 20px; width: 200px; height: 200px;
+            border: 2px solid #00ffcc; background: #000; z-index: 50; /* Very high z-index */
+            border-radius: 4px; overflow: hidden; pointer-events: none;
+        }
+        #minimap-label { position: absolute; top: 2px; left: 5px; color: #00ffcc; font-size: 10px; z-index: 52; font-weight: bold; font-family: monospace; }
+
+        /* UI Overlay */
+        #ui-overlay { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; pointer-events: none; }
+        .osd-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
+        /* Interactive Elements */
+        #ui-controls {
+            position: absolute; top: 120px; left: 20px; z-index: 30;
+            font-family: 'Courier New', Courier, monospace; color: #00ffcc; font-size: 12px;
+            pointer-events: auto; background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 4px;
+        }
+        #brightness-slider { width: 80px; vertical-align: middle; cursor: pointer; }
+        
+        .btn-capture {
+            margin-top: 10px; background: #ff3333; color: white; border: none; padding: 5px 10px;
+            cursor: pointer; font-family: 'Courier New', monospace; font-weight: bold; border-radius: 2px;
+            width: 100%;
+        }
+
+        /* Capture Gallery */
+        #gallery {
+            position: absolute; top: 120px; right: 20px; width: 120px;
+            z-index: 40; display: flex; flex-direction: column; gap: 10px;
+            pointer-events: auto;
+        }
+        .gallery-item {
+            width: 100%; border: 1px solid #00ffcc; cursor: pointer; transition: transform 0.2s;
+            background: #000;
+        }
+        .gallery-label { color: #00ffcc; font-size: 10px; text-align: center; font-family: monospace; background: rgba(0,0,0,0.5); }
+
+        /* Shutter Flash */
+        #shutter-flash {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: white; z-index: 100; opacity: 0; pointer-events: none;
+        }
+        .flash-active { animation: flash-anim 0.3s ease-out; }
+        @keyframes flash-anim { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+        /* Other OSD */
+        #pathology-log { position: absolute; top: 220px; left: 20px; width: 250px; font-family: 'Courier New', monospace; color: #ff3333; z-index: 5; text-shadow: 1px 1px 0 #000; pointer-events: none; }
+        #location-display { position: absolute; top: 90px; right: 20px; color: #ff9900; font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; z-index: 5; text-shadow: 0 0 2px #f00; text-align: right; }
+        #controls-display { position: absolute; top: 320px; left: 20px; color: rgba(0, 255, 204, 0.7); font-family: 'Courier New', monospace; font-size: 10px; z-index: 5; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="minimap-container"><div id="minimap-label">POS TRACKER</div></div>
+    <div id="shutter-flash"></div>
+
+    <div id="ui-overlay">
+        <div class="monitor-mask"></div>
+        <div class="osd-layer">
+            <div class="osd-top-left">
+                <div class="patient-info">
+                    <span class="label">NAME:</span> GEMINI, DUMMY<br>
+                    <span class="label">ID:</span> 2026-0131-X<br>
+                    <span class="label">DOB:</span> 1990/01/01<br>
+                    <span class="label">SEX:</span> M
+                </div>
+            </div>
+            
+            <div id="ui-controls">
+                BRIGHTNESS: <input type="range" id="brightness-slider" min="0.5" max="5.0" step="0.1" value="1.5"><br>
+                <button class="btn-capture" id="btn-capture">PHOTO [P]</button>
+            </div>
+
+            <div id="gallery">
+                <div class="gallery-label">CAPTURES</div>
+            </div>
+
+            <div id="pathology-log"><strong>[PATHOLOGY LOG]</strong><br></div>
+            <div class="osd-top-right">
+                <div class="hospital-info">GEMINI GEN AI CLINIC<br>GIF-H290Z</div>
+                <div id="timestamp">--:--:--</div>
+            </div>
+            <div id="location-display">LOC: ESOPHAGUS</div>
+            <div id="controls-display">[CONTROLS]<br><strong>W / S</strong> : Insert/Back<br><strong>A / D</strong> : Torque<br><strong>Arrows</strong>: Angulation<br><strong>Space</strong> : Flush<br><strong>P / Enter</strong> : Capture</div>
+            <div class="osd-bottom-left"><div class="scope-status"><span class="label">ENHANCE:</span> A1<br><span class="label">IRIS:</span> AUTO</div></div>
+            <div class="osd-bottom-right"><div id="depth-indicator" style="margin-right: 210px;">INSERT: 0 cm</div></div>
+        </div>
+        <div class="scanlines"></div><div class="noise"></div>
+    </div>
+
+    <div id="instructions">
+        <h2>GASTROSCOPY SIMULATOR V6.1</h2>
+        <p>Fixed Tracker & Capture Feature</p>
+        <p style="color: yellow; margin-top: 20px; cursor: pointer; border: 1px solid yellow; padding: 10px; display: inline-block;">CLICK TO START</p>
+    </div>
+
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+
+    <script>
+        const CONFIG = { moveSpeed: 0.0003, torqueSpeed: 0.03, angulationSpeed: 0.02 };
+        const state = { progress: 0.015, torque: 0, angulation: new THREE.Vector2(0, 0), isFlushing: false, roll: 0, exposure: 1.5 };
+        const inputs = { forward: false, backward: false, rotateLeft: false, rotateRight: false, angUp: false, angDown: false, angLeft: false, angRight: false };
+
+        function getAnatomyData(t) {
+            if (t < 0.15) return { name: "ESOPHAGUS (食道)", radius: 4, color: new THREE.Color(0xffcccc), noiseAmp: 0.1 };
+            if (t < 0.20) return { name: "CARDIA (噴門)", radius: 4 + (t-0.15)/0.05*10, color: new THREE.Color(0xff9999), noiseAmp: 0.5 };
+            if (t < 0.60) return { name: "STOMACH BODY (胃体部)", radius: 20 + Math.sin(t*100)*2, color: new THREE.Color(0xcc4444), noiseAmp: 2.0 };
+            if (t < 0.75) return { name: "ANTRUM (前庭部)", radius: 20 - (t-0.60)/0.15*14, color: new THREE.Color(0xff6666), noiseAmp: 1.0 };
+            if (t < 0.78) return { name: "PYLORUS (幽門)", radius: 3, color: new THREE.Color(0xffaaaa), noiseAmp: 0.1 };
+            return { name: "DUODENUM (十二指腸)", radius: 7 + Math.sin(t*800), color: new THREE.Color(0xffcc99), noiseAmp: 0.5 };
+        }
+
+        // --- Scene Setup ---
+        const mainRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        mainRenderer.setSize(window.innerWidth, window.innerHeight);
+        mainRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+        mainRenderer.toneMappingExposure = state.exposure;
+        document.getElementById('canvas-container').appendChild(mainRenderer.domElement);
+
+        const mainScene = new THREE.Scene(); mainScene.fog = new THREE.FogExp2(0x1a0505, 0.015); 
+        const mainCamera = new THREE.PerspectiveCamera(90, window.innerWidth/window.innerHeight, 0.1, 100);
+
+        // Minimap Renderer & Scene
+        const mapRenderer = new THREE.WebGLRenderer({ antialias: true });
+        mapRenderer.setSize(200, 200);
+        document.getElementById('minimap-container').appendChild(mapRenderer.domElement);
+
+        const mapScene = new THREE.Scene(); mapScene.background = new THREE.Color(0x000000); 
+        const mapCamera = new THREE.OrthographicCamera(-60, 60, 60, -60, 1, 1000);
+        mapCamera.position.set(200, 0, 0); mapCamera.lookAt(0, 0, 0);
+
+        // --- Geometry ---
+        function createGICurve() {
+            const p = [];
+            for (let i = 0; i <= 10; i++) p.push(new THREE.Vector3(0, -i * 10, 0));
+            p.push(new THREE.Vector3(5, -110, 5));
+            for (let i = 0; i < 40; i++) p.push(new THREE.Vector3(30 + Math.sin(i/20*Math.PI)*50, -120-i*3+Math.sin(i*0.5)*10, Math.cos(i/20*Math.PI)*30));
+            for (let i = 0; i < 30; i++) p.push(new THREE.Vector3(60+Math.random()*20, -240-i*5, 20+Math.sin(i)*20));
+            return new THREE.CatmullRomCurve3(p);
+        }
+        const curve = createGICurve();
+        const curveLength = curve.getLength();
+
+        // High Poly Tube with Deformation
+        const geometry = new THREE.TubeGeometry(curve, 800, 1, 24, false);
+        const posAttr = geometry.attributes.position;
+        const colors = [];
+        for (let i = 0; i < posAttr.count; i++) {
+            const u = geometry.attributes.uv.getX(i);
+            const anatomy = getAnatomyData(u);
+            const v = new THREE.Vector3().fromBufferAttribute(posAttr, i);
+            const n = new THREE.Vector3().fromBufferAttribute(geometry.attributes.normal, i);
+            const d = anatomy.radius - 1 + (Math.random()-0.5)*anatomy.noiseAmp;
+            v.addScaledVector(n, d);
+            posAttr.setXYZ(i, v.x, v.y, v.z);
+            const c = anatomy.color.clone(); c.r += (Math.random()-0.5)*0.05;
+            colors.push(c.r, c.g, c.b);
+        }
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        geometry.computeVertexNormals();
+        
+        const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.1, side: THREE.BackSide });
+        mainScene.add(new THREE.Mesh(geometry, mat));
+
+        // Minimap Wireframe
+        const mapMesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true, transparent: true, opacity: 0.3 }));
+        mapScene.add(mapMesh);
+        const playerMarker = new THREE.Mesh(new THREE.SphereGeometry(15,16,16), new THREE.MeshBasicMaterial({color: 0xff0000}));
+        mapScene.add(playerMarker);
+
+        // Pathology
+        const lesions = [];
+        for(let i=0; i<5; i++) {
+            const t = 0.15 + Math.random() * 0.7; 
+            const anatomy = getAnatomyData(t);
+            const point = curve.getPointAt(t);
+            const tangent = curve.getTangentAt(t).normalize();
+            const angle = Math.random() * Math.PI * 2;
+            let axis = new THREE.Vector3(0, 1, 0); if (Math.abs(tangent.y) > 0.9) axis.set(1, 0, 0);
+            const p1 = new THREE.Vector3().crossVectors(tangent, axis).normalize();
+            const p2 = new THREE.Vector3().crossVectors(tangent, p1).normalize();
+            const n = p1.clone().multiplyScalar(Math.cos(angle)).add(p2.clone().multiplyScalar(Math.sin(angle))).normalize();
+            const pos = point.clone().add(n.multiplyScalar(anatomy.radius - 1));
+            const lmesh = new THREE.Mesh(new THREE.SphereGeometry(3,16,16), new THREE.MeshStandardMaterial({color: 0xff0000}));
+            lmesh.position.copy(pos); lmesh.scale.y=0.3; lmesh.lookAt(point); mainScene.add(lmesh);
+            lesions.push({ position: pos, found: false });
+        }
+
+        // Lighting
+        const scopeLight = new THREE.SpotLight(0xfffff0, 10.0, 110, 0.9, 0.5, 1.5);
+        scopeLight.position.set(0,0,0); scopeLight.target.position.set(0,0,-1);
+        mainCamera.add(scopeLight); mainCamera.add(scopeLight.target); mainScene.add(mainCamera);
+        mainScene.add(new THREE.AmbientLight(0x404040, 0.5));
+        mapScene.add(new THREE.AmbientLight(0xffffff, 1));
+
+        // Interaction
+        document.getElementById('brightness-slider').addEventListener('input', (e) => {
+            state.exposure = parseFloat(e.target.value);
+            mainRenderer.toneMappingExposure = state.exposure;
+        });
+
+        const takePhoto = () => {
+            const flash = document.getElementById('shutter-flash');
+            flash.classList.remove('flash-active'); void flash.offsetWidth; flash.classList.add('flash-active');
+            const dataUrl = mainRenderer.domElement.toDataURL("image/png");
+            const gallery = document.getElementById('gallery');
+            const img = document.createElement('img');
+            img.src = dataUrl; img.className = 'gallery-item';
+            img.onclick = () => { const link = document.createElement('a'); link.download = `gastroscopy_${new Date().getTime()}.png`; link.href = dataUrl; link.click(); };
+            gallery.insertBefore(img, gallery.children[1]);
+        };
+        document.getElementById('btn-capture').onclick = takePhoto;
+
+        window.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if(k==='w') inputs.forward=true; if(k==='s') inputs.backward=true;
+            if(k==='a') inputs.rotateLeft=true; if(k==='d') inputs.rotateRight=true;
+            if(k==='arrowup') inputs.angUp=true; if(k==='arrowdown') inputs.angDown=true;
+            if(k==='arrowleft') inputs.angLeft=true; if(k==='arrowright') inputs.angRight=true;
+            if(k==='p' || e.key==='Enter') takePhoto();
+        });
+        window.addEventListener('keyup', (e) => {
+            const k = e.key.toLowerCase();
+            if(k==='w') inputs.forward=false; if(k==='s') inputs.backward=false;
+            if(k==='a') inputs.rotateLeft=false; if(k==='d') inputs.rotateRight=false;
+            if(k==='arrowup') inputs.angUp=false; if(k==='arrowdown') inputs.angDown=false;
+            if(k==='arrowleft') inputs.angLeft=false; if(k==='arrowright') inputs.angRight=false;
+        });
+
+        document.getElementById('instructions').addEventListener('click', function() { this.style.display='none'; });
+
+        function update() {
+            if (inputs.forward && state.progress < 0.99) state.progress += CONFIG.moveSpeed;
+            if (inputs.backward && state.progress > 0.01) state.progress -= CONFIG.moveSpeed;
+            if (inputs.rotateLeft) state.torque += CONFIG.torqueSpeed;
+            if (inputs.rotateRight) state.torque -= CONFIG.torqueSpeed;
+            state.torque *= 0.9;
+            if (inputs.angUp) state.angulation.y += CONFIG.angulationSpeed;
+            if (inputs.angDown) state.angulation.y -= CONFIG.angulationSpeed;
+            if (inputs.angLeft) state.angulation.x -= CONFIG.angulationSpeed;
+            if (inputs.angRight) state.angulation.x += CONFIG.angulationSpeed;
+            state.angulation.x *= 0.95; state.angulation.y *= 0.95;
+
+            const pos = curve.getPointAt(state.progress);
+            const tangent = curve.getTangentAt(state.progress).normalize();
+            mainCamera.position.copy(pos);
+            mainCamera.lookAt(pos.clone().add(tangent));
+            if (!state.roll) state.roll = 0; state.roll += state.torque;
+            mainCamera.rotation.z += state.roll;
+            mainCamera.rotateX(state.angulation.y); mainCamera.rotateY(state.angulation.x);
+
+            document.getElementById('depth-indicator').innerText = `INSERT: ${(state.progress * curveLength * 0.5).toFixed(1)} cm`;
+            document.getElementById('location-display').innerText = `LOC: ${getAnatomyData(state.progress).name}`;
+            document.getElementById('timestamp').innerText = new Date().toLocaleString('ja-JP');
+
+            playerMarker.position.copy(pos);
+            mapCamera.position.y = pos.y; mapCamera.lookAt(0, pos.y, 0);
+            
+            lesions.forEach(l => {
+                if(!l.found && mainCamera.position.distanceTo(l.position) < 20) {
+                    l.found = true;
+                    const div = document.createElement('div'); div.className='log-entry'; div.innerText='> LESION DETECTED';
+                    document.getElementById('pathology-log').appendChild(div);
+                }
+            });
+        }
+
+        function render() {
+            requestAnimationFrame(render);
+            update();
+            scopeLight.intensity = 10.0 * state.exposure + Math.sin(Date.now() * 0.01) * 0.5;
+            mainRenderer.render(mainScene, mainCamera);
+            mapRenderer.render(mapScene, mapCamera);
+        }
+        window.addEventListener('resize', () => {
+            mainCamera.aspect = window.innerWidth/window.innerHeight; mainCamera.updateProjectionMatrix();
+            mainRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        render();
+    </script>
+</body>
+</html>
