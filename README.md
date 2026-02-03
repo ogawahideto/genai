@@ -301,6 +301,9 @@ AI・チャットアプリケーション
 #### [Advanced Gastroscopy Simulator v6.1 (Fixed Tracker)](gastroscopy-simulator/) (2026-01-31)
 実験的アプリケーション
 
+#### [Advanced Gastroscopy Simulator v6.1 (Fixed Tracker)](gastroscopy-simulator-real/) (2026-02-03)
+実験的アプリケーション
+
 #### [Grid Canvas](hougan/) (2025-09-05)
 実験的アプリケーション
 
