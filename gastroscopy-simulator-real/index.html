@@ -8,11 +8,10 @@
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
-        /* Fixed Mini-map Container */
         #minimap-container {
             position: absolute; bottom: 20px; right: 20px; width: 200px; height: 200px;
-            border: 2px solid #00ffcc; background: #000; z-index: 50; /* Very high z-index */
-            border-radius: 4px; overflow: hidden; pointer-events: auto; /* Enable mouse events */
+            border: 2px solid #00ffcc; background: #000; z-index: 50;
+            border-radius: 4px; overflow: hidden; pointer-events: auto;
         }
         #minimap-label { position: absolute; top: 2px; left: 5px; color: #00ffcc; font-size: 10px; z-index: 52; font-weight: bold; font-family: monospace; }
         #ui-overlay { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; pointer-events: none; }
@@ -26,15 +25,51 @@
         #shutter-flash { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: white; z-index: 100; opacity: 0; pointer-events: none; }
         .flash-active { animation: flash-anim 0.3s ease-out; }
         @keyframes flash-anim { 0% { opacity: 1; } 100% { opacity: 0; } }
+        
+        /* Mobile Controls */
+        .touch-zone {
+            position: absolute; bottom: 20px; width: 120px; height: 120px;
+            border: 2px solid rgba(0, 255, 204, 0.3); border-radius: 50%;
+            background: rgba(0, 0, 0, 0.2); pointer-events: auto; touch-action: none;
+            display: flex;
+        }
+        .touch-knob {
+            position: absolute; top: 50%; left: 50%; width: 40px; height: 40px;
+            background: rgba(0, 255, 204, 0.5); border-radius: 50%;
+            transform: translate(-50%, -50%); pointer-events: none;
+        }
+        #stick-left { left: 20px; }
+        #stick-right { right: 20px; }
+        #mobile-capture {
+            position: absolute; top: 120px; right: 20px; width: 60px; height: 60px;
+            background: rgba(255, 51, 51, 0.8); border-radius: 50%; border: 2px solid white;
+            color: white; font-weight: bold; display: none; pointer-events: auto;
+            align-items: center; justify-content: center; font-family: monospace; cursor: pointer;
+            z-index: 60;
+        }
+
         #pathology-log { position: absolute; top: 220px; left: 20px; width: 250px; font-family: 'Courier New', monospace; color: #ff3333; z-index: 5; text-shadow: 1px 1px 0 #000; pointer-events: none; }
         #location-display { position: absolute; top: 90px; right: 20px; color: #ff9900; font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; z-index: 5; text-shadow: 0 0 2px #f00; text-align: right; }
         #controls-display { position: absolute; top: 320px; left: 20px; color: rgba(0, 255, 204, 0.7); font-family: 'Courier New', monospace; font-size: 10px; z-index: 5; pointer-events: none; }
+
+        @media (max-width: 768px) {
+            #mobile-capture { display: flex; }
+            #ui-controls, #gallery, #controls-display { display: none; }
+            #minimap-container { top: 10px; left: 10px; bottom: auto; right: auto; width: 100px; height: 100px; }
+            #location-display { font-size: 12px; top: 10px; right: 10px; }
+            #pathology-log { top: 50px; left: 10px; font-size: 10px; }
+            #depth-indicator { font-size: 12px; margin-right: 10px !important; bottom: 150px; right: 10px; position: absolute;}
+        }
     </style>
 </head>
 <body>
     <div id="canvas-container"></div>
     <div id="minimap-container"><div id="minimap-label">POS TRACKER</div></div>
     <div id="shutter-flash"></div>
+
+    <div id="stick-left" class="touch-zone"><div class="touch-knob"></div></div>
+    <div id="stick-right" class="touch-zone"><div class="touch-knob"></div></div>
+    <div id="mobile-capture">SNAP</div>
 
     <div id="ui-overlay">
         <div class="monitor-mask"></div>
@@ -77,10 +112,16 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         const CONFIG = { moveSpeed: 0.0003, torqueSpeed: 0.03, angulationSpeed: 0.04 };
-        const state = { progress: 0.015, torque: 0, angulation: new THREE.Vector2(0, 0), isFlushing: false, roll: 0, exposure: 1.5 };
+        const state = { progress: 0.015, torque: 0, angulation: new THREE.Vector2(0, 0), roll: 0, exposure: 1.5 };
         const inputs = { forward: false, backward: false, rotateLeft: false, rotateRight: false, angUp: false, angDown: false, angLeft: false, angRight: false, shift: false };
 
-        // Scene Setup
+        // Globals
+        let stomachModel = null;
+        const lesions = [];
+        const raycaster = new THREE.Raycaster();
+        const loader = new GLTFLoader();
+
+        // Main Scene
         const mainRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
         mainRenderer.setSize(window.innerWidth, window.innerHeight);
         mainRenderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -90,49 +131,76 @@
         const mainScene = new THREE.Scene(); mainScene.fog = new THREE.FogExp2(0x1a0505, 0.002);
         const mainCamera = new THREE.PerspectiveCamera(90, window.innerWidth/window.innerHeight, 0.05, 1000);
 
+        // Minimap
         const mapRenderer = new THREE.WebGLRenderer({ antialias: true });
         mapRenderer.setSize(200, 200);
         document.getElementById('minimap-container').appendChild(mapRenderer.domElement);
         const mapScene = new THREE.Scene(); mapScene.background = new THREE.Color(0x000000); 
-        
-        // Switch to Perspective for better 3D view
         const mapCamera = new THREE.PerspectiveCamera(45, 1, 10, 1000);
         mapCamera.position.set(200, 50, 200); 
-        
-        // Init OrbitControls for Minimap
         const mapControls = new OrbitControls(mapCamera, mapRenderer.domElement);
         mapControls.enableDamping = true;
         mapControls.dampingFactor = 0.05;
-        mapControls.minDistance = 50;
-        mapControls.maxDistance = 500;
 
-        const loader = new GLTFLoader();
-        let stomachModel = null;
-        const raycaster = new THREE.Raycaster();
+        // Player Marker Group
+        const playerMarker = new THREE.Mesh(new THREE.SphereGeometry(2,16,16), new THREE.MeshBasicMaterial({color: 0xff0000}));
+        const directionCone = new THREE.Mesh(new THREE.ConeGeometry(1, 5, 8), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
+        directionCone.position.z = -3; directionCone.rotation.x = -Math.PI / 2;
+        const playerGroup = new THREE.Group();
+        playerGroup.add(playerMarker); playerGroup.add(directionCone);
+        mapScene.add(playerGroup);
 
+        // Load Model
         loader.load('realistic_human_stomach.glb', (gltf) => {
             stomachModel = gltf.scene;
             const box = new THREE.Box3().setFromObject(stomachModel);
             const size = box.getSize(new THREE.Vector3());
             const center = box.getCenter(new THREE.Vector3());
             stomachModel.position.set(-center.x, -box.max.y, -center.z);
-            
             const desiredHeight = 200;
             const scaleFactor = desiredHeight / size.y;
             if (size.y < 50 || size.y > 500) stomachModel.scale.multiplyScalar(scaleFactor);
 
             stomachModel.traverse((child) => {
                 if (child.isMesh) {
-                    child.material.side = THREE.DoubleSide;
-                    child.material.needsUpdate = true;
+                    const oldMat = child.material;
+                    child.material = new THREE.MeshPhysicalMaterial({
+                        color: oldMat.color || 0xffaaaa,
+                        map: oldMat.map || null,
+                        normalMap: oldMat.normalMap || null,
+                        roughness: 0.15,
+                        metalness: 0.05,
+                        clearcoat: 1.0,
+                        clearcoatRoughness: 0.05,
+                        reflectivity: 0.5,
+                        side: THREE.DoubleSide
+                    });
                 }
             });
             mainScene.add(stomachModel);
             
+            // Lesions
+            const tempRay = new THREE.Raycaster();
+            for(let i=0; i<15; i++) {
+                for(let a=0; a<10; a++) {
+                    const origin = new THREE.Vector3((Math.random()-0.5)*size.x*scaleFactor, (Math.random()-0.5)*size.y*scaleFactor-100, (Math.random()-0.5)*size.z*scaleFactor);
+                    const dir = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
+                    tempRay.set(origin, dir);
+                    const hits = tempRay.intersectObject(stomachModel, true);
+                    if(hits.length > 0) {
+                        const hit = hits[0];
+                        const lmesh = new THREE.Mesh(new THREE.SphereGeometry(2,16,16,0,Math.PI*2,0,Math.PI*0.7), new THREE.MeshPhysicalMaterial({color:0xcc0000, roughness:0.1, clearcoat:1.0}));
+                        lmesh.position.copy(hit.point);
+                        lmesh.lookAt(hit.point.clone().add(hit.face.normal.clone().applyQuaternion(hit.object.quaternion)));
+                        mainScene.add(lmesh);
+                        lesions.push({ mesh: lmesh, found: false, position: hit.point });
+                        break;
+                    }
+                }
+            }
+
             const mapModel = stomachModel.clone();
-            mapModel.traverse((child) => {
-                if (child.isMesh) child.material = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true, transparent: true, opacity: 0.3 });
-            });
+            mapModel.traverse(c => { if(c.isMesh) c.material = new THREE.MeshBasicMaterial({color:0x00ffff, wireframe:true, transparent:true, opacity:0.3}); });
             mapScene.add(mapModel);
             
             document.getElementById('loading-status').style.display = 'none';
@@ -143,72 +211,29 @@
             document.getElementById('error-msg').style.display = 'block';
         });
 
-        const playerMarker = new THREE.Mesh(new THREE.SphereGeometry(2,16,16), new THREE.MeshBasicMaterial({color: 0xff0000}));
-        
-        // Direction Indicator (Cone)
-        const directionCone = new THREE.Mesh(
-            new THREE.ConeGeometry(1, 5, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffff00 })
-        );
-        directionCone.position.z = -3; // Place in front of the sphere
-        directionCone.rotation.x = -Math.PI / 2; // Point forward
-        
-        // Container to handle rotation independently
-        const playerGroup = new THREE.Group();
-        playerGroup.add(playerMarker);
-        playerGroup.add(directionCone);
-        
-        mapScene.add(playerGroup);
-
-        // Globals for control
-        let isWireframe = false;
+        // Controls
         const manualControl = { x: 0.5, y: 194, z: -10.5 }; 
         const currentPos = new THREE.Vector3(manualControl.x, manualControl.y, manualControl.z);
         let isAdjustmentMode = false;
         const adjustmentInputs = { xPlus: false, xMinus: false, yPlus: false, yMinus: false, zPlus: false, zMinus: false };
-        
-        let coordDisplay = document.getElementById('coord-display');
-        if(!coordDisplay) {
-            coordDisplay = document.createElement('div');
+        let coordDisplay = document.getElementById('coord-display') || document.createElement('div');
+        if(!coordDisplay.parentNode) {
             coordDisplay.id = 'coord-display';
             coordDisplay.style.cssText = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: lime; font-family: monospace; font-size: 20px; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid lime; display: none; z-index: 1000;';
             document.body.appendChild(coordDisplay);
         }
 
-        // Lighting
-        const hemiLight = new THREE.HemisphereLight( 0xffffff, 0x444444, 1.0 );
+        const hemiLight = new THREE.HemisphereLight( 0xffaaaa, 0x440000, 0.5 );
         mainScene.add( hemiLight );
-        const scopeLight = new THREE.SpotLight(0xfffff0, 5.0, 50, 0.9, 0.5, 1.0);
+        const scopeLight = new THREE.SpotLight(0xfff0e0, 15.0, 80, 0.7, 0.5, 1.5);
         mainCamera.add(scopeLight); mainCamera.add(scopeLight.target); mainScene.add(mainCamera);
-        scopeLight.target.position.set(0, -1, 0);
+        scopeLight.target.position.set(0, 0, -1);
 
-        // Listeners
-        document.getElementById('brightness-slider').addEventListener('input', (e) => {
-            state.exposure = parseFloat(e.target.value);
-            mainRenderer.toneMappingExposure = state.exposure;
-        });
-        document.getElementById('start-btn').onclick = function() { document.getElementById('instructions').style.display = 'none'; };
-
-        const takePhoto = () => {
-            const flash = document.getElementById('shutter-flash');
-            flash.classList.remove('flash-active'); void flash.offsetWidth; flash.classList.add('flash-active');
-            const dataUrl = mainRenderer.domElement.toDataURL("image/png");
-            const gallery = document.getElementById('gallery');
-            const img = document.createElement('img');
-            img.src = dataUrl; img.className = 'gallery-item';
-            img.onclick = () => { const link = document.createElement('a'); link.download = `gastroscopy_${new Date().getTime()}.png`; link.href = dataUrl; link.click(); };
-            gallery.insertBefore(img, gallery.children[1]);
-        };
-        document.getElementById('btn-capture').onclick = takePhoto;
-
+        // Interaction Listeners
         window.addEventListener('keydown', (e) => {
             const k = e.key.toLowerCase();
             if(e.shiftKey) inputs.shift = true;
             if (k === 'm') { isAdjustmentMode = !isAdjustmentMode; coordDisplay.style.display = isAdjustmentMode ? 'block' : 'none'; }
-            if (k === 'v') { 
-                isWireframe = !isWireframe; 
-                if(stomachModel) stomachModel.traverse(c => { if(c.isMesh) { c.material.wireframe = isWireframe; c.material.color = isWireframe ? new THREE.Color(0x00ff00) : new THREE.Color(0xffffff); } });
-            }
             if(k==='w') inputs.forward=true; if(k==='s') inputs.backward=true;
             if(k==='a') inputs.rotateLeft=true; if(k==='d') inputs.rotateRight=true;
             if(k==='arrowup') inputs.angUp=true; if(k==='arrowdown') inputs.angDown=true;
@@ -234,42 +259,39 @@
             }
         });
 
-        // Collision Logic
-        const OUTER_RADIUS = 1.5; // Soft barrier
-        const INNER_RADIUS = 0.4; // Hard barrier
+        document.getElementById('brightness-slider').addEventListener('input', (e) => {
+            state.exposure = parseFloat(e.target.value);
+            mainRenderer.toneMappingExposure = state.exposure;
+        });
+        document.getElementById('start-btn').onclick = function() { document.getElementById('instructions').style.display = 'none'; };
 
+        const takePhoto = () => {
+            const flash = document.getElementById('shutter-flash');
+            flash.classList.remove('flash-active'); void flash.offsetWidth; flash.classList.add('flash-active');
+            const dataUrl = mainRenderer.domElement.toDataURL("image/png");
+            const gallery = document.getElementById('gallery');
+            const img = document.createElement('img');
+            img.src = dataUrl; img.className = 'gallery-item';
+            img.onclick = () => { const link = document.createElement('a'); link.download = `gastroscopy_${new Date().getTime()}.png`; link.href = dataUrl; link.click(); };
+            gallery.insertBefore(img, gallery.children[1]);
+        };
+
+        // Collision Logic
+        const OUTER_RADIUS = 1.5;
+        const INNER_RADIUS = 0.4;
         function resolveCollisions(position) {
             if (!stomachModel) return position;
-
-            const checkDirs = [
-                new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
-                new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0),
-                new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1)
-            ];
-
+            const dirs = [new THREE.Vector3(1,0,0), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,1,0), new THREE.Vector3(0,-1,0), new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,-1)];
             let adjustedPos = position.clone();
-            
-            for(let dir of checkDirs) {
+            for(let dir of dirs) {
                 raycaster.set(adjustedPos, dir);
                 const hits = raycaster.intersectObject(stomachModel, true);
-
                 if (hits.length > 0) {
                     const hit = hits[0];
-                    const dist = hit.distance;
-                    let normal = hit.face.normal.clone().applyQuaternion(hit.object.quaternion).normalize();
-                    if (normal.dot(dir) > 0) normal.negate();
-
-                    if (dist < INNER_RADIUS) {
-                        // Critical Hit: Hard push back
-                        const overlap = INNER_RADIUS - dist;
-                        adjustedPos.add(normal.multiplyScalar(overlap));
-                    } else if (dist < OUTER_RADIUS) {
-                        // Soft Warning: Gentle push back (Slide)
-                        // Allows passing through narrow gaps but keeps distance in open areas
-                        const overlap = OUTER_RADIUS - dist;
-                        // Push back with reduced factor to allow squeezing
-                        adjustedPos.add(normal.multiplyScalar(overlap * 0.1));
-                    }
+                    let n = hit.face.normal.clone().applyQuaternion(hit.object.quaternion).normalize();
+                    if (n.dot(dir) > 0) n.negate();
+                    if (hit.distance < INNER_RADIUS) adjustedPos.add(n.multiplyScalar(INNER_RADIUS - hit.distance));
+                    else if (hit.distance < OUTER_RADIUS) adjustedPos.add(n.multiplyScalar((OUTER_RADIUS - hit.distance) * 0.1));
                 }
             }
             return adjustedPos;
@@ -277,8 +299,6 @@
 
         function update() {
             const speed = 0.5;
-
-            // Rotation
             if (inputs.rotateLeft) state.torque += CONFIG.torqueSpeed;
             if (inputs.rotateRight) state.torque -= CONFIG.torqueSpeed;
             state.torque *= 0.9;
@@ -286,12 +306,10 @@
             if (inputs.angDown) state.angulation.y -= CONFIG.angulationSpeed;
             if (inputs.angLeft) state.angulation.x -= CONFIG.angulationSpeed;
             if (inputs.angRight) state.angulation.x += CONFIG.angulationSpeed;
-            
             state.angulation.x = Math.max(-2.5, Math.min(2.5, state.angulation.x));
             state.angulation.y = Math.max(-2.5, Math.min(2.5, state.angulation.y));
             state.angulation.x *= 0.98; state.angulation.y *= 0.98;
 
-            // Apply Rotation
             mainCamera.rotation.set(0, 0, 0); 
             mainCamera.rotateX(-Math.PI / 2);
             if (!state.roll) state.roll = 0; state.roll += state.torque;
@@ -300,71 +318,46 @@
             mainCamera.rotateY(-state.angulation.x);
             mainCamera.updateMatrixWorld(); 
 
-            // Movement with Sub-stepping to prevent tunneling
-            const steps = 5; // Divide movement into small steps
-            const stepSpeed = speed / steps;
-
             if (isAdjustmentMode) {
-                // ... (Adjustment mode remains simple)
-                if(adjustmentInputs.xPlus) currentPos.x += speed;
-                if(adjustmentInputs.xMinus) currentPos.x -= speed;
-                if(adjustmentInputs.yPlus) currentPos.y += speed;
-                if(adjustmentInputs.yMinus) currentPos.y -= speed;
-                if(adjustmentInputs.zPlus) currentPos.z += speed;
-                if(adjustmentInputs.zMinus) currentPos.z -= speed;
-                coordDisplay.innerHTML = `ADJUST MODE<br>POS: ${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)}<br>Use I/K (Y), J/L (X), U/O (Z) to move`;
+                if(adjustmentInputs.xPlus) currentPos.x += speed; if(adjustmentInputs.xMinus) currentPos.x -= speed;
+                if(adjustmentInputs.yPlus) currentPos.y += speed; if(adjustmentInputs.yMinus) currentPos.y -= speed;
+                if(adjustmentInputs.zPlus) currentPos.z += speed; if(adjustmentInputs.zMinus) currentPos.z -= speed;
+                coordDisplay.innerHTML = `ADJUST MODE<br>POS: ${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)}`;
             } else {
-                coordDisplay.style.display = 'none';
                 const forwardDir = new THREE.Vector3();
                 mainCamera.getWorldDirection(forwardDir);
                 forwardDir.normalize();
-
-                // Determine intended movement direction
                 let moveVec = new THREE.Vector3(0,0,0);
                 if (inputs.forward) moveVec.add(forwardDir);
                 if (inputs.backward) moveVec.add(forwardDir.clone().negate());
-                
                 if (moveVec.lengthSq() > 0) {
-                    moveVec.normalize().multiplyScalar(stepSpeed); // Apply speed per step
-
-                    for(let i=0; i<steps; i++) {
-                        // Apply one small step
+                    moveVec.normalize().multiplyScalar(speed/5);
+                    for(let i=0; i<5; i++) {
                         currentPos.add(moveVec);
-                        
-                        // Resolve collision immediately after this small step
-                        if (!inputs.shift) {
-                            const correctedPos = resolveCollisions(currentPos);
-                            currentPos.copy(correctedPos);
-                        }
+                        if (!inputs.shift) currentPos.copy(resolveCollisions(currentPos));
                     }
-                } else if (!inputs.shift) {
-                    // Even if not moving, resolve static collision (pushed by wall)
-                    const correctedPos = resolveCollisions(currentPos);
-                    currentPos.copy(correctedPos);
-                }
+                } else if (!inputs.shift) currentPos.copy(resolveCollisions(currentPos));
             }
-
             mainCamera.position.copy(currentPos);
-            
             document.getElementById('depth-indicator').innerText = `INSERT: ${(194 - currentPos.y).toFixed(1)} cm`;
-            document.getElementById('location-display').innerText = `LOC: STOMACH`;
-            
-            // Update Minimap Player Marker
             playerGroup.position.copy(currentPos);
-            
-            // Sync rotation with main camera so cone points where we look
-            // We only want the yaw (Y-rotation) usually for a map, but since it's 3D, full rotation is fine.
             playerGroup.quaternion.copy(mainCamera.quaternion);
-            
-            // Update Minimap Controls
             mapControls.target.copy(currentPos);
             mapControls.update();
+
+            lesions.forEach(l => {
+                if(!l.found && currentPos.distanceTo(l.position) < 15) {
+                    l.found = true;
+                    const div = document.createElement('div'); div.style.color = '#ff3333'; div.innerText = `> LESION DETECTED`;
+                    document.getElementById('pathology-log').appendChild(div);
+                }
+            });
         }
 
         function render() {
             requestAnimationFrame(render);
             update();
-            scopeLight.intensity = 10.0 * state.exposure + Math.sin(Date.now() * 0.01) * 0.5;
+            scopeLight.intensity = 15.0 * state.exposure + Math.sin(Date.now() * 0.01) * 0.5;
             mainRenderer.render(mainScene, mainCamera);
             mapRenderer.render(mapScene, mapCamera);
         }
@@ -372,6 +365,31 @@
             mainCamera.aspect = window.innerWidth/window.innerHeight; mainCamera.updateProjectionMatrix();
             mainRenderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        // Touch Logic
+        function handleJoystick(elementId, callback) {
+            const zone = document.getElementById(elementId);
+            const knob = zone.querySelector('.touch-knob');
+            let startX, startY;
+            zone.addEventListener('touchstart', (e) => { e.preventDefault(); const t = e.changedTouches[0]; startX = t.clientX; startY = t.clientY; }, {passive: false});
+            zone.addEventListener('touchmove', (e) => {
+                e.preventDefault(); const t = e.changedTouches[0]; const dx = t.clientX - startX; const dy = t.clientY - startY;
+                const dist = Math.min(40, Math.sqrt(dx*dx + dy*dy)); const angle = Math.atan2(dy, dx);
+                knob.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px))`;
+                callback(dx / 40, dy / 40);
+            }, {passive: false});
+            zone.addEventListener('touchend', (e) => { e.preventDefault(); knob.style.transform = `translate(-50%, -50%)`; callback(0, 0); }, {passive: false});
+        }
+        handleJoystick('stick-left', (x, y) => {
+            inputs.forward = y < -0.2; inputs.backward = y > 0.2;
+            inputs.rotateRight = x > 0.2; inputs.rotateLeft = x < -0.2;
+        });
+        handleJoystick('stick-right', (x, y) => {
+            inputs.angUp = y < -0.3; inputs.angDown = y > 0.3;
+            inputs.angLeft = x < -0.3; inputs.angRight = x > 0.3;
+        });
+        document.getElementById('mobile-capture').addEventListener('touchstart', (e) => { e.preventDefault(); takePhoto(); });
+
         render();
     </script>
 </body>
