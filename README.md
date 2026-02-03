@@ -182,6 +182,9 @@ AI・チャットアプリケーション
 #### [エアコンの仕組み](air-conditioner-mechanism/) (2025-08-19)
 AI・チャットアプリケーション
 
+#### [NeonBass - AI Bass Trainer](bass-training/) (2025-12-29)
+AI・チャットアプリケーション
+
 #### [Anthropic & Claude 愛称ジェネレーター](claude_nickname/) (2025-09-05)
 AI・チャットアプリケーション
 
@@ -308,6 +311,9 @@ AI・チャットアプリケーション
 実験的アプリケーション
 
 #### [地引網 - Jibiki Beach Net Fishing](jibiki/) (2025-09-13)
+実験的アプリケーション
+
+#### [Kiro - 輝き](kiro/) (2025-12-06)
 実験的アプリケーション
 
 #### [第777回 紅白馬合戦 2026 - The Year of the Horse](kohaku-uma-gassen/) (2025-12-30)
