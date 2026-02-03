@@ -1,0 +1,36 @@
+{
+  "_comment": "note記事自動投稿の設定ファイル",
+  "_usage": "このファイルを note_config.json という名前でコピーして使用してください",
+
+  "username": "your-username",
+
+  "base_url": "https://note.com/api",
+
+  "endpoints": {
+    "create_note": "/v1/text_notes",
+    "_comment": "2025年11月時点では /v1/text_notes が有効です。エンドポイントは環境や時期によって変わる可能性があります"
+  },
+
+  "cookies": {
+    "_note_session": "YOUR_SESSION_COOKIE_HERE",
+    "_comment": "Cookieの取得方法は README_note_posting.md を参照"
+  },
+
+  "custom_payload": {
+    "_comment": "追加のペイロードパラメータがあればここに記述",
+    "_example": {
+      "publish_at": null,
+      "eyecatch": null
+    }
+  },
+
+  "confirm_before_post": true,
+
+  "_instructions": [
+    "1. このファイルを note_config.json という名前でコピー",
+    "2. username を自分のnoteユーザー名に変更",
+    "3. cookies の _note_session を実際のCookie値に変更",
+    "4. 必要に応じて endpoints や custom_payload を調整",
+    "5. note_config.json は .gitignore で除外されています（秘密情報なので公開しない）"
+  ]
+}

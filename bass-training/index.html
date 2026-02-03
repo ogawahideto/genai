@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeonBass - AI Bass Trainer</title>
+    <!--
+    AI Model: Google Deepmind Advanced Agentic Coding
+    Gemini CLI Version: 1.0.0
+    Created At: 2025-12-29
+    User Prompt: エレキベースの基礎トレーニングアプリを作りたい。トレーニングメニューが選べ、タブ譜と音名を表示し、それを見てユーザが演奏をする。マイクなどで認識した音から演奏がトレーニングに合っているかどうかを判断する。スピードは任意に変更可能。スケールを変えられるようにしてください。
+    AI Approach: 
+        - Single-file HTML/CSS/JS architecture.
+        - Web Audio API for microphone input and AnalyserNode.
+        - Autocorrelation algorithm for fundamental frequency (pitch) detection optimized for Bass range (40Hz - 400Hz).
+        - HTML5 Canvas for rendering scrolling TAB and visual feedback.
+        - Procedural generation of musical scales for infinite training variations.
+    Implementation Intent: 
+        - Provide a premium, latency-free training experience.
+        - Encourage practice through immediate visual feedback.
+        - Allow customization (Tempo, Key, Scale) to suit different skill levels.
+    -->
+    <style>
+        :root {
+            --bg-color: #0a0a0c;
+            --panel-bg: #141418;
+            --text-color: #e0e0e0;
+            --accent-primary: #00ff9d;
+            /* Neon Green */
+            --accent-secondary: #ff00ff;
+            /* Neon Magenta */
+            --accent-tertiary: #00d2ff;
+            /* Neon Cyan */
+            --success-color: #00ff9d;
+            --error-color: #ff3860;
+            --warn-color: #ffdd57;
+            --fret-line: #333;
+            --string-color: #555;
+            --font-main: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* HEADER */
+        header {
+            padding: 1rem 2rem;
+            background: linear-gradient(90deg, var(--panel-bg) 0%, rgba(20, 20, 24, 0) 100%);
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            background: linear-gradient(45deg, var(--accent-primary), var(--accent-tertiary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+        }
+
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #222;
+            color: #888;
+        }
+
+        .status-badge.active {
+            box-shadow: 0 0 8px var(--success-color);
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+        }
+
+        /* MAIN LAYOUT */
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            grid-template-rows: 1fr;
+            gap: 0;
+        }
+
+        /* CONTROLS SIDEBAR */
+        aside {
+            background-color: var(--panel-bg);
+            border-right: 1px solid #333;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        select,
+        button,
+        input[type="range"] {
+            width: 100%;
+            background: #222;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        select:focus,
+        button:focus,
+        input:focus {
+            border-color: var(--accent-tertiary);
+            box-shadow: 0 0 8px rgba(0, 210, 255, 0.2);
+        }
+
+        button {
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button.primary {
+            background: linear-gradient(45deg, var(--accent-primary), #00cc7a);
+            border: none;
+            color: #000;
+        }
+
+        button.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 15px rgba(0, 255, 157, 0.4);
+        }
+
+        button.stop {
+            background: #333;
+            border: 1px solid #555;
+        }
+
+        button.stop:hover {
+            background: var(--error-color);
+            border-color: var(--error-color);
+        }
+
+        .slider-value {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--accent-tertiary);
+            text-align: right;
+        }
+
+        /* CANVAS DISPLAY */
+        #display-area {
+            position: relative;
+            background: radial-gradient(circle at center, #1a1a20 0%, #0a0a0c 100%);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            background: #111;
+            border-top: 2px solid #333;
+            border-bottom: 2px solid #333;
+        }
+
+        #feedback-overlay {
+            position: absolute;
+            top: 20px;
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 900;
+            text-shadow: 0 0 20px currentColor;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+
+        #tuner-display {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 4px;
+            color: #888;
+        }
+
+        #tuner-display span {
+            color: var(--accent-tertiary);
+            font-weight: bold;
+            font-size: 2.5em;
+            /* Increased from 1.2em */
+        }
+
+        /* MICROPHONE PERMISSION OVERLAY */
+        #start-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 12, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        #start-overlay h2 {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            color: var(--accent-tertiary);
+        }
+
+        #start-overlay button {
+            width: auto;
+            padding: 1rem 3rem;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="start-overlay">
+        <h2>NeonBass Trainer</h2>
+        <p style="margin-bottom: 2rem; color: #888;">Microphone access is required for pitch detection.</p>
+        <button class="primary" onclick="initApp()">START ENGINE</button>
+    </div>
+
+    <header>
+        <div>
+            <h1>NeonBass</h1>
+        </div>
+        <div id="mic-status" class="status-badge">MIC: OFF</div>
+    </header>
+
+    <main>
+        <aside>
+            <div class="control-group">
+                <label>Training Mode</label>
+                <select id="mode-select" onchange="updateControls()">
+                    <option value="chromatic">Chromatic Warmup</option>
+                    <option value="spider">Spider Exercise (1-2-3-4)</option>
+                    <option value="permutations">Permutations (e.g. 1-3-2-4)</option>
+                    <option value="scale" selected>Scale Training</option>
+                    <option value="random">Random Notes</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Fret Count</label>
+                <select id="fret-select">
+                    <option value="20">20 Frets</option>
+                    <option value="21">21 Frets</option>
+                    <option value="22">22 Frets</option>
+                    <option value="23">23 Frets</option>
+                    <option value="24" selected>24 Frets</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Notation</label>
+                <select id="notation-select">
+                    <option value="abc">ABC (C, D, E)</option>
+                    <option value="doremi">Do-Re-Mi (ド, レ, ミ)</option>
+                    <option value="both" selected>Both (C / ド)</option>
+                </select>
+            </div>
+
+            <div class="control-group" id="key-group">
+                <label>Key</label>
+                <div style="display: flex; gap: 5px;">
+                    <select id="key-select" style="flex: 2;">
+                        <option value="C">C</option>
+                        <option value="C#">C# / Db</option>
+                        <option value="D">D</option>
+                        <option value="D#">D# / Eb</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                        <option value="F#">F# / Gb</option>
+                        <option value="G">G</option>
+                        <option value="G#">G# / Ab</option>
+                        <option value="A">A</option>
+                        <option value="A#">A# / Bb</option>
+                        <option value="B">B</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="control-group" id="scale-group">
+                <label>Scale Type</label>
+                <select id="scale-type-select">
+                    <option value="major">Major (Ionian)</option>
+                    <option value="minor">Minor (Aeolian)</option>
+                    <option value="major_pentatonic">Major Pentatonic</option>
+                    <option value="minor_pentatonic">Minor Pentatonic</option>
+                    <option value="dorian">Dorian</option>
+                    <option value="mixolydian">Mixolydian</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Tempo (BPM) <span id="bpm-display" class="slider-value">60</span></label>
+                <input type="range" id="tempo-slider" min="30" max="180" value="60">
+            </div>
+
+            <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px;">
+                <button id="start-btn" class="primary">Start Training</button>
+                <div style="display: flex; gap: 5px;">
+                    <button id="pause-btn" style="flex: 1;" disabled>Pause</button>
+                    <button id="rewind-btn" style="flex: 1;" disabled>⏪ -5s</button>
+                </div>
+                <button id="stop-btn" class="stop" disabled>Stop</button>
+            </div>
+        </aside>
+
+        <section id="display-area">
+            <canvas id="game-canvas" width="800" height="400"></canvas>
+            <div id="feedback-overlay">PERFECT</div>
+            <div id="tuner-display">Detected: <span id="detected-note">--</span> <span id="detected-freq">0Hz</span>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        /**
+         * AUDIO CONSTANTS
+         */
+        const BASS_MIN_FREQ = 35.0; // Low B is ~30Hz, E1 is 41.2Hz
+        const BASS_MAX_FREQ = 400.0; // G4 is ~392Hz
+
+        const NOTE_STRINGS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        const SOLFEGE_STRINGS = ["ド", "ド#", "レ", "レ#", "ミ", "ファ", "ファ#", "ソ", "ソ#", "ラ", "ラ#", "シ"];
+
+        // 4-String Bass Tuning (Standard)
+        const STRING_TUNING = [
+            { name: "G", octave: 2, freq: 98.00 }, // String 1 (High)
+            { name: "D", octave: 2, freq: 73.42 }, // String 2
+            { name: "A", octave: 1, freq: 55.00 }, // String 3
+            { name: "E", octave: 1, freq: 41.20 }  // String 4 (Low)
+        ];
+
+        /**
+         * MUSIC LOGIC
+         */
+        function freqToNote(freq) {
+            if (freq < 10) return null;
+            const noteNum = 12 * (Math.log(freq / 440) / Math.log(2)) + 69;
+            const midi = Math.round(noteNum);
+            const deviation = noteNum - midi;
+            const noteName = NOTE_STRINGS[midi % 12];
+            const octave = Math.floor(midi / 12) - 1;
+            return { note: noteName, octave: octave, midi: midi, deviation: deviation, freq: freq };
+        }
+
+        function noteToFreq(noteName, octave) {
+            const noteIndex = NOTE_STRINGS.indexOf(noteName);
+            const midi = noteIndex + (octave + 1) * 12;
+            return 440 * Math.pow(2, (midi - 69) / 12);
+        }
+
+        // Generate Scale Notes
+        function getScaleNotes(rootNote, scaleType) {
+            const rootIndex = NOTE_STRINGS.indexOf(rootNote);
+            let intervals = [];
+
+            switch (scaleType) {
+                case 'major': intervals = [2, 2, 1, 2, 2, 2, 1]; break;
+                case 'minor': intervals = [2, 1, 2, 2, 1, 2, 2]; break;
+                case 'major_pentatonic': intervals = [2, 2, 3, 2, 3]; break;
+                case 'minor_pentatonic': intervals = [3, 2, 2, 3, 2]; break;
+                case 'dorian': intervals = [2, 1, 2, 2, 2, 1, 2]; break;
+                case 'mixolydian': intervals = [2, 2, 1, 2, 2, 1, 2]; break;
+            }
+
+            let scaleNotes = [];
+            let currentMidi = rootIndex;
+
+            // Generate across relevant octaves for bass (E1 to G3 approx)
+            // We basically map the intervals to 2 octaves
+
+            let pattern = [0, ...intervals];
+            let noteIdx = rootIndex;
+
+            // Simple implementation: Generate notes starting from Root Octave 1 or 2 depending on the note
+            // E.g. E Major -> E1 start. C Major -> C2 start (since C1 is very low, though playable)
+            let startOctave = (rootIndex < 4) ? 2 : 1; // E, F, F#, G starts at 1. Lower notes start at 2? wait.
+            // E1=41Hz. C2=65Hz.
+            // Let's just generate a pool of valid midi notes for the scale within bass range
+
+            // Calculate Max MIDI based on fret count (Standard Tuning: Open G = 43)
+            const maxFrets = parseInt(document.getElementById('fret-select').value) || 24;
+            const maxMidi = 43 + maxFrets;
+
+            const validMidis = [];
+            // Range E1 (28) to Limit
+            for (let m = 28; m <= maxMidi; m++) {
+                let semitone = m % 12;
+                // Check if semitone is in scale relative to root
+                // Normalized semitone: (semitone - rootIndex + 12) % 12
+                let rel = (semitone - rootIndex + 12) % 12;
+
+                let isSafe = false;
+                let accum = 0;
+                if (rel === 0) isSafe = true;
+                else {
+                    for (let i of intervals) {
+                        accum += i;
+                        if (accum === rel) { isSafe = true; break; }
+                        if (accum > rel) break;
+                    }
+                }
+                if (isSafe) validMidis.push(m);
+            }
+            // Standard Scale Presets (Idiomatic Start Notes for Bass Training)
+            // Maps Key -> Preferred Start MIDI Note
+            // "Standard Box" usually implies:
+            // C -> C2 (36) - A String 3rd Fret
+            // G -> G1 (31) - E String 3rd Fret
+            // D -> D2 (38) - A String 5th Fret
+            // A -> A1 (33) - E String 5th Fret
+            // E -> E1 (28) - E String Open
+            // F -> F1 (29) - E String 1st Fret
+            // Bb(A#) -> A#1 (34) - E String 6th Fret
+
+            const PRESETS = {
+                "C": 36, "C#": 37,
+                "D": 38, "D#": 39,
+                "E": 28, // Open E
+                "F": 29, "F#": 30,
+                "G": 31, "G#": 32,
+                "A": 33, "A#": 34,
+                "B": 35
+            };
+
+            let preferredStartMidi = PRESETS[rootNote] || (36 + rootIndex);
+
+            // Verify preferred is in validMidis, if not closest
+            let startIndex = 0;
+            let minDiff = 999;
+            for (let i = 0; i < validMidis.length; i++) {
+                const diff = Math.abs(validMidis[i] - preferredStartMidi);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    startIndex = i;
+                }
+            }
+
+            return { midis: validMidis, startIndex: startIndex };
+        }
+
+        /**
+         * APP STATE
+         */
+        // Audio Context & State
+        let audioCtx;
+        let analyser;
+        let micStream;
+        let isTraining = false;
+        let isPaused = false;
+        let bpm = 60;
+
+        // Time & Logic
+        let virtualTime = 0;
+        let timeOffset = 0;
+
+        let lastNoteTime = 0;
+        let lastFrameTime = 0;
+
+        let notesQueue = []; // { noteName, octave, targetTime, hit }
+        let score = 0;
+        let scaleState = { index: 0, direction: 1 }; // For sequential scale walking
+
+        // UI Elements with global access
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const bpmValue = document.getElementById('bpm-display');
+        const feedbackEl = document.getElementById('feedback-overlay');
+        const detectorDisplay = { note: document.getElementById('detected-note'), freq: document.getElementById('detected-freq') };
+
+        /**
+         * INITIALIZATION
+         */
+        async function initApp() {
+            document.getElementById('start-overlay').style.display = 'none';
+
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                micStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: false,
+                        autoGainControl: false,
+                        noiseSuppression: false,
+                        latency: 0
+                    }
+                });
+
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 2048; // Good resolution for low freq
+                const source = audioCtx.createMediaStreamSource(micStream);
+                source.connect(analyser);
+
+                document.getElementById('mic-status').textContent = "MIC: ON";
+                document.getElementById('mic-status').classList.add('active');
+
+                // Start Loop
+                requestAnimationFrame(gameLoop);
+
+            } catch (e) {
+                alert("Error accessing microphone: " + e.message);
+                console.error(e);
+            }
+        }
+
+        /**
+         * PITCH DETECTION (AutoCorrelation)
+         */
+        function autoCorrelate(buf, sampleRate) {
+            let SIZE = buf.length;
+            let rms = 0;
+
+            for (let i = 0; i < SIZE; i++) {
+                const val = buf[i];
+                rms += val * val;
+            }
+            rms = Math.sqrt(rms / SIZE);
+
+            if (rms < 0.01) return -1; // Not enough signal
+
+            let r1 = 0, r2 = SIZE - 1, thres = 0.2;
+            for (let i = 0; i < SIZE / 2; i++)
+                if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+            for (let i = 1; i < SIZE / 2; i++)
+                if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
+
+            buf = buf.slice(r1, r2);
+            SIZE = buf.length;
+
+            let c = new Array(SIZE).fill(0);
+            for (let i = 0; i < SIZE; i++)
+                for (let j = 0; j < SIZE - i; j++)
+                    c[i] = c[i] + buf[j] * buf[j + i];
+
+            let d = 0; while (c[d] > c[d + 1]) d++;
+            let maxval = -1, maxpos = -1;
+            for (let i = d; i < SIZE; i++) {
+                if (c[i] > maxval) {
+                    maxval = c[i];
+                    maxpos = i;
+                }
+            }
+            let T0 = maxpos;
+
+
+            // Interpolation
+            let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+            let a = (x1 + x3 - 2 * x2) / 2;
+            let b = (x3 - x1) / 2;
+            if (a) T0 = T0 - b / (2 * a);
+
+            return sampleRate / T0;
+        }
+
+        /**
+         * GAME LOGIC
+         */
+        function startTraining() {
+            if (!audioCtx) { alert('Click START ENGINE first'); return; }
+
+            isTraining = true;
+            isPaused = false;
+            notesQueue = [];
+            score = 0;
+            scaleState = { index: 0, direction: 1 };
+            virtualTime = 0;
+            lastNoteTime = 0;
+            lastFrameTime = performance.now() / 1000;
+
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('pause-btn').disabled = false;
+            document.getElementById('rewind-btn').disabled = false;
+            document.getElementById('stop-btn').disabled = false;
+
+            // Generate initial notes
+            generateNextNotes(true); // reset flag
+
+            // If already inside loop, state update handles it
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            const btn = document.getElementById('pause-btn');
+            btn.textContent = isPaused ? "Resume" : "Pause";
+            if (!isPaused) {
+                lastFrameTime = performance.now() / 1000;
+            }
+        }
+
+        function rewind() {
+            virtualTime = Math.max(0, virtualTime - 5.0); // Go back 5 seconds
+            // Reset hits in the future? Maybe.
+            // For now, let's just move time.
+            // Notes that were "good" might be replayed.
+            // We should probably reset status of notes ahead of new virtualTime
+            notesQueue.forEach(n => {
+                if (n.targetTime > virtualTime) {
+                    n.status = 'pending';
+                }
+            });
+            // Also need to reset generation pointer?
+            // lastNoteTime depends on notesQueue tail. 
+            // If we rewind, we don't delete notes, so simple rewind is visual.
+        }
+
+        function stopTraining() {
+            isTraining = false;
+            isPaused = false;
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('pause-btn').disabled = true;
+            document.getElementById('rewind-btn').disabled = true;
+            document.getElementById('stop-btn').disabled = true;
+            document.getElementById('mode-select').disabled = false;
+            document.getElementById('key-select').disabled = false;
+            document.getElementById('pause-btn').textContent = "Pause";
+        }
+
+        document.getElementById('start-btn').onclick = startTraining;
+        document.getElementById('pause-btn').onclick = togglePause;
+        document.getElementById('rewind-btn').onclick = rewind;
+        document.getElementById('stop-btn').onclick = stopTraining;
+        document.getElementById('tempo-slider').oninput = (e) => {
+            bpm = parseInt(e.target.value);
+            bpmValue.textContent = bpm;
+        };
+
+        function updateControls() {
+            const mode = document.getElementById('mode-select').value;
+            const isScale = (mode === 'scale' || mode === 'random');
+            document.getElementById('key-select').disabled = !isScale;
+            document.getElementById('scale-type-select').disabled = !isScale;
+            // Visual opacity
+            document.getElementById('key-group').style.opacity = isScale ? 1 : 0.5;
+            document.getElementById('scale-group').style.opacity = isScale ? 1 : 0.5;
+
+            // Reset walker to preferred start if scale changes?
+            // Ideally yes, but maybe user just wants to change key mid-flight.
+            // Let's force reset if training is stopped.
+            if (!isTraining) {
+                // Pre-calculate? No need.
+            }
+        }
+
+        // Add listener to reset on key/scale change if playing
+        document.getElementById('key-select').onchange = () => { if (isTraining) { notesQueue = []; scaleState.index = -1; generateNextNotes(true); } };
+        document.getElementById('scale-type-select').onchange = () => { if (isTraining) { notesQueue = []; scaleState.index = -1; generateNextNotes(true); } };
+
+        // Init controls
+        updateControls();
+
+        function generateNextNotes(reset = false) {
+            // Generate notes ahead of time
+            // Look at last generated        
+            if (notesQueue.length > 50) return; // Larger buffer for history
+
+            const mode = document.getElementById('mode-select').value;
+            const key = document.getElementById('key-select').value;
+            const scaleType = document.getElementById('scale-type-select').value;
+            const beatDuration = 60 / bpm;
+
+            // Determine start time for new notes
+            // Use virtualTime basis
+            let nextTime = 0;
+            if (notesQueue.length > 0) {
+                nextTime = notesQueue[notesQueue.length - 1].targetTime + beatDuration;
+            } else {
+                nextTime = virtualTime + 3.0;
+            }
+
+            // Don't generate too far ahead
+            if (nextTime > virtualTime + 10) return;
+
+            // Logic for note selection based on mode
+            let midiToPlay = 0; // Default C3
+
+            if (reset) {
+                // Reset custom states if needed
+                scaleState.index = -1;
+                // Spider/Permutation state could be added if complex
+            }
+
+            if (mode === 'chromatic') {
+                // Simple chromatic walk 1-2-3-4 pattern style or just random chromatic
+                // Let's do a simple ascending pattern for now, wrapping around
+                const prevMidi = notesQueue.length > 0 ? notesQueue[notesQueue.length - 1].midi : 40; // E1
+                midiToPlay = prevMidi + 1;
+                if (midiToPlay > 55) midiToPlay = 40; // Reset
+            } else if (mode === 'spider') {
+                // Spider Exercise: 1-2-3-4 pattern on each string, moving up strings
+                // State: { string: 0..3, finger: 1..4 (fret 1..4 relative to pos) }
+                // Let's implement a "Standard Spider" at 1st position: E1, F1, F#1, G1 (String 4 frets 1,2,3,4) -> String 3 frets 1,2,3,4...
+                // E String (S3 in array logic): E1(28). Frets 1,2,3,4 -> 29,30,31,32
+                // A String (S2): A1(33). Frets 1,2,3,4 -> 34,35,36,37
+                // D String (S1): D2(38). Frets 1,2,3,4 -> 39,40,41,42
+                // G String (S0): G2(43). Frets 1,2,3,4 -> 44,45,46,47
+                // Then descend? Or loop. Let's Loop Ascending.
+
+                // We need to know previous "state". We can infer from midi or use a static/global counter.
+                // Since `scaleState` handles scale index, let's reuse it or extend it.
+                // Let's use `scaleState.index` as a linear step counter 0..15 (4 strings * 4 notes).
+
+                if (reset) scaleState.index = 0;
+
+                const step = scaleState.index % 16;
+                const stringOrder = [3, 2, 1, 0]; // E, A, D, G
+                const currentStrIdx = stringOrder[Math.floor(step / 4)];
+                const finger = step % 4; // 0,1,2,3 (Fret 1,2,3,4)
+
+                // Base MIDI for strings: E=28, A=33, D=38, G=43
+                const baseMidis = [43, 38, 33, 28]; // Matches string indices 0,1,2,3
+                const base = baseMidis[currentStrIdx];
+
+                midiToPlay = base + 1 + finger; // Fret 1..4
+
+                scaleState.index++;
+
+            } else if (mode === 'permutations') {
+                // Random Permutations of 1-2-3-4
+                // e.g. 1-3-2-4, 4-1-3-2
+                // We generate a block of 4 notes at a time?
+                // Or just pick a random finger per beat? No, patterns are specific.
+                // Let's generate a pattern every 4 notes.
+
+                if (reset) scaleState.index = 0;
+
+                // If index % 4 == 0, perform a shuffle of [1,2,3,4] to determine next 4 notes
+                // We need to store typical "Current Permutation". 
+                // Allow simple hardcoded permutations for now: 1-3-2-4 (Very common)
+                const pattern = [1, 3, 2, 4];
+                const step = scaleState.index % 4;
+                const finger = pattern[step]; // 1..4 (Fret 1..4)
+
+                // On which string? Let's stay on E String (String 3, Base 28) for simplicity or cycle strings.
+                // Let's cycle strings every phrase (4 notes).
+                const phraseIdx = Math.floor(scaleState.index / 4);
+                const stringOrder = [3, 2, 1, 0];
+                const currentStrIdx = stringOrder[phraseIdx % 4];
+                const baseMidis = [43, 38, 33, 28];
+                const base = baseMidis[currentStrIdx];
+
+                midiToPlay = base + finger; // Fret 1-3-2-4
+
+                scaleState.index++;
+
+            } else if (mode === 'scale' || mode === 'random') {
+                const scaleData = getScaleNotes(key, scaleType);
+                const availableMidis = scaleData.midis;
+
+                if (availableMidis.length === 0) {
+                    midiToPlay = 40;
+                } else if (mode === 'random') {
+                    midiToPlay = availableMidis[Math.floor(Math.random() * availableMidis.length)];
+                } else {
+                    // Reset walker to preferred start if requested
+                    if (reset) {
+                        scaleState.index = scaleData.startIndex;
+                        scaleState.direction = 1;
+                    }
+
+                    // If we somehow went out of bounds (e.g. reduced fret count while playing), reset
+                    if (scaleState.index >= availableMidis.length) {
+                        scaleState.index = availableMidis.length - 1;
+                        scaleState.direction = -1;
+                    }
+
+                    if (scaleState.index < 0) { scaleState.index = 0; scaleState.direction = 1; }
+
+                    midiToPlay = availableMidis[scaleState.index];
+
+                    scaleState.index += scaleState.direction;
+
+                    // Reverse if hitting edges
+                    if (scaleState.index >= availableMidis.length) {
+                        scaleState.index = availableMidis.length - 2;
+                        scaleState.direction = -1;
+                    } else if (scaleState.index < 0) {
+                        scaleState.index = 1;
+                        scaleState.direction = 1;
+                    }
+                }
+            }
+
+            const noteInfo = NOTE_STRINGS[midiToPlay % 12];
+            const oct = Math.floor(midiToPlay / 12) - 1;
+
+            notesQueue.push({
+                note: noteInfo,
+                octave: oct,
+                midi: midiToPlay,
+                targetTime: nextTime,
+                hit: false,
+                status: 'pending' // pending, good, miss
+            });
+        }
+
+        function gameLoop() {
+            const nowReal = performance.now() / 1000;
+            const dt = nowReal - lastFrameTime;
+            lastFrameTime = nowReal;
+
+            if (isTraining && !isPaused) {
+                virtualTime += dt;
+            }
+
+            // Analyze Audio (AudioCtx time is separate, but we use it for real-time Pitch)
+            // ... Keep pitch logic ...
+            const buffer = new Float32Array(analyser.fftSize);
+            analyser.getFloatTimeDomainData(buffer);
+            const pitch = autoCorrelate(buffer, audioCtx.sampleRate);
+
+            let detectedMidi = -1;
+            let tuningDiff = 0;
+
+            if (pitch !== -1 && pitch > BASS_MIN_FREQ && pitch < BASS_MAX_FREQ) {
+                const detected = freqToNote(pitch);
+                if (detected) {
+                    const notationMode = document.getElementById('notation-select').value;
+                    let displayNote = detected.note;
+                    const solfege = SOLFEGE_STRINGS[NOTE_STRINGS.indexOf(detected.note)];
+
+                    if (notationMode === 'doremi') {
+                        displayNote = solfege;
+                    } else if (notationMode === 'both') {
+                        displayNote = `${detected.note} / ${solfege}`;
+                    }
+
+                    detectorDisplay.note.innerText = displayNote + detected.octave;
+                    detectorDisplay.freq.innerText = Math.round(pitch) + 'Hz';
+                    detectedMidi = detected.midi;
+                    tuningDiff = detected.deviation;
+
+                    // Tuner Visuals
+                    const diffPct = Math.max(-50, Math.min(50, tuningDiff * 100)); // cents
+                    // Could draw a tuner bar here
+                }
+            } else {
+                detectorDisplay.note.innerText = "--";
+                detectorDisplay.freq.innerText = "0Hz";
+            }
+
+            // Update Game State
+            if (isTraining) {
+                if (!isPaused) {
+                    // Refill queue
+                    if (notesQueue.length < 50) generateNextNotes();
+
+                    // Check Hits
+                    notesQueue.forEach(n => {
+                        if (n.status !== 'pending') return;
+
+                        // Window: +/- 150ms
+                        const timeDiff = Math.abs(virtualTime - n.targetTime);
+                        if (timeDiff < 0.20) {
+                            // Check Pitch
+                            if (detectedMidi === n.midi) {
+                                // Hit!
+                                n.status = 'good';
+                                score += 10;
+                                showFeedback("GOOD!", "#00ff9d");
+                            }
+                        } else if (virtualTime > n.targetTime + 0.25) {
+                            // Missed
+                            n.status = 'miss';
+                            showFeedback("MISS", "#ff3860");
+                        }
+                    });
+                }
+
+                // Keep history longer for rewind (e.g. 15 seconds)
+                notesQueue = notesQueue.filter(n => virtualTime < n.targetTime + 15);
+            }
+
+            // RENDER
+            render(virtualTime, detectedMidi);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function showFeedback(text, color) {
+            feedbackEl.innerText = text;
+            feedbackEl.style.color = color;
+            feedbackEl.style.opacity = 1;
+            feedbackEl.style.transform = "scale(1.2)";
+            setTimeout(() => {
+                feedbackEl.style.opacity = 0;
+                feedbackEl.style.transform = "scale(1)";
+            }, 500);
+        }
+
+        /**
+         * RENDERING VISUALS
+         */
+        function render(time, detectedMidi) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const W = canvas.width;
+            const H = canvas.height;
+
+            // Draw Strings (4 strings)
+            const stringY = [H * 0.2, H * 0.4, H * 0.6, H * 0.8];
+            const stringNames = ["G", "D", "A", "E"]; // High to Low visually? 
+            // Tablature: High string on top usually. 
+            // G (Top line), D, A, E (Bottom line)
+
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 4; i++) {
+                ctx.strokeStyle = '#333';
+                ctx.beginPath();
+                ctx.moveTo(0, stringY[i]);
+                ctx.lineTo(W, stringY[i]);
+                ctx.stroke();
+
+                // String Label
+                ctx.fillStyle = '#555';
+                ctx.font = '16px monospace';
+                ctx.fillText(stringNames[i], 10, stringY[i] - 5);
+
+                // Highlight if detected note is on this string (approx)
+                // This is complex because same note can be on different strings.
+                // We pulse the string if the detected pitch roughly matches open string? Not really useful.
+            }
+
+            // Draw Target Line (The "Now" line)
+            const targetX = 150;
+            ctx.strokeStyle = 'rgba(0, 255, 157, 0.5)';
+            ctx.beginPath();
+            ctx.moveTo(targetX, 0);
+            ctx.lineTo(targetX, H);
+            ctx.stroke();
+
+            if (!isTraining) {
+                ctx.fillStyle = '#888';
+                ctx.font = '20px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText("PRESS START TO TRAIN", W / 2, H / 2);
+                return;
+            }
+
+            // Draw Notes
+            // Speed: pixels per second
+            const PX_PER_SEC = 200 * (bpm / 60);
+
+            notesQueue.forEach(n => {
+                const dt = n.targetTime - time;
+                const x = targetX + (dt * PX_PER_SEC);
+
+                if (x < -50 || x > W + 50) return;
+
+                // Determine Y position based on "Ideal" string/fret choice
+                // Simplification: E1-D#2 -> E String. E2-A2 -> A String etc.
+                // G2 (98Hz) is open G string.
+                let stringIdx = 3; // E String
+                let fret = 0;
+
+                // Rough mapping for display logic (Standard Tuning)
+                // E String: E1(41) to D#2
+                // A String: A1(55) to G#2
+                // D String: D2(73) to C#3
+                // G String: G2(98) to ...
+
+                const midi = n.midi;
+
+                // Preference: Lower fret number > Higher string? 
+                // Let's implement a simple "First Position" preference
+                if (midi >= 43 + 12) { // Above G3? No, G2=43?
+                    // E1 = 28. A1 = 33. D2 = 38. G2 = 43.
+                    if (midi >= 43) { stringIdx = 0; fret = midi - 43; }
+                    else if (midi >= 38) { stringIdx = 1; fret = midi - 38; }
+                    else if (midi >= 33) { stringIdx = 2; fret = midi - 33; }
+                    else { stringIdx = 3; fret = midi - 28; }
+                } else {
+                    // For lower notes
+                    if (midi >= 43 && midi < 48) { stringIdx = 0; fret = midi - 43; } // G2..B2
+                    else if (midi >= 38) { stringIdx = 1; fret = midi - 38; } // D2..
+                    else if (midi >= 33) { stringIdx = 2; fret = midi - 33; } // A1..
+                    else { stringIdx = 3; fret = midi - 28; } // E1..
+                }
+
+                const y = stringY[stringIdx];
+
+                // Draw Fret Number Circle
+                ctx.beginPath();
+                const r = 18;
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+
+                if (n.status === 'good') {
+                    ctx.fillStyle = '#00ff9d';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#00ff9d';
+                } else if (n.status === 'miss') {
+                    ctx.fillStyle = '#ff3860';
+                    ctx.globalAlpha = 0.5;
+                    ctx.shadowBlur = 0;
+                } else {
+                    // Normal
+                    if (x < targetX && dt > -0.1) {
+                        // Crossing target
+                        ctx.fillStyle = '#fff';
+                    } else {
+                        ctx.fillStyle = '#00d2ff';
+                    }
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#00d2ff';
+                }
+
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1.0;
+
+                // Text
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(fret, x, y);
+
+                // Note Name below
+                ctx.fillStyle = '#fff'; /* Brighter visibility */
+                ctx.font = 'bold 28px sans-serif'; /* Much larger */
+
+                let noteText = n.note;
+                const notationMode = document.getElementById('notation-select').value;
+                const noteIdx = NOTE_STRINGS.indexOf(n.note);
+                const solfege = SOLFEGE_STRINGS[noteIdx];
+
+                if (notationMode === 'doremi') {
+                    noteText = solfege;
+                } else if (notationMode === 'both') {
+                    noteText = `${n.note}\n${solfege}`; // Multiline via simple offset? Canvas doesn't support \n directly easily
+                }
+
+                if (notationMode === 'both') {
+                    ctx.font = 'bold 24px sans-serif';
+                    ctx.fillText(n.note, x, y + 45);
+                    ctx.font = 'bold 20px sans-serif';
+                    ctx.fillStyle = '#ccc';
+                    ctx.fillText(solfege, x, y + 70);
+                } else {
+                    ctx.fillText(noteText, x, y + 45);
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,929 @@
+﻿[
+    {
+        "Path":  "3daysholiday/index.html",
+        "Dir":  "3daysholiday",
+        "Title":  "三連休計算機",
+        "MetaDesc":  "",
+        "H1":  "🗓️ 三連休計算機",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "91/index.html",
+        "Dir":  "91",
+        "Title":  "91-100 パズルゲーム",
+        "MetaDesc":  "",
+        "H1":  "91-100 スライディングパズル",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "advanced_ai/index.html",
+        "Dir":  "advanced_ai",
+        "Title":  "高性能人工無能AI - Claude Code Edition",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "Claude Codeの技術力を結集した最高性能の人工無能として、人間らしい自然な対話体験を提供",
+        "Prompt":  "Claude Codeの全力で性能のよい人工無能を作ってください"
+    },
+    {
+        "Path":  "air-conditioner-mechanism/index.html",
+        "Dir":  "air-conditioner-mechanism",
+        "Title":  "エアコンの仕組み",
+        "MetaDesc":  "",
+        "H1":  "エアコンはどうやって部屋を冷やすの？",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "art_food_battle/index.html",
+        "Dir":  "art_food_battle",
+        "Title":  "ラーメンとんかつアートバトル",
+        "MetaDesc":  "",
+        "H1":  "🍜 ラーメンとんかつアートバトル 🍖",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "ataru-yogen/index.html",
+        "Dir":  "ataru-yogen",
+        "Title":  "絶対に当たる予言",
+        "MetaDesc":  "",
+        "H1":  "絶対に当たる予言",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "autumnal-equinox/index.html",
+        "Dir":  "autumnal-equinox",
+        "Title":  "秋分の日 - 昼夜平分時",
+        "MetaDesc":  "",
+        "H1":  "🍂 秋分の日 🍂",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "bbq/index.html",
+        "Dir":  "bbq",
+        "Title":  "BBQ炭起こしシミュレーター",
+        "MetaDesc":  "",
+        "H1":  "🔥 BBQ炭起こしシミュレーター 🔥",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "BBQ_yakisoba/index.html",
+        "Dir":  "BBQ_yakisoba",
+        "Title":  "BBQ焼きそば手順アプリ",
+        "MetaDesc":  "",
+        "H1":  "BBQ焼きそば",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "bon-chochin/index.html",
+        "Dir":  "bon-chochin",
+        "Title":  "盆提灯 - Bon Chōchin",
+        "MetaDesc":  "",
+        "H1":  "盆提灯",
+        "Intent":  "Lantern SVG",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "bon-odori/index.html",
+        "Dir":  "bon-odori",
+        "Title":  "盆踊りシミュレーター",
+        "MetaDesc":  "",
+        "H1":  "盆踊り",
+        "Intent":  "To create a visually appealing and interactive simulation of a Japanese Bon Odori festival. The application will use CSS for styling and animations (like blinking lanterns) and JavaScript to control the music and potentially other dynamic elements. The goal is a simple, self-contained web application.",
+        "Prompt":  "新しいディレクトリを作り、盆踊りアプリケーションをHTMLで作ってください (Create a new directory and make a Bon Odori application with HTML.)"
+    },
+    {
+        "Path":  "chem_formula_quiz/index.html",
+        "Dir":  "chem_formula_quiz",
+        "Title":  "化学式クイズ",
+        "MetaDesc":  "",
+        "H1":  "化学式クイズ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "chess-by-quen3b/index.html",
+        "Dir":  "chess-by-quen3b",
+        "Title":  "チェス - Chess by Quen3b",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "チェス盤のマスは JavaScript で生成",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "chord_practice_app/index.html",
+        "Dir":  "chord_practice_app",
+        "Title":  "コード進行練習アプリ",
+        "MetaDesc":  "",
+        "H1":  "コード進行練習アプリ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "chouyou-9-puzzle/index.html",
+        "Dir":  "chouyou-9-puzzle",
+        "Title":  "重陽の節句 9パズル",
+        "MetaDesc":  "",
+        "H1":  "🌸 重陽の節句 9パズル 🌸",
+        "Intent":  "重陳の節句を祝う教育的なパズルゲーム。9の数字と縁起の良さを表現しつつ、クラシックなスライディングパズルの楽しさを提供。",
+        "Prompt":  "今日は9月9日、重陽の節句と呼ばれ、９が重なるのが縁起がよいとされています。そこで、９をモチーフにしたパズルゲームを作ってください。"
+    },
+    {
+        "Path":  "claude_nickname/index.html",
+        "Dir":  "claude_nickname",
+        "Title":  "Anthropic \u0026 Claude 愛称ジェネレーター",
+        "MetaDesc":  "",
+        "H1":  "🎌 愛称ジェネレーター",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "comet-lemmon-orbit/index.html",
+        "Dir":  "comet-lemmon-orbit",
+        "Title":  "レモン彗星 (C/2025 A6) 軌道ビジュアライザ",
+        "MetaDesc":  "",
+        "H1":  "レモン彗星 (C/2025 A6) 軌道ビジュアライザ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "comparison/index.html",
+        "Dir":  "comparison",
+        "Title":  "AI Models Showcase - 最先端AIモデル能力比較",
+        "MetaDesc":  "",
+        "H1":  "🤖 AI Models Showcase",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "cube-claude/index.html",
+        "Dir":  "cube-claude",
+        "Title":  "ルービックキューブ",
+        "MetaDesc":  "",
+        "H1":  "🧩 ルービックキューブ",
+        "Intent":  "Interactive 3D Rubik\u0027s cube simulator with realistic appearance and controls",
+        "Prompt":  "cubeディレクトリにルービックキューブ風Webアプリを作ってください"
+    },
+    {
+        "Path":  "cube-gemini/index.html",
+        "Dir":  "cube-gemini",
+        "Title":  "Rubik\u0027s Cube",
+        "MetaDesc":  "",
+        "H1":  "Rubik\u0027s Cube",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "drinking-bird/index.html",
+        "Dir":  "drinking-bird",
+        "Title":  "水飲み鳥シミュレーター",
+        "MetaDesc":  "",
+        "H1":  "🐦 水飲み鳥シミュレーター",
+        "Intent":  "Educational physics simulation demonstrating drinking bird mechanism with evaporation and cooling cycles",
+        "Prompt":  "水飲み鳥をシミュレートするアプリを作ってください"
+    },
+    {
+        "Path":  "drinking-bird-gemini/index.html",
+        "Dir":  "drinking-bird-gemini",
+        "Title":  "水飲み鳥シミュレータ",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "eclipse-simulator/index.html",
+        "Dir":  "eclipse-simulator",
+        "Title":  "皆既月食シミュレータ",
+        "MetaDesc":  "",
+        "H1":  "皆既月食シミュレータ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "ecsite/index.html",
+        "Dir":  "ecsite",
+        "Title":  "江戸世紀 - 令和の世からお買い物",
+        "MetaDesc":  "",
+        "H1":  "江戸世紀",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "emo/index.html",
+        "Dir":  "emo",
+        "Title":  "emo — 夜更かしエモスケープ",
+        "MetaDesc":  "中高生むけ、夜の放課後に刺さるエモいワンページ。",
+        "H1":  "",
+        "Intent":  "CLAUDE/CODEXの方針に沿ったシングルファイルの“エモ”体験を実装し、モバイルでも快適に楽しめるワンページを提供。",
+        "Prompt":  "「\"emo\"ディレクトリを作り、そこにエモいWebページをつくってください。できるだけおシャレかつエモいサイトにしてください。内容はエモければよいのでお任せします。中高生がエモいと思うコンテンツにしてください。」"
+    },
+    {
+        "Path":  "fallingtext/index.html",
+        "Dir":  "fallingtext",
+        "Title":  "文字が落ちるWebページ",
+        "MetaDesc":  "",
+        "H1":  "文字が落ちるWebページ",
+        "Intent":  "シンプルで直感的な文字落下体験を提供",
+        "Prompt":  "まず最初にWebページが表示されます。マウスやスマホの場合はタップをすると、表示されている文字のうち触れた文字だけが落ちていきます。"
+    },
+    {
+        "Path":  "falling_leaf/index.html",
+        "Dir":  "falling_leaf",
+        "Title":  "Falling Leaf – 空気・風を考慮した落ち葉シミュレーション",
+        "MetaDesc":  "",
+        "H1":  "Falling Leaf",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "fifty/index.html",
+        "Dir":  "fifty",
+        "Title":  "50回記念ゲーム",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "flags/index.html",
+        "Dir":  "flags",
+        "Title":  "激似！国旗クイズ",
+        "MetaDesc":  "",
+        "H1":  "🎌 激似！国旗クイズ 🎌",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "four-characters/index.html",
+        "Dir":  "four-characters",
+        "Title":  "四字熟語パズルゲーム",
+        "MetaDesc":  "",
+        "H1":  "四字熟語パズル",
+        "Intent":  "漢字オプションがここに動的に追加されます",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "four_player_go/index.html",
+        "Dir":  "four_player_go",
+        "Title":  "四人打ち囲碁",
+        "MetaDesc":  "",
+        "H1":  "四人打ち囲碁",
+        "Intent":  "Complete 4-player Go game with proper rules, Ko detection, territory scoring, and game management",
+        "Prompt":  "4人打ち囲碁を作ってください"
+    },
+    {
+        "Path":  "gemini-game/index.html",
+        "Dir":  "gemini-game",
+        "Title":  "Gemini Game",
+        "MetaDesc":  "",
+        "H1":  "Gemini Game",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "gemini-web/index.html",
+        "Dir":  "gemini-web",
+        "Title":  "双子座",
+        "MetaDesc":  "",
+        "H1":  "双子座",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "globalday/index.html",
+        "Dir":  "globalday",
+        "Title":  "世界の曜日当てゲーム",
+        "MetaDesc":  "",
+        "H1":  "🌍 世界の曜日当てゲーム",
+        "Intent":  "言語リストがここに動的に挿入されます",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "gravity/index.html",
+        "Dir":  "gravity",
+        "Title":  "Gravity Game",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "guitar_scale/index.html",
+        "Dir":  "guitar_scale",
+        "Title":  "ギタースケール練習アプリ",
+        "MetaDesc":  "",
+        "H1":  "ギタースケール練習アプリ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "hanoi-tower/index.html",
+        "Dir":  "hanoi-tower",
+        "Title":  "ハノイの塔 - 自動解答システム",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "Educational and entertaining visualization of the Tower of Hanoi puzzle with automatic solving",
+        "Prompt":  "100段のハノイの塔を自動で解くアプリを作ってください。過程をビジュアルに表現してください。エンタメ的な演出を加えてください。"
+    },
+    {
+        "Path":  "hougan/index.html",
+        "Dir":  "hougan",
+        "Title":  "Grid Canvas",
+        "MetaDesc":  "",
+        "H1":  "Grid Canvas",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "inumo_arukeba/index.html",
+        "Dir":  "inumo_arukeba",
+        "Title":  "犬も歩けば棒に当たる",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "Tailwind CSS CDNを読み込み",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "japan-big-three-quiz/index.html",
+        "Dir":  "japan-big-three-quiz",
+        "Title":  "日本三大クイズ - 三番目を当てよう！",
+        "MetaDesc":  "",
+        "H1":  "🇯🇵 日本三大クイズ",
+        "Intent":  "Educational quiz game testing knowledge of Japan\u0027s famous \"Big Three\" cultural categories",
+        "Prompt":  "日本三大の三番目を当てるクイズを作ってください。HTMLで作ってください。"
+    },
+    {
+        "Path":  "japanese-train-quiz/index.html",
+        "Dir":  "japanese-train-quiz",
+        "Title":  "日本の特急列車クイズ",
+        "MetaDesc":  "",
+        "H1":  "🚄 日本の特急列車クイズ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "jibiki/index.html",
+        "Dir":  "jibiki",
+        "Title":  "地引網 - Jibiki Beach Net Fishing",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "jinkou_munou/index.html",
+        "Dir":  "jinkou_munou",
+        "Title":  "人工無能チャット",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "昔懐かしい人工無能の雰囲気を再現し、シンプルな対話を楽しめるWebアプリケーション",
+        "Prompt":  "人工無能を作ってください"
+    },
+    {
+        "Path":  "kaido-card-game/index.html",
+        "Dir":  "kaido-card-game",
+        "Title":  "江戸街道旅路カードゲーム",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "日本の歴史と文化を学びながら楽しめる教育的なカードゲーム。実際の宿場町データを使用し、江戸時代の旅路を体験できる",
+        "Prompt":  "日本の旧街道を使ったカードゲームを考えて、新しいディレクトリを作り、HTMLで実装してください"
+    },
+    {
+        "Path":  "kaki-kueba/index.html",
+        "Dir":  "kaki-kueba",
+        "Title":  "柿食えば鐘が鳴るなり法隆寺ゲーム",
+        "MetaDesc":  "",
+        "H1":  "柿食えば鐘が鳴るなり法隆寺",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "kinowa-card-game/index.html",
+        "Dir":  "kinowa-card-game",
+        "Title":  "季ノ輪（きのわ）- 72候カードゲーム",
+        "MetaDesc":  "",
+        "H1":  "季ノ輪",
+        "Intent":  "Main Menu Screen",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "kofun/index.html",
+        "Dir":  "kofun",
+        "Title":  "日本全国古墳クイズ",
+        "MetaDesc":  "",
+        "H1":  "🏯 日本全国古墳クイズ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "koukuchi-site/index.html",
+        "Dir":  "koukuchi-site",
+        "Title":  "工口サイト - 工業・工学情報ポータル",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "kyouryu-daizukan/index.html",
+        "Dir":  "kyouryu-daizukan",
+        "Title":  "恐竜大図鑑 - エンタメ満載",
+        "MetaDesc":  "",
+        "H1":  "恐竜大図鑑 - エンタメ満載",
+        "Intent":  "Fun-first encyclopedia with unlockables and localStorage",
+        "Prompt":  "新しいディレクトリを作り、そこにHTMLで恐竜大図鑑を作ってください。ゲーム要素などエンタメ性をたくさん入れ込んでください"
+    },
+    {
+        "Path":  "kyukoku-card-game/index.html",
+        "Dir":  "kyukoku-card-game",
+        "Title":  "旧国名カードゲーム",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "日本の歴史と地理を楽しく学べる教育ゲーム。旧国名と現在の位置の関係を理解促進",
+        "Prompt":  "日本の旧国名を使ったカードゲームを考えて、新しいディレクトリを作り、HTML"
+    },
+    {
+        "Path":  "llm-battle/index.html",
+        "Dir":  "llm-battle",
+        "Title":  "LLMコード生成バトル",
+        "MetaDesc":  "",
+        "H1":  "LLMコード生成バトル",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "lr/index.html",
+        "Dir":  "lr",
+        "Title":  "参院選風 政治的立場診断",
+        "MetaDesc":  "",
+        "H1":  "参院選風 政治的立場診断",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "mitarashi-dango-wars/index.html",
+        "Dir":  "mitarashi-dango-wars",
+        "Title":  "みたらし団子ウォーズ",
+        "MetaDesc":  "今日はみたらし団子の日！タレを撃って団子をみたらし化、キャッチしてスコアを伸ばそう。依存なしのブラウザゲーム。",
+        "H1":  "",
+        "Intent":  "祝日・記念日に合わせた軽量なブラウザゲーム。依存なし・即実行可能。",
+        "Prompt":  "今日は「みたらし団子の日」だそうです。これにちなんだ、「みたらし団子ウォーズ」というゲームを企画して、htmlで作成してください"
+    },
+    {
+        "Path":  "moon-phase/index.html",
+        "Dir":  "moon-phase",
+        "Title":  "月の満ち欠け",
+        "MetaDesc":  "",
+        "H1":  "🌙 月の満ち欠け",
+        "Intent":  "Educational astronomy tool showing accurate current moon phase with visual representation",
+        "Prompt":  "Create a web page that visually shows the current moon phases"
+    },
+    {
+        "Path":  "motivation-21days/index.html",
+        "Dir":  "motivation-21days",
+        "Title":  "3週間サボったあなたへ — 叱咤激励ページ",
+        "MetaDesc":  "21日サボってしまった人を、やさしくも厳しく叱咤激励し、今日からの再開を後押しするページ",
+        "H1":  "3週間サボった？ ここから巻き返そう。",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "naming_rights/index.html",
+        "Dir":  "naming_rights",
+        "Title":  "スタジアム・ネーミングライツ マッチングゲーム",
+        "MetaDesc":  "",
+        "H1":  "⚽🏟️ スタジアム・ネーミングライツ クイズ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "nani_mo_shinai/index.html",
+        "Dir":  "nani_mo_shinai",
+        "Title":  "何もしないアプリ",
+        "MetaDesc":  "",
+        "H1":  "何もしないアプリ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "national_songs/index.html",
+        "Dir":  "national_songs",
+        "Title":  "国歌クイズアプリ",
+        "MetaDesc":  "",
+        "H1":  "国歌クイズアプリ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "NBB8ASIC/index.html",
+        "Dir":  "NBB8ASIC",
+        "Title":  "NBB 8ASIC エミュレータ",
+        "MetaDesc":  "",
+        "H1":  "NBB 8ASIC エミュレータ",
+        "Intent":  "N88 BASIC風のレトロコンピューターエミュレータ",
+        "Prompt":  "NBB8ASICディレクトリはN88 BASIC風のWebアプリです。単独のhtmlで動くように作ったはずですが動きません。修正してください。"
+    },
+    {
+        "Path":  "nongenai/index.html",
+        "Dir":  "nongenai",
+        "Title":  "Claud0 - ゼロ出力AIアシスタント",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "ochinai/index.html",
+        "Dir":  "ochinai",
+        "Title":  "オチナイゲー",
+        "MetaDesc":  "",
+        "H1":  "オチナイゲー",
+        "Intent":  "Create a humorous twist on falling block games where blocks defy expectations by stopping mid-air or moving upward",
+        "Prompt":  "オチゲーに対して、オチナイげーを作ってください。ブロックが落ちてくると思ったら、途中で止まったり、上がったりします。キーボード操作のほか、スマートフォンでも遊べるようにしてください。"
+    },
+    {
+        "Path":  "otono-kyori/index.html",
+        "Dir":  "otono-kyori",
+        "Title":  "オトノキョリ",
+        "MetaDesc":  "",
+        "H1":  "オトノキョリ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "piano-lesson/index.html",
+        "Dir":  "piano-lesson",
+        "Title":  "ピアノレッスン",
+        "MetaDesc":  "",
+        "H1":  "ピアノレッスン",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "picasso-name-game/index.html",
+        "Dir":  "picasso-name-game",
+        "Title":  "ピカソの本名パズル - Picasso Name Puzzle",
+        "MetaDesc":  "",
+        "H1":  "🎨 ピカソの本名パズル 🎨",
+        "Intent":  "正しい順番の名前がここに配置される",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "pitagora-game/index.html",
+        "Dir":  "pitagora-game",
+        "Title":  "ピタゴラゲーム",
+        "MetaDesc":  "",
+        "H1":  "ピタゴラゲーム",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "planetary-orbit-relative/index.html",
+        "Dir":  "planetary-orbit-relative",
+        "Title":  "惑星軌道アニメーション - 地球中心相対座標系",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "固定座標軸での地球中心惑星軌道アニメーション表示",
+        "Prompt":  "惑星の軌道を、地球上の一点を中心とした相対座標でアニメーションしてください（座標軸固定）"
+    },
+    {
+        "Path":  "pocky-catch/index.html",
+        "Dir":  "pocky-catch",
+        "Title":  "ポッキーキャッチゲーム - 11/11記念",
+        "MetaDesc":  "",
+        "H1":  "🍫 ポッキーキャッチ 🍫",
+        "Intent":  "11/11（ポッキーの日）を記念した、親しみやすく楽しいキャッチゲーム。",
+        "Prompt":  "今日は11/11です。1111にちなんだゲームを考え、新たなプロジェクトを作成して、いつものようにHTMLで実装しなさい。"
+    },
+    {
+        "Path":  "reversi/index.html",
+        "Dir":  "reversi",
+        "Title":  "リバーシ",
+        "MetaDesc":  "",
+        "H1":  "リバーシ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "ringo-card-game/index.html",
+        "Dir":  "ringo-card-game",
+        "Title":  "りんごカードゲーム - いいりんごの日",
+        "MetaDesc":  "",
+        "H1":  "🍎 りんごカードゲーム 🍎",
+        "Intent":  "日本と世界の様々な林檎品種を楽しく学べる教育的なカードゲーム。プレイヤーは同じ品種のペアを見つけることで、林檎の種類を覚えることができる。",
+        "Prompt":  "11月5日は「いいりんごの日」だそうです。というわけで、様々な種類の林檎を使ったカードゲームをHTMLで作ってください"
+    },
+    {
+        "Path":  "rockorpops/index.html",
+        "Dir":  "rockorpops",
+        "Title":  "ロック＆ポップス 究極判定アプリ",
+        "MetaDesc":  "",
+        "H1":  "ロック＆ポップス 究極判定アプリ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "sagi/index.html",
+        "Dir":  "sagi",
+        "Title":  "🚨緊急警告🚨 サギの真実を知らないと大変なことに！",
+        "MetaDesc":  "",
+        "H1":  "🦆 サギサイト 🦆",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "shichigosan-puzzle/index.html",
+        "Dir":  "shichigosan-puzzle",
+        "Title":  "七五三数字パズル - Shichi-Go-San Number Puzzle",
+        "MetaDesc":  "",
+        "H1":  "七五三数字パズル",
+        "Intent":  "Create an educational and entertaining puzzle game that celebrates the Japanese tradition of Shichi-Go-San while exercising mathematical thinking.",
+        "Prompt":  "七五三にちなんで7,5,3の３つの数字を使ったパズルゲームを作ってください"
+    },
+    {
+        "Path":  "shogi-day/index.html",
+        "Dir":  "shogi-day",
+        "Title":  "将棋の日 - 駒の動きを学ぼう",
+        "MetaDesc":  "",
+        "H1":  "🎌 将棋の日 🎌",
+        "Intent":  "将棋初心者向けの学習ツール。視覚的に駒の動きを理解できるようにし、将棋への興味を喚起する",
+        "Prompt":  "11月17日(将棋の日)にちなんだアプリケーションを作成"
+    },
+    {
+        "Path":  "shooting_cc/index.html",
+        "Dir":  "shooting_cc",
+        "Title":  "シューティングゲーム",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "shooting_cc_2/index.html",
+        "Dir":  "shooting_cc_2",
+        "Title":  "シューティングゲーム",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "shubun-no-hi/index.html",
+        "Dir":  "shubun-no-hi",
+        "Title":  "秋分の日 | Shubun no Hi",
+        "MetaDesc":  "秋分の日（しゅうぶんのひ）について学べる、やさしく楽しいWebページ。昼と夜の長さをスライダーで体感できます。",
+        "H1":  "秋分の日",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "softwareeng/index.html",
+        "Dir":  "softwareeng",
+        "Title":  "ソフトウェアづくりの知恵袋 - インタラクティブ版",
+        "MetaDesc":  "",
+        "H1":  "🏗️ ソフトウェアづくりの知恵袋",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "sofu_to_ware/index.html",
+        "Dir":  "sofu_to_ware",
+        "Title":  "ソフとウェア - ソフトウェア組み立てパズル",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "Components will be generated here",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "sosai/index.html",
+        "Dir":  "sosai",
+        "Title":  "与党総裁選 2025 - 候補者紹介サイト",
+        "MetaDesc":  "",
+        "H1":  "🏛️ 与党総裁選 2025",
+        "Intent":  "Educational political simulation showcasing diverse candidate profiles and policy positions",
+        "Prompt":  "sosaiの中に、与党総裁選コンテンツを作ってください。複数のバラエティのある架空候補者を設定し、それぞれの公約が表示されるサイトを作ってください。"
+    },
+    {
+        "Path":  "status_bar/index.html",
+        "Dir":  "status_bar",
+        "Title":  "処理中... (永遠に続くバージョン)",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "subwaylength/index.html",
+        "Dir":  "subwaylength",
+        "Title":  "地下鉄路線距離順番当てゲーム",
+        "MetaDesc":  "",
+        "H1":  "🚇 地下鉄路線距離順番当てゲーム",
+        "Intent":  "ルートカードがここに動的に生成されます",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "summer-end-harmony/index.html",
+        "Dir":  "summer-end-harmony",
+        "Title":  "夏の終わりのハーモニー",
+        "MetaDesc":  "夏の終わりの寂しさと秋の気配が混ざる、エモい対話的ワンページ。",
+        "H1":  "",
+        "Intent":  "中高生にも届く詩的UI。軽量・モバイル対応・低モーション配慮。",
+        "Prompt":  "「夏の終わりのハーモニー」をテーマとしたエモーショナル＆インタラクティブなサイト"
+    },
+    {
+        "Path":  "summer-schedule/index.html",
+        "Dir":  "summer-schedule",
+        "Title":  "夏休み予定表 2025",
+        "MetaDesc":  "",
+        "H1":  "🏖️ 夏休み予定表 2025 🌻",
+        "Intent":  "カレンダーがここに生成されます",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "summer-vacation-healing/index.html",
+        "Dir":  "summer-vacation-healing",
+        "Title":  "お疲れさま - 夏休み明けの癒しサイト",
+        "MetaDesc":  "",
+        "H1":  "お疲れさまでした 💫",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "swingby/public/index.html",
+        "Dir":  "public",
+        "Title":  "惑星スイングバイシミュレータ",
+        "MetaDesc":  "惑星スイングバイシミュレータ - 宇宙船が惑星の重力を利用して速度と軌道を変える技術をシミュレート",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "tameike100-html/index.html",
+        "Dir":  "tameike100-html",
+        "Title":  "ため池百選クイズ",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "tanabata-eve/index.html",
+        "Dir":  "tanabata-eve",
+        "Title":  "七夕前夜 - 星に願いを",
+        "MetaDesc":  "",
+        "H1":  "七夕前夜",
+        "Intent":  "Create an immersive Tanabata Eve experience with star animations, wish submissions, and countdown to Tanabata",
+        "Prompt":  "tanabata-eveに七夕前夜のコンテンツを作ってください"
+    },
+    {
+        "Path":  "teddy-bear-day/index.html",
+        "Dir":  "teddy-bear-day",
+        "Title":  "10月27日はテディベアの日 🧸",
+        "MetaDesc":  "",
+        "H1":  "🧸 10月27日はテディベアの日 🧸",
+        "Intent":  "テディベアの日と日本の熊問題を皮肉るインタラクティブコンテンツ。ユーザーのインタラクションによって「かわいい」から「危険」への変化を体験させ、野生動物との距離感について考えさせる教育的な要素も含む。",
+        "Prompt":  "10月27日は、テディベアの日だそうです。しかし日本では近年熊が人の生活圏に現れることが問題になっています。そこで、かわいい縫いぐるみが実は凶暴な熊であることを皮肉るコンテンツを作ってください"
+    },
+    {
+        "Path":  "tent/index.html",
+        "Dir":  "tent",
+        "Title":  "テント設営シミュレーター",
+        "MetaDesc":  "",
+        "H1":  "⛺ テント設営シミュレーター ⛺",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "test-app/index.html",
+        "Dir":  "test-app",
+        "Title":  "Test Application",
+        "MetaDesc":  "",
+        "H1":  "Test App",
+        "Intent":  "Test application for hook functionality",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "third/index.html",
+        "Dir":  "third",
+        "Title":  "",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "tokaido-53-game/index.html",
+        "Dir":  "tokaido-53-game",
+        "Title":  "東海道五十三次すごろくゲーム",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "ゲームの単調さをなくし、リプレイ性を向上させる。お金の使い道、アイテム使用、イベント選択の重要性を高め、よりスリリングなゲーム体験を提供する。",
+        "Prompt":  "tokaido-53-gameをもっと面白くしてください (A\u0026C), 戻ってしまうイベントも加えてください, 宿場の特徴を活かした設定にしてください"
+    },
+    {
+        "Path":  "traffic-jam-game/index.html",
+        "Dir":  "traffic-jam-game",
+        "Title":  "渋滞回避ゲーム",
+        "MetaDesc":  "",
+        "H1":  "渋滞回避ゲーム",
+        "Intent":  "To create a simple, educational, and fun browser game that demonstrates basic game programming concepts like rendering, game loops, user input handling, and collision detection.",
+        "Prompt":  "新しいディレクトリを作り、そこに渋滞回避ゲームを作ってください (Create a new directory and make a traffic jam avoidance game in it.)"
+    },
+    {
+        "Path":  "uchimizu-game/index.html",
+        "Dir":  "uchimizu-game",
+        "Title":  "打ち水で世界を冷やすゲーム",
+        "MetaDesc":  "",
+        "H1":  "🌊 打ち水で世界を冷やそう 🌊",
+        "Intent":  "日本の夏の文化である打ち水をテーマにした涼しげなゲーム体験を提供",
+        "Prompt":  "新しいフォルダーを作り、打ち水で世界を冷やすゲームを作ってください"
+    },
+    {
+        "Path":  "ultimate_ramen/index.html",
+        "Dir":  "ultimate_ramen",
+        "Title":  "究極ラーメンカスタマイズ",
+        "MetaDesc":  "",
+        "H1":  "究極ラーメンカスタマイズ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "universal-prayer/index.html",
+        "Dir":  "universal-prayer",
+        "Title":  "Prayer Time - 祈りの時間",
+        "MetaDesc":  "",
+        "H1":  "🕊️ 祈りの時間 🕊️",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "uno-like/index.html",
+        "Dir":  "uno-like",
+        "Title":  "UNO風カードゲーム",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "vibe/index.html",
+        "Dir":  "vibe",
+        "Title":  "Vibe Coding - バイブコーディング体験",
+        "MetaDesc":  "",
+        "H1":  "Vibe Coding",
+        "Intent":  "Create an immersive \"vibe coding\" experience with visual effects, particle systems, and interactive elements that respond to user input",
+        "Prompt":  "vibeディレクトリを作成し、vibe codingを体感するwebアプリを作ってください"
+    },
+    {
+        "Path":  "world-kindness-day/index.html",
+        "Dir":  "world-kindness-day",
+        "Title":  "世界親切デー（11月13日）Kindness App",
+        "MetaDesc":  "11月13日・世界親切デーにちなんだ、小さな親切を実践するためのアイデアとメッセージ作成ツール。",
+        "H1":  "今日の小さな親切を、ひとつ。",
+        "Intent":  "No external dependencies; works on GitHub Pages under /genai/world-kindness-day/",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "world-voyage/index.html",
+        "Dir":  "world-voyage",
+        "Title":  "🎮 ビクトリア号アドベンチャー - 世界一周ゲーム 🎮",
+        "MetaDesc":  "",
+        "H1":  "🎮 ビクトリア号アドベンチャー 🌍",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "world3/index.html",
+        "Dir":  "world3",
+        "Title":  "世界三大〇〇クイズ - 3番目を当てよう！",
+        "MetaDesc":  "",
+        "H1":  "🌍 世界三大〇〇クイズ",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "yuretofu/index.html",
+        "Dir":  "yuretofu",
+        "Title":  "ゆれ豆腐",
+        "MetaDesc":  "",
+        "H1":  "",
+        "Intent":  "",
+        "Prompt":  ""
+    },
+    {
+        "Path":  "zancre/index.html",
+        "Dir":  "zancre",
+        "Title":  "ALPHARD SmartBuy - あなたのアルファードライフを彩る賢い選択",
+        "MetaDesc":  "",
+        "H1":  "ALPHARD SmartBuy",
+        "Intent":  "",
+        "Prompt":  ""
+    }
+]
