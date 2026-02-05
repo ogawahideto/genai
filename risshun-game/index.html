@@ -368,23 +368,138 @@
       function playUguisu() {
         if (!ac) return;
         const now = ac.currentTime;
-        const seq = [
-          { f0: 880, f1: 1240, t: 0.35, w: 'sine' },
-          { f0: 740, f1: 1040, t: 0.22, w: 'triangle' },
-          { f0: 520, f1: 900, t: 0.38, w: 'triangle' },
-        ];
-        let t = 0;
-        seq.forEach((s, idx) => {
+
+        // Create reverb for forest-like ambiance
+        const convolver = ac.createConvolver();
+        const reverbLength = ac.sampleRate * 1.2;
+        const reverbBuffer = ac.createBuffer(2, reverbLength, ac.sampleRate);
+        for (let ch = 0; ch < 2; ch++) {
+          const data = reverbBuffer.getChannelData(ch);
+          for (let i = 0; i < reverbLength; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (reverbLength * 0.15));
+          }
+        }
+        convolver.buffer = reverbBuffer;
+
+        // Mix dry and wet signals
+        const dryGain = ac.createGain();
+        const wetGain = ac.createGain();
+        dryGain.gain.value = 0.7;
+        wetGain.gain.value = 0.35;
+
+        convolver.connect(wetGain);
+        wetGain.connect(ac.destination);
+        dryGain.connect(ac.destination);
+
+        // Helper: create a note with vibrato and harmonics
+        function createBirdNote(startTime, duration, freqStart, freqEnd, freqCurve, volume, vibratoRate, vibratoDepth) {
+          // Main oscillator
           const osc = ac.createOscillator();
-          const g = envNode(s.t + 0.12, 0.05 + 0.02 * idx);
-          osc.type = s.w;
-          osc.frequency.setValueAtTime(s.f0, now + t);
-          osc.frequency.exponentialRampToValueAtTime(s.f1, now + t + s.t);
-          osc.connect(g);
-          osc.start(now + t);
-          osc.stop(now + t + s.t + 0.06);
-          t += s.t * 0.85;
-        });
+          osc.type = 'sine';
+
+          // Frequency envelope
+          osc.frequency.setValueAtTime(freqStart, now + startTime);
+          if (freqCurve === 'exp') {
+            osc.frequency.exponentialRampToValueAtTime(freqEnd, now + startTime + duration);
+          } else if (freqCurve === 'linear') {
+            osc.frequency.linearRampToValueAtTime(freqEnd, now + startTime + duration);
+          } else if (Array.isArray(freqCurve)) {
+            // Custom curve with multiple points
+            let t = startTime;
+            freqCurve.forEach(point => {
+              osc.frequency.exponentialRampToValueAtTime(point.f, now + t + point.t);
+              t += point.t;
+            });
+          }
+
+          // Vibrato using LFO
+          const vibrato = ac.createOscillator();
+          const vibratoGain = ac.createGain();
+          vibrato.type = 'sine';
+          vibrato.frequency.value = vibratoRate;
+          vibratoGain.gain.value = vibratoDepth;
+          vibrato.connect(vibratoGain);
+          vibratoGain.connect(osc.frequency);
+
+          // Amplitude envelope with smooth attack and decay
+          const env = ac.createGain();
+          env.gain.setValueAtTime(0, now + startTime);
+          env.gain.linearRampToValueAtTime(volume, now + startTime + 0.015);
+          env.gain.setValueAtTime(volume, now + startTime + duration * 0.7);
+          env.gain.exponentialRampToValueAtTime(0.001, now + startTime + duration);
+
+          // Second harmonic for richness
+          const osc2 = ac.createOscillator();
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(freqStart * 2, now + startTime);
+          if (freqCurve === 'exp') {
+            osc2.frequency.exponentialRampToValueAtTime(freqEnd * 2, now + startTime + duration);
+          } else if (freqCurve === 'linear') {
+            osc2.frequency.linearRampToValueAtTime(freqEnd * 2, now + startTime + duration);
+          }
+          vibratoGain.connect(osc2.frequency);
+
+          const harmGain = ac.createGain();
+          harmGain.gain.value = 0.15;
+
+          // Third harmonic (subtle)
+          const osc3 = ac.createOscillator();
+          osc3.type = 'sine';
+          osc3.frequency.setValueAtTime(freqStart * 3, now + startTime);
+          if (freqCurve === 'exp') {
+            osc3.frequency.exponentialRampToValueAtTime(freqEnd * 3, now + startTime + duration);
+          }
+          const harm3Gain = ac.createGain();
+          harm3Gain.gain.value = 0.05;
+
+          // Filter for natural bird-like tone
+          const filter = ac.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.value = (freqStart + freqEnd) / 2;
+          filter.Q.value = 2;
+
+          // Connect main oscillator
+          osc.connect(env);
+          osc2.connect(harmGain);
+          harmGain.connect(env);
+          osc3.connect(harm3Gain);
+          harm3Gain.connect(env);
+          env.connect(filter);
+          filter.connect(dryGain);
+          filter.connect(convolver);
+
+          // Start and stop
+          vibrato.start(now + startTime);
+          osc.start(now + startTime);
+          osc2.start(now + startTime);
+          osc3.start(now + startTime);
+          vibrato.stop(now + startTime + duration + 0.1);
+          osc.stop(now + startTime + duration + 0.05);
+          osc2.stop(now + startTime + duration + 0.05);
+          osc3.stop(now + startTime + duration + 0.05);
+        }
+
+        // "ホー" (Hoo) - Long rising note with gentle vibrato
+        createBirdNote(0, 0.45, 1100, 1580, 'exp', 0.07, 5, 12);
+
+        // Brief pause
+
+        // "ホ" (Ho) - Short note
+        createBirdNote(0.52, 0.12, 1400, 1520, 'linear', 0.065, 6, 8);
+
+        // "ケ" (Ke) - Quick ascending note
+        createBirdNote(0.66, 0.10, 1500, 1900, 'exp', 0.06, 7, 10);
+
+        // "キョ" (Kyo) - Final flourish, rises then falls
+        createBirdNote(0.78, 0.38, 1650, 2400, [
+          { f: 2400, t: 0.12 },
+          { f: 2200, t: 0.08 },
+          { f: 1800, t: 0.10 },
+          { f: 1400, t: 0.08 }
+        ], 0.07, 8, 15);
+
+        // Soft echo/trailing note
+        createBirdNote(1.18, 0.25, 1300, 1100, 'exp', 0.025, 4, 6);
       }
       function chime(freq = 880) {
         if (!ac) return;
