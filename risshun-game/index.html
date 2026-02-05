@@ -490,16 +490,11 @@
         // "ケ" (Ke) - Quick ascending note
         createBirdNote(0.66, 0.10, 1500, 1900, 'exp', 0.06, 7, 10);
 
-        // "キョ" (Kyo) - Final flourish, rises then falls
-        createBirdNote(0.78, 0.38, 1650, 2400, [
-          { f: 2400, t: 0.12 },
-          { f: 2200, t: 0.08 },
-          { f: 1800, t: 0.10 },
-          { f: 1400, t: 0.08 }
-        ], 0.07, 8, 15);
+        // "キョ" (Kyo) - Quick descending note
+        createBirdNote(0.78, 0.15, 2200, 1400, 'exp', 0.07, 8, 12);
 
         // Soft echo/trailing note
-        createBirdNote(1.18, 0.25, 1300, 1100, 'exp', 0.025, 4, 6);
+        createBirdNote(0.96, 0.20, 1300, 1100, 'exp', 0.02, 4, 6);
       }
       function chime(freq = 880) {
         if (!ac) return;
