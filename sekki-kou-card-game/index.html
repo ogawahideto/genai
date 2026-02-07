@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>二十四節気・七十二候 カードゲーム</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>二十四節気・七十二候 カードゲーム</h1>
+      <p class="tagline">次の節気を選び、つづいて三候を選択</p>
+    </header>
+
+    <main>
+      <section class="flow">
+        <div class="controls">
+          <button id="reset">リセット</button>
+          <span id="progress-indicator" class="score"></span>
+        </div>
+
+        <ol id="progress-list" class="progress-list" aria-label="これまでに選んだ節気"></ol>
+
+        <p id="instruction" class="hint"></p>
+
+        <div id="current-sekki" class="current-sekki" style="display:none;"></div>
+        <ul id="choices" class="card-grid" aria-label="選択肢"></ul>
+        <div class="controls" id="kou-controls" style="display:none;">
+          <button id="confirm-kou">選択を確定</button>
+        </div>
+        <div id="result" class="result" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+  </html>
