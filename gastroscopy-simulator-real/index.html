@@ -154,7 +154,7 @@
         const manualControl = { x: 0.5, y: 194, z: -10.5 }; 
         const currentPos = new THREE.Vector3(manualControl.x, manualControl.y, manualControl.z);
 
-        // Trail for Minimap (Breadcrumbs)
+        // Trail and Distance Tracking
         const trailPoints = [];
         const trailGeometry = new THREE.BufferGeometry();
         const trailMaterial = new THREE.PointsMaterial({ 
@@ -170,13 +170,18 @@
         trailMesh.frustumCulled = false;
         mapScene.add(trailMesh);
         const lastTrailPos = new THREE.Vector3().copy(currentPos);
+        const lastFramePos = new THREE.Vector3().copy(currentPos);
         let totalDistance = 0;
+        let insertDepth = 0;
 
         // Reset Tracker Function
         const resetTracker = () => {
             trailPoints.length = 0;
             trailGeometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
             totalDistance = 0;
+            insertDepth = 0;
+            lastTrailPos.copy(currentPos);
+            lastFramePos.copy(currentPos);
             const log = document.getElementById('pathology-log');
             const div = document.createElement('div'); div.style.color = '#00ffcc'; div.innerText = `> TRACKER RESET`;
             log.appendChild(div);
@@ -360,19 +365,31 @@
                     }
                 } else if (!inputs.shift) currentPos.copy(resolveCollisions(currentPos));
             }
-            mainCamera.position.copy(currentPos);
-            document.getElementById('depth-indicator').innerHTML = `INSERT: ${(194 - currentPos.y).toFixed(1)} cm<br>TRAVELED: ${totalDistance.toFixed(1)} cm`;
-            
-            // Update Trail
-            const dist = currentPos.distanceTo(lastTrailPos);
-            if (dist > 0.5) {
-                totalDistance += dist;
-                trailPoints.push(currentPos.x, currentPos.y, currentPos.z);
-                trailGeometry.setAttribute('position', new THREE.Float32BufferAttribute(trailPoints, 3));
-                lastTrailPos.copy(currentPos);
-            }
-
-            playerGroup.position.copy(currentPos);
+                                    mainCamera.position.copy(currentPos);
+                                    document.getElementById('depth-indicator').innerHTML = `INSERT: ${insertDepth.toFixed(1)} cm<br>TRAVELED: ${totalDistance.toFixed(1)} cm`;
+                        
+                                    // Update Trail and Distances
+                                    const frameDist = currentPos.distanceTo(lastFramePos);
+                                    // Ignore tiny jitter from collision resolution
+                                    if (frameDist > 0.01) {
+                                        const moveDir = currentPos.clone().sub(lastFramePos).normalize();
+                                        const forwardDir = new THREE.Vector3();
+                                        mainCamera.getWorldDirection(forwardDir);
+                                        const dot = moveDir.dot(forwardDir);
+                                        
+                                        totalDistance += frameDist;
+                                        insertDepth += frameDist * (dot > 0 ? 1 : -1);
+                                        if (insertDepth < 0) insertDepth = 0;
+                                    }
+                                    lastFramePos.copy(currentPos);
+                        
+                                    // Update Minimap Trail (dots every 0.5cm)
+                                    const trailDist = currentPos.distanceTo(lastTrailPos);
+                                    if (trailDist > 0.5) {
+                                        trailPoints.push(currentPos.x, currentPos.y, currentPos.z);
+                                        trailGeometry.setAttribute('position', new THREE.Float32BufferAttribute(trailPoints, 3));
+                                        lastTrailPos.copy(currentPos);
+                                    }            playerGroup.position.copy(currentPos);
             playerGroup.quaternion.copy(mainCamera.quaternion);
             mapControls.target.copy(currentPos);
             mapControls.update();
