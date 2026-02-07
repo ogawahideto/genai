@@ -335,13 +335,13 @@
         }
 
         const LOCATIONS = {
-            ESOPHAGUS: { en: "ESOPHAGUS", jp: "食道", threshold: 180 },
-            STOMACH_UPPER: { en: "STOMACH (FUNDUS)", jp: "胃（胃底部）", threshold: 150 },
-            STOMACH_MID: { en: "STOMACH (BODY)", jp: "胃（胃体部）", threshold: 80 },
-            STOMACH_LOWER: { en: "STOMACH (ANTRUM)", jp: "胃（前庭部）", threshold: 30 },
-            DUODENUM: { en: "DUODENUM", jp: "十二指腸", threshold: 0 },
-            SMALL_INTESTINE: { en: "SMALL INTESTINE", jp: "小腸", threshold: -80 },
-            LARGE_INTESTINE: { en: "LARGE INTESTINE", jp: "大腸", threshold: -Infinity }
+            ESOPHAGUS: { en: "ESOPHAGUS", jp: "食道", threshold: 0 },
+            STOMACH_UPPER: { en: "STOMACH (FUNDUS)", jp: "胃（胃底部）", threshold: 120 },
+            STOMACH_MID: { en: "STOMACH (BODY)", jp: "胃（胃体部）", threshold: 130 },
+            STOMACH_LOWER: { en: "STOMACH (ANTRUM)", jp: "胃（前庭部）", threshold: 140 },
+            DUODENUM: { en: "DUODENUM", jp: "十二指腸", threshold: 150 },
+            SMALL_INTESTINE: { en: "SMALL INTESTINE", jp: "小腸", threshold: 180 },
+            LARGE_INTESTINE: { en: "LARGE INTESTINE", jp: "大腸", threshold: 250 }
         };
 
         function update() {
@@ -376,26 +376,20 @@
                     }
                 } else if (!inputs.shift) currentPos.copy(resolveCollisions(currentPos));
             }
-                                                            mainCamera.position.copy(currentPos);
+                                                                        mainCamera.position.copy(currentPos);
+                                                                        
+                                                                        // Update Location Display (Based on insertion length)
+                                                                        let currentLoc = LOCATIONS.ESOPHAGUS;
+                                                                        if (insertDepth >= LOCATIONS.LARGE_INTESTINE.threshold) currentLoc = LOCATIONS.LARGE_INTESTINE;
+                                                                        else if (insertDepth >= LOCATIONS.SMALL_INTESTINE.threshold) currentLoc = LOCATIONS.SMALL_INTESTINE;
+                                                                        else if (insertDepth >= LOCATIONS.DUODENUM.threshold) currentLoc = LOCATIONS.DUODENUM;
+                                                                        else if (insertDepth >= LOCATIONS.STOMACH_LOWER.threshold) currentLoc = LOCATIONS.STOMACH_LOWER;
+                                                                        else if (insertDepth >= LOCATIONS.STOMACH_MID.threshold) currentLoc = LOCATIONS.STOMACH_MID;
+                                                                        else if (insertDepth >= LOCATIONS.STOMACH_UPPER.threshold) currentLoc = LOCATIONS.STOMACH_UPPER;
+                                                                        else currentLoc = LOCATIONS.ESOPHAGUS;
                                                             
-                                                            // Update Location Display (Detailed)
-                                                            let locText = "LOC: ";
-                                                            if (currentPos.y > LOCATIONS.ESOPHAGUS.threshold) {
-                                                                locText += `${LOCATIONS.ESOPHAGUS.en} (${LOCATIONS.ESOPHAGUS.jp})`;
-                                                            } else if (currentPos.y > LOCATIONS.STOMACH_UPPER.threshold) {
-                                                                locText += `${LOCATIONS.STOMACH_UPPER.en} (${LOCATIONS.STOMACH_UPPER.jp})`;
-                                                            } else if (currentPos.y > LOCATIONS.STOMACH_MID.threshold) {
-                                                                locText += `${LOCATIONS.STOMACH_MID.en} (${LOCATIONS.STOMACH_MID.jp})`;
-                                                            } else if (currentPos.y > LOCATIONS.STOMACH_LOWER.threshold) {
-                                                                locText += `${LOCATIONS.STOMACH_LOWER.en} (${LOCATIONS.STOMACH_LOWER.jp})`;
-                                                            } else if (currentPos.y > LOCATIONS.DUODENUM.threshold) {
-                                                                locText += `${LOCATIONS.DUODENUM.en} (${LOCATIONS.DUODENUM.jp})`;
-                                                            } else if (currentPos.y > LOCATIONS.SMALL_INTESTINE.threshold) {
-                                                                locText += `${LOCATIONS.SMALL_INTESTINE.en} (${LOCATIONS.SMALL_INTESTINE.jp})`;
-                                                            } else {
-                                                                locText += `${LOCATIONS.LARGE_INTESTINE.en} (${LOCATIONS.LARGE_INTESTINE.jp})`;
-                                                            }
-                                                            document.getElementById('location-display').innerText = locText;
+                                                                        document.getElementById('location-display').innerText = `LOC: ${currentLoc.en} (${currentLoc.jp})`;
+                                                            
                                                                                                 document.getElementById('depth-indicator').innerHTML = `INSERT: ${insertDepth.toFixed(1)} cm<br>TRAVELED: ${totalDistance.toFixed(1)} cm`;
                                                                         // Update Trail and Distances
                                     const frameDist = currentPos.distanceTo(lastFramePos);
