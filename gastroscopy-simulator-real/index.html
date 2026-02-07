@@ -330,24 +330,15 @@
 
         function update() {
             const speed = 0.5;
-            if (inputs.rotateLeft) state.torque += CONFIG.torqueSpeed;
-            if (inputs.rotateRight) state.torque -= CONFIG.torqueSpeed;
-            state.torque *= 0.9;
-            if (inputs.angUp) state.angulation.y += CONFIG.angulationSpeed;
-            if (inputs.angDown) state.angulation.y -= CONFIG.angulationSpeed;
-            if (inputs.angLeft) state.angulation.x -= CONFIG.angulationSpeed;
-            if (inputs.angRight) state.angulation.x += CONFIG.angulationSpeed;
-            state.angulation.x = Math.max(-2.5, Math.min(2.5, state.angulation.x));
-            state.angulation.y = Math.max(-2.5, Math.min(2.5, state.angulation.y));
-            state.angulation.x *= 0.98; state.angulation.y *= 0.98;
-
-            mainCamera.rotation.set(0, 0, 0); 
-            mainCamera.rotateX(-Math.PI / 2);
-            if (!state.roll) state.roll = 0; state.roll += state.torque;
-            mainCamera.rotateZ(state.roll);
-            mainCamera.rotateX(state.angulation.y);
-            mainCamera.rotateY(-state.angulation.x);
-            mainCamera.updateMatrixWorld(); 
+            
+            // Cumulative Rotation instead of fixed baseline
+            if (inputs.rotateLeft) mainCamera.rotateZ(CONFIG.torqueSpeed);
+            if (inputs.rotateRight) mainCamera.rotateZ(-CONFIG.torqueSpeed);
+            
+            if (inputs.angUp) mainCamera.rotateX(CONFIG.angulationSpeed);
+            if (inputs.angDown) mainCamera.rotateX(-CONFIG.angulationSpeed);
+            if (inputs.angLeft) mainCamera.rotateY(CONFIG.angulationSpeed);
+            if (inputs.angRight) mainCamera.rotateY(-CONFIG.angulationSpeed);
 
             if (isAdjustmentMode) {
                 if(adjustmentInputs.xPlus) currentPos.x += speed; if(adjustmentInputs.xMinus) currentPos.x -= speed;
