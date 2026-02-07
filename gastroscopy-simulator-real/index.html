@@ -333,10 +333,20 @@
             return adjustedPos;
         }
 
+        const LOCATIONS = {
+            ESOPHAGUS: { en: "ESOPHAGUS", jp: "食道", threshold: 180 },
+            STOMACH_UPPER: { en: "STOMACH (FUNDUS)", jp: "胃（胃底部）", threshold: 150 },
+            STOMACH_MID: { en: "STOMACH (BODY)", jp: "胃（胃体部）", threshold: 80 },
+            STOMACH_LOWER: { en: "STOMACH (ANTRUM)", jp: "胃（前庭部）", threshold: 30 },
+            DUODENUM: { en: "DUODENUM", jp: "十二指腸", threshold: 0 },
+            SMALL_INTESTINE: { en: "SMALL INTESTINE", jp: "小腸", threshold: -80 },
+            LARGE_INTESTINE: { en: "LARGE INTESTINE", jp: "大腸", threshold: -Infinity }
+        };
+
         function update() {
             const speed = 0.5;
             
-            // Cumulative Rotation instead of fixed baseline
+            // ... (rotation and movement logic)
             if (inputs.rotateLeft) mainCamera.rotateZ(CONFIG.torqueSpeed);
             if (inputs.rotateRight) mainCamera.rotateZ(-CONFIG.torqueSpeed);
             
@@ -365,10 +375,28 @@
                     }
                 } else if (!inputs.shift) currentPos.copy(resolveCollisions(currentPos));
             }
-                                    mainCamera.position.copy(currentPos);
-                                    document.getElementById('depth-indicator').innerHTML = `INSERT: ${insertDepth.toFixed(1)} cm<br>TRAVELED: ${totalDistance.toFixed(1)} cm`;
-                        
-                                    // Update Trail and Distances
+                                                            mainCamera.position.copy(currentPos);
+                                                            
+                                                            // Update Location Display (Detailed)
+                                                            let locText = "LOC: ";
+                                                            if (currentPos.y > LOCATIONS.ESOPHAGUS.threshold) {
+                                                                locText += `${LOCATIONS.ESOPHAGUS.en} (${LOCATIONS.ESOPHAGUS.jp})`;
+                                                            } else if (currentPos.y > LOCATIONS.STOMACH_UPPER.threshold) {
+                                                                locText += `${LOCATIONS.STOMACH_UPPER.en} (${LOCATIONS.STOMACH_UPPER.jp})`;
+                                                            } else if (currentPos.y > LOCATIONS.STOMACH_MID.threshold) {
+                                                                locText += `${LOCATIONS.STOMACH_MID.en} (${LOCATIONS.STOMACH_MID.jp})`;
+                                                            } else if (currentPos.y > LOCATIONS.STOMACH_LOWER.threshold) {
+                                                                locText += `${LOCATIONS.STOMACH_LOWER.en} (${LOCATIONS.STOMACH_LOWER.jp})`;
+                                                            } else if (currentPos.y > LOCATIONS.DUODENUM.threshold) {
+                                                                locText += `${LOCATIONS.DUODENUM.en} (${LOCATIONS.DUODENUM.jp})`;
+                                                            } else if (currentPos.y > LOCATIONS.SMALL_INTESTINE.threshold) {
+                                                                locText += `${LOCATIONS.SMALL_INTESTINE.en} (${LOCATIONS.SMALL_INTESTINE.jp})`;
+                                                            } else {
+                                                                locText += `${LOCATIONS.LARGE_INTESTINE.en} (${LOCATIONS.LARGE_INTESTINE.jp})`;
+                                                            }
+                                                            document.getElementById('location-display').innerText = locText;
+                                                                                                document.getElementById('depth-indicator').innerHTML = `INSERT: ${insertDepth.toFixed(1)} cm<br>TRAVELED: ${totalDistance.toFixed(1)} cm`;
+                                                                        // Update Trail and Distances
                                     const frameDist = currentPos.distanceTo(lastFramePos);
                                     // Ignore tiny jitter from collision resolution
                                     if (frameDist > 0.01) {
