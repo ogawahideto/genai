@@ -101,7 +101,10 @@
             "imports": {
                 "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
                 "three/addons/loaders/GLTFLoader.js": "https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js",
-                "three/addons/controls/OrbitControls.js": "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js"
+                "three/addons/controls/OrbitControls.js": "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js",
+                "three/addons/postprocessing/EffectComposer.js": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js",
+                "three/addons/postprocessing/RenderPass.js": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/RenderPass.js",
+                "three/addons/postprocessing/ShaderPass.js": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/ShaderPass.js"
             }
         }
     </script>
@@ -110,9 +113,15 @@
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
         const CONFIG = { moveSpeed: 0.0003, torqueSpeed: 0.03, angulationSpeed: 0.04 };
-        const state = { progress: 0.015, torque: 0, angulation: new THREE.Vector2(0, 0), roll: 0, exposure: 1.5 };
+        const state = { 
+            progress: 0.015, torque: 0, angulation: new THREE.Vector2(0, 0), roll: 0, 
+            exposure: 2.8, nbi: false 
+        };
         const inputs = { forward: false, backward: false, rotateLeft: false, rotateRight: false, angUp: false, angDown: false, angLeft: false, angRight: false, shift: false };
 
         // Globals
@@ -128,8 +137,65 @@
         mainRenderer.toneMappingExposure = state.exposure;
         document.getElementById('canvas-container').appendChild(mainRenderer.domElement);
         
-        const mainScene = new THREE.Scene(); mainScene.fog = new THREE.FogExp2(0x1a0505, 0.002);
+        const mainScene = new THREE.Scene(); 
+        mainScene.background = new THREE.Color(0x1a0505);
+        mainScene.fog = new THREE.FogExp2(0x1a0505, 0.002);
         const mainCamera = new THREE.PerspectiveCamera(90, window.innerWidth/window.innerHeight, 0.05, 1000);
+
+        // Lens Distortion Shader
+        const LensDistortionShader = {
+            uniforms: {
+                "tDiffuse": { value: null },
+                "strength": { value: 0.35 },
+                "height": { value: 1.0 },
+                "aspect": { value: window.innerWidth / window.innerHeight }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform sampler2D tDiffuse;
+                uniform float strength;
+                uniform float aspect;
+                varying vec2 vUv;
+
+                void main() {
+                    vec2 uv = vUv - 0.5;
+                    float dist = length(uv);
+                    
+                    // Barrel Distortion
+                    uv *= 1.0 + strength * (dist * dist);
+                    
+                    // Chromatic Aberration
+                    vec2 uvR = uv * (1.0 + 0.02 * strength) + 0.5;
+                    vec2 uvG = uv + 0.5;
+                    vec2 uvB = uv * (1.0 - 0.02 * strength) + 0.5;
+
+                    if (uvG.x < 0.0 || uvG.x > 1.0 || uvG.y < 0.0 || uvG.y > 1.0) {
+                        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                        return;
+                    }
+
+                    float r = texture2D(tDiffuse, uvR).r;
+                    float g = texture2D(tDiffuse, uvG).g;
+                    float b = texture2D(tDiffuse, uvB).b;
+                    
+                    // Vignette (Circular Mask) - Softened for better visibility
+                    float vignette = smoothstep(0.9, 0.4, dist * 1.5);
+                    
+                    gl_FragColor = vec4(vec3(r, g, b) * vignette, 1.0);
+                }
+            `
+        };
+
+        const composer = new EffectComposer(mainRenderer);
+        composer.addPass(new RenderPass(mainScene, mainCamera));
+        const distortionPass = new ShaderPass(LensDistortionShader);
+        composer.addPass(distortionPass);
 
         // Minimap
         const mapRenderer = new THREE.WebGLRenderer({ antialias: true });
@@ -205,11 +271,13 @@
                         color: oldMat.color || 0xffaaaa,
                         map: oldMat.map || null,
                         normalMap: oldMat.normalMap || null,
-                        roughness: 0.15,
-                        metalness: 0.05,
+                        roughness: 0.08,
+                        metalness: 0.0,
                         clearcoat: 1.0,
-                        clearcoatRoughness: 0.05,
-                        reflectivity: 0.5,
+                        clearcoatRoughness: 0.03,
+                        reflectivity: 0.9,
+                        transmission: 0.1, // Slight subsurface translucency
+                        thickness: 1.0,
                         side: THREE.DoubleSide
                     });
                 }
@@ -259,9 +327,9 @@
             document.body.appendChild(coordDisplay);
         }
 
-        const hemiLight = new THREE.HemisphereLight( 0xffaaaa, 0x440000, 0.5 );
+        const hemiLight = new THREE.HemisphereLight( 0xffaaaa, 0x440000, 0.8 );
         mainScene.add( hemiLight );
-        const scopeLight = new THREE.SpotLight(0xfff0e0, 15.0, 80, 0.7, 0.5, 1.5);
+        const scopeLight = new THREE.SpotLight(0xfff0e0, 60.0, 300, 0.8, 0.5, 0.8);
         mainCamera.add(scopeLight); mainCamera.add(scopeLight.target); mainScene.add(mainCamera);
         scopeLight.target.position.set(0, 0, -1);
 
@@ -270,6 +338,7 @@
             const k = e.key.toLowerCase();
             if(e.shiftKey) inputs.shift = true;
             if (k === 'm') { isAdjustmentMode = !isAdjustmentMode; coordDisplay.style.display = isAdjustmentMode ? 'block' : 'none'; }
+            if (k === 'n') toggleNBI();
             if(k==='w') inputs.forward=true; if(k==='s') inputs.backward=true;
             if(k==='a') inputs.rotateLeft=true; if(k==='d') inputs.rotateRight=true;
             if(k==='arrowup') inputs.angUp=true; if(k==='arrowdown') inputs.angDown=true;
@@ -282,6 +351,22 @@
                 if(k==='u') adjustmentInputs.zMinus = true; if(k==='o') adjustmentInputs.zPlus = true;
             }
         });
+
+        const toggleNBI = () => {
+            state.nbi = !state.nbi;
+            const canvas = mainRenderer.domElement;
+            if (state.nbi) {
+                scopeLight.color.set(0x44ffaa); // Cyan-greenish NBI light
+                canvas.style.filter = "contrast(1.2) saturate(1.5) hue-rotate(-10deg)";
+                const div = document.createElement('div'); div.style.color = '#00ffcc'; div.innerText = `> NBI MODE: ON`;
+                document.getElementById('pathology-log').appendChild(div);
+            } else {
+                scopeLight.color.set(0xfff0e0); // Warm white light
+                canvas.style.filter = "none";
+                const div = document.createElement('div'); div.style.color = '#00ffcc'; div.innerText = `> NBI MODE: OFF`;
+                document.getElementById('pathology-log').appendChild(div);
+            }
+        };
         window.addEventListener('keyup', (e) => {
             const k = e.key.toLowerCase();
             if(!e.shiftKey) inputs.shift = false;
@@ -443,7 +528,7 @@
             requestAnimationFrame(render);
             update();
             scopeLight.intensity = 15.0 * state.exposure + Math.sin(Date.now() * 0.01) * 0.5;
-            mainRenderer.render(mainScene, mainCamera);
+            composer.render();
             mapRenderer.render(mapScene, mapCamera);
         }
         window.addEventListener('resize', () => {
