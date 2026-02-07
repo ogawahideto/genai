@@ -214,6 +214,7 @@
                     });
                 }
             });
+            stomachModel.updateMatrixWorld();
             mainScene.add(stomachModel);
             
             // Lesions
@@ -415,10 +416,23 @@
                                     const trailDist = currentPos.distanceTo(lastTrailPos);
                                     if (trailDist > 0.5) {
                                         trailPoints.push(currentPos.x, currentPos.y, currentPos.z);
-                                        trailGeometry.setAttribute('position', new THREE.Float32BufferAttribute(trailPoints, 3));
-                                        lastTrailPos.copy(currentPos);
-                                    }            playerGroup.position.copy(currentPos);
-            playerGroup.quaternion.copy(mainCamera.quaternion);
+                                                        trailGeometry.setAttribute('position', new THREE.Float32BufferAttribute(trailPoints, 3));
+                                                        lastTrailPos.copy(currentPos);
+                                                    }
+                                        
+                                                    // Lesion Detection
+                                                    lesions.forEach(l => {
+                                                        if(!l.found && currentPos.distanceTo(l.position) < 8) {
+                                                            l.found = true;
+                                                            const div = document.createElement('div'); 
+                                                            div.style.color = '#ff3333'; 
+                                                            div.innerText = `> LESION DETECTED (病変発見)`;
+                                                            document.getElementById('pathology-log').appendChild(div);
+                                                        }
+                                                    });
+                                        
+                                                    playerGroup.position.copy(currentPos);
+                                                    playerGroup.quaternion.copy(mainCamera.quaternion);
             mapControls.target.copy(currentPos);
             mapControls.update();
 
