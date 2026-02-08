@@ -416,13 +416,16 @@
 
   function nextSekkiQuestion() {
     state.stage = 'sekki';
+    if (typeof saveState === 'function') saveState();
     setMessage('');
     kouControls.style.display = 'none';
     currentSekkiEl.style.display = 'none';
     choices.innerHTML = '';
 
     if (state.index >= sekki.length) {
+      const total = state.kouScores.reduce((a, b) => a + (b || 0), 0);
       instruction.textContent = 'おめでとうございます。二十四節気をすべて選びました！';
+      setMessage(`最終スコア: ${total} / 72`, true);
       updateIndicator();
       return;
     }
@@ -444,6 +447,12 @@
       const idxForColor = sekkiIndexByName(name);
       const svg = illustSvgForName(name, idxForColor);
       li.innerHTML = `${svg.replace('class="tip-illust"','class="illust"')}<div class="title">${name}</div><div class="yomi">${info.yomi || ''}</div><div class="desc">${info.desc || ''}</div><div class="sub">節気</div>`;
+      li.setAttribute('role', 'button');
+      li.setAttribute('tabindex', '0');
+      li.setAttribute('aria-label', `${name}（節気） ${info.yomi ? 'よみ: ' + info.yomi : ''}`.trim());
+      li.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); li.click(); }
+      });
       li.addEventListener('click', () => {
         if (name === correct.name) {
           state.chosen.push(name);
@@ -455,8 +464,10 @@
           state.currentKous = correct.kous.slice();
           renderKouQuestion(correct.name, state.currentKous, state.index);
           state.index += 1;
+          if (typeof saveState === 'function') saveState();
         } else {
-          li.classList.add('selected');
+          li.classList.add('blink-wrong');
+          setTimeout(() => li.classList.remove('blink-wrong'), 450);
           setMessage('惜しい…もう一度選んでください。', false);
         }
       });
@@ -491,14 +502,23 @@
       const idxForColor = sekkiIndexByKou(text);
       const svg = illustSvgForName(text, idxForColor);
       li.innerHTML = `${svg.replace('class="tip-illust"','class="illust"')}<div class="title">${text}</div><div class="yomi">${info.yomi || ''}</div><div class="desc">${info.desc || ''}</div><div class="sub">候</div>`;
+      li.setAttribute('role', 'button');
+      li.setAttribute('tabindex', '0');
+      li.setAttribute('aria-pressed', 'false');
+      li.setAttribute('aria-label', `${text}（候） ${info.yomi ? 'よみ: ' + info.yomi : ''}`.trim());
+      li.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); li.click(); }
+      });
       li.addEventListener('click', () => {
         // 最大3つまで選択可能。3つ揃ったら自動で採点・進行。
         if (!li.classList.contains('selected')) {
           const count = qa('#choices .card.selected').length;
           if (count >= 3) return;
           li.classList.add('selected');
+          li.setAttribute('aria-pressed', 'true');
         } else {
           li.classList.remove('selected');
+          li.setAttribute('aria-pressed', 'false');
         }
         const countNow = qa('#choices .card.selected').length;
         if (countNow === 3 && typeof confirmKouBtn.onclick === 'function') {
@@ -549,6 +569,7 @@
 
       // clear textual result, rely on colors
       setMessage('');
+      if (typeof saveState === 'function') saveState();
 
       // proceed to next sekki after a short pause
       setTimeout(() => {
@@ -568,9 +589,59 @@
     setThemeByIndex(0);
     renderProgress();
     nextSekkiQuestion();
+    if (typeof saveState === 'function') saveState();
   }
 
   resetBtn.addEventListener('click', reset);
+  // Persistence
+  const STORAGE_KEY = 'sekkiKouGameStateV1';
+  function saveState() {
+    try {
+      const data = {
+        index: state.index,
+        chosen: state.chosen,
+        stage: state.stage,
+        currentKous: state.currentKous,
+        kouScores: state.kouScores,
+        kouShown: state.kouShown
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch {}
+  }
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data || typeof data.index !== 'number') return null;
+      return data;
+    } catch { return null; }
+  }
+
+  function boot() {
+    const saved = loadState();
+    if (saved && Array.isArray(saved.chosen) && Array.isArray(saved.kouScores)) {
+      state.index = saved.index;
+      state.chosen = saved.chosen;
+      state.stage = saved.stage;
+      state.currentKous = saved.currentKous;
+      state.kouScores = saved.kouScores;
+      state.kouShown = saved.kouShown || [];
+      renderProgress();
+      updateIndicator();
+      const colorIdx = Math.max(0, Math.min(sekki.length - 1, state.stage === 'kou' ? state.index - 1 : state.index));
+      setThemeByIndex(colorIdx);
+      if (state.stage === 'kou' && state.currentKous && state.chosen.length > 0) {
+        const lastName = state.chosen[state.chosen.length - 1];
+        renderKouQuestion(lastName, state.currentKous, colorIdx);
+      } else {
+        nextSekkiQuestion();
+      }
+    } else {
+      reset();
+    }
+  }
+
   // boot
-  reset();
+  boot();
 })();
