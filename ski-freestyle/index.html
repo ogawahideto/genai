@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Freestyle Ski: Slopestyle 3D</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #00a8ff;
+            font-family: 'Segoe UI', sans-serif;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        #score-board {
+            text-align: right;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .score-value {
+            font-size: 3rem;
+            font-weight: 900;
+        }
+        #trick-display {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        #trick-display.active { opacity: 1; }
+        .trick-name {
+            font-size: 3rem;
+            color: #f1c40f;
+            text-shadow: 2px 2px 0 #000;
+            font-weight: 900;
+        }
+        #controls-hint {
+            color: #fff;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            align-self: flex-start;
+        }
+        .key {
+            background: #fff;
+            color: #333;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin: 0 2px;
+        }
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.5s;
+            backdrop-filter: blur(10px);
+            pointer-events: auto;
+        }
+        #game-over.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        button {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="ui-layer">
+    <div id="controls-hint">
+        <div><span class="key">←</span> <span class="key">→</span> : Turn / Spin</div>
+        <div><span class="key">Space</span> : Jump</div>
+        <div><span class="key">↑</span> <span class="key">↓</span> : Flip / Balance</div>
+    </div>
+    
+    <div id="score-board">
+        <div style="font-size: 1.2rem; font-weight: bold;">SCORE</div>
+        <div class="score-value" id="score">0</div>
+        <div>COMBOS: <span id="combo">0</span></div>
+    </div>
+
+    <div id="trick-display">
+        <div class="trick-name" id="trick-name">Misty 540</div>
+        <div id="trick-points" style="font-size: 1.5rem; color: #fff;">+500</div>
+    </div>
+</div>
+
+<div id="game-over">
+    <h1>FINISH!</h1>
+    <p style="font-size: 2rem;">Total Score: <span id="final-score">0</span></p>
+    <button onclick="resetGame()">PLAY AGAIN</button>
+</div>
+
+<script>
+/**
+ * AIモデル: Gemini 2.0 Flash
+ * 作成日時: 2026-02-11
+ * 実装内容: 3D後方視点スキーフリースタイル
+ */
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const input = { keys: {} };
+
+const STATE = { SKIING: 1, JUMPING: 2, GRINDING: 3, CRASHED: 4, FINISHED: 5 };
+const GRAVITY = 0.5;
+const TURN_SPEED = 0.08;
+
+function rand(min, max) { return Math.random() * (max - min) + min; }
+function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
+function toRad(deg) { return deg * Math.PI / 180; }
+
+class Camera {
+    constructor() {
+        this.x = 0; this.y = 0; this.z = 0;
+        this.fov = 400; 
+        this.dist = 220;   // カメラを近づける
+        this.height = 90;  // 高さを抑えて迫力を出す
+    }
+    update(player) {
+        this.x = player.x;
+        this.y = player.y - this.dist;
+        this.z = player.z + this.height;
+    }
+}
+
+function project(x, y, z, cam) {
+    const dz = y - cam.y;
+    const scale = cam.fov / (Math.max(1, dz));
+    const sx = (x - cam.x) * scale + canvas.width / 2;
+    const sy = (canvas.height / 2) + (cam.height - z) * scale * 0.5;
+    return { x: sx, y: sy, scale: scale, dz: dz };
+}
+
+class Player {
+// ... (Player class content stays same, only showing relevant parts if needed)
+    constructor() {
+        this.reset();
+    }
+    reset() {
+        this.x = 0; this.y = 0; this.z = 0;
+        this.vx = 0; this.vy = 0; this.vz = 0;
+        this.rotation = 0;
+        this.trickRotation = 0;
+        this.flipRotation = 0;
+        this.state = STATE.SKIING;
+        this.score = 0;
+        this.combo = 0;
+        this.balance = 0;
+    }
+    update(input) {
+        if (this.state === STATE.FINISHED || this.state === STATE.CRASHED) return;
+
+        const GRAVITY_ACCEL = 0.7;
+        const AIR_RES = 0.003;
+        const SNOW_FRIC = 0.005;
+        const GRIP = 0.15;
+
+        if (this.state === STATE.SKIING || this.state === STATE.GRINDING) {
+            this.vy += GRAVITY_ACCEL;
+            let speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            if (speed > 0.1) {
+                let velocityAngle = Math.atan2(this.vx, this.vy);
+                let angleDiff = this.rotation - velocityAngle;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+                let braking = Math.pow(Math.sin(angleDiff), 2) * 0.05;
+                this.vx *= (1 - (AIR_RES + SNOW_FRIC + braking));
+                this.vy *= (1 - (AIR_RES + SNOW_FRIC + braking));
+
+                let targetVx = Math.sin(this.rotation) * speed;
+                let targetVy = Math.cos(this.rotation) * speed;
+                this.vx += (targetVx - this.vx) * GRIP;
+                this.vy += (targetVy - this.vy) * GRIP;
+
+                if (!input.keys['ArrowLeft'] && !input.keys['ArrowRight']) this.rotation *= 0.95;
+            }
+        }
+
+        if (this.state === STATE.SKIING) {
+            if (input.keys['ArrowLeft']) this.rotation -= TURN_SPEED;
+            if (input.keys['ArrowRight']) this.rotation += TURN_SPEED;
+            this.rotation = clamp(this.rotation, -1.5, 1.5);
+            if (input.keys[' ']) { this.vz = 8; this.state = STATE.JUMPING; }
+        } else if (this.state === STATE.JUMPING) {
+            this.z += this.vz; this.vz -= GRAVITY;
+            if (input.keys['ArrowLeft']) { this.trickRotation -= 6; this.rotation -= 0.1; }
+            if (input.keys['ArrowRight']) { this.trickRotation += 6; this.rotation += 0.1; }
+            if (input.keys['ArrowUp']) this.flipRotation -= 5;
+            if (input.keys['ArrowDown']) this.flipRotation += 5;
+            if (this.z <= 0) { this.z = 0; this.land(); }
+        } else if (this.state === STATE.GRINDING) {
+            this.vy = Math.max(this.vy, 15);
+            if (input.keys['ArrowLeft']) this.balance -= 0.05;
+            if (input.keys['ArrowRight']) this.balance += 0.05;
+            this.balance += (Math.random() - 0.5) * 0.05;
+            if (Math.abs(this.balance) > 1.0) { this.state = STATE.JUMPING; this.vz = 5; showTrick("Slip!", 0); }
+            if (input.keys[' ']) { this.state = STATE.JUMPING; this.vz = 10; }
+        }
+
+        this.x += this.vx; this.y += this.vy;
+        if (Math.abs(this.x) > 1000) { this.x = Math.sign(this.x) * 1000; this.vx *= -0.2; }
+    }
+    land() {
+        const clean = (Math.abs(this.trickRotation) % 360 < 60 || Math.abs(this.trickRotation) % 360 > 300) &&
+                      (Math.abs(this.flipRotation) % 360 < 60 || Math.abs(this.flipRotation) % 360 > 300);
+        if (clean) {
+            this.state = STATE.SKIING;
+            let pts = Math.round(Math.abs(this.trickRotation)/180)*180 + Math.round(Math.abs(this.flipRotation)/360)*500;
+            if (pts > 0) { this.combo++; this.score += pts * this.combo; showTrick("Nice!", pts * this.combo); }
+            this.rotation = 0;
+        } else {
+            this.state = STATE.CRASHED; this.combo = 0; this.vx = 0; this.vy = 0; showTrick("CRASH!", 0);
+            setTimeout(() => { if(this.state === STATE.CRASHED) { this.state = STATE.SKIING; this.vy = 10; this.rotation = 0; } }, 1500);
+        }
+        this.trickRotation = 0; this.flipRotation = 0;
+    }
+    draw(ctx, cam) {
+        const p = project(this.x, this.y, this.z, cam);
+        const s = 20 * p.scale;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(toRad(this.flipRotation) + this.rotation * 0.5);
+        ctx.fillStyle = '#333';
+        ctx.fillRect(-s*0.4, -s*0.5, s*0.1, s*1.5);
+        ctx.fillRect(s*0.3, -s*0.5, s*0.1, s*1.5);
+        ctx.fillStyle = this.state === STATE.GRINDING ? '#f39c12' : '#e74c3c';
+        ctx.fillRect(-s*0.3, -s*0.8, s*0.6, s*0.8);
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(0, -s*0.9, s*0.2, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    }
+}
+
+class Obstacle {
+    constructor(x, y, type, w, h) {
+        this.x = x; this.y = y; this.type = type; this.w = w; this.h = h;
+    }
+    draw(ctx, cam) {
+        const height = this.type === 'kicker' ? 80 : 15; // キッカーをさらに高く (40 -> 80)
+        const p1_base = project(this.x, this.y, 0, cam);
+        const p1_top = project(this.x, this.y, height, cam);
+        const p2_base = project(this.x, this.y + this.h, 0, cam);
+        const p2_top = project(this.x, this.y + this.h, height, cam);
+
+        if (p1_base.dz < 0 || p1_base.y > canvas.height + 400) return;
+
+        const w1 = this.w * p1_base.scale;
+        const w2 = this.w * p2_base.scale;
+
+        if (this.type === 'kicker') {
+            // キッカーの側面（左）
+            ctx.fillStyle = '#2980b9';
+            ctx.beginPath();
+            ctx.moveTo(p1_base.x - w1/2, p1_base.y);
+            ctx.lineTo(p1_top.x - w1/2, p1_top.y);
+            ctx.lineTo(p2_top.x - w2/2, p2_top.y);
+            ctx.lineTo(p2_base.x - w2/2, p2_base.y);
+            ctx.fill();
+
+            // キッカーの側面（右）
+            ctx.fillStyle = '#1c598a';
+            ctx.beginPath();
+            ctx.moveTo(p1_base.x + w1/2, p1_base.y);
+            ctx.lineTo(p1_top.x + w1/2, p1_top.y);
+            ctx.lineTo(p2_top.x + w2/2, p2_top.y);
+            ctx.lineTo(p2_base.x + w2/2, p2_base.y);
+            ctx.fill();
+
+            // キッカーの斜面（上面）
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.moveTo(p1_base.x - w1/2, p1_base.y);
+            ctx.lineTo(p1_base.x + w1/2, p1_base.y);
+            ctx.lineTo(p2_top.x + w2/2, p2_top.y);
+            ctx.lineTo(p2_top.x - w2/2, p2_top.y);
+            ctx.fill();
+            
+            // リップ（先端）のハイライト
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2 * p2_top.scale;
+            ctx.beginPath();
+            ctx.moveTo(p2_top.x - w2/2, p2_top.y);
+            ctx.lineTo(p2_top.x + w2/2, p2_top.y);
+            ctx.stroke();
+
+        } else if (this.type === 'rail') {
+            // レールの厚み（側面）
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.moveTo(p1_base.x - w1/2, p1_top.y);
+            ctx.lineTo(p1_base.x + w1/2, p1_top.y);
+            ctx.lineTo(p2_base.x + w2/2, p2_top.y);
+            ctx.lineTo(p2_base.x - w2/2, p2_top.y);
+            ctx.fill();
+
+            // レールの上面
+            ctx.fillStyle = '#7f8c8d';
+            ctx.fillRect(p1_base.x - w1/2, p1_top.y - 5 * p1_base.scale, w1, 5 * p1_base.scale); // 簡易的な厚み
+            
+            // 脚
+            ctx.strokeStyle = '#34495e';
+            ctx.lineWidth = 4 * p1_base.scale;
+            ctx.beginPath();
+            ctx.moveTo(p1_base.x, p1_base.y); ctx.lineTo(p1_base.x, p1_top.y);
+            ctx.moveTo(p2_base.x, p2_base.y); ctx.lineTo(p2_base.x, p2_top.y);
+            ctx.stroke();
+        }
+    }
+}
+
+class Course {
+    constructor() {
+        this.obstacles = []; this.generatedY = 500; this.length = 50000; // コースを長く
+        this.generate(2000);
+    }
+    generate(limitY) {
+        while (this.generatedY < limitY && this.generatedY < this.length) {
+            const type = Math.random() > 0.5 ? 'kicker' : 'rail';
+            this.obstacles.push(new Obstacle(rand(-200, 200), this.generatedY, type, type === 'rail' ? 20 : 80, 400));
+            this.generatedY += 800;
+        }
+    }
+    check(player) {
+        this.obstacles.forEach(o => {
+            if (player.y > o.y && player.y < o.y + o.h && Math.abs(player.x - o.x) < o.w) {
+                if (o.type === 'kicker' && player.state === STATE.SKIING && player.y > o.y + o.h - 50) {
+                    player.state = STATE.JUMPING; 
+                    player.vz = 22; // 高くなったキッカーに合わせてジャンプ力を強化 (15 -> 22)
+                    player.z = 20; 
+                    showTrick("BIG AIR!", 100);
+                } else if (o.type === 'rail' && player.z < 25) {
+                    if (player.state !== STATE.GRINDING) {
+                        player.state = STATE.GRINDING; 
+                        player.x = o.x; 
+                        player.rotation = Math.PI / 2; // 90度横向きに乗る
+                    }
+                }
+            }
+            if (player.state === STATE.GRINDING && player.y > o.y + o.h) {
+                player.state = STATE.JUMPING; player.vz = 2; player.score += 500; showTrick("RAIL!", 500);
+            }
+        });
+    }
+}
+
+let player, camera, course, lastTime = 0;
+
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize);
+resize();
+
+window.addEventListener('keydown', e => { input.keys[e.key] = true; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault(); });
+window.addEventListener('keyup', e => input.keys[e.key] = false);
+
+function showTrick(name, pts) {
+    const el = document.getElementById('trick-display');
+    document.getElementById('trick-name').innerText = name;
+    document.getElementById('trick-points').innerText = pts > 0 ? `+${pts}` : '';
+    el.classList.remove('active'); void el.offsetWidth; el.classList.add('active');
+    document.getElementById('score').innerText = player.score;
+    document.getElementById('combo').innerText = player.combo;
+}
+
+function resetGame() {
+    player.reset(); course = new Course(); camera.update(player);
+    document.getElementById('game-over').classList.remove('visible');
+}
+
+player = new Player(); camera = new Camera(); course = new Course();
+
+function loop(timestamp) {
+    const dt = timestamp - lastTime; lastTime = timestamp;
+    if (player.state !== STATE.FINISHED) {
+        player.update(input); camera.update(player);
+        course.generate(player.y + 3000); course.check(player);
+        if (player.y > course.length) {
+            player.state = STATE.FINISHED;
+            document.getElementById('final-score').innerText = player.score;
+            document.getElementById('game-over').classList.add('visible');
+        }
+    }
+    // Draw
+    ctx.fillStyle = '#00a8ff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#f0f8ff'; ctx.fillRect(0, canvas.height/2, canvas.width, canvas.height/2);
+    
+    const renderList = [];
+    course.obstacles.forEach(o => { if (o.y + o.h > camera.y) renderList.push(o); });
+    renderList.push(player);
+    renderList.sort((a, b) => (b.y || 0) - (a.y || 0));
+    renderList.forEach(obj => obj.draw(ctx, camera));
+
+    requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
