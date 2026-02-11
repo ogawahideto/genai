@@ -84,6 +84,9 @@ This repository contains a collection of small, self-contained web applications 
 #### [立春 Risshun — こちこおりをとく](risshun-game/) (2026-02-05)
 ゲームアプリケーション
 
+#### [二十四節気・七十二候 カードゲーム](sekki-kou-card-game/) (2026-02-07)
+ゲームアプリケーション
+
 #### [七五三数字パズル - Shichi-Go-San Number Puzzle](shichigosan-puzzle/) (2025-11-15)
 ゲームアプリケーション
 
@@ -307,7 +310,7 @@ AI・チャットアプリケーション
 #### [Advanced Gastroscopy Simulator v6.1 (Fixed Tracker)](gastroscopy-simulator/) (2026-01-31)
 実験的アプリケーション
 
-#### [Advanced Gastroscopy Simulator v6.1 (Fixed Tracker)](gastroscopy-simulator-real/) (2026-02-03)
+#### [Advanced Gastroscopy Simulator v6.1 (Fixed Tracker)](gastroscopy-simulator-real/) (2026-02-07)
 実験的アプリケーション
 
 #### [Grid Canvas](hougan/) (2025-09-05)
@@ -347,6 +350,9 @@ AI・チャットアプリケーション
 実験的アプリケーション
 
 #### [秋分の日 ](shubun-no-hi/) ( Shubun no Hi|2025-09-23)
+実験的アプリケーション
+
+#### [Freestyle Ski: Slopestyle 3D](ski-freestyle/) (2026-02-11)
 実験的アプリケーション
 
 #### [ソフトウェアづくりの知恵袋 - インタラクティブ版](softwareeng/) (2025-09-20)
