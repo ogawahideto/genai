@@ -1,0 +1,521 @@
+<!--
+AIモデル: Gemini 2.0 Flash
+Gemini CLIバージョン: 0.1.0 (estimated)
+作成日時: 2026年3月7日
+ユーザープロンプト: 新しいディレクトを作って「揺れ豆腐」という名前のゲームを作ってください。これは皿に乗った揺れる豆腐を崩れないようにバランスをとるゲームです。床が動いたり、風が吹いたり障害が発生しますが、キャラクタを上下左右に動かしてどれだけ長い時間豆腐を維持できるかを競います。
+AIのアプローチ: 
+  - Canvas APIを使用したリアルタイム物理シミュレーション。
+  - 豆腐を4つの上部頂点と4つの底部頂点を持つばね質点系としてモデル化し、豆腐特有の「ぷるぷる感」を表現。
+  - 床の加速度、風の抵抗、重力、慣性力を計算に含める。
+  - プレイヤーの操作は皿（キャラクターの手元）の移動速度として反映され、豆腐に慣性力を与える。
+実装の意図: 視覚的に心地よい「豆腐の揺れ」を実現し、シンプルながらも緊張感のあるバランスゲームを提供する。バニラJSとCSSのみで完結させ、追加のライブラリなしで高いインタラクティビティを確保する。
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>揺れ豆腐 - 禅のバランス</title>
+    <style>
+        :root {
+            --bg-color: #f0f4f8;
+            --tofu-color: #ffffff;
+            --plate-color: #e0e0e0;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --accent-color: #ff6b6b;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            display: block;
+            touch-action: none;
+            cursor: none;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+            letter-spacing: 0.5rem;
+            color: #555;
+            text-shadow: 1px 1px 2px white;
+        }
+
+        #score {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 30px;
+            color: #777;
+            font-size: 0.9rem;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
+        }
+
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2rem 3rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px var(--shadow-color);
+            text-align: center;
+            display: none;
+            z-index: 20;
+        }
+
+        #message h2 {
+            margin-top: 0;
+            color: var(--accent-color);
+        }
+
+        button {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+        }
+
+        .wind-indicator {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 60px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 30px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 10px 0;
+        }
+
+        .wind-bar {
+            width: 10px;
+            background: #80deea;
+            border-radius: 5px;
+            transition: height 0.3s;
+        }
+
+        .wind-label {
+            position: absolute;
+            top: -25px;
+            font-size: 0.8rem;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="ui">
+        <h1>揺れ豆腐</h1>
+        <div id="score">経過時間: 0.0s</div>
+    </div>
+
+    <div class="wind-indicator">
+        <span class="wind-label">風力</span>
+        <div id="wind-bar" class="wind-bar" style="height: 0%"></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="instructions">
+        矢印キー または WASD で移動。豆腐を皿から落とさないように！
+    </div>
+
+    <div id="message">
+        <h2 id="msg-title">豆腐崩壊...</h2>
+        <p id="msg-score">記録: 0.0秒</p>
+        <button onclick="resetGame()">再試行</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('score');
+    const messageBox = document.getElementById('message');
+    const msgScore = document.getElementById('msg-score');
+    const windBar = document.getElementById('wind-bar');
+
+    let width, height;
+    let animationId;
+    let startTime;
+    let isGameOver = false;
+
+    // ゲーム設定
+    const config = {
+        tofuSize: 100,
+        gravity: 0.3,
+        springStiffness: 0.1,
+        damping: 0.92,
+        maxTilt: 1.2, // 崩壊する角度（ラジアン）
+        moveSpeed: 0.8,
+        friction: 0.9,
+    };
+
+    // プレイヤー（皿）の状態
+    let player = {
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        ax: 0,
+        ay: 0
+    };
+
+    // 豆腐の状態（複数の質点）
+    // 上面4点、底面4点
+    let tofu = {
+        points: [],
+        center: { x: 0, y: 0 },
+        isStable: true
+    };
+
+    // 入力管理
+    const keys = {};
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    // 外的要因
+    let wind = { x: 0, force: 0, targetForce: 0 };
+    let floorShake = { x: 0, y: 0, intensity: 0 };
+
+    function init() {
+        resize();
+        resetGame();
+        loop();
+    }
+
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        player.x = width / 2;
+        player.y = height * 0.7;
+    }
+
+    function resetGame() {
+        player.x = width / 2;
+        player.y = height * 0.7;
+        player.vx = 0;
+        player.vy = 0;
+
+        // 豆腐の初期化 (8つの点)
+        // 0-3: 上面, 4-7: 底面
+        const s = config.tofuSize;
+        tofu.points = [];
+        
+        // 頂点の相対位置（立方体っぽく）
+        const vertices = [
+            { x: -s/2, y: -s }, // 0: 左上
+            { x:  s/2, y: -s }, // 1: 右上
+            { x:  s/2 - 10, y: -s + 10 }, // 2: 奥右上
+            { x: -s/2 - 10, y: -s + 10 }, // 3: 奥左上
+            { x: -s/2, y: 0 },  // 4: 左下
+            { x:  s/2, y: 0 },  // 5: 右下
+            { x:  s/2 - 10, y: 10 },  // 6: 奥右下
+            { x: -s/2 - 10, y: 10 }   // 7: 奥左下
+        ];
+
+        vertices.forEach(v => {
+            tofu.points.push({
+                x: player.x + v.x,
+                y: player.y + v.y,
+                ox: v.x,
+                oy: v.y,
+                vx: 0,
+                vy: 0
+            });
+        });
+
+        tofu.isStable = true;
+        startTime = Date.now();
+        isGameOver = false;
+        messageBox.style.display = 'none';
+        
+        wind.force = 0;
+        wind.targetForce = 0;
+    }
+
+    function update() {
+        if (isGameOver) return;
+
+        const now = Date.now();
+        const elapsed = (now - startTime) / 1000;
+        scoreElement.innerText = `経過時間: ${elapsed.toFixed(1)}s`;
+
+        // 風のシミュレーション
+        if (Math.random() < 0.01) {
+            wind.targetForce = (Math.random() - 0.5) * 4 * (1 + elapsed * 0.05);
+        }
+        wind.force += (wind.targetForce - wind.force) * 0.05;
+        windBar.style.height = `${Math.abs(wind.force) * 20}%`;
+        windBar.style.background = wind.force > 0 ? '#80deea' : '#ffab91';
+
+        // 床の揺れ（時間経過で激しくなる）
+        floorShake.intensity = Math.min(2, elapsed * 0.02);
+        if (Math.random() < 0.05) {
+            floorShake.x = (Math.random() - 0.5) * floorShake.intensity * 10;
+            floorShake.y = (Math.random() - 0.5) * floorShake.intensity * 5;
+        }
+        floorShake.x *= 0.9;
+        floorShake.y *= 0.9;
+
+        // プレイヤー移動
+        let ax = 0, ay = 0;
+        if (keys['ArrowLeft'] || keys['KeyA']) ax -= config.moveSpeed;
+        if (keys['ArrowRight'] || keys['KeyD']) ax += config.moveSpeed;
+        if (keys['ArrowUp'] || keys['KeyW']) ay -= config.moveSpeed;
+        if (keys['ArrowDown'] || keys['KeyS']) ay += config.moveSpeed;
+
+        player.vx += ax + floorShake.x;
+        player.vy += ay + floorShake.y;
+        player.vx *= config.friction;
+        player.vy *= config.friction;
+        player.x += player.vx;
+        player.y += player.vy;
+
+        // 画面端の制限
+        player.x = Math.max(100, Math.min(width - 100, player.x));
+        player.y = Math.max(100, Math.min(height - 100, player.y));
+
+        // 豆腐の物理
+        // 底面（4-7）は皿に固定（ある程度の弾性を持たせる）
+        for (let i = 4; i < 8; i++) {
+            const p = tofu.points[i];
+            const targetX = player.x + p.ox;
+            const targetY = player.y + p.oy;
+            
+            p.vx += (targetX - p.x) * 0.5;
+            p.vy += (targetY - p.y) * 0.5;
+            p.vx *= 0.5;
+            p.vy *= 0.5;
+            p.x += p.vx;
+            p.y += p.vy;
+        }
+
+        // 上面（0-3）は自由だが、底面や他の点とばねで繋がっている
+        for (let i = 0; i < 4; i++) {
+            const p = tofu.points[i];
+            
+            // 重力
+            p.vy += config.gravity;
+            
+            // 風
+            p.vx += wind.force;
+
+            // 各点との結合
+            const connections = [i+4, (i+1)%4, (i+3)%4, (i+1)%4+4];
+            connections.forEach(targetIdx => {
+                const target = tofu.points[targetIdx];
+                const dx = target.x - p.x;
+                const dy = target.y - p.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                // 元の距離
+                const odx = target.ox - p.ox;
+                const ody = target.oy - p.oy;
+                const oDist = Math.sqrt(odx*odx + ody*ody);
+                
+                const force = (dist - oDist) * config.springStiffness;
+                p.vx += (dx / dist) * force;
+                p.vy += (dy / dist) * force;
+            });
+
+            p.vx *= config.damping;
+            p.vy *= config.damping;
+            p.x += p.vx;
+            p.y += p.vy;
+        }
+
+        // 崩壊判定
+        // 上面の中央位置を計算
+        let avgX = 0, avgY = 0;
+        for (let i = 0; i < 4; i++) {
+            avgX += tofu.points[i].x;
+            avgY += tofu.points[i].y;
+        }
+        avgX /= 4;
+        avgY /= 4;
+
+        // 底面の中央
+        let baseAvgX = 0, baseAvgY = 0;
+        for (let i = 4; i < 8; i++) {
+            baseAvgX += tofu.points[i].x;
+            baseAvgY += tofu.points[i].y;
+        }
+        baseAvgX /= 4;
+        baseAvgY /= 4;
+
+        const tilt = Math.abs(avgX - baseAvgX);
+        const heightDiff = baseAvgY - avgY;
+
+        if (tilt > config.tofuSize * 0.8 || heightDiff < config.tofuSize * 0.3) {
+            gameOver(elapsed);
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+
+        // 背景に風のパーティクルを少し描画
+        drawEnvironment();
+
+        // 皿を描画
+        drawPlate();
+
+        // 豆腐を描画
+        drawTofu();
+    }
+
+    function drawEnvironment() {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(100, 150, 255, 0.1)';
+        ctx.lineWidth = 2;
+        const time = Date.now() * 0.001;
+        for(let i=0; i<5; i++) {
+            const y = (height * (i/5) + time * 50) % height;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y + Math.sin(time + i) * 20);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    function drawPlate() {
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        
+        // 皿の影
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        ctx.beginPath();
+        ctx.ellipse(0, 15, config.tofuSize * 0.9, 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 皿本体
+        const grad = ctx.createLinearGradient(0, -10, 0, 20);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(1, '#d0d0d0');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.ellipse(0, 5, config.tofuSize * 0.8, 15, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#bbb';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        
+        ctx.restore();
+    }
+
+    function drawTofu() {
+        const p = tofu.points;
+        
+        // 面の描画順（奥から手前へ）
+        // 奥面 (3, 2, 6, 7)
+        drawFace([3, 2, 6, 7], '#f8f8f8');
+        // 左面 (0, 3, 7, 4)
+        drawFace([0, 3, 7, 4], '#eeeeee');
+        // 右面 (1, 2, 6, 5)
+        drawFace([1, 2, 6, 5], '#e0e0e0');
+        // 上面 (0, 1, 2, 3)
+        drawFace([0, 1, 2, 3], '#ffffff');
+        // 前面 (0, 1, 5, 4)
+        drawFace([0, 1, 5, 4], '#fefefe');
+
+        // エッジを少し強調
+        ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+
+    function drawFace(indices, color) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(tofu.points[indices[0]].x, tofu.points[indices[0]].y);
+        for (let i = 1; i < indices.length; i++) {
+            ctx.lineTo(tofu.points[indices[i]].x, tofu.points[indices[i]].y);
+        }
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    function gameOver(score) {
+        isGameOver = true;
+        msgScore.innerText = `記録: ${score.toFixed(1)}秒`;
+        messageBox.style.display = 'block';
+        
+        // 豆腐を崩すアニメーション
+        tofu.points.forEach(p => {
+            p.vx += (Math.random() - 0.5) * 10;
+            p.vy -= Math.random() * 5;
+        });
+    }
+
+    function loop() {
+        update();
+        draw();
+        animationId = requestAnimationFrame(loop);
+    }
+
+    window.addEventListener('resize', resize);
+    init();
+
+</script>
+</body>
+</html>
