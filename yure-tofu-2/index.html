@@ -1,0 +1,1079 @@
+<!--
+AI Model: Claude Sonnet 4.6
+User Prompt: 皿に乗った揺れる豆腐を崩れないようにバランスをとるゲーム。床が動いたり風が吹いたり障害が発生するが、キャラクタを上下左右に動かしてどれだけ長い時間豆腐を維持できるかを競う。インタラクティブで見た目も重視。
+AI Approach: HTML5 Canvas physics simulation with spring-based tofu wobble, particle effects, dynamic environment (wind, floor tilt), and smooth character animations
+Implementation Intent: 物理シミュレーションによる豆腐の揺れ表現と、視覚的に美しいバランスゲームの実装
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>揺れ豆腐 - バランスゲーム</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a0a2e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+  #gameContainer {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  #ui {
+    display: flex;
+    gap: 30px;
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(255,200,100,0.8);
+    padding: 8px 20px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 20px;
+    border: 1px solid rgba(255,200,100,0.3);
+  }
+  #ui span { color: #ffd700; }
+  canvas {
+    border-radius: 16px;
+    box-shadow: 0 0 60px rgba(100,50,200,0.5), 0 0 120px rgba(50,20,100,0.3);
+    cursor: none;
+    display: block;
+  }
+  #overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,5,20,0.85);
+    border-radius: 16px;
+    color: #fff;
+    text-align: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+  #overlay h1 {
+    font-size: 48px;
+    color: #ffd700;
+    text-shadow: 0 0 20px rgba(255,215,0,0.8);
+    margin-bottom: 10px;
+  }
+  #overlay .subtitle {
+    font-size: 20px;
+    color: #aaa;
+    margin-bottom: 20px;
+  }
+  #overlay .instructions {
+    font-size: 15px;
+    color: #ccc;
+    line-height: 2;
+    margin-bottom: 30px;
+    background: rgba(255,255,255,0.05);
+    padding: 15px 25px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  #overlay button {
+    padding: 14px 50px;
+    font-size: 22px;
+    background: linear-gradient(135deg, #ff6b35, #ffd700);
+    border: none;
+    border-radius: 50px;
+    color: #1a0a2e;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(255,107,53,0.5);
+  }
+  #overlay button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 30px rgba(255,107,53,0.7);
+  }
+  #windIndicator {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: rgba(150,200,255,0.8);
+    font-size: 13px;
+    pointer-events: none;
+  }
+  #mobileControls {
+    display: none;
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    gap: 8px;
+  }
+  .mBtn {
+    width: 55px; height: 55px;
+    background: rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    color: white;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (max-width: 600px) {
+    #mobileControls { display: flex; }
+    canvas { width: 360px; height: 540px; }
+  }
+</style>
+</head>
+<body>
+<div id="gameContainer">
+  <div id="ui">
+    <div>タイム: <span id="timeDisplay">0.0s</span></div>
+    <div>ベスト: <span id="bestDisplay">0.0s</span></div>
+    <div>レベル: <span id="levelDisplay">1</span></div>
+  </div>
+  <canvas id="canvas" width="540" height="700"></canvas>
+  <div id="overlay">
+    <h1>🍜 揺れ豆腐</h1>
+    <div class="subtitle">豆腐を崩さずバランスを保て！</div>
+    <div class="instructions">
+      ← → で左右移動 &nbsp;|&nbsp; ↑ ↓ で前後傾け<br>
+      床が揺れ、風が吹き、豆腐が崩れる前に耐えろ！<br>
+      豆腐が皿から落ちたらゲームオーバー
+    </div>
+    <button id="startBtn">ゲームスタート</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// --- State ---
+let gameState = 'menu'; // menu, playing, gameover
+let time = 0, best = 0, level = 1;
+let keys = {};
+let animFrame;
+let lastTime = 0;
+
+// --- Physics constants ---
+const GRAVITY = 0.4;
+const TOFU_DAMPING = 0.985;
+const SPRING_K = 0.08;
+const SPRING_DAMPING = 0.82;
+
+// --- Player (Chef character) ---
+const player = {
+  x: W/2, y: H - 180,
+  vx: 0, vy: 0,
+  w: 40, h: 60,
+  angle: 0, // tilt of plate
+  plateAngle: 0,
+  plateAngularV: 0,
+  onGround: true,
+  facing: 1,
+  animTick: 0,
+  legPhase: 0
+};
+
+// --- Plate ---
+const plate = {
+  w: 90, h: 12,
+  wobble: 0
+};
+
+// --- Tofu Physics ---
+const tofu = {
+  x: 0, y: 0, // relative to plate center
+  vx: 0, vy: 0,
+  angle: 0,    // rotation
+  angleV: 0,
+  w: 50, h: 70,
+  // Jelly segments for wobble effect
+  segments: [], // spring-based deformation
+  health: 100,  // integrity (cracks when stressed)
+  cracks: []
+};
+
+// Initialize tofu segments
+function initTofuSegments() {
+  tofu.segments = [];
+  const cols = 4, rows = 5;
+  for (let r = 0; r <= rows; r++) {
+    tofu.segments.push([]);
+    for (let c = 0; c <= cols; c++) {
+      const bx = (c / cols - 0.5) * tofu.w;
+      const by = (r / rows - 0.5) * tofu.h;
+      tofu.segments[r].push({ ox: bx, oy: by, dx: 0, dy: 0, vx: 0, vy: 0 });
+    }
+  }
+  tofu.cracks = [];
+  tofu.health = 100;
+}
+
+// --- Environment ---
+let floor = {
+  y: H - 80,
+  tiltAngle: 0,
+  tiltV: 0,
+  shakeX: 0,
+  shakeY: 0
+};
+
+let wind = { force: 0, target: 0, timer: 0, display: 0 };
+let particles = [];
+let sparkles = [];
+let bgStars = [];
+
+// Background stars
+function initStars() {
+  bgStars = [];
+  for (let i = 0; i < 80; i++) {
+    bgStars.push({
+      x: Math.random() * W,
+      y: Math.random() * H * 0.7,
+      r: Math.random() * 2 + 0.5,
+      brightness: Math.random(),
+      phase: Math.random() * Math.PI * 2,
+      speed: Math.random() * 0.02 + 0.005
+    });
+  }
+}
+
+// --- Init game ---
+function initGame() {
+  time = 0; level = 1;
+  player.x = W/2; player.y = H - 180;
+  player.vx = 0; player.vy = 0;
+  player.angle = 0; player.plateAngle = 0; player.plateAngularV = 0;
+  player.animTick = 0; player.legPhase = 0;
+  floor.tiltAngle = 0; floor.tiltV = 0;
+  floor.shakeX = 0; floor.shakeY = 0;
+  wind.force = 0; wind.target = 0; wind.timer = 120; wind.display = 0;
+  particles = []; sparkles = [];
+
+  tofu.x = 0; tofu.y = -tofu.h/2 - plate.h/2 - 2;
+  tofu.vx = 0; tofu.vy = 0;
+  tofu.angle = 0; tofu.angleV = 0;
+  initTofuSegments();
+  initStars();
+}
+
+// --- Input ---
+document.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// Mobile controls
+const mBtns = ['mLeft','mRight','mTiltL','mTiltR'];
+mBtns.forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('touchstart', e => { keys[id] = true; e.preventDefault(); }, { passive: false });
+  el.addEventListener('touchend', e => { keys[id] = false; e.preventDefault(); }, { passive: false });
+});
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+
+function startGame() {
+  document.getElementById('overlay').style.display = 'none';
+  gameState = 'playing';
+  initGame();
+  lastTime = performance.now();
+  if (animFrame) cancelAnimationFrame(animFrame);
+  loop(lastTime);
+}
+
+// --- Main Loop ---
+function loop(now) {
+  const dt = Math.min((now - lastTime) / 16.67, 3);
+  lastTime = now;
+  if (gameState === 'playing') {
+    update(dt);
+  }
+  render();
+  animFrame = requestAnimationFrame(loop);
+}
+
+// --- Update ---
+function update(dt) {
+  time += dt * 16.67 / 1000;
+  level = Math.floor(time / 15) + 1;
+
+  updateEnvironment(dt);
+  updatePlayer(dt);
+  updateTofu(dt);
+  updateParticles(dt);
+
+  // Check game over
+  const plateWorldX = player.x + plate.w/2 * Math.cos(player.plateAngle + Math.PI/2 + Math.PI);
+  const tofuAbsX = player.x + tofu.x * Math.cos(player.plateAngle) - tofu.y * Math.sin(player.plateAngle);
+  const tofuAbsY = player.y - plate.h - tofu.y * Math.cos(player.plateAngle) - tofu.x * Math.sin(player.plateAngle);
+
+  // Tofu fell off plate (too far from center)
+  const relDist = Math.abs(tofu.x);
+  if (relDist > plate.w * 0.7 || tofu.health <= 0 || tofuAbsY > H + 50) {
+    gameOver();
+  }
+}
+
+// --- Environment update ---
+function updateEnvironment(dt) {
+  // Floor tilt
+  const lvlFactor = Math.min(level * 0.3, 3);
+  if (Math.random() < 0.005 * dt * lvlFactor) {
+    floor.tiltV += (Math.random() - 0.5) * 0.08 * lvlFactor;
+  }
+  floor.tiltAngle += floor.tiltV * dt;
+  floor.tiltAngle *= 0.97;
+  floor.tiltV *= 0.96;
+  floor.tiltAngle = Math.max(-0.25, Math.min(0.25, floor.tiltAngle));
+
+  // Floor shake
+  floor.shakeX = Math.sin(time * 8.3) * level * 0.5;
+  floor.shakeY = Math.sin(time * 11.7) * level * 0.3;
+
+  // Wind
+  wind.timer -= dt;
+  if (wind.timer <= 0) {
+    wind.target = (Math.random() - 0.5) * 0.3 * lvlFactor;
+    wind.timer = 80 + Math.random() * 120;
+  }
+  wind.force += (wind.target - wind.force) * 0.03 * dt;
+  wind.display += (Math.abs(wind.force) - wind.display) * 0.1 * dt;
+
+  // Wind particles
+  if (Math.abs(wind.force) > 0.05 && Math.random() < 0.15 * dt) {
+    const dir = wind.force > 0 ? 1 : -1;
+    particles.push({
+      type: 'wind',
+      x: dir > 0 ? -20 : W + 20,
+      y: Math.random() * H * 0.8 + 50,
+      vx: (2 + Math.random() * 3) * dir,
+      vy: (Math.random() - 0.5) * 0.5,
+      life: 1, maxLife: 1,
+      size: Math.random() * 3 + 1,
+      alpha: 0.4
+    });
+  }
+
+  // Sparkles around tofu
+  if (Math.random() < 0.1 * dt) {
+    const px = player.x + (Math.random() - 0.5) * tofu.w * 0.8;
+    const py = player.y - plate.h - tofu.h * 0.5 - Math.random() * tofu.h;
+    sparkles.push({
+      x: px, y: py,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: -Math.random() * 0.5,
+      life: 1, size: Math.random() * 3 + 1,
+      hue: Math.random() * 60 + 30
+    });
+  }
+}
+
+// --- Player update ---
+function updatePlayer(dt) {
+  const speed = 2.5;
+  let ax = 0;
+
+  // Horizontal movement
+  if (keys['ArrowLeft'] || keys['KeyA'] || keys['mLeft']) {
+    ax -= speed; player.facing = -1;
+  }
+  if (keys['ArrowRight'] || keys['KeyD'] || keys['mRight']) {
+    ax += speed; player.facing = 1;
+  }
+
+  // Plate tilt (counter-balance)
+  const tiltSpeed = 0.04;
+  if (keys['ArrowUp'] || keys['KeyW'] || keys['mTiltL']) {
+    player.plateAngularV -= tiltSpeed;
+  }
+  if (keys['ArrowDown'] || keys['KeyS'] || keys['mTiltR']) {
+    player.plateAngularV += tiltSpeed;
+  }
+
+  // Floor tilt affects player
+  ax += floor.tiltAngle * 15;
+
+  player.vx += ax * 0.15 * dt;
+  player.vx *= 0.82;
+  player.x += player.vx * dt;
+
+  // Plate angular physics
+  player.plateAngularV += floor.tiltAngle * 0.02 * dt;
+  player.plateAngularV *= 0.88;
+  player.plateAngle += player.plateAngularV * dt;
+  player.plateAngle = Math.max(-0.6, Math.min(0.6, player.plateAngle));
+  player.plateAngularV = Math.max(-0.15, Math.min(0.15, player.plateAngularV));
+
+  // Boundaries
+  player.x = Math.max(60, Math.min(W - 60, player.x));
+
+  // Animation
+  player.animTick += dt;
+  if (Math.abs(player.vx) > 0.5) {
+    player.legPhase += Math.abs(player.vx) * 0.1 * dt;
+  }
+
+  // Floor y with shake
+  player.y = H - 120 + floor.shakeY;
+}
+
+// --- Tofu physics ---
+function updateTofu(dt) {
+  // Gravity in plate-local frame + wind + floor effects
+  const plateAngle = player.plateAngle + floor.tiltAngle;
+  const gravX = Math.sin(plateAngle) * GRAVITY * dt;
+  const gravY = 0; // tofu sits on plate
+
+  // Wind effect
+  tofu.vx += wind.force * 0.15 * dt;
+  tofu.vx += gravX * 5;
+  tofu.vx -= tofu.x * SPRING_K * dt; // spring back to center
+  tofu.vx *= Math.pow(SPRING_DAMPING, dt);
+
+  tofu.x += tofu.vx * dt;
+
+  // Rotation caused by offset position + plate tilt
+  const torque = -tofu.x * 0.003 + player.plateAngularV * 0.5 + wind.force * 0.05;
+  tofu.angleV += torque * dt;
+  tofu.angleV *= Math.pow(0.9, dt);
+  tofu.angle += tofu.angleV * dt;
+
+  // Wobble tofu segments
+  updateTofuWobble(dt);
+
+  // Stress / health
+  const stress = Math.abs(tofu.x) / plate.w + Math.abs(tofu.angle) * 2 + Math.abs(wind.force) * 0.5;
+  if (stress > 0.7) {
+    tofu.health -= stress * 0.3 * dt;
+    if (Math.random() < 0.05 * dt && tofu.cracks.length < 8) {
+      tofu.cracks.push({
+        x: (Math.random() - 0.5) * tofu.w * 0.8,
+        y: (Math.random() - 0.5) * tofu.h * 0.8,
+        len: Math.random() * 15 + 5,
+        angle: Math.random() * Math.PI,
+        alpha: 0.6 + Math.random() * 0.4
+      });
+    }
+  } else {
+    tofu.health = Math.min(100, tofu.health + 0.05 * dt);
+    if (tofu.cracks.length > 0 && Math.random() < 0.01 * dt) {
+      tofu.cracks.pop();
+    }
+  }
+}
+
+function updateTofuWobble(dt) {
+  const speed = 0.15;
+  for (let r = 0; r < tofu.segments.length; r++) {
+    for (let c = 0; c < tofu.segments[r].length; c++) {
+      const seg = tofu.segments[r][c];
+      // Spring toward origin
+      seg.vx += -seg.dx * 0.12 * dt;
+      seg.vy += -seg.dy * 0.12 * dt;
+      // External force from tofu motion
+      seg.vx += tofu.vx * 0.08 * dt + wind.force * 0.04 * dt;
+      seg.vy += tofu.angleV * seg.ox * 0.02 * dt;
+      // Damping
+      seg.vx *= Math.pow(0.88, dt);
+      seg.vy *= Math.pow(0.88, dt);
+      // Update
+      seg.dx += seg.vx * dt;
+      seg.dy += seg.vy * dt;
+      // Clamp
+      const maxD = 8;
+      const d = Math.sqrt(seg.dx*seg.dx + seg.dy*seg.dy);
+      if (d > maxD) { seg.dx *= maxD/d; seg.dy *= maxD/d; }
+    }
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= 0.015 * dt;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+  for (let i = sparkles.length - 1; i >= 0; i--) {
+    const s = sparkles[i];
+    s.x += s.vx * dt;
+    s.y += s.vy * dt;
+    s.life -= 0.025 * dt;
+    if (s.life <= 0) sparkles.splice(i, 1);
+  }
+}
+
+// --- Game Over ---
+function gameOver() {
+  if (time > best) best = time;
+  gameState = 'gameover';
+
+  // Tofu crumble particles
+  for (let i = 0; i < 30; i++) {
+    particles.push({
+      type: 'crumble',
+      x: player.x + (Math.random() - 0.5) * tofu.w,
+      y: player.y - plate.h - tofu.h/2 + (Math.random() - 0.5) * tofu.h,
+      vx: (Math.random() - 0.5) * 6,
+      vy: -Math.random() * 5 - 1,
+      life: 1, maxLife: 1,
+      size: Math.random() * 12 + 5,
+      hue: Math.random() * 30 + 190
+    });
+  }
+
+  // Show game over overlay
+  setTimeout(() => {
+    const overlay = document.getElementById('overlay');
+    overlay.style.display = 'flex';
+    overlay.innerHTML = `
+      <h1>💥 崩壊！</h1>
+      <div class="subtitle">豆腐が崩れてしまった...</div>
+      <div class="instructions" style="font-size:18px">
+        タイム: <strong style="color:#ffd700;font-size:28px">${time.toFixed(1)}秒</strong><br><br>
+        ベストタイム: <strong style="color:#ff9944">${best.toFixed(1)}秒</strong><br>
+        到達レベル: <strong style="color:#88ffaa">Lv.${level}</strong>
+      </div>
+      <button id="startBtn">もう一度！</button>
+    `;
+    document.getElementById('startBtn').addEventListener('click', startGame);
+  }, 1200);
+}
+
+// --- Render ---
+function render() {
+  // Background gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#0d0520');
+  bgGrad.addColorStop(0.5, '#1a0a35');
+  bgGrad.addColorStop(1, '#0a0515');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Stars
+  drawStars();
+
+  // Wind particles
+  drawParticles();
+
+  // Floor
+  drawFloor();
+
+  if (gameState === 'playing' || gameState === 'gameover') {
+    // Player + plate + tofu
+    ctx.save();
+    ctx.translate(player.x + floor.shakeX, player.y);
+    drawPlayer();
+    drawPlate();
+    drawTofu();
+    ctx.restore();
+  }
+
+  // Sparkles
+  drawSparkles();
+
+  // UI overlay
+  drawHUD();
+}
+
+function drawStars() {
+  const t = performance.now() / 1000;
+  for (const s of bgStars) {
+    const b = 0.5 + 0.5 * Math.sin(t * s.speed * 60 + s.phase);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.3 + b * 0.7})`;
+    ctx.fill();
+  }
+}
+
+function drawFloor() {
+  ctx.save();
+  ctx.translate(W/2 + floor.shakeX, floor.y + floor.shakeY);
+  ctx.rotate(floor.tiltAngle);
+
+  // Floor glow
+  const floorGrad = ctx.createLinearGradient(-W/2, -10, W/2, 20);
+  floorGrad.addColorStop(0, 'rgba(60,30,120,0.8)');
+  floorGrad.addColorStop(0.5, 'rgba(100,50,180,0.9)');
+  floorGrad.addColorStop(1, 'rgba(60,30,120,0.8)');
+  ctx.fillStyle = floorGrad;
+  ctx.fillRect(-W/2, -8, W, 50);
+
+  // Floor pattern
+  ctx.strokeStyle = 'rgba(150,100,255,0.3)';
+  ctx.lineWidth = 1;
+  for (let x = -W/2; x < W/2; x += 30) {
+    ctx.beginPath();
+    ctx.moveTo(x, -8);
+    ctx.lineTo(x, 42);
+    ctx.stroke();
+  }
+
+  // Floor surface line
+  ctx.strokeStyle = 'rgba(180,130,255,0.8)';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = 'rgba(150,100,255,0.8)';
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.moveTo(-W/2, -8);
+  ctx.lineTo(W/2, -8);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  ctx.restore();
+}
+
+function drawPlayer() {
+  const t = player.animTick;
+  const moving = Math.abs(player.vx) > 0.5;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(0, 8, 20, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Legs
+  const legSwing = moving ? Math.sin(player.legPhase * 5) * 10 : 0;
+  ctx.strokeStyle = '#4a3528';
+  ctx.lineWidth = 7;
+  ctx.lineCap = 'round';
+
+  // Left leg
+  ctx.beginPath();
+  ctx.moveTo(-6, -10);
+  ctx.lineTo(-6 - legSwing * 0.5, 8);
+  ctx.stroke();
+
+  // Right leg
+  ctx.beginPath();
+  ctx.moveTo(6, -10);
+  ctx.lineTo(6 + legSwing * 0.5, 8);
+  ctx.stroke();
+
+  // Shoes
+  ctx.fillStyle = '#2a1a0f';
+  ctx.beginPath();
+  ctx.ellipse(-8 - legSwing * 0.3, 10, 9, 5, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(8 + legSwing * 0.3, 10, 9, 5, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body (chef coat)
+  ctx.fillStyle = '#f0efe8';
+  ctx.beginPath();
+  ctx.roundRect(-14, -40, 28, 32, 6);
+  ctx.fill();
+
+  // Chef coat details
+  ctx.fillStyle = '#e0dfd8';
+  ctx.beginPath();
+  ctx.roundRect(-5, -40, 10, 28, 2);
+  ctx.fill();
+
+  // Buttons
+  ctx.fillStyle = '#aaa';
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(0, -35 + i * 8, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Arms (holding plate)
+  const armRaise = -player.plateAngle * 0.5;
+  ctx.strokeStyle = '#f0efe8';
+  ctx.lineWidth = 9;
+  ctx.lineCap = 'round';
+
+  // Left arm
+  ctx.beginPath();
+  ctx.moveTo(-13, -30);
+  ctx.quadraticCurveTo(-28, -25 + armRaise * 10, -25, -55 + armRaise * 5);
+  ctx.stroke();
+
+  // Right arm
+  ctx.beginPath();
+  ctx.moveTo(13, -30);
+  ctx.quadraticCurveTo(28, -25 - armRaise * 10, 25, -55 - armRaise * 5);
+  ctx.stroke();
+
+  // Hands
+  ctx.fillStyle = '#f5c5a0';
+  ctx.beginPath();
+  ctx.arc(-25, -55 + armRaise * 5, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(25, -55 - armRaise * 5, 7, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = '#f5c5a0';
+  ctx.beginPath();
+  ctx.ellipse(0, -60, 16, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Face expression based on stress
+  const tofuStress = Math.abs(tofu.x) / plate.w;
+  const eyeY = -63;
+
+  // Eyes
+  if (tofuStress > 0.5) {
+    // Worried eyes
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.ellipse(-6, eyeY, 4, 5, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(6, eyeY, 4, 5, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    // Sweat
+    ctx.fillStyle = '#88ccff';
+    ctx.beginPath();
+    ctx.arc(16, -55, 3, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(-6, eyeY, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(6, eyeY, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Pupils
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(-5, eyeY - 1, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(7, eyeY - 1, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Mouth
+  ctx.strokeStyle = '#8b5c4a';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  if (tofuStress > 0.6) {
+    ctx.beginPath();
+    ctx.arc(0, -52, 5, 0.2, Math.PI - 0.2, true);
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.arc(0, -55, 5, 0.1, Math.PI - 0.1);
+    ctx.stroke();
+  }
+
+  // Chef hat
+  const hatBobble = Math.sin(t * 0.05) * 2;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.roundRect(-18, -82 + hatBobble, 36, 14, 4);
+  ctx.fill();
+
+  ctx.fillStyle = '#f5f5f0';
+  ctx.beginPath();
+  ctx.ellipse(0, -88 + hatBobble, 14, 22, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(-18, -82 + hatBobble, 36, 14, 4);
+  ctx.stroke();
+}
+
+function drawPlate() {
+  ctx.save();
+  ctx.rotate(player.plateAngle);
+  const py = -70; // relative to player center
+
+  // Plate shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(3, py + 15, plate.w * 0.55, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Plate body
+  const plateGrad = ctx.createLinearGradient(-plate.w/2, py - 2, plate.w/2, py + plate.h + 4);
+  plateGrad.addColorStop(0, '#f8f4ee');
+  plateGrad.addColorStop(0.3, '#fffdf9');
+  plateGrad.addColorStop(0.7, '#f0ece4');
+  plateGrad.addColorStop(1, '#e8e0d4');
+  ctx.fillStyle = plateGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, py + plate.h/2, plate.w/2, plate.h * 1.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Plate rim highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, py, plate.w/2, plate.h, 0, Math.PI, Math.PI * 2);
+  ctx.stroke();
+
+  // Plate rim decoration
+  ctx.strokeStyle = '#c8b89a';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(0, py + plate.h/2, plate.w/2 - 5, plate.h * 1.2, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawTofu() {
+  ctx.save();
+  ctx.rotate(player.plateAngle);
+
+  const cx = tofu.x;
+  const cy = -70 - plate.h - tofu.h/2 - 2;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(tofu.angle);
+
+  // Draw tofu as deformed grid
+  drawTofuBody();
+
+  ctx.restore();
+  ctx.restore();
+}
+
+function drawTofuBody() {
+  const segs = tofu.segments;
+  if (!segs || segs.length < 2) return;
+
+  const rows = segs.length - 1;
+  const cols = segs[0].length - 1;
+  const health = tofu.health / 100;
+
+  // Draw tofu fill face by face
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const tl = segs[r][c];
+      const tr = segs[r][c+1];
+      const bl = segs[r+1][c];
+      const br = segs[r+1][c+1];
+
+      const tlx = tl.ox + tl.dx, tly = tl.oy + tl.dy;
+      const trx = tr.ox + tr.dx, try_ = tr.oy + tr.dy;
+      const blx = bl.ox + bl.dx, bly = bl.oy + bl.dy;
+      const brx = br.ox + br.dx, bry = br.oy + br.dy;
+
+      // Color based on row (top lighter, bottom slightly translucent)
+      const rowFactor = r / rows;
+      const topR = Math.floor(248 - rowFactor * 20);
+      const topG = Math.floor(245 - rowFactor * 15);
+      const topB = Math.floor(235 - rowFactor * 10);
+
+      // Stress color tint
+      const stress = Math.abs(tofu.x) / plate.w;
+      const stressR = Math.min(255, topR + stress * 30);
+      const stressG = Math.max(200, topG - stress * 20);
+      const stressB = Math.max(200, topB - stress * 20);
+
+      ctx.fillStyle = `rgba(${stressR},${stressG},${stressB},${0.85 + health * 0.15})`;
+      ctx.beginPath();
+      ctx.moveTo(tlx, tly);
+      ctx.lineTo(trx, try_);
+      ctx.lineTo(brx, bry);
+      ctx.lineTo(blx, bly);
+      ctx.closePath();
+      ctx.fill();
+
+      // Grid lines (tofu texture)
+      ctx.strokeStyle = `rgba(200,195,180,${0.3 + rowFactor * 0.2})`;
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+  }
+
+  // Top face highlight
+  const topSeg = segs[0];
+  ctx.beginPath();
+  ctx.moveTo(topSeg[0].ox + topSeg[0].dx, topSeg[0].oy + topSeg[0].dy);
+  for (let c = 1; c < topSeg.length; c++) {
+    ctx.lineTo(topSeg[c].ox + topSeg[c].dx, topSeg[c].oy + topSeg[c].dy);
+  }
+  const topGrad = ctx.createLinearGradient(-tofu.w/2, -tofu.h/2, tofu.w/2, -tofu.h/2 + 5);
+  topGrad.addColorStop(0, 'rgba(255,253,245,0.6)');
+  topGrad.addColorStop(1, 'rgba(255,250,235,0.2)');
+  ctx.fillStyle = topGrad;
+  ctx.closePath();
+  ctx.fill();
+
+  // Outline
+  const bottomSeg = segs[rows];
+  ctx.beginPath();
+  ctx.moveTo(topSeg[0].ox + topSeg[0].dx, topSeg[0].oy + topSeg[0].dy);
+  for (let c = 1; c < topSeg.length; c++) {
+    ctx.lineTo(topSeg[c].ox + topSeg[c].dx, topSeg[c].oy + topSeg[c].dy);
+  }
+  for (let r = 1; r <= rows; r++) {
+    const s = segs[r][cols];
+    ctx.lineTo(s.ox + s.dx, s.oy + s.dy);
+  }
+  for (let c = cols - 1; c >= 0; c--) {
+    const s = bottomSeg[c];
+    ctx.lineTo(s.ox + s.dx, s.oy + s.dy);
+  }
+  for (let r = rows - 1; r >= 0; r--) {
+    const s = segs[r][0];
+    ctx.lineTo(s.ox + s.dx, s.oy + s.dy);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = `rgba(180,170,150,${0.5 + health * 0.3})`;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Cracks
+  if (tofu.cracks.length > 0) {
+    ctx.save();
+    for (const crack of tofu.cracks) {
+      ctx.strokeStyle = `rgba(180,160,140,${crack.alpha * (tofu.health / 100)})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(crack.x - Math.cos(crack.angle) * crack.len/2,
+                 crack.y - Math.sin(crack.angle) * crack.len/2);
+      ctx.lineTo(crack.x + Math.cos(crack.angle) * crack.len/2,
+                 crack.y + Math.sin(crack.angle) * crack.len/2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Health shatter glow
+  if (tofu.health < 50) {
+    const redAlpha = (1 - tofu.health / 50) * 0.3;
+    ctx.fillStyle = `rgba(255,100,50,${redAlpha})`;
+    ctx.beginPath();
+    ctx.rect(-tofu.w/2, -tofu.h/2, tofu.w, tofu.h);
+    ctx.fill();
+  }
+
+  // Tofu text decoration on top
+  ctx.save();
+  ctx.fillStyle = 'rgba(160,150,130,0.4)';
+  ctx.font = 'bold 10px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('豆腐', 0, -tofu.h/2 + 8);
+  ctx.restore();
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    const alpha = p.life;
+    if (p.type === 'wind') {
+      ctx.strokeStyle = `rgba(150,200,255,${alpha * 0.4})`;
+      ctx.lineWidth = p.size;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x - p.vx * 8, p.y - p.vy * 8);
+      ctx.stroke();
+    } else if (p.type === 'crumble') {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.life * 3);
+      ctx.fillStyle = `hsla(${p.hue},40%,80%,${alpha})`;
+      ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+      ctx.restore();
+    }
+  }
+}
+
+function drawSparkles() {
+  for (const s of sparkles) {
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.life * 4);
+    const alpha = Math.sin(s.life * Math.PI);
+    ctx.strokeStyle = `hsla(${s.hue},90%,80%,${alpha})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2;
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * s.size * 2, Math.sin(a) * s.size * 2);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawHUD() {
+  if (gameState === 'playing') {
+    // Update displays
+    document.getElementById('timeDisplay').textContent = time.toFixed(1) + 's';
+    document.getElementById('bestDisplay').textContent = best.toFixed(1) + 's';
+    document.getElementById('levelDisplay').textContent = level;
+
+    // Health bar
+    const barW = 120, barH = 12;
+    const barX = W/2 - barW/2, barY = 18;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.roundRect(barX - 2, barY - 2, barW + 4, barH + 4, 6);
+    ctx.fill();
+
+    const hp = tofu.health / 100;
+    const hpColor = hp > 0.6 ? '#44ff88' : hp > 0.3 ? '#ffaa22' : '#ff4422';
+    ctx.fillStyle = hpColor;
+    ctx.shadowColor = hpColor;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barW * hp, barH, 4);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('豆腐HP', W/2, barY - 4);
+
+    // Wind indicator
+    if (Math.abs(wind.force) > 0.02) {
+      const windX = wind.force > 0 ? W - 60 : 60;
+      const windDir = wind.force > 0 ? '→' : '←';
+      const windStr = Math.abs(wind.force * 10).toFixed(0);
+      ctx.fillStyle = `rgba(150,200,255,${Math.min(1, Math.abs(wind.force) * 5)})`;
+      ctx.font = 'bold 18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(windDir.repeat(Math.min(3, Math.ceil(Math.abs(wind.force * 10)))), windX, 45);
+      ctx.font = '12px sans-serif';
+      ctx.fillText('風', windX, 62);
+    }
+
+    // Danger effect at edges
+    if (Math.abs(tofu.x) > plate.w * 0.4) {
+      const edgeAlpha = (Math.abs(tofu.x) - plate.w * 0.4) / (plate.w * 0.3);
+      ctx.fillStyle = `rgba(255,50,50,${edgeAlpha * 0.15})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+}
+
+// Start rendering immediately for the menu star background
+initStars();
+loop(performance.now());
+</script>
+</body>
+</html>
