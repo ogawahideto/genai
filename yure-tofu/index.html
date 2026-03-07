@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>揺れ豆腐</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #f0f7ff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Meiryo, sans-serif;
+      color: #134;
+    }
+    .wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 16px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: .05em;
+    }
+    .hud {
+      display: flex;
+      gap: 16px;
+      font-size: 14px;
+      color: #245;
+      user-select: none;
+    }
+    .canvas-frame {
+      position: relative;
+      width: 800px;
+      height: 520px;
+      border: 2px solid #89a;
+      border-radius: 8px;
+      background: linear-gradient(#e9f3ff, #d7ecff 60%, #cde7ff);
+      box-shadow: 0 4px 12px rgba(0,0,0,.08) inset;
+    }
+    canvas { display: block; }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,.78);
+      color: #123;
+    }
+    .panel {
+      text-align: center;
+      background: #fff;
+      border: 1px solid #cbd6e2;
+      border-radius: 8px;
+      padding: 16px 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.08);
+      max-width: 520px;
+    }
+    .panel h2 { margin: 0 0 8px; font-size: 18px; }
+    .panel p { margin: 6px 0; font-size: 14px; color: #345; }
+    .panel .small { font-size: 12px; color: #567; }
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 16px;
+      background: #2c7be5;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 0 #1f5fb3;
+    }
+    button:active { transform: translateY(1px); box-shadow: 0 1px 0 #1f5fb3; }
+    .bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .meter {
+      width: 160px;
+      height: 10px;
+      background: #e6eef7;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.06);
+    }
+    .meter > i {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #25c78a, #f6c445 60%, #e55353);
+      width: 100%;
+      transform-origin: left center;
+    }
+  </style>
+  <meta name="description" content="皿の傾きを調整して豆腐を崩さず守るミニゲーム。">
+  <meta name="theme-color" content="#2c7be5">
+  <!-- Single-file micro-app: no external deps, canvas-first -->
+  <link rel="icon" href="data:,">
+  <base href="./">
+  <meta name="og:title" content="揺れ豆腐">
+  <meta name="og:type" content="website">
+  <meta name="og:description" content="皿の傾きを調整して、揺れる豆腐を崩さず守ろう！">
+</head>
+<body>
+  <div class="wrap">
+    <h1>揺れ豆腐</h1>
+    <div class="hud">
+      <div class="bar">時間: <strong id="time">0.0</strong>s</div>
+      <div class="bar">ベスト: <strong id="best">0.0</strong>s</div>
+      <div class="bar">耐久: <span class="meter"><i id="hp"></i></span></div>
+    </div>
+
+    <div class="canvas-frame" id="frame">
+      <canvas id="cv" width="800" height="520" aria-label="game"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="panel" role="dialog" aria-modal="true">
+          <h2>豆腐を崩さずキープ！</h2>
+          <p>左右キーで皿の傾きを調整。豆腐が皿から落ちるか、崩壊するとゲームオーバー。</p>
+          <p>コツ: 急な操作は禁物。揺れとズレが大きいほど耐久が減少します。</p>
+          <p class="small">操作: ← → 傾ける / R リスタート / P 一時停止</p>
+          <button id="startBtn">スタート</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    'use strict';
+
+    // Canvas setup
+    const cv = document.getElementById('cv');
+    const cx = cv.getContext('2d');
+    const W = cv.width, H = cv.height;
+
+    // HUD elements
+    const elTime = document.getElementById('time');
+    const elBest = document.getElementById('best');
+    const elHpBar = document.getElementById('hp');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+
+    // World constants
+    const g = 9.8;              // gravity (conceptual)
+    const dt = 1 / 60;          // timestep
+    const plateY = H - 120;     // plate baseline
+    const plateW = 360;
+    const plateH = 18;
+    const tofuW = 120;
+    const tofuH = 90;
+    const tofuMass = 1.0;
+    const maxTilt = 20 * Math.PI / 180; // rad
+    const tiltAccel = 90 * Math.PI / 180; // rad/s^2 response to input
+    const tiltDamping = 0.86;   // damping for plate angular velocity
+    const slideFriction = 0.96; // tofu slide friction
+    const springK = 14.0;       // tofu orientation spring toward plate
+    const springDamp = 2.6;     // damping on tofu angular velocity
+
+    // Game state
+    let running = false;
+    let paused = false;
+    let tAccum = 0;
+    let timeAlive = 0;
+    let best = 0;
+
+    // Plate state
+    let plateAngle = 0;         // rad
+    let plateAngVel = 0;
+
+    // Tofu state (relative to plate center)
+    let tofuX = 0;              // horizontal offset
+    let tofuVx = 0;
+    let tofuAngle = 0;          // tofu orientation
+    let tofuAngVel = 0;
+    let hp = 1.0;               // integrity 0..1
+
+    // Input
+    const keys = new Set();
+    addEventListener('keydown', e => {
+      if (['ArrowLeft','ArrowRight','KeyP','KeyR'].includes(e.code)) e.preventDefault();
+      if (e.code === 'ArrowLeft') keys.add('L');
+      if (e.code === 'ArrowRight') keys.add('R');
+      if (e.code === 'KeyP') paused = !paused;
+      if (e.code === 'KeyR') restart();
+    });
+    addEventListener('keyup', e => {
+      if (e.code === 'ArrowLeft') keys.delete('L');
+      if (e.code === 'ArrowRight') keys.delete('R');
+    });
+
+    // Persistence
+    try {
+      best = parseFloat(localStorage.getItem('yureTofuBest') || '0') || 0;
+    } catch {}
+    elBest.textContent = best.toFixed(1);
+
+    startBtn.addEventListener('click', () => start());
+
+    function start() {
+      running = true;
+      paused = false;
+      overlay.style.display = 'none';
+      resetState();
+    }
+
+    function restart() {
+      if (!running) return start();
+      resetState();
+    }
+
+    function resetState() {
+      timeAlive = 0;
+      plateAngle = 0;
+      plateAngVel = 0;
+      tofuX = 0;
+      tofuVx = 0;
+      tofuAngle = 0;
+      tofuAngVel = 0;
+      hp = 1.0;
+      updateHud();
+    }
+
+    function updateHud() {
+      elTime.textContent = timeAlive.toFixed(1);
+      elHpBar.style.transform = `scaleX(${Math.max(0, Math.min(1, hp))})`;
+    }
+
+    function lose(reason) {
+      running = false;
+      // Save best
+      if (timeAlive > best) {
+        best = timeAlive;
+        elBest.textContent = best.toFixed(1);
+        try { localStorage.setItem('yureTofuBest', String(best)); } catch {}
+      }
+      // Show overlay
+      overlay.innerHTML = `
+        <div class="panel" role="dialog" aria-modal="true">
+          <h2>ゲームオーバー</h2>
+          <p>記録: <strong>${timeAlive.toFixed(1)}</strong> 秒</p>
+          <p style="color:#a33; font-weight:600;">${reason}</p>
+          <p class="small">ベスト: ${best.toFixed(1)}s</p>
+          <button id="retry">もう一度</button>
+        </div>`;
+      overlay.style.display = 'flex';
+      document.getElementById('retry').onclick = () => start();
+    }
+
+    function physicsStep() {
+      // Plate control input -> angular acceleration
+      let input = 0;
+      if (keys.has('L')) input -= 1;
+      if (keys.has('R')) input += 1;
+
+      // Update plate angular velocity/angle with damping and clamp
+      plateAngVel += input * tiltAccel * dt;
+      plateAngVel *= tiltDamping;
+      plateAngle += plateAngVel * dt;
+      if (plateAngle > maxTilt) { plateAngle = maxTilt; plateAngVel = Math.min(0, plateAngVel); }
+      if (plateAngle < -maxTilt) { plateAngle = -maxTilt; plateAngVel = Math.max(0, plateAngVel); }
+
+      // Tofu horizontal acceleration caused by plate tilt (component of gravity)
+      const ax = g * Math.sin(plateAngle); // m/s^2 along plate
+      tofuVx += ax * dt;
+      tofuVx *= slideFriction;
+      tofuX += tofuVx * dt * 40; // scale to pixels
+
+      // Tofu orientation tends to follow plate using spring-damper
+      const angleErr = normalizeAngle(plateAngle - tofuAngle);
+      const angAcc = springK * angleErr - springDamp * (tofuAngVel - plateAngVel);
+      tofuAngVel += angAcc * dt;
+      tofuAngVel *= 0.995; // slight damping
+      tofuAngle += tofuAngVel * dt;
+
+      // Integrity loss: from shear (angle difference & relative ang vel) and lateral offset
+      const shear = Math.abs(angleErr) + 0.25 * Math.abs(tofuAngVel - plateAngVel);
+      const lateral = Math.abs(tofuX) / ((plateW - tofuW) * 0.5);
+      const stress = clamp(shear * 0.7 + lateral * 0.6, 0, 4);
+      // Reduce hp proportionally to stress, scaled by dt
+      hp -= stress * 0.12 * dt; // tuned for feel
+
+      // Bounds: tofu falls if center goes beyond plate support area
+      const limit = (plateW - tofuW) * 0.5 - 6; // margin
+      if (tofuX < -limit || tofuX > limit) {
+        lose('豆腐が皿から落ちた…');
+      } else if (hp <= 0) {
+        lose('豆腐が崩れた…');
+      } else {
+        timeAlive += dt;
+        updateHud();
+      }
+    }
+
+    function render() {
+      cx.clearRect(0, 0, W, H);
+
+      // Ground shadow
+      cx.fillStyle = '#e6eef7';
+      cx.fillRect(0, plateY + 60, W, H - (plateY + 60));
+
+      // Plate
+      cx.save();
+      cx.translate(W / 2, plateY);
+      cx.rotate(plateAngle);
+      roundedRect(cx, -plateW / 2, -plateH / 2, plateW, plateH, 9, '#cfd9e6', '#7b8aa3');
+
+      // Tofu top soft wobble visuals
+      cx.save();
+      cx.translate(tofuX, -tofuH / 2 - plateH / 2);
+      cx.rotate(tofuAngle);
+
+      // tofu body
+      const r = 10;
+      roundedRect(cx, -tofuW / 2, -tofuH / 2, tofuW, tofuH, r, '#fffdfa', '#e7e1cf');
+
+      // subtle face
+      cx.fillStyle = '#444';
+      const ey = -8;
+      cx.beginPath(); cx.arc(-20, ey, 3, 0, Math.PI * 2); cx.fill();
+      cx.beginPath(); cx.arc( 20, ey, 3, 0, Math.PI * 2); cx.fill();
+      cx.lineWidth = 2; cx.strokeStyle = '#666';
+      cx.beginPath(); cx.arc(0, 10, 10, 0, Math.PI); cx.stroke();
+
+      // shine
+      cx.globalAlpha = 0.12;
+      roundedRect(cx, -tofuW/2+6, -tofuH/2+6, tofuW-12, (tofuH-12)*0.45, 8, '#fff', undefined);
+      cx.globalAlpha = 1;
+
+      cx.restore();
+      cx.restore();
+
+      // UI baseline line
+      cx.strokeStyle = '#bcd';
+      cx.lineWidth = 1;
+      cx.setLineDash([4,4]);
+      cx.beginPath();
+      cx.moveTo(0, plateY + 60.5);
+      cx.lineTo(W, plateY + 60.5);
+      cx.stroke();
+      cx.setLineDash([]);
+    }
+
+    function loop(ts) {
+      requestAnimationFrame(loop);
+      if (!running || paused) return;
+      // fixed-step update for stability
+      tAccum += dt;
+      // single step per frame (60fps target); in browsers this is adequate here
+      physicsStep();
+      render();
+    }
+    requestAnimationFrame(loop);
+
+    // Utils
+    function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+    function normalizeAngle(a) {
+      while (a > Math.PI) a -= 2*Math.PI;
+      while (a < -Math.PI) a += 2*Math.PI;
+      return a;
+    }
+    function roundedRect(ctx, x, y, w, h, r, fill, stroke) {
+      const rr = Math.min(r, w/2, h/2);
+      ctx.beginPath();
+      ctx.moveTo(x+rr, y);
+      ctx.arcTo(x+w, y,   x+w, y+h, rr);
+      ctx.arcTo(x+w, y+h, x,   y+h, rr);
+      ctx.arcTo(x,   y+h, x,   y,   rr);
+      ctx.arcTo(x,   y,   x+w, y,   rr);
+      if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+      if (stroke) { ctx.lineWidth = 2; ctx.strokeStyle = stroke; ctx.stroke(); }
+    }
+
+    // Initial render with overlay visible
+    render();
+  })();
+  </script>
+  <!-- Keep assets relative so it works under /genai/yure-tofu/ on GitHub Pages -->
+</body>
+<!-- Micro-app: single-file index.html, no external libraries. -->
+</html>
+
