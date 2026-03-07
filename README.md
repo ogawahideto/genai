@@ -117,6 +117,9 @@ This repository contains a collection of small, self-contained web applications 
 #### [UNO風カードゲーム](uno-like/) (2025-07-04)
 ゲームアプリケーション
 
+#### [揺れ豆腐 - バランスゲーム](yure-tofu-2/) (2026-03-07)
+ゲームアプリケーション
+
 ### 🧠 クイズ・学習 (Quiz & Educational)
 
 #### [化学式クイズ](chem_formula_quiz/) (2025-09-05)
