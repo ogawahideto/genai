@@ -345,8 +345,8 @@ function buildTreeCanvas(modeName) {
     const br = m.blossomRgb.join(',');
     const ba = m.blossomA;
     const zones = [
-        {cx:W*0.13,cy:H*0.385,rx:H*0.195,ry:H*0.145},
-        {cx:W*0.87,cy:H*0.385,rx:H*0.195,ry:H*0.145},
+        {cx:W*0.13,cy:H*0.30,rx:H*0.195,ry:H*0.145},
+        {cx:W*0.83,cy:H*0.20,rx:H*0.270,ry:H*0.145},
         {cx:W*0.50,cy:H*0.545,rx:H*0.132,ry:H*0.100},
     ];
     const brng = makeRng(777);
@@ -370,8 +370,8 @@ function buildTreeCanvas(modeName) {
 // Blossom spawn zones (same geometry as tree clouds)
 function blossomZones() {
     return [
-        {x:W*0.13,y:H*0.385,r:H*0.185},
-        {x:W*0.87,y:H*0.385,r:H*0.185},
+        {x:W*0.13,y:H*0.30,r:H*0.185},
+        {x:W*0.87,y:H*0.20,r:H*0.185},
         {x:W*0.50,y:H*0.545,r:H*0.120},
     ];
 }
@@ -646,8 +646,8 @@ function drawTorii(m) {
 function drawBlossomOverlay(m) {
     const [br,bg2,bb]=m.blossomRgb, ba=m.blossomA;
     const zones=[
-        {x:W*0.13,y:H*0.385,r:H*0.22},
-        {x:W*0.87,y:H*0.385,r:H*0.22},
+        {x:W*0.13,y:H*0.30,r:H*0.22},
+        {x:W*0.83,y:H*0.20,r:H*0.22},
         {x:W*0.50,y:H*0.545,r:H*0.14},
     ];
     ctx.save();
