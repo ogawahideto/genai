@@ -194,6 +194,9 @@ AI・チャットアプリケーション
 #### [NeonBass - AI Bass Trainer](bass-training/) (2025-12-29)
 AI・チャットアプリケーション
 
+#### [Chromatic Renaissance](chromatic-renaissance/) (2026-04-05)
+AI・チャットアプリケーション
+
 #### [Anthropic & Claude 愛称ジェネレーター](claude_nickname/) (2025-09-05)
 AI・チャットアプリケーション
 
@@ -319,7 +322,10 @@ AI・チャットアプリケーション
 #### [Advanced Gastroscopy Simulator v6.1 (Fixed Tracker)](gastroscopy-simulator/) (2026-01-31)
 実験的アプリケーション
 
-#### [Advanced Gastroscopy Simulator v6.1 (Fixed Tracker)](gastroscopy-simulator-real/) (2026-02-07)
+#### [Advanced Gastroscopy Simulator v6.1 (Fixed Tracker)](gastroscopy-simulator-real/) (2026-04-05)
+実験的アプリケーション
+
+#### [花見 〜 Hanami](hanami/) (2026-04-05)
 実験的アプリケーション
 
 #### [Grid Canvas](hougan/) (2025-09-05)
