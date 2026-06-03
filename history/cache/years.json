@@ -1,0 +1,15 @@
+{
+  "パン": {"year": "前6000年頃", "source": "https://en.wikipedia.org/wiki/Bread"},
+  "鶏の卵": {"year": "前1500年頃", "source": "https://en.wikipedia.org/wiki/Domesticated_chicken"},
+  "皿": {"year": "前13000年頃", "source": "https://en.wikipedia.org/wiki/Tableware"},
+  "ベーコン": {"year": "前1500年頃", "source": "https://en.wikipedia.org/wiki/Bacon"},
+  "ブロッコリー": {"year": "100年頃", "source": "https://en.wikipedia.org/wiki/Broccoli"},
+  "ミロ": {"year": "1934年", "source": "https://en.wikipedia.org/wiki/Milo_(drink)"},
+  "豆乳": {"year": "1365年頃", "source": "https://en.wikipedia.org/wiki/Soy_milk"},
+  "ガラスのコップ": {"year": "前1500年頃", "source": "https://en.wikipedia.org/wiki/Glass"},
+  "ランチョンマット": {"year": "1900年頃", "source": "https://en.wikipedia.org/wiki/Placemat"},
+  "箸": {"year": "前1000年頃", "source": "https://en.wikipedia.org/wiki/Chopsticks"},
+  "テレビ": {"year": "1927年", "source": "https://en.wikipedia.org/wiki/Television"},
+  "テレビ用無線リモコン": {"year": "1955年", "source": "https://en.wikipedia.org/wiki/Remote_control"},
+  "エアコン": {"year": "1902年", "source": "https://en.wikipedia.org/wiki/Air_conditioning"}
+}

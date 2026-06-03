@@ -1,0 +1,18 @@
+{
+  "image": "001.jpg",
+  "objects": [
+    {"label": "エアコン", "kind": "製品", "year": "1902年", "anchor": [0.76, 0.13], "side": "right", "source": "https://en.wikipedia.org/wiki/Air_conditioning"},
+    {"label": "テレビ", "kind": "製品", "year": "1927年", "anchor": [0.93, 0.28], "side": "right", "source": "https://en.wikipedia.org/wiki/Television"},
+    {"label": "テレビ用無線リモコン", "kind": "製品", "year": "1955年", "anchor": [0.90, 0.42], "side": "right", "source": "https://en.wikipedia.org/wiki/Remote_control"},
+    {"label": "ベーコン", "kind": "食材", "year": "前1500年頃", "anchor": [0.55, 0.50], "side": "right", "source": "https://en.wikipedia.org/wiki/Bacon"},
+    {"label": "鶏の卵", "kind": "食材", "year": "前1500年頃", "anchor": [0.58, 0.60], "side": "right", "source": "https://en.wikipedia.org/wiki/Domesticated_chicken"},
+    {"label": "皿", "kind": "製品", "year": "前13000年頃", "anchor": [0.63, 0.70], "side": "right", "source": "https://en.wikipedia.org/wiki/Tableware"},
+    {"label": "ブロッコリー", "kind": "食材", "year": "100年頃", "anchor": [0.44, 0.40], "side": "left", "source": "https://en.wikipedia.org/wiki/Broccoli"},
+    {"label": "ミロ", "kind": "食材", "year": "1934年", "anchor": [0.14, 0.52], "side": "left", "source": "https://en.wikipedia.org/wiki/Milo_(drink)"},
+    {"label": "豆乳", "kind": "食材", "year": "1365年頃", "anchor": [0.16, 0.58], "side": "left", "source": "https://en.wikipedia.org/wiki/Soy_milk"},
+    {"label": "ガラスのコップ", "kind": "製品", "year": "前1500年頃", "anchor": [0.13, 0.62], "side": "left", "source": "https://en.wikipedia.org/wiki/Glass"},
+    {"label": "ランチョンマット", "kind": "製品", "year": "1900年頃", "anchor": [0.20, 0.80], "side": "left", "source": "https://en.wikipedia.org/wiki/Placemat"},
+    {"label": "パン", "kind": "食材", "year": "前6000年頃", "anchor": [0.50, 0.63], "side": "bottom", "source": "https://en.wikipedia.org/wiki/Bread"},
+    {"label": "箸", "kind": "製品", "year": "前1000年頃", "anchor": [0.42, 0.91], "side": "bottom", "source": "https://en.wikipedia.org/wiki/Chopsticks"}
+  ]
+}
