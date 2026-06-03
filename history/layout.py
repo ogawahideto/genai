@@ -63,8 +63,10 @@ class Style:
     box_fill_opacity: float = 0.74
     box_stroke: str = "#ffffff"
     box_stroke_opacity: float = 0.22
+    note_size: int = 13          # 根拠(3行目)はさらに小さく
     text_color: str = "#ffffff"
     year_color: str = "#ffd27a"  # 年は淡い黄で識別性UP
+    note_color: str = "#c4ccd8"  # 根拠は淡いグレー
     leader_color: str = "#ffffff"
     leader_halo: str = "#000000"
     anchor_color: str = "#ff5a5a"
@@ -73,7 +75,11 @@ class Style:
     def for_image(cls, w: int, h: int) -> "Style":
         # 画像幅に応じてフォントサイズを自動調整(640px で 16px 基準)。
         fs = max(12, round(w / 40))
-        return cls(font_size=fs, year_size=max(11, fs - 2))
+        return cls(
+            font_size=fs,
+            year_size=max(11, fs - 2),
+            note_size=max(10, round(fs * 0.78)),
+        )
 
 
 # ---- 内部表現 ---------------------------------------------------------------
@@ -84,15 +90,19 @@ class Label:
     year: str
     side: str                       # "left" | "right" | "bottom"
     anchor: Tuple[float, float]     # 画素座標
+    note: str = ""                  # 根拠(任意・3行目)
     # 計測・配置結果
     name_w: float = 0.0
     year_w: float = 0.0
+    note_w: float = 0.0
     box_w: float = 0.0
     box_h: float = 0.0
     line_h: int = 0
     yline_h: int = 0
+    nline_h: int = 0
     ascent: int = 0
     yascent: int = 0
+    nascent: int = 0
     cx: float = 0.0                 # 箱中心
     cy: float = 0.0
     x: float = 0.0                  # 箱左上
@@ -102,10 +112,13 @@ class Label:
 def _measure(labels: List[Label], font_path: str, st: Style) -> None:
     font = ImageFont.truetype(font_path, st.font_size)
     yfont = ImageFont.truetype(font_path, st.year_size)
+    nfont = ImageFont.truetype(font_path, st.note_size)
     asc, desc = font.getmetrics()
     yasc, ydesc = yfont.getmetrics()
+    nasc, ndesc = nfont.getmetrics()
     line_h = asc + desc
     yline_h = yasc + ydesc
+    nline_h = nasc + ndesc
     for lb in labels:
         nb = font.getbbox(lb.name)
         yb = yfont.getbbox(lb.year)
@@ -116,8 +129,15 @@ def _measure(labels: List[Label], font_path: str, st: Style) -> None:
         lb.ascent = asc
         lb.yascent = yasc
         content_w = max(lb.name_w, lb.year_w)
-        lb.box_w = content_w + 2 * st.pad_x
         lb.box_h = st.pad_y * 2 + line_h + st.line_gap + yline_h
+        if lb.note:
+            cb = nfont.getbbox(lb.note)
+            lb.note_w = cb[2] - cb[0]
+            lb.nline_h = nline_h
+            lb.nascent = nasc
+            content_w = max(content_w, lb.note_w)
+            lb.box_h += st.line_gap + nline_h
+        lb.box_w = content_w + 2 * st.pad_x
 
 
 def _resolve_vertical(items: List[Label], h: int, st: Style) -> None:
@@ -225,6 +245,7 @@ def build_svg(image_path: str, objects: List[dict], style: Style | None = None) 
             year=str(o.get("year", "")),
             side=o.get("side", "right"),
             anchor=(nx * w, ny * h),
+            note=str(o.get("note", "")),
         ))
 
     _measure(labels, font_path, st)
@@ -291,6 +312,16 @@ def build_svg(image_path: str, objects: List[dict], style: Style | None = None) 
             f'textLength="{lb.year_w:.1f}" lengthAdjust="spacingAndGlyphs">'
             f'{_esc(lb.year)}</text>'
         )
+        if lb.note:
+            note_baseline = (year_baseline + (lb.yline_h - lb.yascent)
+                             + st.line_gap + lb.nascent)
+            parts.append(
+                f'<text x="{tx:.1f}" y="{note_baseline:.1f}" '
+                f'font-family="{_FONT_FAMILY}" font-size="{st.note_size}" '
+                f'fill="{st.note_color}" '
+                f'textLength="{lb.note_w:.1f}" lengthAdjust="spacingAndGlyphs">'
+                f'{_esc(lb.note)}</text>'
+            )
 
     parts.append("</svg>")
     return "".join(parts)

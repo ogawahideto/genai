@@ -1,13 +1,13 @@
 {
   "image": "park.jpg",
   "objects": [
-    {"label": "雲", "kind": "自然", "year": "前40億年頃", "anchor": [0.90, 0.10], "side": "right", "source": "https://ja.wikipedia.org/wiki/雲"},
-    {"label": "帆船", "kind": "製品", "year": "前4000年頃", "anchor": [0.56, 0.20], "side": "right", "source": "https://ja.wikipedia.org/wiki/帆船"},
-    {"label": "クジラ", "kind": "自然", "year": "前5000万年頃", "anchor": [0.80, 0.50], "side": "right", "source": "https://ja.wikipedia.org/wiki/クジラ類の進化史"},
-    {"label": "滑り台", "kind": "製品", "year": "1922年", "anchor": [0.71, 0.63], "side": "right", "source": "https://en.wikipedia.org/wiki/Charles_Wicksteed_(engineer)"},
-    {"label": "木", "kind": "自然", "year": "前4億年頃", "anchor": [0.08, 0.26], "side": "left", "source": "https://ja.wikipedia.org/wiki/デボン紀"},
-    {"label": "タコ", "kind": "自然", "year": "前2.7億年頃", "anchor": [0.27, 0.45], "side": "left", "source": "https://ja.wikipedia.org/wiki/タコ"},
-    {"label": "カニ", "kind": "自然", "year": "前1億年頃", "anchor": [0.12, 0.62], "side": "left", "source": "https://natgeo.nikkeibp.co.jp/atcl/news/21/102200517/"},
-    {"label": "砂場", "kind": "製品", "year": "1885年頃", "anchor": [0.35, 0.82], "side": "bottom", "source": "https://ja.wikipedia.org/wiki/砂場"}
+    {"label": "雲", "kind": "自然", "year": "前40億年頃", "note": "地球の大気形成期", "anchor": [0.90, 0.10], "side": "right", "source": "https://ja.wikipedia.org/wiki/雲"},
+    {"label": "帆船", "kind": "製品", "year": "前4000年頃", "note": "古代エジプトの帆船", "anchor": [0.56, 0.20], "side": "right", "source": "https://ja.wikipedia.org/wiki/帆船"},
+    {"label": "クジラ", "kind": "自然", "year": "前5000万年頃", "note": "始新世に出現", "anchor": [0.80, 0.50], "side": "right", "source": "https://ja.wikipedia.org/wiki/クジラ類の進化史"},
+    {"label": "滑り台", "kind": "製品", "year": "1922年", "note": "Wicksteedが考案", "anchor": [0.71, 0.63], "side": "right", "source": "https://en.wikipedia.org/wiki/Charles_Wicksteed_(engineer)"},
+    {"label": "木", "kind": "自然", "year": "前4億年頃", "note": "最古の木 デボン紀", "anchor": [0.08, 0.26], "side": "left", "source": "https://ja.wikipedia.org/wiki/デボン紀"},
+    {"label": "タコ", "kind": "自然", "year": "前2.7億年頃", "note": "現生型が出現", "anchor": [0.27, 0.45], "side": "left", "source": "https://ja.wikipedia.org/wiki/タコ"},
+    {"label": "カニ", "kind": "自然", "year": "前1億年頃", "note": "白亜紀の化石", "anchor": [0.12, 0.62], "side": "left", "source": "https://natgeo.nikkeibp.co.jp/atcl/news/21/102200517/"},
+    {"label": "砂場", "kind": "製品", "year": "1885年頃", "note": "独の砂遊び場が起源", "anchor": [0.35, 0.82], "side": "bottom", "source": "https://ja.wikipedia.org/wiki/砂場"}
   ]
 }
