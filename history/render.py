@@ -36,7 +36,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from layout import Style, build_svg  # noqa: E402
 
 
-def render(image_path: str, spec_path: str, out_path: str, scale: float = 2.0) -> str:
+def render(image_path: str, spec_path: str, out_path: str, scale: float | None = None) -> str:
     spec = json.loads(Path(spec_path).read_text(encoding="utf-8"))
     objects = spec.get("objects", [])
     if not objects:
@@ -44,6 +44,11 @@ def render(image_path: str, spec_path: str, out_path: str, scale: float = 2.0) -
 
     with Image.open(image_path) as im:
         w, h = im.size
+
+    # スケール自動選択: 小さい画像は2倍スーパーサンプリングで文字を鮮明に、
+    # 既に高解像度(長辺>=2000px)なら等倍で十分(描画負荷も抑える)。
+    if scale is None:
+        scale = 1.0 if max(w, h) >= 2000 else 2.0
 
     style = Style.for_image(w, h)
     svg = build_svg(image_path, objects, style)

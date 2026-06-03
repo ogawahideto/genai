@@ -1,0 +1,10 @@
+{
+  "image": "taiyo.jpg",
+  "objects": [
+    {"label": "黄金の顔", "kind": "製品", "year": "1970年", "anchor": [0.50, 0.205], "side": "left", "source": "https://ja.wikipedia.org/wiki/太陽の塔"},
+    {"label": "太陽の塔", "kind": "製品", "year": "1970年", "anchor": [0.45, 0.46], "side": "right", "source": "https://ja.wikipedia.org/wiki/太陽の塔"},
+    {"label": "雲", "kind": "自然", "year": "前40億年頃", "anchor": [0.13, 0.40], "side": "left", "source": "https://ja.wikipedia.org/wiki/雲"},
+    {"label": "木", "kind": "自然", "year": "前4億年頃", "anchor": [0.90, 0.70], "side": "right", "source": "https://ja.wikipedia.org/wiki/デボン紀"},
+    {"label": "芝生", "kind": "製品", "year": "16世紀頃", "anchor": [0.45, 0.95], "side": "bottom", "source": "https://ja.wikipedia.org/wiki/芝"}
+  ]
+}
