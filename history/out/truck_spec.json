@@ -1,0 +1,21 @@
+{
+  "image": "IMG20241015144103.jpg",
+  "objects": [
+    {"label": "鉄筋コンクリート（建物）", "kind": "製品", "year": "1867年", "note": "モニエの特許", "anchor": [0.08, 0.10], "side": "left", "source": "https://ja.wikipedia.org/wiki/鉄筋コンクリート"},
+    {"label": "監視カメラ", "kind": "製品", "year": "1942年", "note": "軍事用CCTV", "anchor": [0.27, 0.20], "side": "left", "source": "https://ja.wikipedia.org/wiki/監視カメラ"},
+    {"label": "人", "kind": "自然", "year": "前30万年頃", "note": "ホモ・サピエンス", "anchor": [0.27, 0.56], "side": "left", "source": "https://ja.wikipedia.org/wiki/ホモ・サピエンス"},
+    {"label": "台車", "kind": "製品", "year": "前3500年頃", "note": "メソポタミアの車輪", "anchor": [0.06, 0.66], "side": "left", "source": "https://ja.wikipedia.org/wiki/車輪"},
+    {"label": "リュックサック", "kind": "製品", "year": "1938年", "note": "ファスナー式の登場", "anchor": [0.33, 0.66], "side": "left", "source": "https://ja.wikipedia.org/wiki/リュックサック"},
+    {"label": "ジーンズ", "kind": "製品", "year": "1873年", "note": "リーバイスのリベット特許", "anchor": [0.28, 0.85], "side": "left", "source": "https://ja.wikipedia.org/wiki/ジーンズ"},
+    {"label": "スニーカー", "kind": "製品", "year": "1917年", "note": "コンバース オールスター", "anchor": [0.25, 0.96], "side": "bottom", "source": "https://ja.wikipedia.org/wiki/スニーカー"},
+    {"label": "電線", "kind": "製品", "year": "1880年代頃", "note": "電力網の整備", "anchor": [0.60, 0.10], "side": "right", "source": "https://ja.wikipedia.org/wiki/電線"},
+    {"label": "ネオンサイン", "kind": "製品", "year": "1910年", "note": "クロードが発明", "anchor": [0.82, 0.20], "side": "right", "source": "https://ja.wikipedia.org/wiki/ネオンサイン"},
+    {"label": "提灯", "kind": "製品", "year": "16世紀頃", "note": "折りたたみ式の完成", "anchor": [0.88, 0.33], "side": "right", "source": "https://www.gifu-chochin.or.jp/history/"},
+    {"label": "トラック", "kind": "製品", "year": "1896年", "note": "ダイムラーが世界初", "anchor": [0.52, 0.40], "side": "right", "source": "https://car.motor-fan.jp/tech/10019058"},
+    {"label": "フロントガラス（安全ガラス）", "kind": "製品", "year": "1909年", "note": "合わせガラスの特許", "anchor": [0.90, 0.45], "side": "right", "source": "https://ja.wikipedia.org/wiki/合わせガラス"},
+    {"label": "サイドミラー", "kind": "製品", "year": "1911年", "note": "レースで初採用", "anchor": [0.97, 0.50], "side": "right", "source": "https://ja.wikipedia.org/wiki/バックミラー"},
+    {"label": "空気入りタイヤ", "kind": "製品", "year": "1888年", "note": "ダンロップが実用化", "anchor": [0.86, 0.80], "side": "bottom", "source": "https://ja.wikipedia.org/wiki/ジョン・ボイド・ダンロップ"},
+    {"label": "ナンバープレート", "kind": "製品", "year": "1893年", "note": "フランスで初", "anchor": [0.79, 0.70], "side": "bottom", "source": "https://ja.wikipedia.org/wiki/ナンバープレート"},
+    {"label": "インターロッキング舗装", "kind": "製品", "year": "1950年代頃", "note": "オランダで普及", "anchor": [0.45, 0.93], "side": "bottom", "source": "https://ja.wikipedia.org/wiki/インターロッキングブロック"}
+  ]
+}
