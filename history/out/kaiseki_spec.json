@@ -1,0 +1,11 @@
+{
+  "image": "IMG20260320190415.jpg",
+  "objects": [
+    {"label": "ガラスの鉢", "kind": "製品", "year": "前1500年頃", "note": "古代メソポタミア", "anchor": [0.17, 0.13], "side": "left", "source": "https://ja.wikipedia.org/wiki/ガラス"},
+    {"label": "陶器の器", "kind": "製品", "year": "前13000年頃", "note": "縄文土器が最古級", "anchor": [0.21, 0.40], "side": "left", "source": "https://ja.wikipedia.org/wiki/縄文土器"},
+    {"label": "天ぷら", "kind": "食材", "year": "16世紀頃", "note": "ポルトガル伝来", "anchor": [0.55, 0.12], "side": "right", "source": "https://ja.wikipedia.org/wiki/天ぷら"},
+    {"label": "刺身", "kind": "食材", "year": "14世紀頃", "note": "室町時代に成立", "anchor": [0.88, 0.22], "side": "right", "source": "https://ja.wikipedia.org/wiki/刺身"},
+    {"label": "漆器（膳）", "kind": "製品", "year": "前7000年頃", "note": "縄文の漆 世界最古", "anchor": [0.31, 0.55], "side": "left", "source": "https://www.9emon.co.jp/post/joumon_urushi"},
+    {"label": "醤油", "kind": "食材", "year": "1254年頃", "note": "覚心が径山寺味噌から", "anchor": [0.20, 0.86], "side": "bottom", "source": "https://www.soysauce.or.jp/knowledge/history"}
+  ]
+}
