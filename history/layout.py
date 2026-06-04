@@ -70,15 +70,25 @@ class Style:
     leader_color: str = "#ffffff"
     leader_halo: str = "#000000"
     anchor_color: str = "#ff5a5a"
+    # 線・点の太さ。画像サイズに比例させる(固定pxだと大判で細く見えない)。
+    leader_w: float = 1.4
+    leader_halo_w: float = 3.2
+    anchor_r: float = 3.4
+    box_stroke_w: float = 1.0
 
     @classmethod
     def for_image(cls, w: int, h: int) -> "Style":
-        # 画像幅に応じてフォントサイズを自動調整(640px で 16px 基準)。
+        # 画像幅に応じてフォントサイズ・線幅を自動調整(640px で 16px 基準)。
         fs = max(12, round(w / 40))
+        leader_w = max(2.5, fs * 0.14)
         return cls(
             font_size=fs,
             year_size=max(11, fs - 2),
             note_size=max(10, round(fs * 0.78)),
+            leader_w=leader_w,
+            leader_halo_w=leader_w * 2.3,
+            anchor_r=max(4.0, fs * 0.24),
+            box_stroke_w=max(1.0, fs * 0.03),
         )
 
 
@@ -274,16 +284,18 @@ def build_svg(image_path: str, objects: List[dict], style: Style | None = None) 
         ax, ay = lb.anchor
         parts.append(
             f'<line x1="{sx:.1f}" y1="{sy:.1f}" x2="{ax:.1f}" y2="{ay:.1f}" '
-            f'stroke="{st.leader_halo}" stroke-opacity="0.55" stroke-width="3.2" '
-            f'stroke-linecap="round"/>'
+            f'stroke="{st.leader_halo}" stroke-opacity="0.55" '
+            f'stroke-width="{st.leader_halo_w:.1f}" stroke-linecap="round"/>'
         )
         parts.append(
             f'<line x1="{sx:.1f}" y1="{sy:.1f}" x2="{ax:.1f}" y2="{ay:.1f}" '
-            f'stroke="{st.leader_color}" stroke-width="1.4" stroke-linecap="round"/>'
+            f'stroke="{st.leader_color}" stroke-width="{st.leader_w:.1f}" '
+            f'stroke-linecap="round"/>'
         )
         parts.append(
-            f'<circle cx="{ax:.1f}" cy="{ay:.1f}" r="3.4" '
-            f'fill="{st.anchor_color}" stroke="#ffffff" stroke-width="1"/>'
+            f'<circle cx="{ax:.1f}" cy="{ay:.1f}" r="{st.anchor_r:.1f}" '
+            f'fill="{st.anchor_color}" stroke="#ffffff" '
+            f'stroke-width="{max(1.0, st.anchor_r * 0.3):.1f}"/>'
         )
 
     # 2) ラベル枠 → テキスト
@@ -293,7 +305,7 @@ def build_svg(image_path: str, objects: List[dict], style: Style | None = None) 
             f'height="{lb.box_h:.1f}" rx="{st.box_radius}" ry="{st.box_radius}" '
             f'fill="{st.box_fill}" fill-opacity="{st.box_fill_opacity}" '
             f'stroke="{st.box_stroke}" stroke-opacity="{st.box_stroke_opacity}" '
-            f'stroke-width="1"/>'
+            f'stroke-width="{st.box_stroke_w:.1f}"/>'
         )
         tx = lb.x + st.pad_x
         name_baseline = lb.y + st.pad_y + lb.ascent
