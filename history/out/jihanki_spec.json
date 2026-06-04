@@ -1,0 +1,16 @@
+{
+  "image": "IMG20251106124232.jpg",
+  "objects": [
+    {"label": "ポスター（紙）", "kind": "製品", "year": "105年", "note": "蔡倫の製紙法", "anchor": [0.27, 0.045], "side": "left", "source": "https://ja.wikipedia.org/wiki/紙"},
+    {"label": "カルピス", "kind": "製品", "year": "1919年", "note": "日本初の乳酸菌飲料", "anchor": [0.45, 0.125], "side": "left", "source": "https://www.asahiinryo.co.jp/entertainment/asahiinryohistory/calpis/"},
+    {"label": "ペットボトル", "kind": "製品", "year": "1973年", "note": "ワイエスが発明", "anchor": [0.29, 0.22], "side": "left", "source": "https://ja.wikipedia.org/wiki/ペットボトル"},
+    {"label": "缶", "kind": "製品", "year": "1810年", "note": "ブリキ缶の特許", "anchor": [0.29, 0.40], "side": "left", "source": "https://www.seikan-kyoukai.org/metalcan.html"},
+    {"label": "価格のLED表示", "kind": "製品", "year": "1962年", "note": "発光ダイオード", "anchor": [0.34, 0.465], "side": "left", "source": "https://ja.wikipedia.org/wiki/発光ダイオード"},
+    {"label": "ゴミ箱（ポリバケツ）", "kind": "製品", "year": "1933年", "note": "ポリエチレン発明", "anchor": [0.07, 0.66], "side": "left", "source": "https://ja.wikipedia.org/wiki/ポリエチレン"},
+    {"label": "モンスターエナジー", "kind": "製品", "year": "2002年", "note": "米国発のエナジー飲料", "anchor": [0.75, 0.095], "side": "right", "source": "https://ja.wikipedia.org/wiki/モンスターエナジー"},
+    {"label": "コンクリートブロック塀", "kind": "製品", "year": "1900年頃", "note": "中空ブロックの実用化", "anchor": [0.90, 0.20], "side": "right", "source": "https://ja.wikipedia.org/wiki/コンクリートブロック"},
+    {"label": "QRコード", "kind": "製品", "year": "1994年", "note": "デンソーが発明", "anchor": [0.66, 0.27], "side": "right", "source": "https://www.qrcode.com/history/"},
+    {"label": "みきゃん", "kind": "製品", "year": "2011年", "note": "愛媛のキャラ", "anchor": [0.63, 0.70], "side": "right", "source": "https://ja.wikipedia.org/wiki/みきゃん"},
+    {"label": "自動販売機", "kind": "製品", "year": "前215年頃", "note": "ヘロンの聖水自販機", "anchor": [0.50, 0.55], "side": "bottom", "source": "https://www.j-sda.or.jp/learning/history/vending-machine-history/index.php"}
+  ]
+}
