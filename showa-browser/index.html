@@ -248,6 +248,7 @@ Implementation Intent:
       <label><input type="checkbox" id="font" checked> 選択フォントに置換</label>
       <label><input type="checkbox" id="scan" checked> 走査線（ブラウン管）</label>
       <label><input type="checkbox" id="flicker" checked> ちらつき</label>
+      <label><input type="checkbox" id="taro"> 🌞 岡本太郎モード（芸術は爆発だ）</label>
     </div>
   </section>
 
@@ -336,6 +337,8 @@ var FONTS = {
 // 背景パターン用インラインSVG（外部画像に頼らず自己完結 / ' は %27、# は %23 でエンコード）
 var SVG_A = "<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27104%27 height=%27104%27><g transform=%27translate(52,52)%27><g fill=%27%23e7a72f%27><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(72)%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(144)%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(216)%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(288)%27/></g><circle r=%2712%27 fill=%27%23c0392b%27/></g></svg>";
 var SVG_B = "<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%2772%27 height=%2772%27><g transform=%27translate(36,36)%27><g fill=%27%23159e92%27><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(60)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(120)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(180)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(240)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(300)%27/></g><circle r=%276%27 fill=%27%23e8552d%27/></g></svg>";
+// 岡本太郎モード用：太陽の塔風の「顔」＋原色のドット（極太黒フチ）
+var SVG_TARO = "<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27150%27 height=%27150%27><g stroke=%27%23000%27 stroke-width=%275%27><circle cx=%2775%27 cy=%2772%27 r=%2744%27 fill=%27%23e2231a%27/><ellipse cx=%2758%27 cy=%2764%27 rx=%2711%27 ry=%2716%27 fill=%27%23ffffff%27/><ellipse cx=%2792%27 cy=%2764%27 rx=%2711%27 ry=%2716%27 fill=%27%23ffffff%27/></g><circle cx=%2758%27 cy=%2766%27 r=%275%27 fill=%27%23000%27/><circle cx=%2792%27 cy=%2766%27 r=%275%27 fill=%27%23000%27/><path d=%27M58 92 Q75 106 92 92%27 stroke=%27%23000%27 stroke-width=%275%27 fill=%27none%27/><circle cx=%2775%27 cy=%2728%27 r=%278%27 fill=%27%23ffd000%27 stroke=%27%23000%27 stroke-width=%274%27/><circle cx=%2720%27 cy=%27120%27 r=%2710%27 fill=%27%230068b7%27 stroke=%27%23000%27 stroke-width=%274%27/><circle cx=%27128%27 cy=%27118%27 r=%279%27 fill=%27%23ffd000%27 stroke=%27%23000%27 stroke-width=%274%27/></svg>";
 
 function opts(){
   return {
@@ -346,6 +349,7 @@ function opts(){
     head : document.getElementById('headFont').value,
     body : document.getElementById('bodyFont').value,
     pattern: document.getElementById('patternSel').value,
+    taro : document.getElementById('taro').checked,
     scan : document.getElementById('scan').checked,
     flick: document.getElementById('flicker').checked
   };
@@ -360,6 +364,10 @@ function buildSource(o){
   var font  = o.font ? 1 : 0;
   var scan  = o.scan ? 1 : 0;
   var flick = o.flick ? 1 : 0;
+  var taroOp = (0.28 + o.dot*0.45).toFixed(3);  // 岡本太郎レイヤ不透明度
+  // 岡本太郎モードは彩度・コントラストを最大限に振る（芸術は爆発だ）
+  var filterStr = o.taro ? "saturate(1.8) contrast(1.2) brightness(1.02)"
+                         : ("saturate("+vivid+") contrast(1.05) brightness(1.0)");
 
   // 背景パターン（共有定数 SVG_A / SVG_B を使用）
   var dPre = "var d=document.createElement('div');d.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;";
@@ -371,6 +379,7 @@ function buildSource(o){
   }else if(o.pattern==='flowerB'){
     patLayer = dPre + "mix-blend-mode:multiply;opacity:"+flrOp+";background-image:url(\"data:image/svg+xml;utf8,"+SVG_B+"\");background-size:72px 72px;';o.appendChild(d);";
   }
+  var taroLayer = o.taro ? (dPre + "mix-blend-mode:normal;opacity:"+taroOp+";background-image:url(\"data:image/svg+xml;utf8,"+SVG_TARO+"\");background-size:150px 150px;';o.appendChild(d);") : "";
 
   // 選択フォントから Google Fonts のURLと適用CSSを組み立てる
   var hf = FONTS[o.head] || FONTS['Reggae One'];
@@ -384,15 +393,17 @@ function buildSource(o){
 + "var ID='showa-pop-layer',SID='showa-pop-style',FID='showa-pop-font';"
 + "var ov=document.getElementById(ID),st=document.getElementById(SID),fo=document.getElementById(FID);"
 + "if(ov||st||fo){if(ov)ov.remove();if(st)st.remove();if(fo)fo.remove();document.documentElement.style.filter='';return;}"
-+ "document.documentElement.style.filter='saturate("+vivid+") contrast(1.05) brightness(1.0)';"
++ "document.documentElement.style.filter='"+filterStr+"';"
 + (font ? "var fk=document.createElement('link');fk.id=FID;fk.rel='stylesheet';fk.href='"+fontHref+"';(document.head||document.documentElement).appendChild(fk);" : "")
 + "var s=document.createElement('style');s.id=SID;var css='';"
 + (font ? "css+='*{font-family:\""+o.body+"\","+bf.fb+" !important;}';css+='h1,h2,h3,h4{font-family:\""+o.head+"\","+hf.fb+" !important;letter-spacing:0.03em !important;}';" : "")
++ (o.taro ? "css+='img,video,iframe{border:5px solid #000 !important;box-shadow:6px 6px 0 #e2231a !important;}';css+='h1,h2,h3,h4{color:#e2231a !important;text-shadow:3px 3px 0 #ffd000,-1px -1px 0 #000 !important;}';" : "")
 + "css+='@keyframes showaFlk{0%{opacity:0.9}50%{opacity:0.55}100%{opacity:0.85}}';"
 + "s.textContent=css;(document.head||document.documentElement).appendChild(s);"
 + "var o=document.createElement('div');o.id=ID;o.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483646;pointer-events:none;overflow:hidden;';"
 + "var w=document.createElement('div');w.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:soft-light;opacity:"+pop+";background:linear-gradient(115deg, rgba(232,165,61,0.9), rgba(232,85,45,0.75) 45%, rgba(21,158,146,0.85));';o.appendChild(w);"
 + patLayer
++ taroLayer
 + (scan ? ("var sc=document.createElement('div');sc.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:multiply;opacity:0.6;background:repeating-linear-gradient(0deg, rgba(0,0,0,0.10) 0px, rgba(0,0,0,0.10) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px);'" + (flick ? "+'animation:showaFlk 0.2s steps(2,end) infinite;'" : "") + ";o.appendChild(sc);") : "")
 + "(document.body||document.documentElement).appendChild(o);"
 + "})();";
@@ -412,22 +423,24 @@ function buildPanelSource(cfg){
 + "var LS='showa-pop-settings';\n"
 + "var DEF=" + JSON.stringify(cfg) + ";\n"
 + "var FONTS=" + JSON.stringify(FONTS) + ";\n"
-+ "var SVGA=\"" + SVG_A + "\",SVGB=\"" + SVG_B + "\";\n"
++ "var SVGA=\"" + SVG_A + "\",SVGB=\"" + SVG_B + "\",SVGT=\"" + SVG_TARO + "\";\n"
 + "var cfg;try{cfg=JSON.parse(localStorage.getItem(LS));}catch(e){}if(!cfg||typeof cfg!=='object')cfg={};for(var k in DEF){if(cfg[k]===undefined)cfg[k]=DEF[k];}\n"
 + "function save(){try{localStorage.setItem(LS,JSON.stringify(cfg));}catch(e){}}\n"
 + "function removeEffect(){rm([LID,SID,FID]);document.documentElement.style.filter='';}\n"
 + "function applyEffect(){\n"
 + " removeEffect();\n"
-+ " var vivid=(1+cfg.vivid/100*1.2).toFixed(2),pop=(cfg.pop/100*0.5).toFixed(3),dotOp=(cfg.dot/100*0.4).toFixed(3),flrOp=(cfg.dot/100*0.7).toFixed(3);\n"
-+ " document.documentElement.style.filter='saturate('+vivid+') contrast(1.05) brightness(1.0)';\n"
++ " var vivid=(1+cfg.vivid/100*1.2).toFixed(2),pop=(cfg.pop/100*0.5).toFixed(3),dotOp=(cfg.dot/100*0.4).toFixed(3),flrOp=(cfg.dot/100*0.7).toFixed(3),taroOp=(0.28+cfg.dot/100*0.45).toFixed(3);\n"
++ " document.documentElement.style.filter=cfg.taro?'saturate(1.8) contrast(1.2) brightness(1.02)':('saturate('+vivid+') contrast(1.05) brightness(1.0)');\n"
 + " if(cfg.font){var hf=FONTS[cfg.head]||{q:'Reggae+One'},bf=FONTS[cfg.body]||{q:'Kosugi+Maru'};var fams=hf.q===bf.q?('family='+hf.q):('family='+hf.q+'&family='+bf.q);var fk=document.createElement('link');fk.id=FID;fk.rel='stylesheet';fk.href='https://fonts.googleapis.com/css2?'+fams+'&display=swap';(document.head||document.documentElement).appendChild(fk);}\n"
 + " var s=document.createElement('style');s.id=SID;var css='';\n"
 + " if(cfg.font){var bfb=(FONTS[cfg.body]||{}).fb||'sans-serif',hfb=(FONTS[cfg.head]||{}).fb||'sans-serif';css+='*{font-family:\"'+cfg.body+'\",'+bfb+' !important;}';css+='h1,h2,h3,h4{font-family:\"'+cfg.head+'\",'+hfb+' !important;letter-spacing:0.03em !important;}';}\n"
++ " if(cfg.taro){css+='img,video,iframe{border:5px solid #000 !important;box-shadow:6px 6px 0 #e2231a !important;}';css+='h1,h2,h3,h4{color:#e2231a !important;text-shadow:3px 3px 0 #ffd000,-1px -1px 0 #000 !important;}';}\n"
 + " css+='@keyframes showaFlk{0%{opacity:0.9}50%{opacity:0.55}100%{opacity:0.85}}';\n"
 + " s.textContent=css;(document.head||document.documentElement).appendChild(s);\n"
 + " var o=document.createElement('div');o.id=LID;o.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483646;pointer-events:none;overflow:hidden;';\n"
 + " var w=document.createElement('div');w.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:soft-light;opacity:'+pop+';background:linear-gradient(115deg, rgba(232,165,61,0.9), rgba(232,85,45,0.75) 45%, rgba(21,158,146,0.85));';o.appendChild(w);\n"
 + " if(cfg.pattern&&cfg.pattern!=='none'){var d=document.createElement('div');var ds='position:absolute;top:0;left:0;width:100%;height:100%;';if(cfg.pattern==='dots'){ds+='mix-blend-mode:overlay;opacity:'+dotOp+';background-image:radial-gradient(rgba(255,255,255,0.95) 16%, rgba(0,0,0,0) 17%), radial-gradient(rgba(192,57,43,0.85) 16%, rgba(0,0,0,0) 17%);background-size:50px 50px;background-position:0 0, 25px 25px;';}else if(cfg.pattern==='flowerA'){ds+='mix-blend-mode:multiply;opacity:'+flrOp+';background-image:url(\"data:image/svg+xml;utf8,'+SVGA+'\");background-size:104px 104px;';}else if(cfg.pattern==='flowerB'){ds+='mix-blend-mode:multiply;opacity:'+flrOp+';background-image:url(\"data:image/svg+xml;utf8,'+SVGB+'\");background-size:72px 72px;';}d.style.cssText=ds;o.appendChild(d);}\n"
++ " if(cfg.taro){var dt=document.createElement('div');dt.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:normal;opacity:'+taroOp+';background-image:url(\"data:image/svg+xml;utf8,'+SVGT+'\");background-size:150px 150px;';o.appendChild(dt);}\n"
 + " if(cfg.scan){var sc=document.createElement('div');sc.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:multiply;opacity:0.6;background:repeating-linear-gradient(0deg, rgba(0,0,0,0.10) 0px, rgba(0,0,0,0.10) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px);'+(cfg.flick?'animation:showaFlk 0.2s steps(2,end) infinite;':'');o.appendChild(sc);}\n"
 + " (document.body||document.documentElement).appendChild(o);\n"
 + "}\n"
@@ -445,12 +458,13 @@ function buildPanelSource(cfg){
 + "+'<div style=\"'+row+'\"><span>見出し</span><select id=\"sp_hf\" style=\"width:145px;\">'+FOPTS+'</select></div>'\n"
 + "+'<div style=\"'+row+'\"><span>本文</span><select id=\"sp_bf\" style=\"width:145px;\">'+FOPTS+'</select></div>'\n"
 + "+'<div style=\"'+row+'font-size:11px;\"><label><input id=\"sp_font\" type=\"checkbox\"> フォント</label><label><input id=\"sp_scan\" type=\"checkbox\"> 走査線</label><label><input id=\"sp_flick\" type=\"checkbox\"> ちらつき</label></div>'\n"
++ "+'<div style=\"'+row+'font-size:11px;\"><label><input id=\"sp_taro\" type=\"checkbox\"> 🌞 岡本太郎モード（芸術は爆発だ）</label></div>'\n"
 + "+'</div>';\n"
 + "(document.body||document.documentElement).appendChild(p);\n"
 + "function $(id){return document.getElementById(id);}\n"
-+ "$('sp_vivid').value=cfg.vivid;$('sp_pop').value=cfg.pop;$('sp_dot').value=cfg.dot;$('sp_pat').value=cfg.pattern;$('sp_hf').value=cfg.head;$('sp_bf').value=cfg.body;$('sp_font').checked=!!cfg.font;$('sp_scan').checked=!!cfg.scan;$('sp_flick').checked=!!cfg.flick;\n"
-+ "function pull(){cfg.vivid=+$('sp_vivid').value;cfg.pop=+$('sp_pop').value;cfg.dot=+$('sp_dot').value;cfg.pattern=$('sp_pat').value;cfg.head=$('sp_hf').value;cfg.body=$('sp_bf').value;cfg.font=$('sp_font').checked;cfg.scan=$('sp_scan').checked;cfg.flick=$('sp_flick').checked;save();applyEffect();}\n"
-+ "['sp_vivid','sp_pop','sp_dot','sp_pat','sp_hf','sp_bf','sp_font','sp_scan','sp_flick'].forEach(function(id){$(id).addEventListener('input',pull);$(id).addEventListener('change',pull);});\n"
++ "$('sp_vivid').value=cfg.vivid;$('sp_pop').value=cfg.pop;$('sp_dot').value=cfg.dot;$('sp_pat').value=cfg.pattern;$('sp_hf').value=cfg.head;$('sp_bf').value=cfg.body;$('sp_font').checked=!!cfg.font;$('sp_scan').checked=!!cfg.scan;$('sp_flick').checked=!!cfg.flick;$('sp_taro').checked=!!cfg.taro;\n"
++ "function pull(){cfg.vivid=+$('sp_vivid').value;cfg.pop=+$('sp_pop').value;cfg.dot=+$('sp_dot').value;cfg.pattern=$('sp_pat').value;cfg.head=$('sp_hf').value;cfg.body=$('sp_bf').value;cfg.font=$('sp_font').checked;cfg.scan=$('sp_scan').checked;cfg.flick=$('sp_flick').checked;cfg.taro=$('sp_taro').checked;save();applyEffect();}\n"
++ "['sp_vivid','sp_pop','sp_dot','sp_pat','sp_hf','sp_bf','sp_font','sp_scan','sp_flick','sp_taro'].forEach(function(id){$(id).addEventListener('input',pull);$(id).addEventListener('change',pull);});\n"
 + "$('sp_close').addEventListener('click',function(){rm([LID,SID,FID,PID]);document.documentElement.style.filter='';});\n"
 + "$('sp_min').addEventListener('click',function(){var b=$('sp_body');b.style.display=(b.style.display==='none')?'block':'none';});\n"
 + "(function(){var h=$('sp_bar'),dr=false,ox=0,oy=0;h.addEventListener('mousedown',function(e){if(e.target.tagName==='BUTTON')return;dr=true;var r=p.getBoundingClientRect();ox=e.clientX-r.left;oy=e.clientY-r.top;p.style.right='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dr)return;p.style.left=(e.clientX-ox)+'px';p.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dr=false;});})();\n"
@@ -565,6 +579,7 @@ function rawCfg(){
     head :document.getElementById('headFont').value,
     body :document.getElementById('bodyFont').value,
     font :document.getElementById('font').checked,
+    taro :document.getElementById('taro').checked,
     scan :document.getElementById('scan').checked,
     flick:document.getElementById('flicker').checked
   };
@@ -588,7 +603,7 @@ function onChange(){
   updateUserscript();
   refreshPreview();
 }
-['vivid','pop','dot','font','scan','flicker','headFont','bodyFont','patternSel'].forEach(function(id){
+['vivid','pop','dot','font','scan','flicker','headFont','bodyFont','patternSel','taro'].forEach(function(id){
   document.getElementById(id).addEventListener('input', onChange);
   document.getElementById(id).addEventListener('change', onChange);
 });
