@@ -3,169 +3,164 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>昭和ブラウザ｜どんなWebページも昭和レトロに</title>
+<title>昭和レトロポップ・ブラウザ｜どんなWebページも派手な昭和に</title>
 <!--
 AI Model: Claude Opus 4.8
-User Prompt: 新しいプロジェクトとして、どんなwebページも昭和風にするブラウザを作ってほしい。
-  ブラウザとは言っても、実際には既存のブラウザを利用して、表示するフォントやCSSなどを置き換えて、
-  昭和風の見た目にするWebページでよい。
+User Prompt: どんなwebページも昭和風にするブラウザ → 1960〜70年代の「派手な昭和レトロポップ」で作り直し。
 AI Approach:
-  外部サイトはCORSによりiframeへの読み込み・DOM加工ができないため、
-  「ブックマークレット」方式を採用。実ブラウザ上で任意のページにCSSフィルタ/オーバーレイ/明朝体フォントを
-  注入して昭和風(セピア・走査線・周辺減光・フィルムノイズ・ブラウン管ちらつき)に変換する。
-  生成コードは単一のソース文字列から作り、(1)ブックマークレット (2)ライブプレビュー(srcdoc同一オリジンiframeへeval)
-  の両方で共有する。スライダー/トグルで効果の強さを調整でき、結果が即座にブックマークレットへ反映される。
+  外部サイトはCORSによりiframe加工不可のため「ブックマークレット」方式を採用。
+  実ブラウザ上で任意のページに、(1)彩度を上げるfilter (2)からし色/朱赤/ターコイズのポップ配色ウォッシュ
+  (3)回転サンバースト(放射) (4)水玉ドット (5)走査線/ちらつき (6)極太フォント(Dela Gothic One)+丸ゴシック(Kosugi Maru)
+  を注入して、万博'70風のサイケな昭和レトロポップに変換する。フォントはGoogle Fontsのlink注入で任意ページに供給。
+  生成コードは単一ソース文字列から作り、ブックマークレットとライブプレビュー(srcdoc同一オリジンiframeへeval)で共有。
 Implementation Intent:
-  純粋なクライアントサイドJS(依存ゼロ・単一ファイル)で、CSSフィルタ/合成・SVG feTurbulenceによるノイズ・
-  CSSアニメーションによるCRTちらつきといったWeb表現技術のデモを兼ねた実用ツール。
+  依存ゼロ・単一HTMLで、CSSフィルタ/合成・conic/radial-gradient・CSSアニメーションといった表現技術のデモを兼ねた実用ツール。
 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Kosugi+Maru&family=Reggae+One&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#efe6cf;
-    --paper-dark:#e3d6b3;
-    --ink:#3a2c1a;
-    --accent:#9c3b2e;
-    --accent2:#2e5d4f;
-    --frame:#5a4632;
+    --cream:#f7ecca;
+    --mustard:#e7a72f;
+    --orange:#e8552d;
+    --teal:#159e92;
+    --red:#c0392b;
+    --brown:#3f2a18;
+    --pink:#e8809c;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    font-family:"Yu Mincho","YuMincho","Hiragino Mincho ProN","MS PMincho",serif;
-    background:
-      radial-gradient(ellipse at 50% -10%, #f6efda 0%, var(--paper) 55%, var(--paper-dark) 100%);
-    color:var(--ink);
+    font-family:"Kosugi Maru","Hiragino Maru Gothic ProN",sans-serif;
+    color:var(--brown);
     line-height:1.8;
     min-height:100vh;
+    position:relative;
+    background:var(--cream);
     -webkit-font-smoothing:antialiased;
   }
-  /* 紙の質感ノイズ */
+  /* 背景：回転サンバースト＋水玉 */
   body::before{
-    content:"";
-    position:fixed;inset:0;pointer-events:none;z-index:9999;
-    opacity:.06;mix-blend-mode:multiply;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    content:"";position:fixed;top:50%;left:50%;
+    width:300vmax;height:300vmax;transform:translate(-50%,-50%);
+    z-index:-2;opacity:.10;
+    background:repeating-conic-gradient(from 0deg, var(--orange) 0deg, var(--orange) 7deg, transparent 7deg, transparent 14deg);
+    animation:bgspin 90s linear infinite;
   }
+  body::after{
+    content:"";position:fixed;inset:0;z-index:-1;opacity:.10;
+    background-image:
+      radial-gradient(var(--red) 16%, transparent 17%),
+      radial-gradient(var(--teal) 16%, transparent 17%);
+    background-size:54px 54px;
+    background-position:0 0, 27px 27px;
+  }
+  @keyframes bgspin{to{transform:translate(-50%,-50%) rotate(360deg);}}
+
   header{
-    text-align:center;
-    padding:34px 16px 22px;
-    border-bottom:3px double var(--frame);
-    position:relative;
+    text-align:center;padding:40px 16px 30px;position:relative;color:#fff;
+    background:
+      repeating-conic-gradient(from 0deg at 50% 35%, rgba(255,255,255,.16) 0deg, rgba(255,255,255,.16) 6deg, transparent 6deg, transparent 12deg),
+      linear-gradient(120deg, var(--orange), var(--red) 55%, var(--mustard));
+    border-bottom:8px solid var(--teal);
+    box-shadow:0 6px 0 var(--brown);
   }
   header h1{
-    margin:0;
-    font-size:clamp(28px,6vw,52px);
-    letter-spacing:.18em;
-    color:var(--accent);
-    text-shadow:1px 1px 0 #fff7e0, 3px 3px 0 rgba(90,70,50,.25);
+    margin:0;font-family:"Dela Gothic One",sans-serif;
+    font-size:clamp(30px,7vw,60px);letter-spacing:.04em;
+    color:#fff;
+    text-shadow:3px 3px 0 var(--brown), 6px 6px 0 rgba(0,0,0,.18);
   }
-  header .sub{
-    margin-top:8px;font-size:14px;letter-spacing:.3em;color:var(--frame);
-  }
+  header .sub{margin-top:12px;font-size:14px;letter-spacing:.34em;color:#fff7e0;}
   header .badge{
-    display:inline-block;margin-top:14px;padding:3px 14px;
-    border:2px solid var(--accent2);border-radius:2px;
-    color:var(--accent2);font-size:12px;letter-spacing:.25em;
-    background:rgba(255,255,255,.35);
+    display:inline-block;margin-top:16px;padding:5px 18px;
+    background:var(--teal);color:#fff;font-size:12px;letter-spacing:.3em;
+    border:3px solid #fff;border-radius:30px;font-family:"Reggae One",sans-serif;
+    box-shadow:3px 3px 0 var(--brown);
   }
-  main{max-width:980px;margin:0 auto;padding:26px 18px 70px;}
+  main{max-width:980px;margin:0 auto;padding:28px 18px 70px;position:relative;z-index:1;}
   section{
-    background:rgba(255,253,244,.55);
-    border:1px solid var(--paper-dark);
-    border-radius:4px;
-    padding:22px 22px 26px;
-    margin:26px 0;
-    box-shadow:0 2px 0 rgba(90,70,50,.12);
+    background:#fffdf4;
+    border:4px solid var(--brown);
+    border-radius:18px;
+    padding:24px 22px 28px;margin:28px 0;
+    box-shadow:8px 8px 0 rgba(63,42,24,.18);
   }
   h2{
-    font-size:20px;letter-spacing:.12em;margin:0 0 14px;
-    padding-left:12px;border-left:6px solid var(--accent);color:var(--ink);
+    font-family:"Dela Gothic One",sans-serif;font-size:22px;letter-spacing:.04em;
+    margin:0 0 16px;color:var(--red);
+    display:inline-block;padding:4px 14px;background:var(--mustard);
+    border-radius:10px;box-shadow:3px 3px 0 var(--brown);color:var(--brown);
   }
   p{margin:.5em 0;}
-  .lead{font-size:15px;color:#4a3a26;}
+  .lead{font-size:15px;}
+  strong{color:var(--red);}
 
   /* ===== ブラウン管プレビュー ===== */
   .tv{
-    background:linear-gradient(160deg,#6e5840,#4a3826);
-    border-radius:22px/18px;
-    padding:26px 26px 60px;
-    box-shadow:inset 0 2px 6px rgba(255,255,255,.2), 0 14px 30px rgba(0,0,0,.35);
-    position:relative;
-    max-width:760px;margin:0 auto;
+    background:linear-gradient(160deg,var(--mustard),#c98417);
+    border-radius:26px/20px;padding:26px 26px 60px;
+    box-shadow:inset 0 2px 6px rgba(255,255,255,.4), 8px 10px 0 rgba(63,42,24,.25);
+    position:relative;max-width:760px;margin:0 auto;
+    border:4px solid var(--brown);
   }
   .tv::after{
-    content:"SHOWA-VISION";
-    position:absolute;left:50%;bottom:22px;transform:translateX(-50%);
-    font-size:11px;letter-spacing:.35em;color:#caa46f;
+    content:"SHOWA POP VISION";position:absolute;left:50%;bottom:22px;transform:translateX(-50%);
+    font-family:"Reggae One",sans-serif;font-size:13px;letter-spacing:.3em;color:var(--brown);
   }
   .tv-screen{
-    position:relative;
-    background:#111;
-    border-radius:18px/26px;
-    overflow:hidden;
-    box-shadow:inset 0 0 40px rgba(0,0,0,.8);
-    border:6px solid #1a1410;
+    position:relative;background:#111;border-radius:18px/26px;overflow:hidden;
+    box-shadow:inset 0 0 40px rgba(0,0,0,.7);border:6px solid #1a1410;
   }
-  .tv-screen iframe{
-    display:block;width:100%;height:430px;border:0;background:#fff;
-    /* 画面の丸み */
-    border-radius:10px;
-  }
-  .knobs{position:absolute;right:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:14px;}
-  .knob{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#caa46f,#5a4632);box-shadow:0 2px 3px rgba(0,0,0,.5);}
+  .tv-screen iframe{display:block;width:100%;height:430px;border:0;background:#fff;border-radius:10px;}
+  .knobs{position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:14px;}
+  .knob{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--cream),var(--brown));box-shadow:0 2px 3px rgba(0,0,0,.5);}
 
-  .controls{
-    display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
-    gap:14px 26px;margin-top:20px;
-  }
-  .ctrl label{display:block;font-size:13px;letter-spacing:.08em;margin-bottom:4px;color:#4a3a26;}
-  .ctrl input[type=range]{width:100%;accent-color:var(--accent);}
-  .toggles{display:flex;flex-wrap:wrap;gap:18px;margin-top:6px;}
-  .toggles label{font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;}
-  .btnrow{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px;align-items:center;}
+  .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px 26px;margin-top:22px;}
+  .ctrl label{display:block;font-size:13px;letter-spacing:.04em;margin-bottom:4px;font-weight:bold;}
+  .ctrl input[type=range]{width:100%;accent-color:var(--orange);}
+  .v{color:var(--teal);font-weight:bold;}
+  .toggles{display:flex;flex-wrap:wrap;gap:18px;margin-top:10px;}
+  .toggles label{font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:bold;}
+  .btnrow{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px;align-items:center;justify-content:center;}
   button.act{
-    font-family:inherit;cursor:pointer;
-    background:var(--accent);color:#fff7e0;border:none;
-    padding:10px 22px;border-radius:3px;font-size:14px;letter-spacing:.12em;
-    box-shadow:0 3px 0 #6e2418;
+    font-family:"Dela Gothic One",sans-serif;cursor:pointer;
+    background:var(--orange);color:#fff;border:3px solid var(--brown);
+    padding:11px 26px;border-radius:30px;font-size:15px;letter-spacing:.06em;
+    box-shadow:4px 4px 0 var(--brown);
   }
-  button.act:active{transform:translateY(2px);box-shadow:0 1px 0 #6e2418;}
+  button.act:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--brown);}
   button.ghost{
-    background:transparent;color:var(--accent2);border:1px solid var(--accent2);
-    padding:9px 18px;border-radius:3px;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:.1em;
+    background:#fff;color:var(--teal);border:3px solid var(--teal);
+    padding:10px 20px;border-radius:30px;font-size:13px;cursor:pointer;
+    font-family:"Kosugi Maru",sans-serif;font-weight:bold;
+    box-shadow:3px 3px 0 rgba(21,158,146,.4);
   }
 
   /* ===== ブックマークレット ===== */
-  .bm-zone{
-    text-align:center;padding:18px;border:2px dashed var(--frame);border-radius:6px;
-    background:rgba(255,255,255,.4);
-  }
+  .bm-zone{text-align:center;padding:22px;border:4px dashed var(--orange);border-radius:14px;background:#fff8e6;}
   a.bookmarklet{
-    display:inline-block;
-    background:linear-gradient(180deg,#c64a38,#9c3b2e);
-    color:#fff7e0;text-decoration:none;
-    padding:12px 26px;border-radius:4px;font-size:16px;letter-spacing:.12em;
-    box-shadow:0 4px 0 #6e2418, 0 6px 12px rgba(0,0,0,.2);
-    cursor:grab;
+    display:inline-block;font-family:"Dela Gothic One",sans-serif;
+    background:linear-gradient(180deg,var(--teal),#0e7d73);color:#fff;text-decoration:none;
+    padding:14px 30px;border-radius:30px;font-size:17px;letter-spacing:.06em;
+    border:3px solid var(--brown);box-shadow:5px 5px 0 var(--brown);cursor:grab;
   }
-  a.bookmarklet:active{cursor:grabbing;}
-  .hint{font-size:12px;color:#6b5942;margin-top:10px;}
-  ol.steps{font-size:14px;color:#4a3a26;padding-left:1.3em;}
+  a.bookmarklet:active{cursor:grabbing;transform:translate(2px,2px);box-shadow:3px 3px 0 var(--brown);}
+  .hint{font-size:12.5px;color:var(--brown);margin-top:12px;}
+  ol.steps{font-size:14px;padding-left:1.3em;}
   ol.steps li{margin:.4em 0;}
-  code{
-    background:rgba(90,70,50,.12);padding:1px 6px;border-radius:3px;
-    font-family:"Consolas","Courier New",monospace;font-size:.92em;
-  }
+  code{background:rgba(63,42,24,.10);padding:1px 6px;border-radius:4px;font-family:"Consolas","Courier New",monospace;font-size:.92em;}
   .note{font-size:12.5px;color:#6b5942;}
-  footer{text-align:center;font-size:12px;color:#6b5942;padding:24px 16px 40px;letter-spacing:.1em;}
-  .pill{display:inline-block;background:var(--accent2);color:#fff;font-size:11px;padding:1px 9px;border-radius:10px;letter-spacing:.1em;margin-left:6px;}
+  footer{text-align:center;font-size:12px;color:var(--brown);padding:24px 16px 40px;letter-spacing:.08em;}
+  .pill{display:inline-block;background:var(--red);color:#fff;font-size:11px;padding:2px 12px;border-radius:20px;letter-spacing:.06em;margin-left:6px;}
 </style>
 </head>
 <body>
 <header>
-  <h1>昭和ブラウザ</h1>
-  <div class="sub">ど ん な W e b ペ ー ジ も 昭 和 レ ト ロ に</div>
-  <div class="badge">SHOWA RETRO MODE</div>
+  <h1>昭和レトロポップ</h1>
+  <div class="sub">ど ん な W e b ペ ー ジ も 派 手 な 昭 和 に</div>
+  <div class="badge">SHOWA 1960-70s POP</div>
 </header>
 
 <main>
@@ -173,8 +168,8 @@ Implementation Intent:
     <h2>これは何？</h2>
     <p class="lead">
       新しいブラウザを作るのではなく、<strong>今お使いのブラウザのまま</strong>、表示中のページに
-      セピア・走査線・周辺減光・フィルムノイズ・明朝体フォントを重ねて、画面をまるごと
-      <strong>昭和のブラウン管テレビ</strong>のような見た目に変換します。
+      ビビッドな彩度・ポップな配色・回転サンバースト・水玉・極太レトロフォントを重ねて、
+      画面をまるごと<strong>万博'70風の「派手な昭和レトロポップ」</strong>に変換します。
     </p>
     <p class="lead">
       下のテレビ画面で効果を調整し、好みの設定が決まったら、その設定を焼き込んだ
@@ -192,54 +187,55 @@ Implementation Intent:
       </div>
     </div>
 
-    <div class="btnrow" style="justify-content:center;">
-      <button class="act" id="toggleBtn">昭和風に変換する</button>
+    <div class="btnrow">
+      <button class="act" id="toggleBtn">昭和ポップに変換する</button>
       <button class="ghost" id="reloadBtn">サンプルを元に戻す</button>
     </div>
 
     <div class="controls">
       <div class="ctrl">
-        <label>色あせ・セピア <span class="v" id="v_sepia"></span></label>
-        <input type="range" id="sepia" min="0" max="100" value="55">
+        <label>ビビッド（彩度） <span class="v" id="v_vivid"></span></label>
+        <input type="range" id="vivid" min="0" max="100" value="55">
       </div>
       <div class="ctrl">
-        <label>走査線（スキャンライン） <span class="v" id="v_scan"></span></label>
-        <input type="range" id="scan" min="0" max="100" value="42">
+        <label>レトロ配色ウォッシュ <span class="v" id="v_pop"></span></label>
+        <input type="range" id="pop" min="0" max="100" value="50">
       </div>
       <div class="ctrl">
-        <label>フィルムノイズ <span class="v" id="v_grain"></span></label>
-        <input type="range" id="grain" min="0" max="100" value="35">
+        <label>サンバースト（放射） <span class="v" id="v_sun"></span></label>
+        <input type="range" id="sun" min="0" max="100" value="45">
       </div>
       <div class="ctrl">
-        <label>周辺減光（ビネット） <span class="v" id="v_vign"></span></label>
-        <input type="range" id="vign" min="0" max="100" value="55">
+        <label>水玉ドット <span class="v" id="v_dot"></span></label>
+        <input type="range" id="dot" min="0" max="100" value="35">
       </div>
     </div>
     <div class="toggles">
-      <label><input type="checkbox" id="font" checked> 明朝体フォントに置換</label>
-      <label><input type="checkbox" id="flicker" checked> ブラウン管のちらつき</label>
+      <label><input type="checkbox" id="font" checked> 極太レトロフォントに置換</label>
+      <label><input type="checkbox" id="scan" checked> 走査線（ブラウン管）</label>
+      <label><input type="checkbox" id="flicker" checked> ちらつき</label>
     </div>
   </section>
 
   <section>
     <h2>② ブックマークレットを登録する</h2>
     <div class="bm-zone">
-      <a class="bookmarklet" id="bmLink" href="#">📺 昭和ブラウザ</a>
+      <a class="bookmarklet" id="bmLink" href="#">📺 昭和ポップ</a>
       <div class="hint">↑ このボタンをブックマークバーへ<strong>ドラッグ＆ドロップ</strong>するだけ。</div>
     </div>
     <ol class="steps">
       <li>上のプレビューで効果を調整します（その設定が下のリンクに自動反映されます）。</li>
-      <li>緑のボタン <strong>「📺 昭和ブラウザ」</strong> をブックマークバーへドラッグして登録。</li>
-      <li>昭和風にしたいページを開き、登録したブックマークをクリック。</li>
+      <li>ボタン <strong>「📺 昭和ポップ」</strong> をブックマークバーへドラッグして登録。</li>
+      <li>派手にしたいページを開き、登録したブックマークをクリック。</li>
       <li>もう一度クリックすると<strong>元に戻ります</strong>（トグル式）。</li>
     </ol>
-    <div class="btnrow">
+    <div class="btnrow" style="justify-content:flex-start;">
       <button class="ghost" id="copyBtn">コードをコピー</button>
       <span class="note" id="copyMsg"></span>
     </div>
     <p class="note">
-      ※ ドラッグできない環境では「コードをコピー」して、ブラウザのブックマーク編集画面でURL欄に貼り付けてください。<br>
-      ※ 一部サイトはセキュリティ設定（CSP）によりブックマークレットの実行が制限される場合があります。
+      ※ ドラッグできない環境では「コードをコピー」して、ブックマーク編集画面のURL欄に貼り付けてください。<br>
+      ※ フォントはGoogle Fontsから読み込みます（ネット接続が必要）。一部サイトはCSP設定によりフォント注入やブックマークレット自体が制限される場合があります。
     </p>
   </section>
 
@@ -247,66 +243,63 @@ Implementation Intent:
     <h2>仕組み（技術メモ）</h2>
     <p class="lead">
       外部サイトは<code>CORS</code>により別ページから中身を加工できないため、本ツールは
-      <strong>ブックマークレット</strong>（=そのページ自身の文脈で動くJavaScript）を採用しています。注入する処理は…
+      <strong>ブックマークレット</strong>（=そのページ自身の文脈で動くJavaScript）を採用。注入する処理は…
     </p>
     <ul class="lead">
-      <li><code>&lt;html&gt;</code>に <code>filter: sepia() saturate() contrast() brightness()</code> で全体を退色。</li>
-      <li>全画面オーバーレイに走査線（<code>repeating-linear-gradient</code>）とビネット（<code>radial-gradient</code>）を合成。</li>
-      <li>SVG <code>feTurbulence</code> のフィルムノイズを <code>mix-blend-mode</code> で重ね、CSSアニメーションで揺らす。</li>
-      <li>全要素のフォントを明朝体へ <code>!important</code> で上書き。</li>
+      <li><code>&lt;html&gt;</code>に <code>filter: saturate() contrast()</code> をかけて色を<strong>ビビッド</strong>に。</li>
+      <li>全画面オーバーレイに、ポップ配色ウォッシュ／回転サンバースト（<code>repeating-conic-gradient</code>）／水玉（<code>radial-gradient</code>）／走査線を <code>mix-blend-mode</code> で合成。</li>
+      <li>Google Fontsの <code>&lt;link&gt;</code> を注入し、見出しを <strong>Dela Gothic One</strong>、本文を <strong>Kosugi Maru</strong> に <code>!important</code> で置換。</li>
+      <li>走査線レイヤをCSSアニメーションで揺らしてブラウン管のちらつきを再現。</li>
     </ul>
   </section>
 </main>
 
-<footer>昭和ブラウザ — 単一HTML・依存ゼロ・Vanilla JS / Generated with Claude Code</footer>
+<footer>昭和レトロポップ・ブラウザ — 単一HTML・依存ゼロ・Vanilla JS / Generated with Claude Code</footer>
 
 <script>
 // ============================================================
-//  昭和風変換ソースの生成（プレビューとブックマークレットで共有）
+//  昭和レトロポップ変換ソースの生成（プレビューとブックマークレットで共有）
 // ============================================================
 function opts(){
   return {
-    sepia : (+document.getElementById('sepia').value)/100,   // 0..1
-    scan  : (+document.getElementById('scan').value)/100,    // 0..1
-    grain : (+document.getElementById('grain').value)/100,   // 0..1
-    vign  : (+document.getElementById('vign').value)/100,    // 0..1
-    font  : document.getElementById('font').checked,
-    flick : document.getElementById('flicker').checked
+    vivid:(+document.getElementById('vivid').value)/100,
+    pop  :(+document.getElementById('pop').value)/100,
+    sun  :(+document.getElementById('sun').value)/100,
+    dot  :(+document.getElementById('dot').value)/100,
+    font : document.getElementById('font').checked,
+    scan : document.getElementById('scan').checked,
+    flick: document.getElementById('flicker').checked
   };
 }
 
-// 昭和風レイヤを「トグル」する自己完結スクリプトのソース文字列を生成
+// 昭和ポップレイヤを「トグル」する自己完結スクリプトのソース文字列を生成
 function buildSource(o){
-  var sepia = o.sepia.toFixed(2);
-  var sat   = (1 - o.sepia*0.55).toFixed(2);          // 退色に合わせて彩度を落とす
-  var scan  = (o.scan*0.5).toFixed(3);                // 走査線の濃さ
-  var grainOp = (o.grain*0.9).toFixed(2);             // ノイズの不透明度
-  var vign  = (o.vign*0.85).toFixed(2);               // 周辺減光の強さ
+  var vivid = (1 + o.vivid*1.2).toFixed(2);   // 1.0 .. 2.2
+  var pop   = (o.pop*0.5).toFixed(3);         // 配色ウォッシュ不透明度
+  var sun   = (o.sun*0.35).toFixed(3);        // サンバースト不透明度
+  var dot   = (o.dot*0.4).toFixed(3);         // 水玉不透明度
   var font  = o.font ? 1 : 0;
+  var scan  = o.scan ? 1 : 0;
   var flick = o.flick ? 1 : 0;
 
   // ※ このコードはブックマークレット内でそのまま動く（document = 対象ページ）
   return ""
 + "(function(){"
-+ "var ID='showa-retro-layer',SID='showa-retro-style';"
-+ "var ov=document.getElementById(ID),st=document.getElementById(SID);"
-+ "if(ov||st){if(ov)ov.remove();if(st)st.remove();document.documentElement.style.filter='';return;}"
-+ "document.documentElement.style.filter='sepia("+sepia+") saturate("+sat+") contrast(0.93) brightness(0.97)';"
++ "var ID='showa-pop-layer',SID='showa-pop-style',FID='showa-pop-font';"
++ "var ov=document.getElementById(ID),st=document.getElementById(SID),fo=document.getElementById(FID);"
++ "if(ov||st||fo){if(ov)ov.remove();if(st)st.remove();if(fo)fo.remove();document.documentElement.style.filter='';return;}"
++ "document.documentElement.style.filter='saturate("+vivid+") contrast(1.05) brightness(1.0)';"
++ (font ? "var fk=document.createElement('link');fk.id=FID;fk.rel='stylesheet';fk.href='https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Kosugi+Maru&display=swap';(document.head||document.documentElement).appendChild(fk);" : "")
 + "var s=document.createElement('style');s.id=SID;var css='';"
-+ (font ? "css+='*{font-family:\"Yu Mincho\",\"YuMincho\",\"Hiragino Mincho ProN\",\"MS PMincho\",serif !important;letter-spacing:0.02em !important;}';" : "")
-+ "css+='@keyframes showaFlicker{0%{opacity:0.85}20%{opacity:0.5}40%{opacity:0.95}60%{opacity:0.6}80%{opacity:0.9}100%{opacity:0.7}}';"
++ (font ? "css+='*{font-family:\"Kosugi Maru\",\"Hiragino Maru Gothic ProN\",sans-serif !important;}';css+='h1,h2,h3,h4{font-family:\"Dela Gothic One\",sans-serif !important;letter-spacing:0.03em !important;}';" : "")
++ "css+='@keyframes showaSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}';"
++ "css+='@keyframes showaFlk{0%{opacity:0.9}50%{opacity:0.55}100%{opacity:0.85}}';"
 + "s.textContent=css;(document.head||document.documentElement).appendChild(s);"
-+ "var o=document.createElement('div');o.id=ID;"
-+ "o.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483647;pointer-events:none;'"
-+ "+'background:'"
-+ "+'radial-gradient(ellipse at center, rgba(0,0,0,0) 42%, rgba(45,22,0,"+vign+") 100%),'"
-+ "+'repeating-linear-gradient(0deg, rgba(0,0,0,"+scan+") 0px, rgba(0,0,0,"+scan+") 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px),'"
-+ "+'linear-gradient(rgba(120,80,20,0.10), rgba(120,80,20,0.10));';"
-+ "var g=document.createElement('div');"
-+ "g.style.cssText='position:absolute;inset:0;mix-blend-mode:overlay;opacity:"+grainOp+";'"
-+ "+'background-image:url(\"data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27140%27 height=%27140%27><filter id=%27n%27><feTurbulence type=%27fractalNoise%27 baseFrequency=%270.9%27 numOctaves=%272%27 stitchTiles=%27stitch%27/></filter><rect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23n)%27/></svg>\");'"
-+ (flick ? "+'animation:showaFlicker 0.18s steps(2,end) infinite;';" : "+'';")
-+ "o.appendChild(g);"
++ "var o=document.createElement('div');o.id=ID;o.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483646;pointer-events:none;overflow:hidden;';"
++ "var w=document.createElement('div');w.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:soft-light;opacity:"+pop+";background:linear-gradient(115deg, rgba(232,165,61,0.9), rgba(232,85,45,0.75) 45%, rgba(21,158,146,0.85));';o.appendChild(w);"
++ "var b=document.createElement('div');b.style.cssText='position:absolute;top:50%;left:50%;width:260vmax;height:260vmax;transform:translate(-50%,-50%);mix-blend-mode:soft-light;opacity:"+sun+";background:repeating-conic-gradient(from 0deg, rgba(232,85,45,0.95) 0deg, rgba(232,85,45,0.95) 7deg, rgba(0,0,0,0) 7deg, rgba(0,0,0,0) 14deg);animation:showaSpin 60s linear infinite;';o.appendChild(b);"
++ "var d=document.createElement('div');d.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:overlay;opacity:"+dot+";background-image:radial-gradient(rgba(255,255,255,0.95) 16%, rgba(0,0,0,0) 17%), radial-gradient(rgba(192,57,43,0.85) 16%, rgba(0,0,0,0) 17%);background-size:50px 50px;background-position:0 0, 25px 25px;';o.appendChild(d);"
++ (scan ? ("var sc=document.createElement('div');sc.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:multiply;opacity:0.6;background:repeating-linear-gradient(0deg, rgba(0,0,0,0.10) 0px, rgba(0,0,0,0.10) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px);'" + (flick ? "+'animation:showaFlk 0.2s steps(2,end) infinite;'" : "") + ";o.appendChild(sc);") : "")
 + "(document.body||document.documentElement).appendChild(o);"
 + "})();";
 }
@@ -350,9 +343,10 @@ function loadSample(){
 function cleanPreview(){
   try{
     iframe.contentWindow.eval(
-      "(function(){var o=document.getElementById('showa-retro-layer');"
-      +"var s=document.getElementById('showa-retro-style');"
-      +"if(o)o.remove();if(s)s.remove();document.documentElement.style.filter='';})();"
+      "(function(){var o=document.getElementById('showa-pop-layer');"
+      +"var s=document.getElementById('showa-pop-style');"
+      +"var f=document.getElementById('showa-pop-font');"
+      +"if(o)o.remove();if(s)s.remove();if(f)f.remove();document.documentElement.style.filter='';})();"
     );
   }catch(e){}
 }
@@ -363,7 +357,7 @@ function refreshPreview(){
   if(previewOn){ cleanPreview(); applyPreview(); }
 }
 function setBtn(){
-  document.getElementById('toggleBtn').textContent = previewOn ? '元に戻す' : '昭和風に変換する';
+  document.getElementById('toggleBtn').textContent = previewOn ? '元に戻す' : '昭和ポップに変換する';
 }
 
 document.getElementById('toggleBtn').addEventListener('click', function(){
@@ -382,17 +376,17 @@ function updateBookmarklet(){
 }
 function updateLabels(){
   var o = opts();
-  document.getElementById('v_sepia').textContent = Math.round(o.sepia*100)+'%';
-  document.getElementById('v_scan').textContent  = Math.round(o.scan*100)+'%';
-  document.getElementById('v_grain').textContent = Math.round(o.grain*100)+'%';
-  document.getElementById('v_vign').textContent  = Math.round(o.vign*100)+'%';
+  document.getElementById('v_vivid').textContent = Math.round(o.vivid*100)+'%';
+  document.getElementById('v_pop').textContent   = Math.round(o.pop*100)+'%';
+  document.getElementById('v_sun').textContent   = Math.round(o.sun*100)+'%';
+  document.getElementById('v_dot').textContent   = Math.round(o.dot*100)+'%';
 }
 function onChange(){
   updateLabels();
   updateBookmarklet();
   refreshPreview();
 }
-['sepia','scan','grain','vign','font','flicker'].forEach(function(id){
+['vivid','pop','sun','dot','font','scan','flicker'].forEach(function(id){
   document.getElementById(id).addEventListener('input', onChange);
   document.getElementById(id).addEventListener('change', onChange);
 });
