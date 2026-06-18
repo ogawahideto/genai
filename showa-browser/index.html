@@ -258,10 +258,11 @@ Implementation Intent:
       <div class="hint">↑ このボタンをブックマークバーへ<strong>ドラッグ＆ドロップ</strong>するだけ。</div>
     </div>
     <ol class="steps">
-      <li>上のプレビューで効果を調整します（その設定が下のリンクに自動反映されます）。</li>
+      <li>上のプレビューで効果を調整します（その設定が<strong>初期値</strong>として下のリンクに埋め込まれます）。</li>
       <li>ボタン <strong>「📺 昭和ポップ」</strong> をブックマークバーへドラッグして登録。</li>
       <li>派手にしたいページを開き、登録したブックマークをクリック。</li>
-      <li>もう一度クリックすると<strong>元に戻ります</strong>（トグル式）。</li>
+      <li>画面に<strong>設定パネル</strong>が出ます。スライダーやドロップダウンで<strong>その場で調整→即反映</strong>（登録し直し不要）。パネルはドラッグで移動できます。</li>
+      <li>設定は<strong>そのサイトに保存</strong>され、次回も復元されます。「解除」で元に戻り、もう一度ブックマークを押すと再表示します。</li>
     </ol>
     <div class="btnrow" style="justify-content:flex-start;">
       <button class="ghost" id="copyBtn">コードをコピー</button>
@@ -332,6 +333,10 @@ var FONTS = {
   'Zen Antique'     :{q:'Zen+Antique',      fb:'serif'}
 };
 
+// 背景パターン用インラインSVG（外部画像に頼らず自己完結 / ' は %27、# は %23 でエンコード）
+var SVG_A = "<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27104%27 height=%27104%27><g transform=%27translate(52,52)%27><g fill=%27%23e7a72f%27><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(72)%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(144)%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(216)%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(288)%27/></g><circle r=%2712%27 fill=%27%23c0392b%27/></g></svg>";
+var SVG_B = "<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%2772%27 height=%2772%27><g transform=%27translate(36,36)%27><g fill=%27%23159e92%27><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(60)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(120)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(180)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(240)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(300)%27/></g><circle r=%276%27 fill=%27%23e8552d%27/></g></svg>";
+
 function opts(){
   return {
     vivid:(+document.getElementById('vivid').value)/100,
@@ -356,18 +361,15 @@ function buildSource(o){
   var scan  = o.scan ? 1 : 0;
   var flick = o.flick ? 1 : 0;
 
-  // 背景パターン（外部画像に頼らずインラインSVGで自己完結）
-  // ※ SVG内の ' は %27、# は %23 でエンコード（data URIで自動デコードされる）
-  var svgA = "<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27104%27 height=%27104%27><g transform=%27translate(52,52)%27><g fill=%27%23e7a72f%27><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(72)%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(144)%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(216)%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(288)%27/></g><circle r=%2712%27 fill=%27%23c0392b%27/></g></svg>";
-  var svgB = "<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%2772%27 height=%2772%27><g transform=%27translate(36,36)%27><g fill=%27%23159e92%27><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(60)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(120)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(180)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(240)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(300)%27/></g><circle r=%276%27 fill=%27%23e8552d%27/></g></svg>";
+  // 背景パターン（共有定数 SVG_A / SVG_B を使用）
   var dPre = "var d=document.createElement('div');d.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;";
   var patLayer = "";
   if(o.pattern==='dots'){
     patLayer = dPre + "mix-blend-mode:overlay;opacity:"+dotOp+";background-image:radial-gradient(rgba(255,255,255,0.95) 16%, rgba(0,0,0,0) 17%), radial-gradient(rgba(192,57,43,0.85) 16%, rgba(0,0,0,0) 17%);background-size:50px 50px;background-position:0 0, 25px 25px;';o.appendChild(d);";
   }else if(o.pattern==='flowerA'){
-    patLayer = dPre + "mix-blend-mode:multiply;opacity:"+flrOp+";background-image:url(\"data:image/svg+xml;utf8,"+svgA+"\");background-size:104px 104px;';o.appendChild(d);";
+    patLayer = dPre + "mix-blend-mode:multiply;opacity:"+flrOp+";background-image:url(\"data:image/svg+xml;utf8,"+SVG_A+"\");background-size:104px 104px;';o.appendChild(d);";
   }else if(o.pattern==='flowerB'){
-    patLayer = dPre + "mix-blend-mode:multiply;opacity:"+flrOp+";background-image:url(\"data:image/svg+xml;utf8,"+svgB+"\");background-size:72px 72px;';o.appendChild(d);";
+    patLayer = dPre + "mix-blend-mode:multiply;opacity:"+flrOp+";background-image:url(\"data:image/svg+xml;utf8,"+SVG_B+"\");background-size:72px 72px;';o.appendChild(d);";
   }
 
   // 選択フォントから Google Fonts のURLと適用CSSを組み立てる
@@ -393,6 +395,66 @@ function buildSource(o){
 + patLayer
 + (scan ? ("var sc=document.createElement('div');sc.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:multiply;opacity:0.6;background:repeating-linear-gradient(0deg, rgba(0,0,0,0.10) 0px, rgba(0,0,0,0.10) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px);'" + (flick ? "+'animation:showaFlk 0.2s steps(2,end) infinite;'" : "") + ";o.appendChild(sc);") : "")
 + "(document.body||document.documentElement).appendChild(o);"
++ "})();";
+}
+
+// ============================================================
+//  設定パネル付きブックマークレット（その場で調整・登録し直し不要 / 案B）
+//  押すと画面に設定パネルを表示。スライダー等で即反映し localStorage に保存。
+//  もう一度押す（または「解除」）で全部オフ。引数cfgが初期値（保存値が優先）。
+// ============================================================
+function buildPanelSource(cfg){
+  var fopts = Object.keys(FONTS).map(function(k){return '<option value="'+k+'">'+k+'</option>';}).join('');
+  return "(function(){\n"
++ "var PID='showa-pop-panel',LID='showa-pop-layer',SID='showa-pop-style',FID='showa-pop-font';\n"
++ "function rm(ids){ids.forEach(function(id){var e=document.getElementById(id);if(e)e.remove();});}\n"
++ "if(document.getElementById(PID)||document.getElementById(LID)){rm([LID,SID,FID,PID]);document.documentElement.style.filter='';return;}\n"
++ "var LS='showa-pop-settings';\n"
++ "var DEF=" + JSON.stringify(cfg) + ";\n"
++ "var FONTS=" + JSON.stringify(FONTS) + ";\n"
++ "var SVGA=\"" + SVG_A + "\",SVGB=\"" + SVG_B + "\";\n"
++ "var cfg;try{cfg=JSON.parse(localStorage.getItem(LS));}catch(e){}if(!cfg||typeof cfg!=='object')cfg={};for(var k in DEF){if(cfg[k]===undefined)cfg[k]=DEF[k];}\n"
++ "function save(){try{localStorage.setItem(LS,JSON.stringify(cfg));}catch(e){}}\n"
++ "function removeEffect(){rm([LID,SID,FID]);document.documentElement.style.filter='';}\n"
++ "function applyEffect(){\n"
++ " removeEffect();\n"
++ " var vivid=(1+cfg.vivid/100*1.2).toFixed(2),pop=(cfg.pop/100*0.5).toFixed(3),dotOp=(cfg.dot/100*0.4).toFixed(3),flrOp=(cfg.dot/100*0.7).toFixed(3);\n"
++ " document.documentElement.style.filter='saturate('+vivid+') contrast(1.05) brightness(1.0)';\n"
++ " if(cfg.font){var hf=FONTS[cfg.head]||{q:'Reggae+One'},bf=FONTS[cfg.body]||{q:'Kosugi+Maru'};var fams=hf.q===bf.q?('family='+hf.q):('family='+hf.q+'&family='+bf.q);var fk=document.createElement('link');fk.id=FID;fk.rel='stylesheet';fk.href='https://fonts.googleapis.com/css2?'+fams+'&display=swap';(document.head||document.documentElement).appendChild(fk);}\n"
++ " var s=document.createElement('style');s.id=SID;var css='';\n"
++ " if(cfg.font){var bfb=(FONTS[cfg.body]||{}).fb||'sans-serif',hfb=(FONTS[cfg.head]||{}).fb||'sans-serif';css+='*{font-family:\"'+cfg.body+'\",'+bfb+' !important;}';css+='h1,h2,h3,h4{font-family:\"'+cfg.head+'\",'+hfb+' !important;letter-spacing:0.03em !important;}';}\n"
++ " css+='@keyframes showaFlk{0%{opacity:0.9}50%{opacity:0.55}100%{opacity:0.85}}';\n"
++ " s.textContent=css;(document.head||document.documentElement).appendChild(s);\n"
++ " var o=document.createElement('div');o.id=LID;o.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483646;pointer-events:none;overflow:hidden;';\n"
++ " var w=document.createElement('div');w.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:soft-light;opacity:'+pop+';background:linear-gradient(115deg, rgba(232,165,61,0.9), rgba(232,85,45,0.75) 45%, rgba(21,158,146,0.85));';o.appendChild(w);\n"
++ " if(cfg.pattern&&cfg.pattern!=='none'){var d=document.createElement('div');var ds='position:absolute;top:0;left:0;width:100%;height:100%;';if(cfg.pattern==='dots'){ds+='mix-blend-mode:overlay;opacity:'+dotOp+';background-image:radial-gradient(rgba(255,255,255,0.95) 16%, rgba(0,0,0,0) 17%), radial-gradient(rgba(192,57,43,0.85) 16%, rgba(0,0,0,0) 17%);background-size:50px 50px;background-position:0 0, 25px 25px;';}else if(cfg.pattern==='flowerA'){ds+='mix-blend-mode:multiply;opacity:'+flrOp+';background-image:url(\"data:image/svg+xml;utf8,'+SVGA+'\");background-size:104px 104px;';}else if(cfg.pattern==='flowerB'){ds+='mix-blend-mode:multiply;opacity:'+flrOp+';background-image:url(\"data:image/svg+xml;utf8,'+SVGB+'\");background-size:72px 72px;';}d.style.cssText=ds;o.appendChild(d);}\n"
++ " if(cfg.scan){var sc=document.createElement('div');sc.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:multiply;opacity:0.6;background:repeating-linear-gradient(0deg, rgba(0,0,0,0.10) 0px, rgba(0,0,0,0.10) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px);'+(cfg.flick?'animation:showaFlk 0.2s steps(2,end) infinite;':'');o.appendChild(sc);}\n"
++ " (document.body||document.documentElement).appendChild(o);\n"
++ "}\n"
++ "var FOPTS='" + fopts + "';\n"
++ "var PATOPTS='<option value=\"dots\">水玉ドット</option><option value=\"flowerA\">花柄(大柄)</option><option value=\"flowerB\">花柄(小花)</option><option value=\"none\">なし</option>';\n"
++ "var p=document.createElement('div');p.id=PID;\n"
++ "p.style.cssText='position:fixed;top:16px;right:16px;width:250px;z-index:2147483647;background:#fffdf4;color:#3f2a18;border:3px solid #3f2a18;border-radius:14px;box-shadow:5px 5px 0 rgba(0,0,0,.35);font-family:sans-serif;font-size:12px;line-height:1.5;overflow:hidden;';\n"
++ "var row='display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;';\n"
++ "p.innerHTML='<div id=\"sp_bar\" style=\"cursor:move;background:linear-gradient(120deg,#e8552d,#c0392b);color:#fff;padding:8px 10px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;\"><span>📺 昭和レトロポップ</span><span><button id=\"sp_min\" style=\"cursor:pointer;border:0;background:rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:2px 8px;margin-right:4px;\">_</button><button id=\"sp_close\" style=\"cursor:pointer;border:0;background:rgba(0,0,0,.3);color:#fff;border-radius:6px;padding:2px 8px;\">解除</button></span></div>'\n"
++ "+'<div id=\"sp_body\" style=\"padding:10px 12px 12px;\">'\n"
++ "+'<div style=\"'+row+'\"><span>ビビッド</span><input id=\"sp_vivid\" type=\"range\" min=\"0\" max=\"100\" style=\"width:130px;\"></div>'\n"
++ "+'<div style=\"'+row+'\"><span>レトロ配色</span><input id=\"sp_pop\" type=\"range\" min=\"0\" max=\"100\" style=\"width:130px;\"></div>'\n"
++ "+'<div style=\"'+row+'\"><span>パターン濃さ</span><input id=\"sp_dot\" type=\"range\" min=\"0\" max=\"100\" style=\"width:130px;\"></div>'\n"
++ "+'<div style=\"'+row+'\"><span>背景</span><select id=\"sp_pat\" style=\"width:145px;\">'+PATOPTS+'</select></div>'\n"
++ "+'<div style=\"'+row+'\"><span>見出し</span><select id=\"sp_hf\" style=\"width:145px;\">'+FOPTS+'</select></div>'\n"
++ "+'<div style=\"'+row+'\"><span>本文</span><select id=\"sp_bf\" style=\"width:145px;\">'+FOPTS+'</select></div>'\n"
++ "+'<div style=\"'+row+'font-size:11px;\"><label><input id=\"sp_font\" type=\"checkbox\"> フォント</label><label><input id=\"sp_scan\" type=\"checkbox\"> 走査線</label><label><input id=\"sp_flick\" type=\"checkbox\"> ちらつき</label></div>'\n"
++ "+'</div>';\n"
++ "(document.body||document.documentElement).appendChild(p);\n"
++ "function $(id){return document.getElementById(id);}\n"
++ "$('sp_vivid').value=cfg.vivid;$('sp_pop').value=cfg.pop;$('sp_dot').value=cfg.dot;$('sp_pat').value=cfg.pattern;$('sp_hf').value=cfg.head;$('sp_bf').value=cfg.body;$('sp_font').checked=!!cfg.font;$('sp_scan').checked=!!cfg.scan;$('sp_flick').checked=!!cfg.flick;\n"
++ "function pull(){cfg.vivid=+$('sp_vivid').value;cfg.pop=+$('sp_pop').value;cfg.dot=+$('sp_dot').value;cfg.pattern=$('sp_pat').value;cfg.head=$('sp_hf').value;cfg.body=$('sp_bf').value;cfg.font=$('sp_font').checked;cfg.scan=$('sp_scan').checked;cfg.flick=$('sp_flick').checked;save();applyEffect();}\n"
++ "['sp_vivid','sp_pop','sp_dot','sp_pat','sp_hf','sp_bf','sp_font','sp_scan','sp_flick'].forEach(function(id){$(id).addEventListener('input',pull);$(id).addEventListener('change',pull);});\n"
++ "$('sp_close').addEventListener('click',function(){rm([LID,SID,FID,PID]);document.documentElement.style.filter='';});\n"
++ "$('sp_min').addEventListener('click',function(){var b=$('sp_body');b.style.display=(b.style.display==='none')?'block':'none';});\n"
++ "(function(){var h=$('sp_bar'),dr=false,ox=0,oy=0;h.addEventListener('mousedown',function(e){if(e.target.tagName==='BUTTON')return;dr=true;var r=p.getBoundingClientRect();ox=e.clientX-r.left;oy=e.clientY-r.top;p.style.right='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dr)return;p.style.left=(e.clientX-ox)+'px';p.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dr=false;});})();\n"
++ "applyEffect();\n"
 + "})();";
 }
 
@@ -493,8 +555,22 @@ document.getElementById('reloadBtn').addEventListener('click', loadSample);
 // ============================================================
 //  ブックマークレットリンクの更新 & 値表示
 // ============================================================
+// パネル用の生設定（0〜100のスライダー値・選択値をそのまま）
+function rawCfg(){
+  return {
+    vivid:+document.getElementById('vivid').value,
+    pop  :+document.getElementById('pop').value,
+    dot  :+document.getElementById('dot').value,
+    pattern:document.getElementById('patternSel').value,
+    head :document.getElementById('headFont').value,
+    body :document.getElementById('bodyFont').value,
+    font :document.getElementById('font').checked,
+    scan :document.getElementById('scan').checked,
+    flick:document.getElementById('flicker').checked
+  };
+}
 function updateBookmarklet(){
-  var href = 'javascript:' + encodeURIComponent(buildSource(opts())) + ';void 0';
+  var href = 'javascript:' + encodeURIComponent(buildPanelSource(rawCfg())) + ';void 0';
   document.getElementById('bmLink').setAttribute('href', href);
 }
 function updateLabels(){
