@@ -151,6 +151,12 @@ Implementation Intent:
   ol.steps{font-size:14px;padding-left:1.3em;}
   ol.steps li{margin:.4em 0;}
   code{background:rgba(63,42,24,.10);padding:1px 6px;border-radius:4px;font-family:"Consolas","Courier New",monospace;font-size:.92em;}
+  textarea#userCode{
+    width:100%;height:170px;margin-top:12px;
+    font-family:"Consolas","Courier New",monospace;font-size:12px;line-height:1.5;
+    border:3px solid var(--brown);border-radius:10px;padding:10px;
+    background:#fffdf4;color:var(--brown);resize:vertical;
+  }
   .note{font-size:12.5px;color:#6b5942;}
   footer{text-align:center;font-size:12px;color:var(--brown);padding:24px 16px 40px;letter-spacing:.08em;}
   .pill{display:inline-block;background:var(--red);color:#fff;font-size:11px;padding:2px 12px;border-radius:20px;letter-spacing:.06em;margin-left:6px;}
@@ -268,6 +274,28 @@ Implementation Intent:
   </section>
 
   <section>
+    <h2>③ ページ遷移後も維持したい人へ（ユーザースクリプト）</h2>
+    <p class="lead">
+      ブックマークレットは「今のページ」にしか効かず、リンクで別ページへ移動すると元に戻ります（仕組み上の制限）。
+      <strong>ページ遷移後もずっと昭和レトロポップを維持</strong>したい場合は、
+      <strong>ユーザースクリプト</strong>（Tampermonkey 等の拡張機能）を使うと、
+      <strong>すべてのページで自動的に</strong>変換され続けます。
+    </p>
+    <ol class="steps">
+      <li>ブラウザに <strong>Tampermonkey</strong>（または Violentmonkey）拡張をインストール。</li>
+      <li>下の「ユーザースクリプトをコピー」を押す。</li>
+      <li>Tampermonkey の「新規スクリプトを追加」を開き、全文を貼り付けて保存（Ctrl+S）。</li>
+      <li>以後どのページを開いても自動で変換。Tampermonkey のメニュー「昭和レトロポップ ON/OFF」で切り替えできます。</li>
+    </ol>
+    <div class="btnrow" style="justify-content:flex-start;">
+      <button class="ghost" id="copyUserBtn">ユーザースクリプトをコピー</button>
+      <span class="note" id="copyUserMsg"></span>
+    </div>
+    <textarea id="userCode" readonly spellcheck="false"></textarea>
+    <p class="note">※ 現在のプレビュー設定（フォント・配色・パターン等）がそのまま埋め込まれます。設定を変えたら、もう一度コピーして貼り替えてください。</p>
+  </section>
+
+  <section>
     <h2>仕組み（技術メモ）</h2>
     <p class="lead">
       外部サイトは<code>CORS</code>により別ページから中身を加工できないため、本ツールは
@@ -369,6 +397,37 @@ function buildSource(o){
 }
 
 // ============================================================
+//  ユーザースクリプト生成（ページ遷移後も維持・Tampermonkey用）
+//  buildSource() はトグル動作なので、毎回のページ読込で1回呼べば「適用」になる。
+//  メニューから呼べば「適用⇄解除」が切り替わる。状態はGMストレージに保存。
+// ============================================================
+function buildUserscript(o){
+  var flip = buildSource(o); // 即時実行のトグルIIFE
+  return [
+    '// ==UserScript==',
+    '// @name         昭和レトロポップ・ブラウザ',
+    '// @namespace    https://ogawahideto.github.io/genai/showa-browser/',
+    '// @version      1.0',
+    '// @description  どんなWebページも昭和レトロポップに変換（ページ遷移後も維持）',
+    '// @match        *://*/*',
+    '// @run-at       document-idle',
+    '// @grant        GM_registerMenuCommand',
+    '// @grant        GM_getValue',
+    '// @grant        GM_setValue',
+    '// ==/UserScript==',
+    '(function(){',
+    "  'use strict';",
+    "  var KEY='showa-pop-on';",
+    '  function flip(){ ' + flip + ' }',
+    '  function getOn(){ try{return GM_getValue(KEY,true);}catch(e){return true;} }',
+    '  function setOn(v){ try{GM_setValue(KEY,v);}catch(e){} }',
+    '  if(getOn()){ flip(); }',
+    '  try{ GM_registerMenuCommand("昭和レトロポップ ON/OFF", function(){ var n=!getOn(); setOn(n); flip(); }); }catch(e){}',
+    '})();'
+  ].join('\n');
+}
+
+// ============================================================
 //  プレビュー（同一オリジン srcdoc iframe に対して適用）
 // ============================================================
 var SAMPLE = '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">'
@@ -444,9 +503,13 @@ function updateLabels(){
   document.getElementById('v_pop').textContent   = Math.round(o.pop*100)+'%';
   document.getElementById('v_dot').textContent   = Math.round(o.dot*100)+'%';
 }
+function updateUserscript(){
+  document.getElementById('userCode').value = buildUserscript(opts());
+}
 function onChange(){
   updateLabels();
   updateBookmarklet();
+  updateUserscript();
   refreshPreview();
 }
 ['vivid','pop','dot','font','scan','flicker','headFont','bodyFont','patternSel'].forEach(function(id){
@@ -475,10 +538,25 @@ document.getElementById('copyBtn').addEventListener('click', function(){
   setTimeout(function(){msg.textContent='';},4000);
 });
 
+document.getElementById('copyUserBtn').addEventListener('click', function(){
+  var code = document.getElementById('userCode').value;
+  var msg = document.getElementById('copyUserMsg');
+  (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject())
+    .then(function(){ msg.textContent='コピーしました！Tampermonkeyの新規スクリプトに貼り付けて保存してください。'; })
+    .catch(function(){
+      var ta=document.getElementById('userCode');ta.removeAttribute('readonly');ta.select();
+      try{document.execCommand('copy');msg.textContent='コピーしました！';}
+      catch(_){msg.textContent='コピーに失敗。テキストを手動で選択してください。';}
+      ta.setAttribute('readonly','');
+    });
+  setTimeout(function(){msg.textContent='';},4000);
+});
+
 // 初期化
 loadSample();
 updateLabels();
 updateBookmarklet();
+updateUserscript();
 </script>
 </body>
 </html>
