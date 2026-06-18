@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>昭和ブラウザ｜どんなWebページも昭和レトロに</title>
+<!--
+AI Model: Claude Opus 4.8
+User Prompt: 新しいプロジェクトとして、どんなwebページも昭和風にするブラウザを作ってほしい。
+  ブラウザとは言っても、実際には既存のブラウザを利用して、表示するフォントやCSSなどを置き換えて、
+  昭和風の見た目にするWebページでよい。
+AI Approach:
+  外部サイトはCORSによりiframeへの読み込み・DOM加工ができないため、
+  「ブックマークレット」方式を採用。実ブラウザ上で任意のページにCSSフィルタ/オーバーレイ/明朝体フォントを
+  注入して昭和風(セピア・走査線・周辺減光・フィルムノイズ・ブラウン管ちらつき)に変換する。
+  生成コードは単一のソース文字列から作り、(1)ブックマークレット (2)ライブプレビュー(srcdoc同一オリジンiframeへeval)
+  の両方で共有する。スライダー/トグルで効果の強さを調整でき、結果が即座にブックマークレットへ反映される。
+Implementation Intent:
+  純粋なクライアントサイドJS(依存ゼロ・単一ファイル)で、CSSフィルタ/合成・SVG feTurbulenceによるノイズ・
+  CSSアニメーションによるCRTちらつきといったWeb表現技術のデモを兼ねた実用ツール。
+-->
+<style>
+  :root{
+    --paper:#efe6cf;
+    --paper-dark:#e3d6b3;
+    --ink:#3a2c1a;
+    --accent:#9c3b2e;
+    --accent2:#2e5d4f;
+    --frame:#5a4632;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"Yu Mincho","YuMincho","Hiragino Mincho ProN","MS PMincho",serif;
+    background:
+      radial-gradient(ellipse at 50% -10%, #f6efda 0%, var(--paper) 55%, var(--paper-dark) 100%);
+    color:var(--ink);
+    line-height:1.8;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* 紙の質感ノイズ */
+  body::before{
+    content:"";
+    position:fixed;inset:0;pointer-events:none;z-index:9999;
+    opacity:.06;mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+  header{
+    text-align:center;
+    padding:34px 16px 22px;
+    border-bottom:3px double var(--frame);
+    position:relative;
+  }
+  header h1{
+    margin:0;
+    font-size:clamp(28px,6vw,52px);
+    letter-spacing:.18em;
+    color:var(--accent);
+    text-shadow:1px 1px 0 #fff7e0, 3px 3px 0 rgba(90,70,50,.25);
+  }
+  header .sub{
+    margin-top:8px;font-size:14px;letter-spacing:.3em;color:var(--frame);
+  }
+  header .badge{
+    display:inline-block;margin-top:14px;padding:3px 14px;
+    border:2px solid var(--accent2);border-radius:2px;
+    color:var(--accent2);font-size:12px;letter-spacing:.25em;
+    background:rgba(255,255,255,.35);
+  }
+  main{max-width:980px;margin:0 auto;padding:26px 18px 70px;}
+  section{
+    background:rgba(255,253,244,.55);
+    border:1px solid var(--paper-dark);
+    border-radius:4px;
+    padding:22px 22px 26px;
+    margin:26px 0;
+    box-shadow:0 2px 0 rgba(90,70,50,.12);
+  }
+  h2{
+    font-size:20px;letter-spacing:.12em;margin:0 0 14px;
+    padding-left:12px;border-left:6px solid var(--accent);color:var(--ink);
+  }
+  p{margin:.5em 0;}
+  .lead{font-size:15px;color:#4a3a26;}
+
+  /* ===== ブラウン管プレビュー ===== */
+  .tv{
+    background:linear-gradient(160deg,#6e5840,#4a3826);
+    border-radius:22px/18px;
+    padding:26px 26px 60px;
+    box-shadow:inset 0 2px 6px rgba(255,255,255,.2), 0 14px 30px rgba(0,0,0,.35);
+    position:relative;
+    max-width:760px;margin:0 auto;
+  }
+  .tv::after{
+    content:"SHOWA-VISION";
+    position:absolute;left:50%;bottom:22px;transform:translateX(-50%);
+    font-size:11px;letter-spacing:.35em;color:#caa46f;
+  }
+  .tv-screen{
+    position:relative;
+    background:#111;
+    border-radius:18px/26px;
+    overflow:hidden;
+    box-shadow:inset 0 0 40px rgba(0,0,0,.8);
+    border:6px solid #1a1410;
+  }
+  .tv-screen iframe{
+    display:block;width:100%;height:430px;border:0;background:#fff;
+    /* 画面の丸み */
+    border-radius:10px;
+  }
+  .knobs{position:absolute;right:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:14px;}
+  .knob{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#caa46f,#5a4632);box-shadow:0 2px 3px rgba(0,0,0,.5);}
+
+  .controls{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+    gap:14px 26px;margin-top:20px;
+  }
+  .ctrl label{display:block;font-size:13px;letter-spacing:.08em;margin-bottom:4px;color:#4a3a26;}
+  .ctrl input[type=range]{width:100%;accent-color:var(--accent);}
+  .toggles{display:flex;flex-wrap:wrap;gap:18px;margin-top:6px;}
+  .toggles label{font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;}
+  .btnrow{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px;align-items:center;}
+  button.act{
+    font-family:inherit;cursor:pointer;
+    background:var(--accent);color:#fff7e0;border:none;
+    padding:10px 22px;border-radius:3px;font-size:14px;letter-spacing:.12em;
+    box-shadow:0 3px 0 #6e2418;
+  }
+  button.act:active{transform:translateY(2px);box-shadow:0 1px 0 #6e2418;}
+  button.ghost{
+    background:transparent;color:var(--accent2);border:1px solid var(--accent2);
+    padding:9px 18px;border-radius:3px;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:.1em;
+  }
+
+  /* ===== ブックマークレット ===== */
+  .bm-zone{
+    text-align:center;padding:18px;border:2px dashed var(--frame);border-radius:6px;
+    background:rgba(255,255,255,.4);
+  }
+  a.bookmarklet{
+    display:inline-block;
+    background:linear-gradient(180deg,#c64a38,#9c3b2e);
+    color:#fff7e0;text-decoration:none;
+    padding:12px 26px;border-radius:4px;font-size:16px;letter-spacing:.12em;
+    box-shadow:0 4px 0 #6e2418, 0 6px 12px rgba(0,0,0,.2);
+    cursor:grab;
+  }
+  a.bookmarklet:active{cursor:grabbing;}
+  .hint{font-size:12px;color:#6b5942;margin-top:10px;}
+  ol.steps{font-size:14px;color:#4a3a26;padding-left:1.3em;}
+  ol.steps li{margin:.4em 0;}
+  code{
+    background:rgba(90,70,50,.12);padding:1px 6px;border-radius:3px;
+    font-family:"Consolas","Courier New",monospace;font-size:.92em;
+  }
+  .note{font-size:12.5px;color:#6b5942;}
+  footer{text-align:center;font-size:12px;color:#6b5942;padding:24px 16px 40px;letter-spacing:.1em;}
+  .pill{display:inline-block;background:var(--accent2);color:#fff;font-size:11px;padding:1px 9px;border-radius:10px;letter-spacing:.1em;margin-left:6px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>昭和ブラウザ</h1>
+  <div class="sub">ど ん な W e b ペ ー ジ も 昭 和 レ ト ロ に</div>
+  <div class="badge">SHOWA RETRO MODE</div>
+</header>
+
+<main>
+  <section>
+    <h2>これは何？</h2>
+    <p class="lead">
+      新しいブラウザを作るのではなく、<strong>今お使いのブラウザのまま</strong>、表示中のページに
+      セピア・走査線・周辺減光・フィルムノイズ・明朝体フォントを重ねて、画面をまるごと
+      <strong>昭和のブラウン管テレビ</strong>のような見た目に変換します。
+    </p>
+    <p class="lead">
+      下のテレビ画面で効果を調整し、好みの設定が決まったら、その設定を焼き込んだ
+      <strong>ブックマークレット</strong>をブックマークバーに登録。あとは見たいページで押すだけ。
+      <span class="pill">どんなサイトでもOK</span>
+    </p>
+  </section>
+
+  <section>
+    <h2>① プレビューで調整する</h2>
+    <div class="tv">
+      <div class="tv-screen">
+        <iframe id="preview" title="プレビュー"></iframe>
+        <div class="knobs"><div class="knob"></div><div class="knob"></div></div>
+      </div>
+    </div>
+
+    <div class="btnrow" style="justify-content:center;">
+      <button class="act" id="toggleBtn">昭和風に変換する</button>
+      <button class="ghost" id="reloadBtn">サンプルを元に戻す</button>
+    </div>
+
+    <div class="controls">
+      <div class="ctrl">
+        <label>色あせ・セピア <span class="v" id="v_sepia"></span></label>
+        <input type="range" id="sepia" min="0" max="100" value="55">
+      </div>
+      <div class="ctrl">
+        <label>走査線（スキャンライン） <span class="v" id="v_scan"></span></label>
+        <input type="range" id="scan" min="0" max="100" value="42">
+      </div>
+      <div class="ctrl">
+        <label>フィルムノイズ <span class="v" id="v_grain"></span></label>
+        <input type="range" id="grain" min="0" max="100" value="35">
+      </div>
+      <div class="ctrl">
+        <label>周辺減光（ビネット） <span class="v" id="v_vign"></span></label>
+        <input type="range" id="vign" min="0" max="100" value="55">
+      </div>
+    </div>
+    <div class="toggles">
+      <label><input type="checkbox" id="font" checked> 明朝体フォントに置換</label>
+      <label><input type="checkbox" id="flicker" checked> ブラウン管のちらつき</label>
+    </div>
+  </section>
+
+  <section>
+    <h2>② ブックマークレットを登録する</h2>
+    <div class="bm-zone">
+      <a class="bookmarklet" id="bmLink" href="#">📺 昭和ブラウザ</a>
+      <div class="hint">↑ このボタンをブックマークバーへ<strong>ドラッグ＆ドロップ</strong>するだけ。</div>
+    </div>
+    <ol class="steps">
+      <li>上のプレビューで効果を調整します（その設定が下のリンクに自動反映されます）。</li>
+      <li>緑のボタン <strong>「📺 昭和ブラウザ」</strong> をブックマークバーへドラッグして登録。</li>
+      <li>昭和風にしたいページを開き、登録したブックマークをクリック。</li>
+      <li>もう一度クリックすると<strong>元に戻ります</strong>（トグル式）。</li>
+    </ol>
+    <div class="btnrow">
+      <button class="ghost" id="copyBtn">コードをコピー</button>
+      <span class="note" id="copyMsg"></span>
+    </div>
+    <p class="note">
+      ※ ドラッグできない環境では「コードをコピー」して、ブラウザのブックマーク編集画面でURL欄に貼り付けてください。<br>
+      ※ 一部サイトはセキュリティ設定（CSP）によりブックマークレットの実行が制限される場合があります。
+    </p>
+  </section>
+
+  <section>
+    <h2>仕組み（技術メモ）</h2>
+    <p class="lead">
+      外部サイトは<code>CORS</code>により別ページから中身を加工できないため、本ツールは
+      <strong>ブックマークレット</strong>（=そのページ自身の文脈で動くJavaScript）を採用しています。注入する処理は…
+    </p>
+    <ul class="lead">
+      <li><code>&lt;html&gt;</code>に <code>filter: sepia() saturate() contrast() brightness()</code> で全体を退色。</li>
+      <li>全画面オーバーレイに走査線（<code>repeating-linear-gradient</code>）とビネット（<code>radial-gradient</code>）を合成。</li>
+      <li>SVG <code>feTurbulence</code> のフィルムノイズを <code>mix-blend-mode</code> で重ね、CSSアニメーションで揺らす。</li>
+      <li>全要素のフォントを明朝体へ <code>!important</code> で上書き。</li>
+    </ul>
+  </section>
+</main>
+
+<footer>昭和ブラウザ — 単一HTML・依存ゼロ・Vanilla JS / Generated with Claude Code</footer>
+
+<script>
+// ============================================================
+//  昭和風変換ソースの生成（プレビューとブックマークレットで共有）
+// ============================================================
+function opts(){
+  return {
+    sepia : (+document.getElementById('sepia').value)/100,   // 0..1
+    scan  : (+document.getElementById('scan').value)/100,    // 0..1
+    grain : (+document.getElementById('grain').value)/100,   // 0..1
+    vign  : (+document.getElementById('vign').value)/100,    // 0..1
+    font  : document.getElementById('font').checked,
+    flick : document.getElementById('flicker').checked
+  };
+}
+
+// 昭和風レイヤを「トグル」する自己完結スクリプトのソース文字列を生成
+function buildSource(o){
+  var sepia = o.sepia.toFixed(2);
+  var sat   = (1 - o.sepia*0.55).toFixed(2);          // 退色に合わせて彩度を落とす
+  var scan  = (o.scan*0.5).toFixed(3);                // 走査線の濃さ
+  var grainOp = (o.grain*0.9).toFixed(2);             // ノイズの不透明度
+  var vign  = (o.vign*0.85).toFixed(2);               // 周辺減光の強さ
+  var font  = o.font ? 1 : 0;
+  var flick = o.flick ? 1 : 0;
+
+  // ※ このコードはブックマークレット内でそのまま動く（document = 対象ページ）
+  return ""
++ "(function(){"
++ "var ID='showa-retro-layer',SID='showa-retro-style';"
++ "var ov=document.getElementById(ID),st=document.getElementById(SID);"
++ "if(ov||st){if(ov)ov.remove();if(st)st.remove();document.documentElement.style.filter='';return;}"
++ "document.documentElement.style.filter='sepia("+sepia+") saturate("+sat+") contrast(0.93) brightness(0.97)';"
++ "var s=document.createElement('style');s.id=SID;var css='';"
++ (font ? "css+='*{font-family:\"Yu Mincho\",\"YuMincho\",\"Hiragino Mincho ProN\",\"MS PMincho\",serif !important;letter-spacing:0.02em !important;}';" : "")
++ "css+='@keyframes showaFlicker{0%{opacity:0.85}20%{opacity:0.5}40%{opacity:0.95}60%{opacity:0.6}80%{opacity:0.9}100%{opacity:0.7}}';"
++ "s.textContent=css;(document.head||document.documentElement).appendChild(s);"
++ "var o=document.createElement('div');o.id=ID;"
++ "o.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483647;pointer-events:none;'"
++ "+'background:'"
++ "+'radial-gradient(ellipse at center, rgba(0,0,0,0) 42%, rgba(45,22,0,"+vign+") 100%),'"
++ "+'repeating-linear-gradient(0deg, rgba(0,0,0,"+scan+") 0px, rgba(0,0,0,"+scan+") 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px),'"
++ "+'linear-gradient(rgba(120,80,20,0.10), rgba(120,80,20,0.10));';"
++ "var g=document.createElement('div');"
++ "g.style.cssText='position:absolute;inset:0;mix-blend-mode:overlay;opacity:"+grainOp+";'"
++ "+'background-image:url(\"data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27140%27 height=%27140%27><filter id=%27n%27><feTurbulence type=%27fractalNoise%27 baseFrequency=%270.9%27 numOctaves=%272%27 stitchTiles=%27stitch%27/></filter><rect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23n)%27/></svg>\");'"
++ (flick ? "+'animation:showaFlicker 0.18s steps(2,end) infinite;';" : "+'';")
++ "o.appendChild(g);"
++ "(document.body||document.documentElement).appendChild(o);"
++ "})();";
+}
+
+// ============================================================
+//  プレビュー（同一オリジン srcdoc iframe に対して適用）
+// ============================================================
+var SAMPLE = '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">'
++ '<style>'
++ 'body{margin:0;font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1f2937;background:#fff;}'
++ '.hero{background:linear-gradient(120deg,#6366f1,#22d3ee);color:#fff;padding:34px 26px;}'
++ '.hero h1{margin:0;font-size:30px;}'
++ '.hero p{margin:8px 0 0;opacity:.95;}'
++ '.btn{display:inline-block;margin-top:16px;background:#fff;color:#4f46e5;padding:10px 22px;border-radius:8px;font-weight:700;text-decoration:none;}'
++ '.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;padding:24px 26px;}'
++ '.card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;box-shadow:0 6px 16px rgba(0,0,0,.06);}'
++ '.card h3{margin:0 0 6px;font-size:16px;color:#4338ca;}'
++ '.card p{margin:0;font-size:13px;color:#6b7280;}'
++ '.tag{display:inline-block;background:#ecfeff;color:#0891b2;font-size:11px;padding:2px 8px;border-radius:999px;margin-top:8px;}'
++ 'footer{padding:18px 26px;background:#f9fafb;color:#9ca3af;font-size:12px;}'
++ '</style></head><body>'
++ '<div class="hero"><h1>CloudNova ✨ 最新SaaSプラットフォーム</h1>'
++ '<p>あなたのビジネスを、次のステージへ。今すぐ無料で始めよう。</p>'
++ '<a class="btn" href="#">無料で試す →</a></div>'
++ '<div class="grid">'
++ '<div class="card"><h3>高速デプロイ</h3><p>数クリックで本番環境へ。CI/CD完全対応。</p><span class="tag">NEW</span></div>'
++ '<div class="card"><h3>AIアシスト</h3><p>コードもデザインも、AIが隣で手伝います。</p><span class="tag">AI</span></div>'
++ '<div class="card"><h3>リアルタイム分析</h3><p>美しいダッシュボードで指標を可視化。</p><span class="tag">DATA</span></div>'
++ '</div>'
++ '<footer>© 2026 CloudNova Inc. — これはサンプルの「現代風」ページです。</footer>'
++ '</body></html>';
+
+var iframe = document.getElementById('preview');
+var previewOn = false;
+
+function loadSample(){
+  iframe.srcdoc = SAMPLE;
+  previewOn = false;
+  setBtn();
+}
+function cleanPreview(){
+  try{
+    iframe.contentWindow.eval(
+      "(function(){var o=document.getElementById('showa-retro-layer');"
+      +"var s=document.getElementById('showa-retro-style');"
+      +"if(o)o.remove();if(s)s.remove();document.documentElement.style.filter='';})();"
+    );
+  }catch(e){}
+}
+function applyPreview(){
+  try{ iframe.contentWindow.eval(buildSource(opts())); }catch(e){}
+}
+function refreshPreview(){
+  if(previewOn){ cleanPreview(); applyPreview(); }
+}
+function setBtn(){
+  document.getElementById('toggleBtn').textContent = previewOn ? '元に戻す' : '昭和風に変換する';
+}
+
+document.getElementById('toggleBtn').addEventListener('click', function(){
+  if(previewOn){ cleanPreview(); previewOn=false; }
+  else{ cleanPreview(); applyPreview(); previewOn=true; }
+  setBtn();
+});
+document.getElementById('reloadBtn').addEventListener('click', loadSample);
+
+// ============================================================
+//  ブックマークレットリンクの更新 & 値表示
+// ============================================================
+function updateBookmarklet(){
+  var href = 'javascript:' + encodeURIComponent(buildSource(opts())) + ';void 0';
+  document.getElementById('bmLink').setAttribute('href', href);
+}
+function updateLabels(){
+  var o = opts();
+  document.getElementById('v_sepia').textContent = Math.round(o.sepia*100)+'%';
+  document.getElementById('v_scan').textContent  = Math.round(o.scan*100)+'%';
+  document.getElementById('v_grain').textContent = Math.round(o.grain*100)+'%';
+  document.getElementById('v_vign').textContent  = Math.round(o.vign*100)+'%';
+}
+function onChange(){
+  updateLabels();
+  updateBookmarklet();
+  refreshPreview();
+}
+['sepia','scan','grain','vign','font','flicker'].forEach(function(id){
+  document.getElementById(id).addEventListener('input', onChange);
+  document.getElementById(id).addEventListener('change', onChange);
+});
+
+document.getElementById('bmLink').addEventListener('click', function(e){
+  e.preventDefault(); // ページ内クリックでは実行せず、ドラッグ登録を促す
+  var m=document.getElementById('copyMsg');
+  m.textContent='← このリンクはブックマークバーへドラッグして登録してください。';
+  setTimeout(function(){m.textContent='';},4000);
+});
+
+document.getElementById('copyBtn').addEventListener('click', function(){
+  var code = document.getElementById('bmLink').getAttribute('href');
+  var msg = document.getElementById('copyMsg');
+  (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject())
+    .then(function(){ msg.textContent='コピーしました！ブックマークのURL欄に貼り付けてください。'; })
+    .catch(function(){
+      var ta=document.createElement('textarea');ta.value=code;document.body.appendChild(ta);
+      ta.select();try{document.execCommand('copy');msg.textContent='コピーしました！';}
+      catch(_){msg.textContent='コピーに失敗しました。手動で選択してください。';}
+      ta.remove();
+    });
+  setTimeout(function(){msg.textContent='';},4000);
+});
+
+// 初期化
+loadSample();
+updateLabels();
+updateBookmarklet();
+</script>
+</body>
+</html>
