@@ -202,7 +202,7 @@ Implementation Intent:
         <input type="range" id="pop" min="0" max="100" value="50">
       </div>
       <div class="ctrl">
-        <label>水玉ドット <span class="v" id="v_dot"></span></label>
+        <label>背景パターンの濃さ <span class="v" id="v_dot"></span></label>
         <input type="range" id="dot" min="0" max="100" value="35">
       </div>
     </div>
@@ -227,6 +227,14 @@ Implementation Intent:
           <option value="Zen Antique">Zen Antique（昭和レトロ明朝）</option>
           <option value="Reggae One">Reggae One（極太レトロ・70sポスター）</option>
           <option value="Stick">Stick（角ばった手書き）</option>
+        </select>
+      </label>
+      <label>背景パターン
+        <select id="patternSel">
+          <option value="dots">水玉ドット</option>
+          <option value="flowerA">花柄（大柄・オレンジ）</option>
+          <option value="flowerB">花柄（小花・グリーン）</option>
+          <option value="none">なし</option>
         </select>
       </label>
     </div>
@@ -304,6 +312,7 @@ function opts(){
     font : document.getElementById('font').checked,
     head : document.getElementById('headFont').value,
     body : document.getElementById('bodyFont').value,
+    pattern: document.getElementById('patternSel').value,
     scan : document.getElementById('scan').checked,
     flick: document.getElementById('flicker').checked
   };
@@ -313,10 +322,25 @@ function opts(){
 function buildSource(o){
   var vivid = (1 + o.vivid*1.2).toFixed(2);   // 1.0 .. 2.2
   var pop   = (o.pop*0.5).toFixed(3);         // 配色ウォッシュ不透明度
-  var dot   = (o.dot*0.4).toFixed(3);         // 水玉不透明度
+  var dotOp = (o.dot*0.4).toFixed(3);         // 水玉不透明度
+  var flrOp = (o.dot*0.7).toFixed(3);         // 花柄不透明度（やや強め）
   var font  = o.font ? 1 : 0;
   var scan  = o.scan ? 1 : 0;
   var flick = o.flick ? 1 : 0;
+
+  // 背景パターン（外部画像に頼らずインラインSVGで自己完結）
+  // ※ SVG内の ' は %27、# は %23 でエンコード（data URIで自動デコードされる）
+  var svgA = "<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27104%27 height=%27104%27><g transform=%27translate(52,52)%27><g fill=%27%23e7a72f%27><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(72)%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(144)%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(216)%27/><ellipse rx=%2710%27 ry=%2721%27 cy=%27-21%27 transform=%27rotate(288)%27/></g><circle r=%2712%27 fill=%27%23c0392b%27/></g></svg>";
+  var svgB = "<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%2772%27 height=%2772%27><g transform=%27translate(36,36)%27><g fill=%27%23159e92%27><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(60)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(120)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(180)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(240)%27/><ellipse rx=%275%27 ry=%2712%27 cy=%27-12%27 transform=%27rotate(300)%27/></g><circle r=%276%27 fill=%27%23e8552d%27/></g></svg>";
+  var dPre = "var d=document.createElement('div');d.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;";
+  var patLayer = "";
+  if(o.pattern==='dots'){
+    patLayer = dPre + "mix-blend-mode:overlay;opacity:"+dotOp+";background-image:radial-gradient(rgba(255,255,255,0.95) 16%, rgba(0,0,0,0) 17%), radial-gradient(rgba(192,57,43,0.85) 16%, rgba(0,0,0,0) 17%);background-size:50px 50px;background-position:0 0, 25px 25px;';o.appendChild(d);";
+  }else if(o.pattern==='flowerA'){
+    patLayer = dPre + "mix-blend-mode:multiply;opacity:"+flrOp+";background-image:url(\"data:image/svg+xml;utf8,"+svgA+"\");background-size:104px 104px;';o.appendChild(d);";
+  }else if(o.pattern==='flowerB'){
+    patLayer = dPre + "mix-blend-mode:multiply;opacity:"+flrOp+";background-image:url(\"data:image/svg+xml;utf8,"+svgB+"\");background-size:72px 72px;';o.appendChild(d);";
+  }
 
   // 選択フォントから Google Fonts のURLと適用CSSを組み立てる
   var hf = FONTS[o.head] || FONTS['Reggae One'];
@@ -338,7 +362,7 @@ function buildSource(o){
 + "s.textContent=css;(document.head||document.documentElement).appendChild(s);"
 + "var o=document.createElement('div');o.id=ID;o.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483646;pointer-events:none;overflow:hidden;';"
 + "var w=document.createElement('div');w.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:soft-light;opacity:"+pop+";background:linear-gradient(115deg, rgba(232,165,61,0.9), rgba(232,85,45,0.75) 45%, rgba(21,158,146,0.85));';o.appendChild(w);"
-+ "var d=document.createElement('div');d.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:overlay;opacity:"+dot+";background-image:radial-gradient(rgba(255,255,255,0.95) 16%, rgba(0,0,0,0) 17%), radial-gradient(rgba(192,57,43,0.85) 16%, rgba(0,0,0,0) 17%);background-size:50px 50px;background-position:0 0, 25px 25px;';o.appendChild(d);"
++ patLayer
 + (scan ? ("var sc=document.createElement('div');sc.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:multiply;opacity:0.6;background:repeating-linear-gradient(0deg, rgba(0,0,0,0.10) 0px, rgba(0,0,0,0.10) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px);'" + (flick ? "+'animation:showaFlk 0.2s steps(2,end) infinite;'" : "") + ";o.appendChild(sc);") : "")
 + "(document.body||document.documentElement).appendChild(o);"
 + "})();";
@@ -425,7 +449,7 @@ function onChange(){
   updateBookmarklet();
   refreshPreview();
 }
-['vivid','pop','dot','font','scan','flicker','headFont','bodyFont'].forEach(function(id){
+['vivid','pop','dot','font','scan','flicker','headFont','bodyFont','patternSel'].forEach(function(id){
   document.getElementById(id).addEventListener('input', onChange);
   document.getElementById(id).addEventListener('change', onChange);
 });
