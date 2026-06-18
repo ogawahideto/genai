@@ -113,7 +113,15 @@ Implementation Intent:
   .ctrl label{display:block;font-size:13px;letter-spacing:.04em;margin-bottom:4px;font-weight:bold;}
   .ctrl input[type=range]{width:100%;accent-color:var(--orange);}
   .v{color:var(--teal);font-weight:bold;}
-  .toggles{display:flex;flex-wrap:wrap;gap:18px;margin-top:10px;}
+  .fontpick{display:flex;flex-wrap:wrap;gap:16px 26px;margin-top:18px;}
+  .fontpick label{font-size:13px;font-weight:bold;display:flex;flex-direction:column;gap:5px;}
+  .fontpick select{
+    font-family:"Kosugi Maru",sans-serif;font-size:14px;
+    padding:7px 10px;border:3px solid var(--brown);border-radius:10px;
+    background:#fff;color:var(--brown);cursor:pointer;min-width:190px;
+    box-shadow:2px 2px 0 rgba(63,42,24,.3);
+  }
+  .toggles{display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;}
   .toggles label{font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:bold;}
   .btnrow{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px;align-items:center;justify-content:center;}
   button.act{
@@ -198,8 +206,30 @@ Implementation Intent:
         <input type="range" id="dot" min="0" max="100" value="35">
       </div>
     </div>
+    <div class="fontpick">
+      <label>見出しフォント
+        <select id="headFont">
+          <option value="Reggae One">Reggae One（極太レトロ・70sポスター）</option>
+          <option value="Rampart One">Rampart One（立体看板・サイケ寄り）</option>
+          <option value="Dela Gothic One">Dela Gothic One（極太ゴシック）</option>
+          <option value="DotGothic16">DotGothic16（ドット・電光掲示板）</option>
+          <option value="Yusei Magic">Yusei Magic（油性マジック手書き）</option>
+          <option value="Stick">Stick（角ばった手書き）</option>
+          <option value="Hachi Maru Pop">Hachi Maru Pop（丸文字・80s少女）</option>
+        </select>
+      </label>
+      <label>本文フォント
+        <select id="bodyFont">
+          <option value="Kosugi Maru">Kosugi Maru（丸ゴシック）</option>
+          <option value="Zen Maru Gothic">Zen Maru Gothic（レトロ丸ゴシック）</option>
+          <option value="RocknRoll One">RocknRoll One（太め丸ゴシック）</option>
+          <option value="Mochiy Pop P One">Mochiy Pop P One（ぽってり丸ゴ）</option>
+          <option value="Zen Antique">Zen Antique（昭和レトロ明朝）</option>
+        </select>
+      </label>
+    </div>
     <div class="toggles">
-      <label><input type="checkbox" id="font" checked> 極太レトロフォントに置換</label>
+      <label><input type="checkbox" id="font" checked> 選択フォントに置換</label>
       <label><input type="checkbox" id="scan" checked> 走査線（ブラウン管）</label>
       <label><input type="checkbox" id="flicker" checked> ちらつき</label>
     </div>
@@ -248,12 +278,30 @@ Implementation Intent:
 // ============================================================
 //  昭和レトロポップ変換ソースの生成（プレビューとブックマークレットで共有）
 // ============================================================
+// Google Fonts候補（q=URLのfamilyパラメータ, fb=フォールバック）
+var FONTS = {
+  'Reggae One'      :{q:'Reggae+One',       fb:'cursive'},
+  'Rampart One'     :{q:'Rampart+One',      fb:'cursive'},
+  'Dela Gothic One' :{q:'Dela+Gothic+One',  fb:'sans-serif'},
+  'DotGothic16'     :{q:'DotGothic16',       fb:'sans-serif'},
+  'Yusei Magic'     :{q:'Yusei+Magic',      fb:'sans-serif'},
+  'Stick'           :{q:'Stick',             fb:'sans-serif'},
+  'Hachi Maru Pop'  :{q:'Hachi+Maru+Pop',   fb:'cursive'},
+  'Kosugi Maru'     :{q:'Kosugi+Maru',      fb:'sans-serif'},
+  'Zen Maru Gothic' :{q:'Zen+Maru+Gothic',  fb:'sans-serif'},
+  'RocknRoll One'   :{q:'RocknRoll+One',     fb:'sans-serif'},
+  'Mochiy Pop P One':{q:'Mochiy+Pop+P+One', fb:'sans-serif'},
+  'Zen Antique'     :{q:'Zen+Antique',      fb:'serif'}
+};
+
 function opts(){
   return {
     vivid:(+document.getElementById('vivid').value)/100,
     pop  :(+document.getElementById('pop').value)/100,
     dot  :(+document.getElementById('dot').value)/100,
     font : document.getElementById('font').checked,
+    head : document.getElementById('headFont').value,
+    body : document.getElementById('bodyFont').value,
     scan : document.getElementById('scan').checked,
     flick: document.getElementById('flicker').checked
   };
@@ -268,6 +316,12 @@ function buildSource(o){
   var scan  = o.scan ? 1 : 0;
   var flick = o.flick ? 1 : 0;
 
+  // 選択フォントから Google Fonts のURLと適用CSSを組み立てる
+  var hf = FONTS[o.head] || FONTS['Reggae One'];
+  var bf = FONTS[o.body] || FONTS['Kosugi Maru'];
+  var fams = (hf.q === bf.q) ? ('family='+hf.q) : ('family='+hf.q+'&family='+bf.q);
+  var fontHref = 'https://fonts.googleapis.com/css2?'+fams+'&display=swap';
+
   // ※ このコードはブックマークレット内でそのまま動く（document = 対象ページ）
   return ""
 + "(function(){"
@@ -275,9 +329,9 @@ function buildSource(o){
 + "var ov=document.getElementById(ID),st=document.getElementById(SID),fo=document.getElementById(FID);"
 + "if(ov||st||fo){if(ov)ov.remove();if(st)st.remove();if(fo)fo.remove();document.documentElement.style.filter='';return;}"
 + "document.documentElement.style.filter='saturate("+vivid+") contrast(1.05) brightness(1.0)';"
-+ (font ? "var fk=document.createElement('link');fk.id=FID;fk.rel='stylesheet';fk.href='https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Kosugi+Maru&display=swap';(document.head||document.documentElement).appendChild(fk);" : "")
++ (font ? "var fk=document.createElement('link');fk.id=FID;fk.rel='stylesheet';fk.href='"+fontHref+"';(document.head||document.documentElement).appendChild(fk);" : "")
 + "var s=document.createElement('style');s.id=SID;var css='';"
-+ (font ? "css+='*{font-family:\"Kosugi Maru\",\"Hiragino Maru Gothic ProN\",sans-serif !important;}';css+='h1,h2,h3,h4{font-family:\"Dela Gothic One\",sans-serif !important;letter-spacing:0.03em !important;}';" : "")
++ (font ? "css+='*{font-family:\""+o.body+"\","+bf.fb+" !important;}';css+='h1,h2,h3,h4{font-family:\""+o.head+"\","+hf.fb+" !important;letter-spacing:0.03em !important;}';" : "")
 + "css+='@keyframes showaFlk{0%{opacity:0.9}50%{opacity:0.55}100%{opacity:0.85}}';"
 + "s.textContent=css;(document.head||document.documentElement).appendChild(s);"
 + "var o=document.createElement('div');o.id=ID;o.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483646;pointer-events:none;overflow:hidden;';"
@@ -369,7 +423,7 @@ function onChange(){
   updateBookmarklet();
   refreshPreview();
 }
-['vivid','pop','dot','font','scan','flicker'].forEach(function(id){
+['vivid','pop','dot','font','scan','flicker','headFont','bodyFont'].forEach(function(id){
   document.getElementById(id).addEventListener('input', onChange);
   document.getElementById(id).addEventListener('change', onChange);
 });
