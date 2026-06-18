@@ -10,8 +10,8 @@ User Prompt: どんなwebページも昭和風にするブラウザ → 1960〜7
 AI Approach:
   外部サイトはCORSによりiframe加工不可のため「ブックマークレット」方式を採用。
   実ブラウザ上で任意のページに、(1)彩度を上げるfilter (2)からし色/朱赤/ターコイズのポップ配色ウォッシュ
-  (3)回転サンバースト(放射) (4)水玉ドット (5)走査線/ちらつき (6)極太フォント(Dela Gothic One)+丸ゴシック(Kosugi Maru)
-  を注入して、万博'70風のサイケな昭和レトロポップに変換する。フォントはGoogle Fontsのlink注入で任意ページに供給。
+  (3)水玉ドット (4)走査線/ちらつき (5)極太フォント(Dela Gothic One)+丸ゴシック(Kosugi Maru)
+  を注入して、昭和レトロポップに変換する。フォントはGoogle Fontsのlink注入で任意ページに供給。
   生成コードは単一ソース文字列から作り、ブックマークレットとライブプレビュー(srcdoc同一オリジンiframeへeval)で共有。
 Implementation Intent:
   依存ゼロ・単一HTMLで、CSSフィルタ/合成・conic/radial-gradient・CSSアニメーションといった表現技術のデモを兼ねた実用ツール。
@@ -40,14 +40,7 @@ Implementation Intent:
     background:var(--cream);
     -webkit-font-smoothing:antialiased;
   }
-  /* 背景：回転サンバースト＋水玉 */
-  body::before{
-    content:"";position:fixed;top:50%;left:50%;
-    width:300vmax;height:300vmax;transform:translate(-50%,-50%);
-    z-index:-2;opacity:.10;
-    background:repeating-conic-gradient(from 0deg, var(--orange) 0deg, var(--orange) 7deg, transparent 7deg, transparent 14deg);
-    animation:bgspin 90s linear infinite;
-  }
+  /* 背景：水玉 */
   body::after{
     content:"";position:fixed;inset:0;z-index:-1;opacity:.10;
     background-image:
@@ -56,7 +49,6 @@ Implementation Intent:
     background-size:54px 54px;
     background-position:0 0, 27px 27px;
   }
-  @keyframes bgspin{to{transform:translate(-50%,-50%) rotate(360deg);}}
 
   header{
     text-align:center;padding:40px 16px 30px;position:relative;color:#fff;
@@ -168,7 +160,7 @@ Implementation Intent:
     <h2>これは何？</h2>
     <p class="lead">
       新しいブラウザを作るのではなく、<strong>今お使いのブラウザのまま</strong>、表示中のページに
-      ビビッドな彩度・ポップな配色・回転サンバースト・水玉・極太レトロフォントを重ねて、
+      ビビッドな彩度・ポップな配色・水玉・極太レトロフォントを重ねて、
       画面をまるごと<strong>万博'70風の「派手な昭和レトロポップ」</strong>に変換します。
     </p>
     <p class="lead">
@@ -200,10 +192,6 @@ Implementation Intent:
       <div class="ctrl">
         <label>レトロ配色ウォッシュ <span class="v" id="v_pop"></span></label>
         <input type="range" id="pop" min="0" max="100" value="50">
-      </div>
-      <div class="ctrl">
-        <label>サンバースト（放射） <span class="v" id="v_sun"></span></label>
-        <input type="range" id="sun" min="0" max="100" value="45">
       </div>
       <div class="ctrl">
         <label>水玉ドット <span class="v" id="v_dot"></span></label>
@@ -247,7 +235,7 @@ Implementation Intent:
     </p>
     <ul class="lead">
       <li><code>&lt;html&gt;</code>に <code>filter: saturate() contrast()</code> をかけて色を<strong>ビビッド</strong>に。</li>
-      <li>全画面オーバーレイに、ポップ配色ウォッシュ／回転サンバースト（<code>repeating-conic-gradient</code>）／水玉（<code>radial-gradient</code>）／走査線を <code>mix-blend-mode</code> で合成。</li>
+      <li>全画面オーバーレイに、ポップ配色ウォッシュ／水玉（<code>radial-gradient</code>）／走査線を <code>mix-blend-mode</code> で合成。</li>
       <li>Google Fontsの <code>&lt;link&gt;</code> を注入し、見出しを <strong>Dela Gothic One</strong>、本文を <strong>Kosugi Maru</strong> に <code>!important</code> で置換。</li>
       <li>走査線レイヤをCSSアニメーションで揺らしてブラウン管のちらつきを再現。</li>
     </ul>
@@ -264,7 +252,6 @@ function opts(){
   return {
     vivid:(+document.getElementById('vivid').value)/100,
     pop  :(+document.getElementById('pop').value)/100,
-    sun  :(+document.getElementById('sun').value)/100,
     dot  :(+document.getElementById('dot').value)/100,
     font : document.getElementById('font').checked,
     scan : document.getElementById('scan').checked,
@@ -276,7 +263,6 @@ function opts(){
 function buildSource(o){
   var vivid = (1 + o.vivid*1.2).toFixed(2);   // 1.0 .. 2.2
   var pop   = (o.pop*0.5).toFixed(3);         // 配色ウォッシュ不透明度
-  var sun   = (o.sun*0.35).toFixed(3);        // サンバースト不透明度
   var dot   = (o.dot*0.4).toFixed(3);         // 水玉不透明度
   var font  = o.font ? 1 : 0;
   var scan  = o.scan ? 1 : 0;
@@ -292,12 +278,10 @@ function buildSource(o){
 + (font ? "var fk=document.createElement('link');fk.id=FID;fk.rel='stylesheet';fk.href='https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Kosugi+Maru&display=swap';(document.head||document.documentElement).appendChild(fk);" : "")
 + "var s=document.createElement('style');s.id=SID;var css='';"
 + (font ? "css+='*{font-family:\"Kosugi Maru\",\"Hiragino Maru Gothic ProN\",sans-serif !important;}';css+='h1,h2,h3,h4{font-family:\"Dela Gothic One\",sans-serif !important;letter-spacing:0.03em !important;}';" : "")
-+ "css+='@keyframes showaSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}';"
 + "css+='@keyframes showaFlk{0%{opacity:0.9}50%{opacity:0.55}100%{opacity:0.85}}';"
 + "s.textContent=css;(document.head||document.documentElement).appendChild(s);"
 + "var o=document.createElement('div');o.id=ID;o.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483646;pointer-events:none;overflow:hidden;';"
 + "var w=document.createElement('div');w.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:soft-light;opacity:"+pop+";background:linear-gradient(115deg, rgba(232,165,61,0.9), rgba(232,85,45,0.75) 45%, rgba(21,158,146,0.85));';o.appendChild(w);"
-+ "var b=document.createElement('div');b.style.cssText='position:absolute;top:50%;left:50%;width:260vmax;height:260vmax;transform:translate(-50%,-50%);mix-blend-mode:soft-light;opacity:"+sun+";background:repeating-conic-gradient(from 0deg, rgba(232,85,45,0.95) 0deg, rgba(232,85,45,0.95) 7deg, rgba(0,0,0,0) 7deg, rgba(0,0,0,0) 14deg);animation:showaSpin 60s linear infinite;';o.appendChild(b);"
 + "var d=document.createElement('div');d.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:overlay;opacity:"+dot+";background-image:radial-gradient(rgba(255,255,255,0.95) 16%, rgba(0,0,0,0) 17%), radial-gradient(rgba(192,57,43,0.85) 16%, rgba(0,0,0,0) 17%);background-size:50px 50px;background-position:0 0, 25px 25px;';o.appendChild(d);"
 + (scan ? ("var sc=document.createElement('div');sc.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;mix-blend-mode:multiply;opacity:0.6;background:repeating-linear-gradient(0deg, rgba(0,0,0,0.10) 0px, rgba(0,0,0,0.10) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px);'" + (flick ? "+'animation:showaFlk 0.2s steps(2,end) infinite;'" : "") + ";o.appendChild(sc);") : "")
 + "(document.body||document.documentElement).appendChild(o);"
@@ -378,7 +362,6 @@ function updateLabels(){
   var o = opts();
   document.getElementById('v_vivid').textContent = Math.round(o.vivid*100)+'%';
   document.getElementById('v_pop').textContent   = Math.round(o.pop*100)+'%';
-  document.getElementById('v_sun').textContent   = Math.round(o.sun*100)+'%';
   document.getElementById('v_dot').textContent   = Math.round(o.dot*100)+'%';
 }
 function onChange(){
@@ -386,7 +369,7 @@ function onChange(){
   updateBookmarklet();
   refreshPreview();
 }
-['vivid','pop','sun','dot','font','scan','flicker'].forEach(function(id){
+['vivid','pop','dot','font','scan','flicker'].forEach(function(id){
   document.getElementById(id).addEventListener('input', onChange);
   document.getElementById(id).addEventListener('change', onChange);
 });
