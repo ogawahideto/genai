@@ -406,6 +406,9 @@ AI・チャットアプリケーション
 #### [役に立たないアドベントカレンダー 2025](useless-advent-calendar/) (2025-12-01)
 実験的アプリケーション
 
+#### [GLOBE CUP 2026 — World Football Championship](world-football-2026/) (2026-06-27)
+実験的アプリケーション
+
 #### [world-voyage](world-voyage/) (2025-09-06)
 実験的アプリケーション
 
