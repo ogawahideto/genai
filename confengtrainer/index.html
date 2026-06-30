@@ -276,7 +276,7 @@
     <span class="voicebar-label">SPEAKER</span>
     <select id="voiceSelect" aria-label="音声の話者を選択"></select>
     <button class="btn" id="voiceTestBtn" title="選んだ声でサンプル再生">試聴</button>
-    <label class="voicebar-toggle">
+    <label class="voicebar-toggle" id="voiceRandomLabel" title="毎回ランダムに声を切り替えます">
       <input type="checkbox" id="voiceRandom">
       <span>毎回ランダムに切り替える</span>
     </label>
@@ -991,6 +991,7 @@ let pos = 0;
 let revealed = false;
 let checked = false;
 let voice = null;
+let skippedCount = 0;
 let repeatCount = 3;          // 1回の再生で読む回数
 let auto = false, autoToken = 0; // 連続再生(聞き流し)
 
@@ -1003,6 +1004,15 @@ const meta = $("meta");
 /* ============ 音声 ============ */
 const synth = window.speechSynthesis;
 if(!synth){ $("warn").style.display="block"; }
+
+// Edge(Chromium版含む)は声を頻繁に切り替えると音声合成自体が無音になる既知の問題があるため、
+// ランダム切替機能はEdgeでは無効化する
+const isEdge = /Edg(e|A|iOS)?\//i.test(navigator.userAgent || "");
+if(isEdge){
+  const cb = $("voiceRandom");
+  cb.disabled = true;
+  $("voiceRandomLabel").title = "Edgeでは音声合成の安定性のため、ランダム切替には対応していません";
+}
 
 function getVoiceList(){
   const all = synth.getVoices();
@@ -1047,7 +1057,6 @@ function pickVoice(){
 }
 if(synth){ pickVoice(); synth.onvoiceschanged = pickVoice; }
 
-let skippedCount = 0;
 function syncSelectToVoice(){
   const list = getVoiceList();
   const idx = list.findIndex(v=>voice && v.name===voice.name && v.lang===voice.lang);
@@ -1066,14 +1075,13 @@ function voiceKey(v){ return v ? `${v.name}|${v.lang}` : "none"; }
 function pickWorkingRandomVoice(){
   const all = getVoiceList();
   const notBad = all.filter(v=>!badVoiceKeys.has(voiceKey(v)));
-  // ネットワーク経由の声は反応が遅く無音になりやすいので、端末内蔵の声を優先
-  const local = notBad.filter(v=>v.localService);
-  const pool = local.length ? local : (notBad.length ? notBad : all);
+  const pool = notBad.length ? notBad : all; // ネットワーク音声も含め、全声を対象にする
   if(!pool.length) return null;
   return pool[Math.floor(Math.random()*pool.length)];
 }
 
 function maybeRandomizeVoice(){
+  if(isEdge) return;                       // Edgeではランダム切替を行わない
   if(!$("voiceRandom").checked) return;
   const v = pickWorkingRandomVoice();
   if(!v) return;
