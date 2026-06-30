@@ -203,6 +203,9 @@ AI・チャットアプリケーション
 #### [AI Models Showcase - 最先端AIモデル能力比較](comparison/) (2025-11-26)
 AI・チャットアプリケーション
 
+#### [Caption Room — 会議英語リスニング訓練](confengtrainer/) (2026-06-30)
+AI・チャットアプリケーション
+
 #### [恐竜大図鑑 - エンタメ満載](kyouryu-daizukan/) (2025-09-03)
 AI・チャットアプリケーション
 
