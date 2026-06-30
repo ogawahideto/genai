@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caption Room — 会議英語リスニング訓練</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1424;
+    --ink-2:#121c33;
+    --panel:#16223e;
+    --panel-2:#1b2a4a;
+    --line:#27375c;
+    --amber:#ffcb52;       /* live caption glow */
+    --amber-dim:#caa23f;
+    --teal:#34e0c4;        /* primary action */
+    --teal-deep:#0f9e8a;
+    --text:#eaf0fb;
+    --muted:#8a99bd;
+    --muted-2:#5e6e93;
+    --good:#5fe08a;
+    --miss:#ff7a85;
+    --display:"Space Grotesk",system-ui,sans-serif;
+    --body:"Inter",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:
+      radial-gradient(1200px 600px at 80% -10%, #1a2c50 0%, transparent 55%),
+      radial-gradient(900px 500px at -10% 110%, #15243f 0%, transparent 50%),
+      var(--ink);
+    color:var(--text);
+    font-family:var(--body);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    min-height:100%;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:22px 20px 64px}
+
+  /* ---------- Header ---------- */
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .rec{width:11px;height:11px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 0 rgba(255,203,82,.55);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,203,82,.5)}70%{box-shadow:0 0 0 9px rgba(255,203,82,0)}100%{box-shadow:0 0 0 0 rgba(255,203,82,0)}}
+  .brand h1{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:-.01em;line-height:1}
+  .brand .sub{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em;margin-top:4px}
+
+  .modes{display:flex;background:var(--ink-2);border:1px solid var(--line);border-radius:11px;padding:4px;gap:4px}
+  .modes button{
+    font-family:var(--body);font-size:13px;font-weight:600;color:var(--muted);
+    background:transparent;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;transition:.15s;
+  }
+  .modes button[aria-pressed="true"]{background:var(--panel-2);color:var(--text);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
+  .modes button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+  /* ---------- Category chips ---------- */
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .chip{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.02em;
+    color:var(--muted);background:var(--ink-2);border:1px solid var(--line);
+    padding:7px 11px;border-radius:999px;cursor:pointer;transition:.15s;display:flex;align-items:center;gap:7px;
+  }
+  .chip .dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.55}
+  .chip[aria-pressed="true"]{color:var(--ink);background:var(--amber);border-color:var(--amber);font-weight:600}
+  .chip:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+  /* ---------- Caption screen ---------- */
+  .screen{
+    position:relative;background:linear-gradient(180deg,var(--panel) 0%,var(--ink-2) 100%);
+    border:1px solid var(--line);border-radius:18px;padding:30px 28px 26px;overflow:hidden;
+  }
+  .screen::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(180deg,rgba(255,255,255,.018) 0 2px,transparent 2px 4px);
+  }
+  .screen .tag{
+    position:relative;display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--amber-dim);margin-bottom:18px;
+  }
+  .screen .tag b{color:var(--muted);font-weight:500;text-transform:none;letter-spacing:0}
+
+  .caption{
+    position:relative;font-family:var(--display);font-weight:500;
+    font-size:clamp(19px,3vw,28px);line-height:1.65;letter-spacing:-.004em;
+    min-height:3em;display:block;word-spacing:.06em;
+  }
+  .caption .word{display:inline-block;margin:2px 2px;color:var(--amber);transition:opacity .2s,color .2s;text-shadow:0 0 22px rgba(255,203,82,.18)}
+  .caption.hidden .word{color:transparent;text-shadow:none;background:var(--panel-2);
+    border-radius:6px;box-shadow:inset 0 0 0 1px var(--line)}
+  .caption.live .word{opacity:0;animation:fadeWord .3s forwards}
+  @keyframes fadeWord{to{opacity:1}}
+  .placeholder{color:var(--muted-2);font-family:var(--display);font-size:clamp(20px,3vw,26px)}
+
+  /* dictation input */
+  .dict{position:relative;margin-top:6px;display:none}
+  .dict textarea{
+    width:100%;min-height:84px;resize:vertical;background:var(--ink);color:var(--text);
+    border:1px solid var(--line);border-radius:12px;padding:14px 15px;
+    font-family:var(--body);font-size:16px;line-height:1.5;
+  }
+  .dict textarea:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:transparent}
+  .result{margin-top:14px;font-family:var(--display);font-size:clamp(19px,3vw,25px);line-height:1.4;display:none}
+  .result .w-ok{color:var(--good)}
+  .result .w-bad{color:var(--miss);text-decoration:line-through;text-decoration-color:rgba(255,122,133,.5)}
+  .result .w-extra{color:var(--muted-2)}
+  .score{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px}
+
+  /* ---------- Controls ---------- */
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:22px}
+  .btn{
+    font-family:var(--body);font-weight:600;font-size:14px;border:1px solid var(--line);
+    background:var(--ink-2);color:var(--text);border-radius:11px;padding:11px 15px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;transition:.15s;
+  }
+  .btn:hover{border-color:var(--muted-2)}
+  .btn:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  .btn.play{background:var(--teal);color:#04231e;border-color:transparent;padding:11px 20px}
+  .btn.play:hover{background:#43ecd0}
+  .btn.amber{background:var(--amber);color:#2a1d00;border-color:transparent}
+  .btn.amber:hover{background:#ffd66f}
+  .btn svg{width:16px;height:16px;display:block}
+  .spacer{flex:1 1 auto}
+  .divider{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
+
+  .speed{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .speed input[type=range]{width:118px;accent-color:var(--teal)}
+  .speed .val{color:var(--text);min-width:34px;text-align:right}
+
+  .btn.auto[aria-pressed="true"]{background:var(--amber);color:#2a1d00;border-color:transparent}
+  .reps{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;color:var(--muted-2);letter-spacing:.04em}
+  .reps button{font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--ink-2);border:1px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer;transition:.15s}
+  .reps button[aria-pressed="true"]{background:var(--panel-2);color:var(--text);border-color:var(--muted-2)}
+  .reps button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+  /* ---------- Footer meta ---------- */
+  .meta{margin-top:18px;border:1px solid var(--line);border-radius:16px;background:var(--ink-2);overflow:hidden;display:none}
+  .meta.show{display:block}
+  .meta .row{padding:14px 18px;border-bottom:1px solid var(--line)}
+  .meta .row:last-child{border-bottom:0}
+  .meta .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted-2);margin-bottom:5px}
+  .meta .jp{font-size:16px;color:var(--text)}
+  .meta .scene{font-size:14px;color:var(--muted)}
+  .meta .tip{font-size:14px;color:var(--text)}
+  .meta .tip b{color:var(--amber)}
+
+  /* ---------- Nav ---------- */
+  .nav{display:flex;align-items:center;justify-content:space-between;margin-top:20px;gap:12px}
+  .counter{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .counter b{color:var(--text)}
+  .navbtns{display:flex;gap:10px}
+
+  .hint{margin-top:26px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted-2);letter-spacing:.03em}
+  kbd{background:var(--ink-2);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+  /* ---------- Voice bar (bottom) ---------- */
+  .voicebar{
+    margin-top:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:var(--ink-2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;
+  }
+  .voicebar-label{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--muted)}
+  .voicebar select{
+    flex:1 1 220px;min-width:160px;background:var(--panel-2);color:var(--text);
+    border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-family:var(--body);font-size:13px;
+  }
+  .voicebar select:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+  .voicebar .btn{padding:8px 13px;font-size:13px}
+  .voicebar-toggle{display:flex;align-items:center;gap:7px;font-family:var(--body);font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
+  .voicebar-toggle input{accent-color:var(--teal);width:15px;height:15px;cursor:pointer}
+  .voicebar-toggle:has(input:checked){color:var(--text)}
+  .voicebar-note{font-family:var(--mono);font-size:10.5px;color:var(--muted-2);flex-basis:100%}
+
+  .warn{display:none;margin-top:14px;font-size:13px;color:var(--miss);font-family:var(--body)}
+
+  @media (max-width:560px){
+    .spacer{display:none}
+    .divider{display:none}
+    .controls{gap:8px}
+    .btn{padding:10px 12px;font-size:13px}
+    .speed{order:5;width:100%;justify-content:flex-start;margin-top:4px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .rec{animation:none}
+    .caption .live .word{animation:none;opacity:1}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="rec" aria-hidden="true"></span>
+      <div>
+        <h1>Caption&nbsp;Room</h1>
+        <div class="sub">SE / AI 国際会議で聴く英語 — listening trainer</div>
+      </div>
+    </div>
+    <div class="modes" role="group" aria-label="練習モード">
+      <button id="mode-listen" aria-pressed="true">Listen</button>
+      <button id="mode-dict" aria-pressed="false">Dictation</button>
+    </div>
+  </header>
+
+  <div class="chips" id="chips" role="group" aria-label="場面カテゴリ"></div>
+
+  <section class="screen">
+    <div class="tag"><span id="cat-label">—</span> <b id="register">　</b></div>
+
+    <div class="caption hidden" id="caption" aria-live="polite">
+      <span class="placeholder">▶ を押して聴いてみましょう</span>
+    </div>
+
+    <div class="dict" id="dictBox">
+      <textarea id="dictInput" placeholder="聴こえた英文を入力して “答え合わせ”…" autocomplete="off" spellcheck="false"></textarea>
+      <div class="result" id="dictResult"></div>
+      <div class="score" id="dictScore"></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn play" id="playBtn">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M7 5l12 7-12 7V5z" fill="currentColor"/></svg>
+        <span id="playLabel">Play ×3</span>
+      </button>
+      <button class="btn" id="slowBtn" title="ゆっくり1回">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        Slow
+      </button>
+      <button class="btn auto" id="autoBtn" aria-pressed="false" title="聞き流し用に次々と連続再生">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        <span id="autoLabel">連続再生</span>
+      </button>
+      <button class="btn" id="revealBtn">字幕を表示</button>
+      <button class="btn amber" id="checkBtn" style="display:none">答え合わせ</button>
+      <span class="divider" aria-hidden="true"></span>
+      <button class="btn" id="prevBtn" title="前のフレーズ">← Prev</button>
+      <button class="btn" id="nextBtn" title="次のフレーズ">Next →</button>
+      <div class="spacer"></div>
+      <div class="reps" id="reps" role="group" aria-label="繰り返し回数">
+        <span>REPEAT</span>
+        <button data-n="1" aria-pressed="false">×1</button>
+        <button data-n="2" aria-pressed="false">×2</button>
+        <button data-n="3" aria-pressed="true">×3</button>
+      </div>
+      <div class="speed">
+        <span>SPEED</span>
+        <input type="range" id="speed" min="0.6" max="1.1" step="0.05" value="0.92" aria-label="再生速度">
+        <span class="val" id="speedVal">0.92×</span>
+      </div>
+    </div>
+    <p class="warn" id="warn">お使いのブラウザは音声合成に対応していないようです。Chrome / Edge / Safari の最新版でお試しください。</p>
+  </section>
+
+  <div class="meta" id="meta">
+    <div class="row"><div class="k">日本語</div><div class="jp" id="m-jp"></div></div>
+    <div class="row"><div class="k">使う場面</div><div class="scene" id="m-scene"></div></div>
+    <div class="row"><div class="k">聴き取りのコツ</div><div class="tip" id="m-tip"></div></div>
+  </div>
+
+  <div class="nav">
+    <div class="counter"><b id="idx">1</b> / <span id="total">1</span></div>
+    <div class="navbtns">
+      <button class="btn" id="shuffleBtn">Shuffle</button>
+    </div>
+  </div>
+
+  <p class="hint">
+    <kbd>Space</kbd> 再生 &nbsp;·&nbsp; <kbd>R</kbd> もう一度 &nbsp;·&nbsp; <kbd>←</kbd> <kbd>→</kbd> 移動 &nbsp;·&nbsp; <kbd>Enter</kbd> 表示／答え合わせ
+  </p>
+
+  <div class="voicebar">
+    <span class="voicebar-label">SPEAKER</span>
+    <select id="voiceSelect" aria-label="音声の話者を選択"></select>
+    <button class="btn" id="voiceTestBtn" title="選んだ声でサンプル再生">試聴</button>
+    <label class="voicebar-toggle">
+      <input type="checkbox" id="voiceRandom">
+      <span>毎回ランダムに切り替える</span>
+    </label>
+    <span class="voicebar-note" id="voiceNote"></span>
+  </div>
+</div>
+
+<script>
+/* ============ データ ============ */
+const DATA = [
+  // --- Opening / Keynote ---
+  {cat:"opening", en:"Thank you all for being here, and welcome to the opening keynote.",
+   jp:"お越しいただきありがとうございます。開会の基調講演へようこそ。",
+   scene:"司会・主催者が会場全体に向けて開会を告げる定番の一言。",
+   tip:"<b>Thank you all</b> は「サンキューオール」と一語のようにつながる。"},
+  {cat:"opening", en:"We have a packed agenda today, so let's dive right in.",
+   jp:"本日は盛りだくさんの予定です。さっそく始めましょう。",
+   scene:"前置きを切り上げて本題に入る合図。",
+   tip:"<b>dive right in</b>＝「すぐ本題へ」。right の r と in が軽くつながる。"},
+  {cat:"opening", en:"It's my great pleasure to introduce our keynote speaker.",
+   jp:"基調講演者をご紹介できることを大変嬉しく思います。",
+   scene:"登壇者を紹介する前の決まり文句。",
+   tip:"<b>It's my</b> は「イツマイ」と短く。pleasure の発音は「プレジャー」。"},
+
+  // --- Presenting ---
+  {cat:"present", en:"Let me walk you through the architecture of our system.",
+   jp:"私たちのシステムの構成を順に説明させてください。",
+   scene:"発表で図や構成を一つずつ解説し始めるとき。",
+   tip:"<b>walk you through</b>＝「順を追って説明する」。聴き取りの最頻出フレーズ。"},
+  {cat:"present", en:"As you can see on this slide, the latency dropped significantly.",
+   jp:"このスライドの通り、レイテンシが大幅に下がりました。",
+   scene:"グラフや結果を指し示しながら。",
+   tip:"<b>As you can see</b> は一気に発音される。significantly は「スィグニフィカントリ」。"},
+  {cat:"present", en:"I'll skip over the details here in the interest of time.",
+   jp:"時間の都合上、ここは詳細を飛ばします。",
+   scene:"時間が押しているときの常套句。",
+   tip:"<b>in the interest of time</b>＝「時間の都合で」。会議では超頻出。"},
+  {cat:"present", en:"To put this into perspective, that's a tenfold improvement.",
+   jp:"分かりやすく言うと、これは10倍の改善です。",
+   scene:"数字の意味を直感的に伝えるとき。",
+   tip:"<b>put this into perspective</b>＝「正しく捉えると／例えると」。"},
+  {cat:"present", en:"Let me back up for a second and give you some context.",
+   jp:"少し戻って、背景を説明させてください。",
+   scene:"話の前提に立ち返るとき。",
+   tip:"<b>back up</b> はここでは「(話を)戻す」。for a second＝「ちょっと」。"},
+  {cat:"present", en:"The key takeaway here is that the model generalizes well.",
+   jp:"ここでの要点は、モデルがうまく汎化するということです。",
+   scene:"スライドの結論をまとめる一文。",
+   tip:"<b>takeaway</b>＝「持ち帰るべき要点」。プレゼンの締めで頻出。"},
+
+  // --- Q&A: asking ---
+  {cat:"ask", en:"Thanks for the talk. I have a quick question about your evaluation setup.",
+   jp:"ご講演ありがとうございます。評価の設定について一つ簡単な質問があります。",
+   scene:"質疑応答で質問を始めるときの入り。",
+   tip:"<b>quick question</b> はほぼ一語。「クイックエスチョン」。"},
+  {cat:"ask", en:"Could you elaborate on how you handled the edge cases?",
+   jp:"例外的なケースをどう扱ったか、もう少し詳しく教えていただけますか？",
+   scene:"もっと詳しい説明を求めるとき。",
+   tip:"<b>elaborate on</b>＝「〜について詳述する」。質問で多用される。"},
+  {cat:"ask", en:"I'm curious whether this approach scales to larger datasets.",
+   jp:"この手法がより大きなデータでも通用するのか気になります。",
+   scene:"手法の適用範囲を問うとき。",
+   tip:"<b>scales to</b>＝「〜まで拡張できる」。curious＝「興味がある／気になる」。"},
+  {cat:"ask", en:"Sorry, could you go back to the previous slide?",
+   jp:"すみません、前のスライドに戻っていただけますか？",
+   scene:"見たい図に戻してほしいとき。",
+   tip:"<b>go back to</b> は「ゴウバックトゥ」。previous＝「プリーヴィアス」。"},
+
+  // --- Q&A: answering ---
+  {cat:"answer", en:"That's a great question.",
+   jp:"とても良い質問ですね。",
+   scene:"質問に答える前のクッション表現。考える時間も稼げる。",
+   tip:"会議で最も聞く一文。<b>That's a</b> は「ザッツァ」とつながる。"},
+  {cat:"answer", en:"I'm not sure I fully understood. Could you rephrase that?",
+   jp:"完全には理解できませんでした。言い換えていただけますか？",
+   scene:"質問の意図が掴めなかったとき。",
+   tip:"<b>rephrase</b>＝「言い換える」。聞き返しの丁寧な定番。"},
+  {cat:"answer", en:"We didn't have time to test that, but it's on our roadmap.",
+   jp:"それを試す時間はありませんでしたが、今後の予定に入っています。",
+   scene:"未対応の点を正直に答えつつ前向きに締める。",
+   tip:"<b>on our roadmap</b>＝「計画にある」。didn't は「ディドゥン」と弱く。"},
+  {cat:"answer", en:"Let's take this offline and discuss it afterwards.",
+   jp:"この件は別途、後で個別に話しましょう。",
+   scene:"その場で長引く話題を切り上げるとき。",
+   tip:"<b>take this offline</b>＝「会議の場ではなく後で個別に」。比喩表現なので要暗記。"},
+  {cat:"answer", en:"Good point. We actually ran an ablation on exactly that.",
+   jp:"良い指摘です。まさにその点でアブレーション実験をしました。",
+   scene:"鋭い質問に応じるとき(AI論文系)。",
+   tip:"<b>ablation</b>＝「(要素を削る)アブレーション実験」。actually は「アクチュリ」。"},
+
+  // --- Chairing / moderating ---
+  {cat:"chair", en:"We're running a little behind schedule, so let's keep questions brief.",
+   jp:"少し予定が押しているので、質問は手短にお願いします。",
+   scene:"司会が時間管理をするとき。",
+   tip:"<b>running behind</b>＝「遅れている」。keep ... brief＝「手短に」。"},
+  {cat:"chair", en:"We have time for one more question.",
+   jp:"あと一つだけ質問をお受けできます。",
+   scene:"セッション終了間際の合図。",
+   tip:"<b>one more</b> は「ワンモア」。これが出たら質疑は終盤。"},
+  {cat:"chair", en:"Please use the microphone so everyone can hear you.",
+   jp:"皆に聞こえるようマイクをお使いください。",
+   scene:"質問者へのお願い。",
+   tip:"so (that) everyone can hear＝「皆が聞こえるように」。"},
+  {cat:"chair", en:"We'll break for coffee and reconvene at eleven.",
+   jp:"コーヒー休憩を取り、11時に再開します。",
+   scene:"休憩のアナウンス。",
+   tip:"<b>reconvene</b>＝「再集合する」。「リーカンヴィーン」。会議特有の語。"},
+
+  // --- Networking / small talk ---
+  {cat:"network", en:"What brings you to the conference this year?",
+   jp:"今年はどういうきっかけでこの会議に？",
+   scene:"休憩時間の雑談の切り出し。",
+   tip:"<b>What brings you to ~</b>＝「なぜ来たの？」の自然な定型。直訳しない。"},
+  {cat:"network", en:"Which talks are you planning to catch?",
+   jp:"どの講演を聴く予定ですか？",
+   scene:"参加者同士のセッション談義。",
+   tip:"<b>catch a talk</b>＝「講演を聴きに行く」。planning to は「プラニントゥ」。"},
+  {cat:"network", en:"Do you mind if I grab your contact? Let's stay in touch.",
+   jp:"連絡先を交換してもいいですか？今後も連絡を取り合いましょう。",
+   scene:"名刺・連絡先交換の場面。",
+   tip:"<b>grab your contact</b>＝口語で「連絡先をもらう」。stay in touch＝「連絡を保つ」。"},
+  {cat:"network", en:"I really enjoyed your talk earlier. The demo was impressive.",
+   jp:"先ほどのご講演、とても良かったです。デモが見事でした。",
+   scene:"発表者への声かけ。",
+   tip:"<b>earlier</b>＝「さっき」。社交の入りとして万能。"},
+
+  // --- SE / AI jargon spoken ---
+  {cat:"jargon", en:"We deprecated that endpoint a couple of releases ago.",
+   jp:"そのエンドポイントは2、3リリース前に廃止しました。",
+   scene:"技術的な近況を話す雑談・議論。",
+   tip:"<b>deprecated</b>＝「非推奨/廃止予定」。「デプリケイティッド」。"},
+  {cat:"jargon", en:"The pipeline is flaky, so we end up re-running the CI a lot.",
+   jp:"パイプラインが不安定で、結局CIを何度も回す羽目になります。",
+   scene:"開発の苦労話。",
+   tip:"<b>flaky</b>＝「不安定でたまに落ちる」。a lot の t は弾く音(ラ)に。"},
+  {cat:"jargon", en:"We fine-tuned the model on a curated in-house dataset.",
+   jp:"社内で精選したデータセットでモデルをファインチューニングしました。",
+   scene:"AIの手法説明。",
+   tip:"<b>curated</b>＝「厳選された」。in-house＝「社内の」。"},
+  {cat:"jargon", en:"It's basically a drop-in replacement for the legacy service.",
+   jp:"これは旧サービスの、ほぼそのまま差し替え可能な代替です。",
+   scene:"新旧システムの説明。",
+   tip:"<b>drop-in replacement</b>＝「設定変更なしで置き換え可能」。重要イディオム。"},
+  {cat:"jargon", en:"We're seeing diminishing returns from scaling up the context window.",
+   jp:"コンテキスト長を伸ばしても得られる効果が頭打ちになってきています。",
+   scene:"LLMの議論で。",
+   tip:"<b>diminishing returns</b>＝「収穫逓減/効果の頭打ち」。経済+技術で頻出。"},
+  {cat:"jargon", en:"Let's spin up a quick proof of concept before committing.",
+   jp:"本格着手の前に、手早く概念実証を立ち上げましょう。",
+   scene:"計画段階の打ち合わせ。",
+   tip:"<b>spin up</b>＝「(環境を)立ち上げる」。proof of concept＝PoC。"},
+
+  /* ===== 追加分 ===== */
+  // Opening
+  {cat:"opening", en:"Could everyone please take their seats? We're about to start.",
+   jp:"皆さま、お席にお着きください。まもなく開始します。",
+   scene:"開始直前の呼びかけ。",
+   tip:"<b>take their seats</b>＝「着席する」。about to＝「まさに〜しようと」。"},
+  {cat:"opening", en:"There will be time for Q&A at the end, so please hold your questions.",
+   jp:"最後に質疑の時間がありますので、ご質問はそれまでお待ちください。",
+   scene:"質問のタイミングを案内するとき。",
+   tip:"<b>hold your questions</b>＝「質問は後で」。Q&A は「キューアンドエー」。"},
+
+  // Presenting
+  {cat:"present", en:"Bear with me while I pull up the next demo.",
+   jp:"次のデモを表示しますので、少々お待ちください。",
+   scene:"画面の準備中のつなぎ言葉。",
+   tip:"<b>bear with me</b>＝「少し待って／ご辛抱を」。pull up＝「(画面を)出す」。"},
+  {cat:"present", en:"Long story short, it just works.",
+   jp:"手短に言うと、ちゃんと動きます。",
+   scene:"詳細を省いて結論を言うとき。",
+   tip:"<b>long story short</b>＝「早い話が」。会話で多用。"},
+  {cat:"present", en:"Feel free to stop me if anything is unclear.",
+   jp:"分かりにくい点があれば遠慮なく止めてください。",
+   scene:"発表冒頭での前置き。",
+   tip:"<b>feel free to ~</b>＝「気軽に〜して」。stop me は「ストッミー」気味。"},
+
+  // Q&A asking
+  {cat:"ask", en:"How does this compare to the baseline?",
+   jp:"これはベースラインと比べてどうですか？",
+   scene:"比較対象との差を尋ねる定番質問。",
+   tip:"<b>compare to ~</b>＝「〜と比較する」。AI/研究系で頻出。"},
+  {cat:"ask", en:"I'd like to push back on that assumption a little.",
+   jp:"その前提に少し異を唱えたいのですが。",
+   scene:"丁寧に反論・疑問を述べるとき。",
+   tip:"<b>push back on ~</b>＝「〜に反論する」。批判ではなく議論の作法。"},
+  {cat:"ask", en:"Have you considered the privacy implications?",
+   jp:"プライバシー面への影響は検討されましたか？",
+   scene:"見落とされがちな論点を指摘するとき。",
+   tip:"<b>implications</b>＝「(波及的な)影響・含意」。「インプリケイションズ」。"},
+
+  // Q&A answering
+  {cat:"answer", en:"I'll get back to you on that.",
+   jp:"その点は後ほどお答えします。",
+   scene:"その場で答えられないとき。",
+   tip:"<b>get back to you</b>＝「後で返答する」。ビジネス全般で必須。"},
+  {cat:"answer", en:"We benchmarked it against several baselines.",
+   jp:"いくつかのベースラインと比較評価しました。",
+   scene:"評価方法を説明するとき。",
+   tip:"<b>benchmark against ~</b>＝「〜を基準に性能比較する」。"},
+  {cat:"answer", en:"It really depends on the use case.",
+   jp:"それは用途次第ですね。",
+   scene:"一概に言えないと答えるとき。",
+   tip:"<b>it depends on ~</b>＝「〜による」。use case＝「ユースケース／用途」。"},
+
+  // Chairing
+  {cat:"chair", en:"Let's wrap up here and move on to the next speaker.",
+   jp:"ここで締めて、次の発表者に移りましょう。",
+   scene:"セッションの切り替え。",
+   tip:"<b>wrap up</b>＝「締めくくる」。move on to ~＝「〜へ進む」。"},
+  {cat:"chair", en:"We'll take questions from the floor now.",
+   jp:"では会場から質問をお受けします。",
+   scene:"質疑応答の開始宣言。",
+   tip:"<b>from the floor</b>＝「(会場の)聴衆から」。会議特有の言い回し。"},
+  {cat:"chair", en:"If there are no further questions, let's thank our speaker.",
+   jp:"他に質問がなければ、発表者に拍手をお願いします。",
+   scene:"セッションを締める一言。",
+   tip:"<b>no further questions</b>＝「これ以上質問なし」。further＝「ファーザー」。"},
+
+  // Networking
+  {cat:"network", en:"How are you finding the conference so far?",
+   jp:"ここまでのところ、会議はいかがですか？",
+   scene:"雑談の鉄板の切り出し。",
+   tip:"<b>How are you finding ~?</b>＝「〜はどう？(感想を尋ねる)」。find=「感じる」。"},
+  {cat:"network", en:"Are you presenting, or just attending?",
+   jp:"発表されるんですか、それとも聴講だけ？",
+   scene:"相手の立場を尋ねる雑談。",
+   tip:"<b>attending</b>＝「参加(聴講)する」。presenting＝「発表する」。"},
+  {cat:"network", en:"Let me introduce you to a colleague of mine.",
+   jp:"私の同僚を紹介させてください。",
+   scene:"人をつなぐとき。",
+   tip:"<b>introduce A to B</b>＝「AをBに紹介」。colleague＝「コリーグ(同僚)」。"},
+
+  // SE/AI jargon
+  {cat:"jargon", en:"It scales horizontally, so we just add more nodes.",
+   jp:"水平方向に拡張できるので、ノードを増やすだけです。",
+   scene:"インフラ設計の説明。",
+   tip:"<b>scale horizontally</b>＝「水平スケール(台数を増やす)」。"},
+  {cat:"jargon", en:"We hit a bottleneck on the inference side.",
+   jp:"推論側がボトルネックになりました。",
+   scene:"性能問題を話すとき。",
+   tip:"<b>hit a bottleneck</b>＝「ボトルネックにぶつかる」。inference＝「インファレンス(推論)」。"},
+  {cat:"jargon", en:"The repo is open source, so feel free to file an issue.",
+   jp:"リポジトリは公開しているので、気軽にissueを立ててください。",
+   scene:"OSSの案内。",
+   tip:"<b>file an issue</b>＝「課題を起票する」。repo＝repositoryの略。"},
+  {cat:"jargon", en:"We rolled it back after we saw the regression.",
+   jp:"性能劣化が見えたので、変更を巻き戻しました。",
+   scene:"トラブル対応の話。",
+   tip:"<b>roll back</b>＝「(変更を)巻き戻す」。regression＝「劣化・後退」。"},
+
+  /* ===== 追加分2 ===== */
+  // Opening
+  {cat:"opening", en:"Without further ado, let's get started.",
+   jp:"前置きはこのくらいにして、始めましょう。",
+   scene:"前置きを切り上げる定番フレーズ。",
+   tip:"<b>without further ado</b>＝「もったいぶらずに」。ado は「アドゥー」。"},
+  {cat:"opening", en:"Just a quick housekeeping note before we begin.",
+   jp:"始める前に、簡単な事務連絡だけ。",
+   scene:"会場案内やWi-Fi情報などの前置き。",
+   tip:"<b>housekeeping note</b>＝「事務連絡」。会議運営の定番語。"},
+  {cat:"opening", en:"I'll keep my introduction brief so we have more time for the talk.",
+   jp:"紹介は手短にして、講演の時間を多く取りたいと思います。",
+   scene:"司会が自己紹介を切り上げるとき。",
+   tip:"<b>keep ... brief</b>＝「手短にする」。so (that)＝「〜するように」。"},
+
+  // Presenting
+  {cat:"present", en:"Let's zoom out for a moment and look at the bigger picture.",
+   jp:"少し引いて、全体像を見てみましょう。",
+   scene:"詳細から全体像へ視点を移すとき。",
+   tip:"<b>zoom out</b>＝「(カメラのように)引いて見る」。bigger picture＝「全体像」。"},
+  {cat:"present", en:"I want to highlight one number in particular.",
+   jp:"特にこの数字に注目していただきたいです。",
+   scene:"重要な数値を強調するとき。",
+   tip:"<b>in particular</b>＝「特に」。highlight＝「強調する」。"},
+  {cat:"present", en:"This next part is a bit dense, so bear with me.",
+   jp:"次の部分は少し内容が濃いので、ご辛抱ください。",
+   scene:"専門的な説明に入る前の前置き。",
+   tip:"<b>dense</b>＝「(内容が)濃い・難解」。bear with me は再出だが超重要。"},
+  {cat:"present", en:"Moving on to the next section.",
+   jp:"次のセクションに移ります。",
+   scene:"話題転換の合図。",
+   tip:"<b>moving on to ~</b>＝「〜へ進みます」。発表の区切りで頻出。"},
+  {cat:"present", en:"Just to recap what we've covered so far.",
+   jp:"ここまでの内容を簡単に振り返ります。",
+   scene:"セクションの締めくくり。",
+   tip:"<b>recap</b>＝「要点を振り返る」。so far＝「これまでのところ」。"},
+
+  // Q&A asking
+  {cat:"ask", en:"What was the main bottleneck you ran into?",
+   jp:"主にどこがボトルネックになりましたか？",
+   scene:"開発上の課題を尋ねる質問。",
+   tip:"<b>run into ~</b>＝「(問題に)直面する」。ran into は「ランイントゥ」。"},
+  {cat:"ask", en:"Did you try this on a different dataset?",
+   jp:"別のデータセットでも試しましたか？",
+   scene:"汎用性を確認する質問。",
+   tip:"基本構文だが質疑応答で最頻出のひとつ。try this on＝「〜で試す」。"},
+  {cat:"ask", en:"Just to clarify, are you saying X or Y?",
+   jp:"確認ですが、XということですかYということですか？",
+   scene:"発言の意図を明確にしたいとき。",
+   tip:"<b>just to clarify</b>＝「確認なのですが」。聞き返しの丁寧な前置き。"},
+  {cat:"ask", en:"What's the intuition behind that design choice?",
+   jp:"その設計判断の背景にある考え方は何ですか？",
+   scene:"技術的な意思決定の理由を尋ねる。",
+   tip:"<b>intuition behind ~</b>＝「〜の背後にある直感・発想」。研究発表で頻出。"},
+
+  // Q&A answering
+  {cat:"answer", en:"Short answer: yes, but with caveats.",
+   jp:"端的に言うと、はいです。ただし注意点があります。",
+   scene:"複雑な質問に簡潔に答え始めるとき。",
+   tip:"<b>caveat(s)</b>＝「但し書き・留意点」。研究発表で頻出の語。"},
+  {cat:"answer", en:"We haven't validated that yet, to be honest.",
+   jp:"正直なところ、そこはまだ検証できていません。",
+   scene:"未検証の点を率直に認めるとき。",
+   tip:"<b>to be honest</b>＝「正直に言うと」。文末に置く語順に注意。"},
+  {cat:"answer", en:"That's outside the scope of this talk, but happy to chat after.",
+   jp:"それは今回の発表の範囲外ですが、後で喜んでお話しします。",
+   scene:"発表のスコープ外の質問への対応。",
+   tip:"<b>outside the scope of ~</b>＝「〜の範囲外」。happy to ~＝「喜んで〜する」。"},
+  {cat:"answer", en:"Let me clarify what I meant by that.",
+   jp:"今のはどういう意味か、説明させてください。",
+   scene:"誤解を解くための補足。",
+   tip:"<b>what I meant by that</b>＝「それで言いたかったこと」。"},
+
+  // Chairing
+  {cat:"chair", en:"Let's give a warm round of applause.",
+   jp:"温かい拍手をお願いします。",
+   scene:"発表後に拍手を促す決まり文句。",
+   tip:"<b>round of applause</b>＝「拍手」。warm が付くとより丁寧。"},
+  {cat:"chair", en:"We'll pick this up again after lunch.",
+   jp:"この続きは昼食後に再開します。",
+   scene:"セッションを一旦中断するとき。",
+   tip:"<b>pick up again</b>＝「(中断したことを)再開する」。"},
+  {cat:"chair", en:"Please silence your phones before we begin.",
+   jp:"開始前に携帯電話をサイレントモードにしてください。",
+   scene:"開始前のアナウンス。",
+   tip:"<b>silence your phone</b>＝「電話を無音にする」。silence は動詞。"},
+
+  // Networking
+  {cat:"network", en:"Are you heading to the social event tonight?",
+   jp:"今夜の懇親会には行かれますか？",
+   scene:"懇親会の誘い・確認。",
+   tip:"<b>head to ~</b>＝「〜へ向かう」。social event＝「懇親会」。"},
+  {cat:"network", en:"Small world! I read your paper last year.",
+   jp:"世間は狭いですね！去年あなたの論文を読みました。",
+   scene:"思いがけない繋がりに驚くとき。",
+   tip:"<b>small world</b>＝「世間は狭い」という決まり文句。"},
+  {cat:"network", en:"What team are you on these days?",
+   jp:"最近はどちらのチームにいらっしゃるんですか？",
+   scene:"近況を尋ねる雑談。",
+   tip:"<b>these days</b>＝「最近は」。What team are you on＝所属を尋ねる定型。"},
+
+  // SE/AI jargon
+  {cat:"jargon", en:"We're seeing some hallucinations in the outputs.",
+   jp:"出力にいくつかハルシネーションが見られます。",
+   scene:"LLMの出力品質を議論するとき。",
+   tip:"<b>hallucination</b>＝「(AIの)事実と異なる生成」。AI会議で必須語。"},
+  {cat:"jargon", en:"It's gated behind a feature flag for now.",
+   jp:"今のところフィーチャーフラグの内側に隠してあります。",
+   scene:"未公開機能の管理方法を説明するとき。",
+   tip:"<b>gated behind ~</b>＝「〜の制限の下にある」。feature flag＝開発用語。"},
+  {cat:"jargon", en:"The eval harness took longer to build than the model itself.",
+   jp:"評価基盤の構築の方がモデル本体より時間がかかりました。",
+   scene:"開発の苦労を語る雑談。",
+   tip:"<b>eval harness</b>＝「評価用の仕組み・基盤」。AI開発で頻出。"},
+  {cat:"jargon", en:"We containerized the whole thing with Docker.",
+   jp:"全体をDockerでコンテナ化しました。",
+   scene:"インフラ構成の説明。",
+   tip:"<b>containerize</b>＝「コンテナ化する」。with Docker は固定表現。"},
+  {cat:"jargon", en:"There's a lot of tech debt we still need to pay down.",
+   jp:"まだ解消しないといけない技術的負債がたくさんあります。",
+   scene:"開発の現状を率直に話すとき。",
+   tip:"<b>tech debt</b>＝「技術的負債」。pay down＝「(借金のように)返済・解消する」。"},
+
+  /* ===== Registration ===== */
+  {cat:"registration", en:"Hi, I'm here to pick up my badge.",
+   jp:"こんにちは、バッジを受け取りに来ました。",
+   scene:"受付カウンターでの第一声。",
+   tip:"<b>pick up my badge</b>＝「バッジを受け取る」。会場入り口で必須の一言。"},
+  {cat:"registration", en:"Could you tell me where the registration desk is?",
+   jp:"受付デスクはどちらか教えていただけますか？",
+   scene:"会場で受付を探しているとき。",
+   tip:"<b>Could you tell me where ~ is?</b>＝場所を尋ねる丁寧な定型文。"},
+  {cat:"registration", en:"I think I'm on the list under a different spelling.",
+   jp:"リストには違うスペルで登録されているかもしれません。",
+   scene:"名前が見つからないときの説明。",
+   tip:"<b>under a different spelling</b>＝「別の綴りで」。名前の確認場面で便利。"},
+  {cat:"registration", en:"Here's my confirmation email, just in case.",
+   jp:"念のため、確認メールをお見せしますね。",
+   scene:"登録確認のメールを提示するとき。",
+   tip:"<b>just in case</b>＝「念のため」。confirmation email＝「確認メール」。"},
+  {cat:"registration", en:"Is there a Wi-Fi password for attendees?",
+   jp:"参加者用のWi-Fiパスワードはありますか？",
+   scene:"会場のネットワーク情報を尋ねるとき。",
+   tip:"attendees は「アテンディーズ」。会議では最頻出の単語の一つ。"},
+  {cat:"registration", en:"Where can I pick up the conference program and proceedings?",
+   jp:"会議のプログラムと予稿集はどこで受け取れますか？",
+   scene:"配布物を探しているとき。",
+   tip:"<b>proceedings</b>＝「(学会の)予稿集・論文集」。SE/AI系会議特有の語。"},
+  {cat:"registration", en:"My badge doesn't seem to be working at the scanner.",
+   jp:"バッジがスキャナーで読み込めないようです。",
+   scene:"入場ゲートでのトラブル対応。",
+   tip:"<b>doesn't seem to be working</b>＝「うまく動いていないようだ」。"},
+  {cat:"registration", en:"Is lunch included with the registration fee?",
+   jp:"参加費に昼食は含まれていますか？",
+   scene:"参加費の内容を確認するとき。",
+   tip:"<b>registration fee</b>＝「参加費」。included with ~＝「〜に含まれる」。"},
+  {cat:"registration", en:"Could I get a replacement lanyard? Mine just broke.",
+   jp:"ストラップを交換していただけますか？ちょうど壊れてしまって。",
+   scene:"備品トラブルの対応依頼。",
+   tip:"<b>lanyard</b>＝「(名札の)ストラップ」。会議用語として覚えておくと便利。"},
+  {cat:"registration", en:"Is there a cloakroom where I can leave my bag?",
+   jp:"荷物を預けられるクロークはありますか？",
+   scene:"手荷物を預けたいとき。",
+   tip:"<b>cloakroom</b>＝「クローク・荷物預かり所」。leave my bag＝「荷物を預ける」。"},
+
+  /* ===== Banquet ===== */
+  {cat:"banquet", en:"Is this seat taken? Mind if I join you?",
+   jp:"この席は空いていますか？ご一緒してもいいですか？",
+   scene:"晩餐会で席に座ろうとするとき。",
+   tip:"<b>Is this seat taken?</b>＝定番中の定番。Mind if I ~?＝「〜してもいい？」。"},
+  {cat:"banquet", en:"I believe we're seated at table seven.",
+   jp:"私たちは7番テーブルのようです。",
+   scene:"席次を確認するとき。",
+   tip:"<b>seated at table ~</b>＝「〜番テーブルの席」。バンケットの定番表現。"},
+  {cat:"banquet", en:"Let's raise a toast to a fantastic conference.",
+   jp:"素晴らしい会議に乾杯しましょう。",
+   scene:"乾杯の音頭を取るとき。",
+   tip:"<b>raise a toast to ~</b>＝「〜に乾杯する」。toast はパンではなく「乾杯」。"},
+  {cat:"banquet", en:"Cheers! It was great meeting you all.",
+   jp:"乾杯！皆さんにお会いできて良かったです。",
+   scene:"乾杯の掛け声と挨拶。",
+   tip:"<b>Cheers!</b>＝「乾杯！」。it was great meeting you＝別れ際の決まり文句。"},
+  {cat:"banquet", en:"Have you tried the dessert table yet? It's amazing.",
+   jp:"デザートのテーブルはもう試しましたか？すごく美味しいですよ。",
+   scene:"食事についての雑談。",
+   tip:"<b>have you tried ~ yet?</b>＝「もう〜は試した？」。"},
+  {cat:"banquet", en:"What do you do when you're not at conferences like this?",
+   jp:"こういう会議に出ていないときは、普段どんなお仕事を？",
+   scene:"会話を広げる質問。",
+   tip:"自然な世間話の定番。直訳せず「普段は何を」というニュアンスで。"},
+  {cat:"banquet", en:"This is a great chance to put faces to the names I've only read in papers.",
+   jp:"論文でしか知らなかった方々と実際にお会いできる良い機会です。",
+   scene:"研究者同士の懇親での一言。",
+   tip:"<b>put faces to names</b>＝「名前と顔を一致させる」。学会らしい表現。"},
+  {cat:"banquet", en:"Are you heading to the after-party, or calling it a night?",
+   jp:"二次会に行かれますか、それとも今夜はここで切り上げますか？",
+   scene:"懇親会後の予定を尋ねるとき。",
+   tip:"<b>calling it a night</b>＝「今夜はお開きにする」。after-party＝「二次会」。"},
+  {cat:"banquet", en:"Thank you so much for organizing such a wonderful evening.",
+   jp:"素晴らしい夜を企画していただき、本当にありがとうございます。",
+   scene:"主催者へのお礼。",
+   tip:"<b>organizing</b>＝「企画・運営する」。会の締めくくりの感謝表現。"},
+  {cat:"banquet", en:"I should probably go mingle a bit before the night's over.",
+   jp:"夜が終わる前に、もう少し色んな人と交流しておこうと思います。",
+   scene:"席を立って他の人と話しに行くときの一言。",
+   tip:"<b>mingle</b>＝「(パーティーなどで)人々と交流する」。社交の必須語。"},
+
+  /* ===== IT/SE色を強めた追加分 ===== */
+  // Presenting
+  {cat:"present", en:"Under the hood, it's really just a thin wrapper around the existing API.",
+   jp:"内部的には、既存のAPIを薄くラップしているだけです。",
+   scene:"実装の仕組みを種明かしするとき。",
+   tip:"<b>under the hood</b>＝「内部では(車のボンネットの下から)」。thin wrapper＝「薄いラッパー」。"},
+  {cat:"present", en:"Here's a quick sketch of the system architecture.",
+   jp:"システム構成のざっくりとした図がこちらです。",
+   scene:"アーキテクチャ図を見せる前置き。",
+   tip:"<b>sketch</b>＝「ラフな図・概略」。厳密な設計図ではないニュアンス。"},
+  {cat:"present", en:"We open-sourced the core library last month.",
+   jp:"先月、コアとなるライブラリをオープンソース化しました。",
+   scene:"OSS化の報告。",
+   tip:"<b>open-source</b>は動詞としても使われる。「オープンソース化する」。"},
+  {cat:"present", en:"Let me show you a quick live demo instead of just slides.",
+   jp:"スライドだけでなく、簡単なライブデモをお見せします。",
+   scene:"実演に切り替えるとき。",
+   tip:"<b>live demo</b>＝「その場での実演」。発表で盛り上がる瞬間。"},
+
+  // Q&A asking
+  {cat:"ask", en:"What's your testing strategy for something like this?",
+   jp:"このようなものに対する、テスト戦略はどのようなものですか？",
+   scene:"品質保証の方針を尋ねる質問。",
+   tip:"<b>testing strategy</b>＝「テスト戦略」。SE系の質疑で頻出。"},
+  {cat:"ask", en:"How do you handle versioning across breaking changes?",
+   jp:"破壊的変更があるとき、バージョン管理はどうしていますか？",
+   scene:"API設計についての質問。",
+   tip:"<b>breaking changes</b>＝「(後方互換性を壊す)破壊的変更」。開発者必須語。"},
+  {cat:"ask", en:"Is this open source, or is it proprietary?",
+   jp:"これはオープンソースですか、それとも独自仕様ですか？",
+   scene:"ライセンス形態を確認する質問。",
+   tip:"<b>proprietary</b>＝「(企業独自の)専有の」。「プロプライエタリー」。"},
+  {cat:"ask", en:"What's the deployment cadence for this team?",
+   jp:"このチームのデプロイ頻度はどのくらいですか？",
+   scene:"開発体制についての質問。",
+   tip:"<b>cadence</b>＝「(リリースなどの)周期・頻度」。アジャイル文脈で頻出。"},
+
+  // Q&A answering
+  {cat:"answer", en:"We actually caught that in code review.",
+   jp:"実はそれ、コードレビューで見つけていました。",
+   scene:"問題発見の経緯を答えるとき。",
+   tip:"<b>catch ~ in code review</b>＝「レビューで(問題を)見つける」。"},
+  {cat:"answer", en:"We use feature flags to roll things out gradually.",
+   jp:"機能フラグを使って、段階的にリリースしています。",
+   scene:"リリース手法を説明するとき。",
+   tip:"<b>roll out gradually</b>＝「段階的に展開する」。feature flag は超頻出語。"},
+  {cat:"answer", en:"Honestly, we're still iterating on that part of the design.",
+   jp:"正直なところ、その部分の設計はまだ試行錯誤しています。",
+   scene:"未完成の部分を率直に答えるとき。",
+   tip:"<b>iterate on ~</b>＝「〜を繰り返し改善する」。honestly は文頭のクッション語。"},
+  {cat:"answer", en:"We pair-programmed through most of that module.",
+   jp:"そのモジュールの大半はペアプログラミングで作りました。",
+   scene:"開発プロセスについて答えるとき。",
+   tip:"<b>pair-program</b>は動詞化されている。through ~＝「〜を通して(作業した)」。"},
+
+  // Chairing
+  {cat:"chair", en:"Let's move into the technical deep dive for this track.",
+   jp:"このトラックの技術的な深掘りセッションに移りましょう。",
+   scene:"技術トラックの開始を告げるとき。",
+   tip:"<b>deep dive</b>＝「深掘り・詳細検討」。technical track と相性が良い表現。"},
+
+  // SE/AI jargon
+  {cat:"jargon", en:"We caught that bug in code review before it ever shipped.",
+   jp:"そのバグはリリース前にコードレビューで見つけました。",
+   scene:"品質管理の成功例を語るとき。",
+   tip:"<b>ship</b>＝「(製品を)リリースする」。before it ever shipped＝「出荷される前に」。"},
+  {cat:"jargon", en:"Let's do a quick postmortem on what went wrong.",
+   jp:"何が問題だったか、簡単に振り返り(ポストモーテム)をしましょう。",
+   scene:"障害対応後の振り返り会議。",
+   tip:"<b>postmortem</b>＝「事後検証・振り返り」。SREやインシデント対応で必須語。"},
+  {cat:"jargon", en:"The on-call rotation has been pretty brutal this sprint.",
+   jp:"今のスプリントはオンコール当番がかなりきついです。",
+   scene:"運用負荷についての愚痴・雑談。",
+   tip:"<b>on-call rotation</b>＝「当番制の緊急対応」。brutal＝「過酷な」。"},
+  {cat:"jargon", en:"We migrated everything to Kubernetes last quarter.",
+   jp:"前四半期にすべてKubernetesへ移行しました。",
+   scene:"インフラ刷新の報告。",
+   tip:"Kubernetes は口語で「クーバネティス」または略して「k8s(ケーエイツ)」とも呼ばれる。"},
+  {cat:"jargon", en:"It's a classic case of premature optimization.",
+   jp:"典型的な「時期尚早な最適化」の例ですね。",
+   scene:"設計上の失敗パターンを指摘するとき。",
+   tip:"<b>premature optimization</b>＝「時期尚早な最適化」。エンジニア間の格言的フレーズ。"},
+  {cat:"jargon", en:"We added rate limiting to protect the API from abuse.",
+   jp:"乱用からAPIを守るためにレート制限を追加しました。",
+   scene:"API設計の説明。",
+   tip:"<b>rate limiting</b>＝「アクセス回数の制限」。abuse＝「不正利用」。"},
+  {cat:"jargon", en:"The test coverage on that module is still pretty thin.",
+   jp:"そのモジュールのテストカバレッジはまだかなり薄いです。",
+   scene:"品質の現状を正直に話すとき。",
+   tip:"<b>test coverage</b>＝「テスト網羅率」。thin＝「(カバー範囲が)薄い」。"},
+  {cat:"jargon", en:"We're running a canary deployment before the full rollout.",
+   jp:"本格展開の前に、カナリアデプロイを行っています。",
+   scene:"段階的リリース戦略の説明。",
+   tip:"<b>canary deployment</b>＝「一部にだけ先行リリースして様子を見る手法」。"},
+  {cat:"jargon", en:"That's a textbook example of technical debt compounding.",
+   jp:"それはまさに技術的負債が複利的に膨らんでいく典型例ですね。",
+   scene:"設計判断の結果を振り返るとき。",
+   tip:"<b>compound</b>＝「(利子のように)複利的に増える」。textbook example＝「教科書的な例」。"},
+  {cat:"jargon", en:"We squashed the commits before merging the PR.",
+   jp:"PRをマージする前にコミットをまとめました。",
+   scene:"Gitの運用についての話。",
+   tip:"<b>squash commits</b>＝「複数コミットを一つにまとめる」。PR＝「プルリクエスト」。"},
+  {cat:"jargon", en:"The service mesh handles retries and circuit breaking for us.",
+   jp:"サービスメッシュがリトライとサーキットブレーカーを担ってくれます。",
+   scene:"マイクロサービス基盤の説明。",
+   tip:"<b>service mesh</b>＝「サービス間通信を管理する基盤」。circuit breaking＝「障害伝播の遮断」。"},
+  {cat:"jargon", en:"We backported the fix to the previous major version.",
+   jp:"修正を前のメジャーバージョンにもバックポートしました。",
+   scene:"バージョン管理の話。",
+   tip:"<b>backport</b>＝「新しい修正を古いバージョンに反映する」。OSS界隈で頻出。"},
+
+  /* ===== 上級語彙を含む追加分 ===== */
+  // Presenting
+  {cat:"present", en:"This approach is, generally speaking, orthogonal to the optimization we discussed earlier.",
+   jp:"このアプローチは、概して、先ほどの最適化とは直交する(無関係な)ものです。",
+   scene:"2つの技術的な工夫の関係を説明するとき。",
+   tip:"<b>orthogonal</b>＝本来「直交した」、転じて「(互いに)無関係な」。学術発表で頻出の上級語。"},
+  {cat:"present", en:"The model exhibits a non-trivial improvement over the baseline.",
+   jp:"モデルはベースラインに対して、無視できない改善を示しています。",
+   scene:"結果の有意性を主張するとき。",
+   tip:"<b>non-trivial</b>＝「自明でない・軽視できない」。exhibit＝「(性質を)示す」、堅い語。"},
+  {cat:"present", en:"There's an inherent trade-off between latency and accuracy here.",
+   jp:"ここにはレイテンシと精度の間に本質的なトレードオフがあります。",
+   scene:"設計上の二律背反を説明するとき。",
+   tip:"<b>inherent</b>＝「本質的に備わった」。「インヒアレント」、やや難しい発音。"},
+  {cat:"present", en:"We extrapolated the trend to estimate performance at scale.",
+   jp:"傾向を外挿して、大規模時の性能を見積もりました。",
+   scene:"データから将来予測を導くとき。",
+   tip:"<b>extrapolate</b>＝「(既知のデータから)外挿して推定する」。研究発表の重要語。"},
+  {cat:"present", en:"The complexity becomes intractable for large inputs without approximation.",
+   jp:"近似なしでは、大きな入力に対して計算量が現実的でなくなります。",
+   scene:"計算量の限界を説明するとき。",
+   tip:"<b>intractable</b>＝「(計算量的に)扱いきれない」。tractable の対義語として覚えると良い。"},
+  {cat:"present", en:"The system is fairly robust to noisy or adversarial inputs.",
+   jp:"このシステムはノイズの多い入力や敵対的な入力にもかなり頑健です。",
+   scene:"頑健性(ロバストネス)を主張するとき。",
+   tip:"<b>robust to ~</b>＝「〜に対して頑健」。adversarial＝「敵対的な」、AI分野必須語。"},
+
+  // Q&A asking
+  {cat:"ask", en:"Isn't there a risk of conflating correlation with causation here?",
+   jp:"ここで相関と因果を混同してしまうリスクはありませんか？",
+   scene:"統計的な議論で前提を疑う質問。",
+   tip:"<b>conflate</b>＝「(別々のものを)混同する」。correlation/causation の対比は議論の定番。"},
+  {cat:"ask", en:"Could this be a degenerate case where the loss just collapses to zero?",
+   jp:"これは損失がゼロに潰れてしまう、退化的なケースではありませんか？",
+   scene:"学習がうまくいきすぎている異常を疑う質問。",
+   tip:"<b>degenerate case</b>＝「退化したケース(極端で本質を失った例)」。collapse＝「崩壊する」。"},
+  {cat:"ask", en:"Just to play devil's advocate, what if the opposite turns out to be true?",
+   jp:"あえて反対の立場を取りますが、もし逆が正しかったらどうなりますか？",
+   scene:"議論をあえて深めるための問いかけ。",
+   tip:"<b>play devil's advocate</b>＝「あえて反対意見を述べる」。議論で使われる慣用句。"},
+  {cat:"ask", en:"What's the rationale behind choosing this particular heuristic?",
+   jp:"この特定のヒューリスティックを選んだ根拠は何ですか？",
+   scene:"設計判断の理由を尋ねるとき。",
+   tip:"<b>rationale</b>＝「論拠・理由づけ」。heuristic＝「発見的手法(経験則的な解法)」。"},
+  {cat:"ask", en:"Are these results corroborated by any independent studies?",
+   jp:"この結果は他の独立した研究によっても裏付けられていますか？",
+   scene:"再現性・信頼性を確認する質問。",
+   tip:"<b>corroborate</b>＝「裏付ける・確証する」。やや堅い学術語。"},
+
+  // Q&A answering
+  {cat:"answer", en:"That's largely anecdotal at this point; we don't have rigorous data yet.",
+   jp:"現時点ではそれは主に逸話的な話で、まだ厳密なデータはありません。",
+   scene:"裏付けの薄い観察を正直に答えるとき。",
+   tip:"<b>anecdotal</b>＝「逸話的な(裏付けの弱い)」。rigorous＝「厳密な」。"},
+  {cat:"answer", en:"We circumvented that limitation by reformulating the problem.",
+   jp:"問題を再定式化することで、その制約を回避しました。",
+   scene:"工夫によって制約を乗り越えた経緯を答えるとき。",
+   tip:"<b>circumvent</b>＝「(正面突破せず)回避する」。reformulate＝「再定式化する」。"},
+  {cat:"answer", en:"The discrepancy is likely due to differences in the evaluation protocol.",
+   jp:"その食い違いはおそらく評価方法の違いによるものでしょう。",
+   scene:"結果のズレの原因を説明するとき。",
+   tip:"<b>discrepancy</b>＝「食い違い・不一致」。protocol＝「(実験の)手順」。"},
+  {cat:"answer", en:"Empirically, it holds up across most of the benchmarks we tried.",
+   jp:"経験的には、試したほとんどのベンチマークで成り立っています。",
+   scene:"実験結果の一般性を答えるとき。",
+   tip:"<b>empirically</b>＝「経験的に(実験・データに基づいて)」。hold up＝「(検証に)耐える」。"},
+  {cat:"answer", en:"To be precise, the improvement is marginal but statistically significant.",
+   jp:"正確に言うと、改善はわずかですが統計的に有意です。",
+   scene:"数値の解釈を厳密に伝えるとき。",
+   tip:"<b>marginal</b>＝「わずかな」。statistically significant＝「統計的に有意な」、必須の研究語。"},
+  {cat:"answer", en:"It's somewhat of an idiosyncratic design choice, to be fair.",
+   jp:"正直なところ、それはやや独特な(癖のある)設計判断です。",
+   scene:"変わった設計判断を率直に認めるとき。",
+   tip:"<b>idiosyncratic</b>＝「独特な・癖のある」。to be fair＝「公平に言うと」。"},
+
+  // Chairing
+  {cat:"chair", en:"Let's avoid moving the goalposts halfway through the discussion.",
+   jp:"議論の途中で評価基準を都合よく変えるのはやめましょう。",
+   scene:"議論が脱線・変質しそうなときの軌道修正。",
+   tip:"<b>move the goalposts</b>＝「(都合よく)目標・基準を変える」という慣用句。"},
+  {cat:"chair", en:"Let's not get derailed by a tangential point.",
+   jp:"本筋から外れた話で脱線しないようにしましょう。",
+   scene:"議論を本題に戻すとき。",
+   tip:"<b>derailed</b>＝「(列車のように)脱線した」。tangential＝「本筋から外れた」。"},
+
+  // SE/AI jargon
+  {cat:"jargon", en:"We need to mitigate the risk of catastrophic forgetting in continual learning.",
+   jp:"継続学習における破滅的忘却のリスクを緩和する必要があります。",
+   scene:"AIモデルの学習上の課題を議論するとき。",
+   tip:"<b>mitigate</b>＝「緩和する」。catastrophic forgetting＝「破滅的忘却」、AI特有の用語。"},
+  {cat:"jargon", en:"This is a textbook case of a spurious correlation.",
+   jp:"これは典型的な、見せかけの相関(疑似相関)の例です。",
+   scene:"データ分析の落とし穴を指摘するとき。",
+   tip:"<b>spurious</b>＝「見せかけの・誤った」。spurious correlation は統計の頻出表現。"},
+  {cat:"jargon", en:"It's a low-hanging fruit we should tackle first.",
+   jp:"それは真っ先に取り組むべき、手をつけやすい課題です。",
+   scene:"優先順位を議論するとき。",
+   tip:"<b>low-hanging fruit</b>＝「(木の低い所の実のように)簡単に得られる成果」。慣用句。"},
+  {cat:"jargon", en:"Let's not try to boil the ocean here — let's scope this down.",
+   jp:"ここで手を広げすぎないようにしましょう。範囲を絞りましょう。",
+   scene:"計画が壮大になりすぎたときの軌道修正。",
+   tip:"<b>boil the ocean</b>＝「無謀なほど手を広げすぎる」という慣用句。scope down＝「範囲を絞る」。"},
+  {cat:"jargon", en:"Honestly, that discussion is starting to feel like bikeshedding.",
+   jp:"正直、その議論はだんだん些末な点への時間の浪費に思えてきました。",
+   scene:"重要でない点に議論が偏っているとき。",
+   tip:"<b>bikeshedding</b>＝「些末な点に時間を浪費する議論」。パーキンソンの凡俗法則由来の俗語。"},
+  {cat:"jargon", en:"We had to make a pragmatic trade-off given the time constraints.",
+   jp:"時間的制約を踏まえ、現実的な妥協をする必要がありました。",
+   scene:"理想と現実の折り合いを説明するとき。",
+   tip:"<b>pragmatic</b>＝「実用的な・現実的な」。constraint＝「制約」。"},
+  {cat:"jargon", en:"We're dogfooding the product internally before the public release.",
+   jp:"一般公開の前に、社内で自社製品を実際に使って検証しています。",
+   scene:"リリース前の社内検証を説明するとき。",
+   tip:"<b>dogfood</b>＝「自社製品を自ら使ってみる」。俗語が動詞化したエンジニア用語。"},
+  {cat:"jargon", en:"Don't worry, it's not a silver bullet, but it helps a lot.",
+   jp:"万能の解決策ではありませんが、大いに役立ちます。",
+   scene:"過度な期待をたしなめつつ効果を伝えるとき。",
+   tip:"<b>silver bullet</b>＝「万能の解決策」(銀の弾丸)。よく使われる比喩表現。"},
+  {cat:"jargon", en:"We had to refactor the module because it had become unwieldy.",
+   jp:"モジュールが扱いにくくなったので、リファクタリングする必要がありました。",
+   scene:"コードの肥大化への対応を説明するとき。",
+   tip:"<b>unwieldy</b>＝「扱いにくい・肥大化した」。発音は「アンウィールディ」。"},
+];
+
+const CATS = {
+  all:    {label:"All",        color:"#ffcb52"},
+  registration:{label:"Registration",color:"#6ec6ff"},
+  opening:{label:"Opening",    color:"#ffcb52"},
+  present:{label:"Presenting", color:"#34e0c4"},
+  ask:    {label:"Q&A · Ask",  color:"#7aa2ff"},
+  answer: {label:"Q&A · Answer",color:"#b388ff"},
+  chair:  {label:"Chairing",   color:"#ff9f6e"},
+  network:{label:"Networking", color:"#5fe08a"},
+  banquet:{label:"Banquet",    color:"#ff8fc7"},
+  jargon: {label:"SE/AI Jargon",color:"#ff7a85"},
+};
+
+/* ============ 状態 ============ */
+let mode = "listen";          // listen | dict
+let activeCat = "all";
+let deck = [];                // 表示中のカード配列
+let pos = 0;
+let revealed = false;
+let checked = false;
+let voice = null;
+let repeatCount = 3;          // 1回の再生で読む回数
+let auto = false, autoToken = 0; // 連続再生(聞き流し)
+
+/* ============ 要素 ============ */
+const $ = id => document.getElementById(id);
+const caption = $("caption"), dictBox = $("dictBox"), dictInput = $("dictInput");
+const dictResult = $("dictResult"), dictScore = $("dictScore");
+const meta = $("meta");
+
+/* ============ 音声 ============ */
+const synth = window.speechSynthesis;
+if(!synth){ $("warn").style.display="block"; }
+
+function getVoiceList(){
+  const all = synth.getVoices();
+  const en = all.filter(v=>/^en(-|_|$)/i.test(v.lang));
+  return en.length ? en : all;
+}
+
+function pickVoice(){
+  if(!synth) return;
+  const list = getVoiceList();
+  if(!list.length) return;
+
+  const sel = $("voiceSelect");
+  const prevValue = sel.value;
+  sel.innerHTML = "";
+  list.forEach((v,i)=>{
+    const opt = document.createElement("option");
+    opt.value = i;
+    const tag = v.localService ? "" : " ・network";
+    opt.textContent = `${v.name} (${v.lang})${tag}`;
+    sel.appendChild(opt);
+  });
+
+  // 自然な英語ボイスを優先してデフォルト選択(端末内蔵=localServiceを優先)
+  let idx = list.findIndex(v=>v.localService && /Google US English|Samantha|Microsoft (Aria|Jenny|Guy)/i.test(v.name));
+  if(idx<0) idx = list.findIndex(v=>v.localService && /en-US/i.test(v.lang));
+  if(idx<0) idx = list.findIndex(v=>v.localService);
+  if(idx<0) idx = 0;
+
+  // すでにユーザーが選んでいた声が再生成後も存在するなら維持
+  if(prevValue!==""){
+    const prevVoice = list[parseInt(prevValue,10)];
+    if(prevVoice){
+      const stillThere = list.findIndex(v=>v.name===prevVoice.name && v.lang===prevVoice.lang);
+      if(stillThere>=0) idx = stillThere;
+    }
+  }
+
+  sel.value = idx;
+  voice = list[idx];
+  syncSelectToVoice();
+}
+if(synth){ pickVoice(); synth.onvoiceschanged = pickVoice; }
+
+let skippedCount = 0;
+function syncSelectToVoice(){
+  const list = getVoiceList();
+  const idx = list.findIndex(v=>voice && v.name===voice.name && v.lang===voice.lang);
+  if(idx>=0) $("voiceSelect").value = idx;
+  if(voice){
+    const kind = voice.localService ? "端末内蔵" : "ネットワーク";
+    const skip = skippedCount>0 ? ` ・スキップ ${skippedCount} 回` : "";
+    $("voiceNote").textContent = `${list.length}声 ・現在: ${voice.name} (${kind})${skip}`;
+  }
+}
+
+/* ---- 鳴らない声を記憶して以後の抽選から除外する ---- */
+const badVoiceKeys = new Set();
+function voiceKey(v){ return v ? `${v.name}|${v.lang}` : "none"; }
+
+function pickWorkingRandomVoice(){
+  const all = getVoiceList();
+  const notBad = all.filter(v=>!badVoiceKeys.has(voiceKey(v)));
+  // ネットワーク経由の声は反応が遅く無音になりやすいので、端末内蔵の声を優先
+  const local = notBad.filter(v=>v.localService);
+  const pool = local.length ? local : (notBad.length ? notBad : all);
+  if(!pool.length) return null;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+function maybeRandomizeVoice(){
+  if(!$("voiceRandom").checked) return;
+  const v = pickWorkingRandomVoice();
+  if(!v) return;
+  voice = v;
+  syncSelectToVoice();
+}
+
+/* ---- 実際に1文を発声する。声が無反応なら検知して次へ進む(再帰リトライはしない) ---- */
+function estimateMs(text, rate){
+  return Math.max(1200, (text.split(" ").length * 420) / rate);
+}
+// Chromeはspeak()待ち中のSpeechSynthesisUtteranceをGCで消してしまい、
+// 無音のままonendだけ呼んでしまうことがある。参照を保持して防ぐ。
+const liveUtterances = [];
+function speakOnce(text, rate, onDone){
+  if(!synth){ onDone && onDone(); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = voice ? voice.lang : "en-US";
+  if(voice) u.voice = voice;
+  u.rate = rate; u.pitch = 1;
+  liveUtterances.push(u);
+
+  let started = false, finished = false;
+  const finish = ()=>{
+    if(finished) return;
+    finished = true;
+    clearTimeout(startCheck); clearTimeout(endWatch);
+    const idx = liveUtterances.indexOf(u);
+    if(idx>=0) liveUtterances.splice(idx,1);
+    u.onstart = null; u.onend = null; u.onerror = null;
+    onDone && onDone();
+  };
+
+  // 1.3秒たっても発声が始まらなければ、その声を要注意としてマークしてこの回は諦める
+  // (再帰でリトライしない: 二重に完了通知が走るバグの元だったため)
+  const startCheck = setTimeout(()=>{
+    if(started || finished) return;
+    if($("voiceRandom").checked){
+      badVoiceKeys.add(voiceKey(voice));
+      skippedCount++;
+      syncSelectToVoice();
+    }
+    finish();
+    synth.cancel(); // 取り残された発声指示をキューから確実に破棄
+  }, 1300);
+
+  // 発声が始まった後、終了通知が来ない場合の保険(見張りタイマー)
+  const endWatch = setTimeout(finish, estimateMs(text, rate) + 4000);
+
+  u.onstart = ()=>{ started = true; clearTimeout(startCheck); };
+  u.onend = finish;
+  u.onerror = finish;
+  synth.speak(u);
+}
+
+$("voiceSelect").addEventListener("change", e=>{
+  const list = getVoiceList();
+  voice = list[parseInt(e.target.value,10)] || null;
+});
+$("voiceRandom").addEventListener("change", e=>{
+  const on = e.target.checked;
+  $("voiceSelect").disabled = on;
+  if(on){ badVoiceKeys.clear(); maybeRandomizeVoice(); }
+});
+$("voiceTestBtn").onclick = ()=>{
+  if(!synth) return;
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance("Thanks for the talk. I have a quick question about your evaluation setup.");
+  u.lang = voice ? voice.lang : "en-US";
+  if(voice) u.voice = voice;
+  u.rate = parseFloat($("speed").value);
+  synth.speak(u);
+};
+
+function speak(rate, times){
+  if(!synth) return;
+  stopAuto();
+  synth.cancel();
+  maybeRandomizeVoice();
+  const r = rate ?? parseFloat($("speed").value);
+  const n = times ?? repeatCount;
+  const text = current().en;
+  let i = 0;
+  const next = ()=>{
+    if(i>=n) return;
+    i++;
+    speakOnce(text, r, ()=>{ if(i<n) setTimeout(next, 350); });
+  };
+  next();
+}
+
+/* ---- 連続再生(聞き流し) ---- */
+let autoKeepAlive = null;
+function startAuto(){
+  if(!synth) return;
+  if(mode!=="listen") setMode("listen");   // 入力欄を畳んで聴く画面に
+  auto = true;
+  const tk = ++autoToken;
+  $("autoBtn").setAttribute("aria-pressed","true");
+  $("autoLabel").textContent = "停止";
+  synth.cancel();
+  // Chrome等で音声合成が無音のまま固まる既知の不具合への保険
+  clearInterval(autoKeepAlive);
+  autoKeepAlive = setInterval(()=>{ if(auto && synth.speaking) synth.resume(); }, 4000);
+  runCard(tk);
+}
+function stopAuto(){
+  if(!auto) return;
+  auto = false; autoToken++;
+  clearInterval(autoKeepAlive);
+  if(synth) synth.cancel();
+  $("autoBtn").setAttribute("aria-pressed","false");
+  $("autoLabel").textContent = "連続再生";
+}
+function runCard(tk){
+  if(!auto || tk!==autoToken) return;
+  maybeRandomizeVoice();
+  reveal(true);                              // 聞き流しでも字幕と訳を表示
+  const r = parseFloat($("speed").value);
+  const text = current().en;
+  let done = 0;
+  const one = ()=>{
+    if(!auto || tk!==autoToken) return;
+    speakOnce(text, r, ()=>{
+      if(!auto || tk!==autoToken) return;
+      done++;
+      if(done < repeatCount){ setTimeout(one, 450); }
+      else { setTimeout(()=>{ if(auto && tk===autoToken){ go(1); runCard(tk); } }, 1200); }
+    });
+  };
+  one();
+}
+
+/* ============ レンダリング ============ */
+function current(){ return deck[pos]; }
+
+function buildDeck(){
+  deck = activeCat==="all" ? DATA.slice() : DATA.filter(d=>d.cat===activeCat);
+  pos = 0;
+}
+
+function renderChips(){
+  const c = $("chips"); c.innerHTML="";
+  Object.entries(CATS).forEach(([key,info])=>{
+    const b=document.createElement("button");
+    b.className="chip"; b.setAttribute("aria-pressed", key===activeCat);
+    b.style.color = key===activeCat ? "" : info.color;
+    b.innerHTML = `<span class="dot"></span>${info.label}`;
+    b.onclick=()=>{ activeCat=key; buildDeck(); renderChips(); renderCard(); };
+    c.appendChild(b);
+  });
+}
+
+function renderCard(){
+  const card = current();
+  $("total").textContent = deck.length;
+  $("idx").textContent = pos+1;
+  $("cat-label").textContent = CATS[card.cat].label;
+  $("register").textContent = "";
+
+  revealed = false; checked = false;
+  // caption
+  caption.classList.add("hidden");
+  caption.classList.remove("live");
+  caption.innerHTML = card.en.split(" ").map(w=>`<span class="word">${w}</span>`).join(" ");
+  if(mode==="listen"){
+    caption.style.display="block";
+    dictBox.style.display="none";
+  }else{
+    // dictation: 画面は隠したまま、入力欄を出す
+    caption.style.display="none";
+    dictBox.style.display="block";
+    dictInput.value=""; dictResult.style.display="none"; dictScore.textContent="";
+    setTimeout(()=>dictInput.focus(),50);
+  }
+  meta.classList.remove("show");
+  updateControls();
+}
+
+function updateControls(){
+  $("revealBtn").style.display = (mode==="listen") ? "" : "none";
+  $("checkBtn").style.display  = (mode==="dict")   ? "" : "none";
+  $("revealBtn").textContent = revealed ? "字幕を隠す" : "字幕を表示";
+}
+
+function reveal(show){
+  revealed = (show!==undefined)?show:!revealed;
+  if(revealed){
+    caption.classList.remove("hidden");
+    caption.classList.add("live");
+    meta.classList.add("show");
+    fillMeta();
+  }else{
+    caption.classList.add("hidden");
+    caption.classList.remove("live");
+    meta.classList.remove("show");
+  }
+  updateControls();
+}
+
+function fillMeta(){
+  const c=current();
+  $("m-jp").textContent=c.jp;
+  $("m-scene").textContent=c.scene;
+  $("m-tip").innerHTML=c.tip;
+}
+
+/* ---- ディクテーション採点 ---- */
+function norm(s){
+  return s.toLowerCase().replace(/[.,?!;:"'’“”\-—()]/g," ").replace(/\s+/g," ").trim();
+}
+function check(){
+  const target = norm(current().en).split(" ").filter(Boolean);
+  const got    = norm(dictInput.value).split(" ").filter(Boolean);
+  // 単純な単語アライメント(LCS)で正誤を可視化
+  const m=target.length, n=got.length;
+  const dp=Array.from({length:m+1},()=>new Array(n+1).fill(0));
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)
+    dp[i][j]= target[i-1]===got[j-1] ? dp[i-1][j-1]+1 : Math.max(dp[i-1][j],dp[i][j-1]);
+  // 復元してtarget語ごとに一致したか印
+  let i=m,j=n; const hit=new Array(m).fill(false);
+  while(i>0&&j>0){
+    if(target[i-1]===got[j-1]){hit[i-1]=true;i--;j--;}
+    else if(dp[i-1][j]>=dp[i][j-1])i--; else j--;
+  }
+  const correct = hit.filter(Boolean).length;
+  // 元の文(大小文字・記号付き)で色付け表示
+  const words = current().en.split(" ");
+  let k=-1;
+  dictResult.innerHTML = words.map(w=>{
+    const bare = norm(w);
+    if(!bare) return w;
+    k++;
+    return `<span class="${hit[k]?'w-ok':'w-bad'}">${w}</span>`;
+  }).join(" ");
+  dictResult.style.display="block";
+  const pct = m? Math.round(correct/m*100):0;
+  dictScore.textContent = `正解 ${correct}/${m} 語  (${pct}%)  ·  緑=合っていた語 / 赤=聴き逃した語`;
+  checked=true;
+  meta.classList.add("show"); fillMeta();
+}
+
+/* ============ ナビ ============ */
+function go(delta){
+  pos = (pos + delta + deck.length) % deck.length;
+  renderCard();
+}
+function shuffle(){
+  for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
+  pos=0; renderCard();
+}
+
+/* ============ モード ============ */
+function setMode(m){
+  stopAuto();
+  mode=m;
+  $("mode-listen").setAttribute("aria-pressed", m==="listen");
+  $("mode-dict").setAttribute("aria-pressed", m==="dict");
+  renderCard();
+}
+
+/* ============ イベント ============ */
+$("playBtn").onclick = ()=>speak();
+$("slowBtn").onclick = ()=>{stopAuto();speak(0.6,1);};
+$("autoBtn").onclick = ()=>{ auto ? stopAuto() : startAuto(); };
+$("revealBtn").onclick = ()=>{stopAuto();reveal();};
+$("checkBtn").onclick = ()=>{stopAuto();check();};
+$("prevBtn").onclick = ()=>{stopAuto();go(-1);};
+$("nextBtn").onclick = ()=>{stopAuto();go(1);};
+$("shuffleBtn").onclick = ()=>{stopAuto();shuffle();};
+$("mode-listen").onclick=()=>setMode("listen");
+$("mode-dict").onclick=()=>setMode("dict");
+$("speed").oninput = e=>$("speedVal").textContent = parseFloat(e.target.value).toFixed(2)+"×";
+
+// 繰り返し回数
+$("reps").querySelectorAll("button").forEach(b=>{
+  b.onclick = ()=>{
+    repeatCount = parseInt(b.dataset.n,10);
+    $("reps").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b));
+    $("playLabel").textContent = "Play ×"+repeatCount;
+  };
+});
+
+document.addEventListener("keydown", e=>{
+  const typing = document.activeElement===dictInput;
+  if(e.code==="Space" && !typing){ e.preventDefault(); speak(); }
+  else if(e.key.toLowerCase()==="r" && !typing){ speak(); }
+  else if(e.key==="ArrowRight" && !typing){ go(1); }
+  else if(e.key==="ArrowLeft" && !typing){ go(-1); }
+  else if(e.key==="Enter"){
+    if(mode==="listen" && !typing){ reveal(); }
+    else if(mode==="dict" && typing && (e.metaKey||e.ctrlKey)){ e.preventDefault(); check(); }
+  }
+});
+
+/* ============ 起動 ============ */
+$("speedVal").textContent = parseFloat($("speed").value).toFixed(2)+"×";
+buildDeck(); renderChips(); renderCard();
+</script>
+</body>
+</html>
