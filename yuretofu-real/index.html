@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ゆれ豆腐 -REAL-</title>
+<!--
+AI Model: Claude Opus 4.8
+User Prompt: 昔作った yuretofu を参考に、いま作れる全力の「ゆれ豆腐」アプリを別ディレクトリに作る。
+             ゆれ豆腐は、揺れる豆腐をプレイヤーが落とさないようにバランスをとるゲーム。
+AI Approach: HTML5 Canvas + 倒立振子(inverted pendulum on a cart)の実物理シミュレーション。
+             プレイヤーはお盆(カート)を左右に動かし、その加速度で豆腐スタックの傾きを制御して倒れないよう保つ。
+             豆腐はやわらかく変形(プルプル揺れ)し、地震・風などの外乱、落ちてくる薬味のキャッチ、
+             難易度カーブ、Web Audio 効果音、パーティクル、画面シェイク、ハイスコア保存(localStorage)を実装。
+Implementation Intent: 旧DOM版(抽象的な不安定さ)を、物理的に納得感のあるバランスゲームへ再構築した
+             "全力版"。倒立振子の制御という古典的で奥深い操作感を、可愛い豆腐の見た目で親しみやすくする教育的デモ。
+-->
+<style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+        margin: 0; padding: 0; height: 100%;
+        background: #0b1021;
+        font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif;
+        overflow: hidden;
+        user-select: none;
+        touch-action: none;
+    }
+    #wrap {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        background:
+            radial-gradient(1200px 800px at 50% -10%, #2a3566 0%, #10152e 55%, #070a18 100%);
+    }
+    #stage {
+        position: relative;
+        width: min(100vw, calc(100vh * (900 / 680)));
+        height: min(100vh, calc(100vw * (680 / 900)));
+        box-shadow: 0 30px 90px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.05) inset;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    /* touch controls (mobile) */
+    #touch {
+        position: absolute; inset: 0; display: none;
+        pointer-events: none;
+    }
+    .tbtn {
+        position: absolute; bottom: 3%;
+        width: 24%; height: 26%;
+        border-radius: 22px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 8vw; color: rgba(255,255,255,.85);
+        background: rgba(255,255,255,.08);
+        border: 2px solid rgba(255,255,255,.18);
+        backdrop-filter: blur(2px);
+        pointer-events: auto;
+        transition: background .08s;
+    }
+    .tbtn:active { background: rgba(255,255,255,.28); }
+    #tleft { left: 3%; }
+    #tright { right: 3%; }
+    @media (pointer: coarse) { #touch { display: block; } }
+</style>
+</head>
+<body>
+<div id="wrap">
+    <div id="stage">
+        <canvas id="game" width="900" height="680"></canvas>
+        <div id="touch">
+            <div class="tbtn" id="tleft">◀</div>
+            <div class="tbtn" id="tright">▶</div>
+        </div>
+    </div>
+</div>
+
+<script>
+"use strict";
+(() => {
+/* ============================================================
+   ゆれ豆腐 -REAL-  倒立振子バランスゲーム
+   ============================================================ */
+const W = 900, H = 680;
+const GROUND_Y = H - 118;          // 床の上面
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+/* --- HiDPI 対応 --- */
+function fitDPR() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width  = W * dpr;
+    canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+fitDPR();
+window.addEventListener('resize', fitDPR);
+
+/* ============================================================
+   サウンド (Web Audio) - ユーザー操作後に生成
+   ============================================================ */
+const Sound = {
+    ctx: null,
+    on: true,
+    init() {
+        if (this.ctx) return;
+        try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+        catch (e) { this.on = false; }
+    },
+    resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+    tone(freq, dur, type = 'sine', vol = 0.2, glideTo = null) {
+        if (!this.on || !this.ctx) return;
+        const t = this.ctx.currentTime;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = type;
+        o.frequency.setValueAtTime(freq, t);
+        if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, t + dur);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g); g.connect(this.ctx.destination);
+        o.start(t); o.stop(t + dur + 0.02);
+    },
+    noise(dur, vol = 0.3, lp = 1200) {
+        if (!this.on || !this.ctx) return;
+        const t = this.ctx.currentTime;
+        const n = Math.floor(this.ctx.sampleRate * dur);
+        const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+        const src = this.ctx.createBufferSource(); src.buffer = buf;
+        const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp;
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(vol, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        src.connect(f); f.connect(g); g.connect(this.ctx.destination);
+        src.start(t);
+    },
+    catch_() { this.tone(660, 0.10, 'triangle', 0.25); setTimeout(() => this.tone(990, 0.14, 'triangle', 0.22), 60); },
+    combo(n) { this.tone(520 + n * 60, 0.12, 'square', 0.16, 780 + n * 60); },
+    start() { this.tone(440, 0.12, 'triangle', 0.2, 660); setTimeout(() => this.tone(660, 0.18, 'triangle', 0.2, 880), 110); },
+    warn() { this.tone(200, 0.08, 'sawtooth', 0.10); },
+    quake() { this.noise(0.5, 0.25, 500); },
+    splat() { this.noise(0.35, 0.5, 900); this.tone(160, 0.3, 'sawtooth', 0.18, 60); },
+};
+
+/* ============================================================
+   入力
+   ============================================================ */
+const input = { left: false, right: false };
+const keymap = {
+    ArrowLeft: 'left', KeyA: 'left',
+    ArrowRight: 'right', KeyD: 'right',
+};
+window.addEventListener('keydown', (e) => {
+    if (keymap[e.code]) { input[keymap[e.code]] = true; e.preventDefault(); }
+    if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); onAction(); }
+    if (e.code === 'KeyM') { Sound.on = !Sound.on; }
+});
+window.addEventListener('keyup', (e) => { if (keymap[e.code]) { input[keymap[e.code]] = false; e.preventDefault(); } });
+
+function bindHold(id, prop) {
+    const el = document.getElementById(id);
+    const on  = (e) => { input[prop] = true; e.preventDefault(); Sound.init(); Sound.resume(); };
+    const off = (e) => { input[prop] = false; e.preventDefault(); };
+    el.addEventListener('pointerdown', on);
+    el.addEventListener('pointerup', off);
+    el.addEventListener('pointerleave', off);
+    el.addEventListener('pointercancel', off);
+}
+bindHold('tleft', 'left');
+bindHold('tright', 'right');
+
+/* タップ/クリックで開始・リスタート */
+canvas.addEventListener('pointerdown', (e) => { onAction(); });
+
+function onAction() {
+    Sound.init(); Sound.resume(); Sound.start();
+    if (G.state === 'title' || G.state === 'over') startGame();
+}
+
+/* ============================================================
+   ゲーム状態
+   ============================================================ */
+const G = {
+    state: 'title',          // title | play | falling | over
+    t: 0,                    // 経過時間(秒)
+    score: 0,
+    best: +(localStorage.getItem('yuretofu_real_best') || 0),
+    bestScore: +(localStorage.getItem('yuretofu_real_bestscore') || 0),
+    combo: 0,
+    // カート(お盆) : プレイヤーが左右に動かす
+    cartX: W / 2, cartVx: 0, prevVx: 0, cartAx: 0,
+    // 倒立振子(豆腐スタック)
+    theta: 0, omega: 0,       // 傾き角(rad, 右+)と角速度
+    wobble: 0, wobblePhase: 0,// プルプル変形エネルギー
+    stack: 3,                 // 豆腐の段数
+    // 外乱
+    windPhase: Math.random() * 100, wind: 0,
+    quakeTimer: 4, quakeMag: 0, quakePhase: 0,
+    shake: 0,
+    // 演出
+    danger: 0,
+    fallDir: 1, fallTimer: 0,
+    newRecord: false,
+    toppings: [],
+    particles: [],
+    clouds: [],
+    splashes: [],
+    flashText: null,
+};
+
+for (let i = 0; i < 5; i++) {
+    G.clouds.push({ x: Math.random() * W, y: 60 + Math.random() * 180, s: 0.5 + Math.random(), spd: 6 + Math.random() * 10 });
+}
+
+const THRESHOLD = 0.52;      // 倒れる角度(rad ≒ 30°)
+const TOFU_W = 96, TOFU_H = 34;
+
+function startGame() {
+    G.state = 'play';
+    G.t = 0; G.score = 0; G.combo = 0;
+    G.cartX = W / 2; G.cartVx = 0; G.prevVx = 0; G.cartAx = 0;
+    G.theta = (Math.random() - 0.5) * 0.06;
+    G.omega = 0; G.wobble = 0.4; G.wobblePhase = 0;
+    G.stack = 3;
+    G.wind = 0; G.windPhase = Math.random() * 100;
+    G.quakeTimer = 5; G.quakeMag = 0; G.quakePhase = 0; G.shake = 0;
+    G.danger = 0; G.newRecord = false;
+    G.toppings.length = 0; G.particles.length = 0; G.splashes.length = 0;
+    G.flashText = null;
+    G._warnCd = 0; G._topCd = 2.2;
+}
+
+/* ============================================================
+   物理更新
+   ============================================================ */
+function updatePlay(dt) {
+    G.t += dt;
+    const t = G.t;
+
+    /* --- 難易度カーブ --- */
+    const GRAV = 4.2 + Math.min(t * 0.14, 6.8);      // 倒立の不安定さ(4.2→11)
+    const windMax = Math.min(t * 0.06, 3.2);         // 風の強さ
+    const CART_GAIN = 0.0016;                         // お盆加速度→補正トルク
+    const DAMP = 2.0;                                 // 角速度減衰
+    const MAXV = 640 + Math.min(t * 4, 160);
+
+    /* --- カート(お盆)操作 --- */
+    let target = 0;
+    if (input.left)  target -= MAXV;
+    if (input.right) target += MAXV;
+    G.prevVx = G.cartVx;
+    G.cartVx += (target - G.cartVx) * Math.min(1, 0.22);
+    G.cartX += G.cartVx * dt;
+    const margin = 130;
+    if (G.cartX < margin) { G.cartX = margin; G.cartVx = 0; }
+    if (G.cartX > W - margin) { G.cartX = W - margin; G.cartVx = 0; }
+    G.cartAx = (G.cartVx - G.prevVx) / dt;
+    let cartTorque = G.cartAx * CART_GAIN;
+    cartTorque = Math.max(-26, Math.min(26, cartTorque));
+
+    /* --- 風 (なめらかノイズ) --- */
+    G.windPhase += dt;
+    const wn = Math.sin(G.windPhase * 0.7) * 0.6 + Math.sin(G.windPhase * 1.9 + 1.3) * 0.3 + Math.sin(G.windPhase * 3.3 + 2.1) * 0.1;
+    G.wind = wn * windMax;
+
+    /* --- 地震 --- */
+    G.quakeTimer -= dt;
+    if (G.quakeTimer <= 0) {
+        G.quakeMag = 2.0 + Math.random() * 2.5 + Math.min(t * 0.03, 2.5);
+        G.quakePhase = 0;
+        G.quakeTimer = Math.max(2.4, 6.5 - t * 0.05) + Math.random() * 2.5;
+        G.shake = Math.min(18, 8 + G.quakeMag);
+        Sound.quake();
+    }
+    let quakeTorque = 0;
+    if (G.quakeMag > 0.01) {
+        G.quakePhase += dt;
+        const env = Math.max(0, 1 - G.quakePhase / 0.9);
+        quakeTorque = Math.sin(G.quakePhase * 34) * G.quakeMag * env;
+        G.quakeMag *= (1 - dt * 1.4);
+    }
+
+    /* --- 倒立振子 積分 (サブステップで安定化) --- */
+    const steps = 4, h = dt / steps;
+    for (let i = 0; i < steps; i++) {
+        const angAcc =
+            GRAV * Math.sin(G.theta)      // 重力(不安定化)
+            - cartTorque * Math.cos(G.theta) // お盆の加速度による補正
+            + G.wind * 0.10                // 風
+            + quakeTorque * 0.14           // 地震
+            - DAMP * G.omega;              // 減衰
+        G.omega += angAcc * h;
+        G.theta += G.omega * h;
+    }
+
+    /* --- プルプル揺れエネルギー --- */
+    G.wobble += (Math.abs(cartTorque) * 0.004 + Math.abs(quakeTorque) * 0.02 + Math.abs(G.omega) * 0.05) ;
+    G.wobble *= (1 - dt * 3.0);
+    G.wobble = Math.min(G.wobble, 1.6);
+    G.wobblePhase += dt * (10 + G.wobble * 8);
+
+    /* --- 危険度 & 警告音 --- */
+    const lean = Math.abs(G.theta) / THRESHOLD;
+    G.danger = Math.max(0, (lean - 0.55) / 0.45);
+    G._warnCd -= dt;
+    if (G.danger > 0.2 && G._warnCd <= 0) { Sound.warn(); G._warnCd = 0.22 - G.danger * 0.12; }
+
+    /* --- スコア --- */
+    G.score += dt * (100 + G.stack * 20);
+
+    /* --- 薬味(トッピング)スポーン & キャッチ --- */
+    G._topCd -= dt;
+    if (G._topCd <= 0) {
+        spawnTopping();
+        G._topCd = Math.max(0.9, 2.4 - t * 0.02) + Math.random() * 1.2;
+    }
+    updateToppings(dt);
+
+    /* --- 転倒判定 --- */
+    if (Math.abs(G.theta) > THRESHOLD) {
+        beginFall(G.theta > 0 ? 1 : -1);
+    }
+
+    /* --- 演出更新 --- */
+    G.shake *= (1 - dt * 5);
+    updateParticles(dt);
+    updateSplashes(dt);
+    if (G.flashText) { G.flashText.life -= dt; if (G.flashText.life <= 0) G.flashText = null; }
+}
+
+/* --- 豆腐スタックの一番上のワールド座標 --- */
+function stackTop() {
+    const px = G.cartX, py = plateY();
+    const len = G.stack * TOFU_H;
+    return { x: px + Math.sin(G.theta) * len, y: py - Math.cos(G.theta) * len };
+}
+function plateY() { return GROUND_Y - 150; }
+
+function spawnTopping() {
+    const types = ['negi', 'katsuo', 'shoyu', 'ginger'];
+    const type = types[(Math.random() * types.length) | 0];
+    G.toppings.push({
+        x: 120 + Math.random() * (W - 240),
+        y: -20, vy: 90 + Math.random() * 60, vx: (Math.random() - 0.5) * 30,
+        type, r: 14, caught: false, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 6,
+    });
+}
+function updateToppings(dt) {
+    const top = stackTop();
+    for (const o of G.toppings) {
+        o.x += o.vx * dt; o.y += o.vy * dt; o.vy += 240 * dt; o.rot += o.vr * dt;
+        if (!o.caught && o.y > top.y - 6 && o.y < top.y + 40) {
+            const d = Math.hypot(o.x - top.x, o.y - top.y);
+            if (d < 58) {
+                o.caught = true; o.dead = true;
+                onCatch(o, top);
+            }
+        }
+        if (o.y > GROUND_Y - 6 && !o.dead) {
+            o.dead = true;
+            if (!o.caught) { G.combo = 0; addSplash(o.x, GROUND_Y - 4, o.type); }
+        }
+    }
+    G.toppings = G.toppings.filter(o => !o.dead && o.y < H + 40);
+}
+function onCatch(o, top) {
+    G.combo++;
+    const gain = 50 + G.combo * 10;
+    G.score += gain;
+    G.wobble += 0.35;
+    // キャッチの衝撃で少し傾ける(難易度)
+    G.omega += (o.x < top.x ? 0.9 : -0.9) * (0.4 + Math.min(G.combo * 0.03, 0.5));
+    burst(top.x, top.y, toppingColor(o.type), 14);
+    if (G.combo >= 2) Sound.combo(Math.min(G.combo, 8)); else Sound.catch_();
+    if (G.combo > 0 && G.combo % 5 === 0) {
+        G.flashText = { text: `${G.combo} COMBO!`, life: 1.0 };
+    }
+}
+function toppingColor(type) {
+    return { negi: '#8fd14f', katsuo: '#e0a15a', shoyu: '#7a4a22', ginger: '#f0b7c0' }[type] || '#fff';
+}
+
+/* ============================================================
+   転倒 → ゲームオーバー
+   ============================================================ */
+function beginFall(dir) {
+    if (G.state !== 'play') return;
+    G.state = 'falling';
+    G.fallDir = dir;
+    G.fallTimer = 0;
+    Sound.splat();
+    const top = stackTop();
+    burst(top.x, top.y, '#fffdf5', 26);
+    addSplash(top.x + dir * 60, GROUND_Y - 4, 'tofu');
+}
+function updateFalling(dt) {
+    G.fallTimer += dt;
+    // 豆腐が崩れ落ちる演出
+    G.omega += G.fallDir * 6 * dt;
+    G.theta += G.omega * dt;
+    G.shake *= (1 - dt * 5);
+    updateParticles(dt);
+    updateSplashes(dt);
+    updateToppings(dt);
+    if (G.fallTimer > 1.1) endGame();
+}
+function endGame() {
+    G.state = 'over';
+    G.score = Math.floor(G.score);
+    G.newRecord = false;
+    if (G.t > G.best) { G.best = G.t; localStorage.setItem('yuretofu_real_best', G.best); G.newRecord = true; }
+    if (G.score > G.bestScore) { G.bestScore = G.score; localStorage.setItem('yuretofu_real_bestscore', G.bestScore); }
+}
+
+/* ============================================================
+   パーティクル / 飛沫
+   ============================================================ */
+function burst(x, y, color, n) {
+    for (let i = 0; i < n; i++) {
+        const a = Math.random() * 6.28, sp = 60 + Math.random() * 220;
+        G.particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, life: 0.5 + Math.random() * 0.5, max: 1, color, size: 3 + Math.random() * 5 });
+    }
+}
+function updateParticles(dt) {
+    for (const p of G.particles) { p.vy += 520 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }
+    G.particles = G.particles.filter(p => p.life > 0);
+}
+function addSplash(x, y, type) {
+    G.splashes.push({ x, y, type, life: 2.2, max: 2.2, r: 6 + Math.random() * 8 });
+}
+function updateSplashes(dt) {
+    for (const s of G.splashes) s.life -= dt;
+    G.splashes = G.splashes.filter(s => s.life > 0);
+}
+
+/* ============================================================
+   描画
+   ============================================================ */
+function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // 画面シェイク
+    let sx = 0, sy = 0;
+    if (G.shake > 0.2) { sx = (Math.random() - 0.5) * G.shake; sy = (Math.random() - 0.5) * G.shake; }
+    ctx.save();
+    ctx.translate(sx, sy);
+
+    drawSky();
+    drawClouds();
+    drawGround();
+    drawSplashes();
+
+    if (G.state !== 'title') {
+        drawToppingsBehind();
+        drawCharacter();
+        drawTofuStack();
+        drawToppingsFront();
+    }
+    drawParticles();
+
+    ctx.restore();
+
+    drawVignette();
+    drawHUD();
+    if (G.state === 'title') drawTitle();
+    if (G.state === 'over') drawOver();
+}
+
+function drawSky() {
+    const g = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+    g.addColorStop(0, '#7ec8f0');
+    g.addColorStop(0.6, '#bfe9f5');
+    g.addColorStop(1, '#eafaf0');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, GROUND_Y + 20);
+    // 太陽
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    const sg = ctx.createRadialGradient(W - 140, 120, 10, W - 140, 120, 90);
+    sg.addColorStop(0, 'rgba(255,247,210,.95)');
+    sg.addColorStop(1, 'rgba(255,247,210,0)');
+    ctx.fillStyle = sg;
+    ctx.beginPath(); ctx.arc(W - 140, 120, 90, 0, 6.283); ctx.fill();
+    ctx.restore();
+}
+function drawClouds() {
+    for (const c of G.clouds) {
+        c.x += c.spd * (1 / 60);
+        if (c.x > W + 120) c.x = -120;
+        ctx.save();
+        ctx.translate(c.x, c.y); ctx.scale(c.s, c.s);
+        ctx.fillStyle = 'rgba(255,255,255,.85)';
+        for (const [dx, dy, r] of [[0,0,28],[26,6,22],[-26,6,22],[0,12,30]]) {
+            ctx.beginPath(); ctx.arc(dx, dy, r, 0, 6.283); ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+function drawGround() {
+    const g = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+    g.addColorStop(0, '#c98a4a'); g.addColorStop(1, '#8a5a2b');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+    ctx.fillStyle = 'rgba(255,255,255,.18)';
+    ctx.fillRect(0, GROUND_Y, W, 4);
+    // 板目
+    ctx.strokeStyle = 'rgba(90,55,25,.4)'; ctx.lineWidth = 2;
+    for (let x = 0; x < W; x += 90) {
+        ctx.beginPath(); ctx.moveTo(x, GROUND_Y); ctx.lineTo(x + 20, H); ctx.stroke();
+    }
+}
+
+/* --- キャラクター(お盆を持つ人) --- */
+function drawCharacter() {
+    const x = G.cartX, feetY = GROUND_Y;
+    const walk = Math.sin(G.t * 8) * (input.left || input.right ? 4 : 0);
+    ctx.save();
+    ctx.translate(x, 0);
+    // 影
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.beginPath(); ctx.ellipse(0, feetY + 6, 46, 12, 0, 0, 6.283); ctx.fill();
+
+    const bodyTop = feetY - 96;
+    // 脚
+    ctx.strokeStyle = '#3a4a6a'; ctx.lineWidth = 12; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-12, feetY - 40); ctx.lineTo(-16 + walk, feetY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(12, feetY - 40); ctx.lineTo(16 - walk, feetY); ctx.stroke();
+    // 胴
+    ctx.fillStyle = '#ff8aa0';
+    roundRect(-26, bodyTop, 52, 62, 18); ctx.fill();
+    // 頭
+    ctx.fillStyle = '#ffe0c8';
+    ctx.beginPath(); ctx.arc(0, bodyTop - 20, 26, 0, 6.283); ctx.fill();
+    // ほっぺ
+    ctx.fillStyle = 'rgba(255,150,150,.6)';
+    ctx.beginPath(); ctx.arc(-13, bodyTop - 14, 5, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(13, bodyTop - 14, 5, 0, 6.283); ctx.fill();
+    // 目(危険で驚く)
+    ctx.fillStyle = '#222';
+    const eo = 1 + G.danger * 3;
+    ctx.beginPath(); ctx.arc(-9, bodyTop - 22, 3 + eo * 0.6, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(9, bodyTop - 22, 3 + eo * 0.6, 0, 6.283); ctx.fill();
+    // 口
+    ctx.strokeStyle = '#a33'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (G.danger > 0.5) ctx.arc(0, bodyTop - 12, 4, 0, 6.283);
+    else ctx.arc(0, bodyTop - 15, 6, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.stroke();
+    // 汗
+    if (G.danger > 0.4) {
+        ctx.fillStyle = 'rgba(120,200,255,.9)';
+        ctx.beginPath(); ctx.arc(20, bodyTop - 26, 3 + G.danger * 2, 0, 6.283); ctx.fill();
+    }
+    // 腕(お盆を支える) : ローカル座標(translate 済み)
+    ctx.strokeStyle = '#ff8aa0'; ctx.lineWidth = 10; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-20, bodyTop + 12); ctx.lineTo(-60, plateY()); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(20, bodyTop + 12); ctx.lineTo(60, plateY()); ctx.stroke();
+    ctx.restore();
+}
+
+/* --- お盆 + 豆腐スタック(倒立振子) --- */
+function drawTofuStack() {
+    const px = G.cartX, py = plateY();
+    // お盆
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.fillStyle = 'rgba(0,0,0,.15)';
+    ctx.beginPath(); ctx.ellipse(0, 10, 82, 14, 0, 0, 6.283); ctx.fill();
+    const pg = ctx.createLinearGradient(0, -8, 0, 10);
+    pg.addColorStop(0, '#7a4a24'); pg.addColorStop(1, '#5a3418');
+    ctx.fillStyle = pg;
+    roundRect(-84, -6, 168, 18, 9); ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,180,.25)';
+    roundRect(-84, -6, 168, 5, 4); ctx.fill();
+    ctx.restore();
+
+    // 豆腐スタック(傾けて描画)
+    ctx.save();
+    ctx.translate(px, py - 4);
+    ctx.rotate(G.theta);
+    for (let i = 0; i < G.stack; i++) {
+        drawTofuBlock(0, -i * TOFU_H, i);
+    }
+    ctx.restore();
+}
+function drawTofuBlock(cx, baseY, idx) {
+    // baseY: ブロック下端の y(上に積む)
+    const w = TOFU_W, h = TOFU_H;
+    const top = baseY - h;
+    // プルプル変形: 横方向のふくらみを sin で
+    const ph = G.wobblePhase + idx * 0.9;
+    const amp = (2 + G.wobble * 10) * (1 - idx / (G.stack + 1)) ;
+    const bulL = Math.sin(ph) * amp;
+    const bulR = Math.sin(ph + Math.PI) * amp;
+
+    ctx.save();
+    // 影(下の面)
+    ctx.fillStyle = '#e9e4cf';
+    // 本体をベジェで柔らかく
+    const g = ctx.createLinearGradient(0, top, 0, baseY);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, '#fbfaf0'); g.addColorStop(1, '#efe9d2');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(cx - w/2, top + 6);
+    ctx.quadraticCurveTo(cx - w/2 - bulL, (top+baseY)/2, cx - w/2, baseY - 6);
+    ctx.quadraticCurveTo(cx - w/2, baseY, cx - w/2 + 8, baseY);
+    ctx.lineTo(cx + w/2 - 8, baseY);
+    ctx.quadraticCurveTo(cx + w/2, baseY, cx + w/2, baseY - 6);
+    ctx.quadraticCurveTo(cx + w/2 + bulR, (top+baseY)/2, cx + w/2, top + 6);
+    ctx.quadraticCurveTo(cx + w/2, top, cx + w/2 - 8, top);
+    ctx.lineTo(cx - w/2 + 8, top);
+    ctx.quadraticCurveTo(cx - w/2, top, cx - w/2, top + 6);
+    ctx.closePath();
+    ctx.fill();
+    // ハイライト
+    ctx.fillStyle = 'rgba(255,255,255,.7)';
+    roundRect(cx - w/2 + 8, top + 5, 26, 6, 3); ctx.fill();
+    // 縁
+    ctx.strokeStyle = 'rgba(200,195,160,.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.restore();
+}
+
+function drawToppingsBehind() { drawToppings(o => o.y < plateY() - 40); }
+function drawToppingsFront()  { drawToppings(o => o.y >= plateY() - 40); }
+function drawToppings(filter) {
+    for (const o of G.toppings) {
+        if (!filter(o)) continue;
+        ctx.save();
+        ctx.translate(o.x, o.y); ctx.rotate(o.rot);
+        ctx.fillStyle = toppingColor(o.type);
+        ctx.strokeStyle = 'rgba(0,0,0,.15)'; ctx.lineWidth = 1.5;
+        if (o.type === 'negi') { // 小口ネギ(リング)
+            ctx.beginPath(); ctx.arc(0, 0, o.r, 0, 6.283); ctx.fill();
+            ctx.fillStyle = '#eafbe0'; ctx.beginPath(); ctx.arc(0, 0, o.r * 0.5, 0, 6.283); ctx.fill();
+        } else if (o.type === 'katsuo') { // かつお節(ひらひら)
+            ctx.beginPath();
+            ctx.moveTo(-o.r, -4); ctx.quadraticCurveTo(0, -14, o.r, -4);
+            ctx.quadraticCurveTo(0, 6, -o.r, -4); ctx.fill();
+        } else if (o.type === 'shoyu') { // 醤油のしずく
+            ctx.beginPath();
+            ctx.moveTo(0, -o.r); ctx.bezierCurveTo(o.r, -o.r*0.2, o.r, o.r, 0, o.r);
+            ctx.bezierCurveTo(-o.r, o.r, -o.r, -o.r*0.2, 0, -o.r); ctx.fill();
+        } else { // 生姜
+            roundRect(-o.r, -o.r*0.7, o.r*2, o.r*1.4, 5); ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+
+function drawParticles() {
+    for (const p of G.particles) {
+        ctx.globalAlpha = Math.max(0, p.life / p.max);
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, 6.283); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+}
+function drawSplashes() {
+    for (const s of G.splashes) {
+        const a = Math.max(0, s.life / s.max);
+        ctx.globalAlpha = a * 0.5;
+        ctx.fillStyle = s.type === 'tofu' ? '#fffdf5' : toppingColor(s.type);
+        ctx.beginPath(); ctx.ellipse(s.x, s.y, s.r * (2 - a), s.r * 0.5 * (2 - a), 0, 0, 6.283); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+}
+
+function drawVignette() {
+    if (G.danger > 0.01 && G.state === 'play') {
+        const a = G.danger * 0.5;
+        const g = ctx.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.75);
+        g.addColorStop(0, 'rgba(255,0,0,0)');
+        g.addColorStop(1, `rgba(255,20,20,${a})`);
+        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+}
+
+/* ============================================================
+   HUD / オーバーレイ
+   ============================================================ */
+function drawHUD() {
+    if (G.state === 'title') return;
+    ctx.save();
+    ctx.textBaseline = 'top';
+    // 時間
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    roundRect(16, 16, 250, 96, 12); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 34px sans-serif';
+    ctx.fillText(`${G.t.toFixed(1)}秒`, 30, 24);
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillStyle = '#ffe';
+    ctx.fillText(`SCORE ${Math.floor(G.score)}`, 30, 66);
+    ctx.font = '15px sans-serif';
+    ctx.fillStyle = '#cde';
+    ctx.fillText(`BEST ${G.best.toFixed(1)}秒 / ${G.bestScore}`, 30, 92);
+
+    // コンボ
+    if (G.combo >= 2 && G.state === 'play') {
+        ctx.fillStyle = '#ffd447';
+        ctx.font = 'bold 26px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${G.combo} COMBO`, W - 24, 24);
+        ctx.textAlign = 'left';
+    }
+
+    // 傾きメーター
+    drawLeanMeter();
+
+    // 風インジケータ
+    drawWindGauge();
+
+    // フラッシュテキスト
+    if (G.flashText) {
+        const a = Math.min(1, G.flashText.life);
+        ctx.globalAlpha = a;
+        ctx.fillStyle = '#ffd447';
+        ctx.strokeStyle = 'rgba(120,60,0,.8)'; ctx.lineWidth = 5;
+        ctx.font = 'bold 60px sans-serif';
+        ctx.textAlign = 'center';
+        const yy = H * 0.32 - (1 - a) * 30;
+        ctx.strokeText(G.flashText.text, W/2, yy);
+        ctx.fillText(G.flashText.text, W/2, yy);
+        ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+}
+function drawLeanMeter() {
+    const cx = W/2, y = 30, wBar = 300;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    roundRect(cx - wBar/2, y, wBar, 16, 8); ctx.fill();
+    // 中央
+    ctx.fillStyle = 'rgba(255,255,255,.4)';
+    ctx.fillRect(cx - 1, y - 3, 2, 22);
+    // 現在値
+    const r = Math.max(-1, Math.min(1, G.theta / THRESHOLD));
+    const px = cx + r * (wBar/2 - 10);
+    const col = G.danger > 0.5 ? '#ff4444' : (G.danger > 0.1 ? '#ffb020' : '#5fd06a');
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(px, y + 8, 10, 0, 6.283); ctx.fill();
+    ctx.restore();
+}
+function drawWindGauge() {
+    const x = W - 190, y = 70;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    roundRect(x, y, 170, 30, 8); ctx.fill();
+    ctx.fillStyle = '#dff'; ctx.font = '14px sans-serif'; ctx.textBaseline = 'middle';
+    ctx.fillText('風', x + 10, y + 15);
+    const c = x + 95, w = G.wind;
+    ctx.strokeStyle = '#9fe'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(c, y + 15); ctx.lineTo(c + w * 16, y + 15); ctx.stroke();
+    if (Math.abs(w) > 0.3) {
+        const dir = Math.sign(w), tipx = c + w * 16;
+        ctx.beginPath(); ctx.moveTo(tipx, y + 15);
+        ctx.lineTo(tipx - dir * 6, y + 10); ctx.moveTo(tipx, y + 15); ctx.lineTo(tipx - dir * 6, y + 20); ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function drawTitle() {
+    overlayBG();
+    ctx.save();
+    ctx.textAlign = 'center';
+    // タイトル豆腐アイコン
+    ctx.font = 'bold 78px sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = 'rgba(0,60,120,.6)'; ctx.lineWidth = 8;
+    ctx.strokeText('ゆれ豆腐', W/2, H*0.30);
+    ctx.fillText('ゆれ豆腐', W/2, H*0.30);
+    ctx.font = 'bold 26px sans-serif'; ctx.fillStyle = '#ffd447';
+    ctx.fillText('- R E A L -', W/2, H*0.30 + 56);
+
+    ctx.fillStyle = '#eaf6ff'; ctx.font = '20px sans-serif';
+    const lines = [
+        'お盆の上のプルプル豆腐を落とさないようにバランスを取ろう！',
+        '地震や風でぐらぐら揺れる豆腐を、お盆を動かして支え続ける。',
+        '',
+        '◀ ▶ / A D キー : お盆を左右に動かす',
+        '落ちてくる薬味をキャッチでボーナス&コンボ！',
+    ];
+    lines.forEach((l, i) => ctx.fillText(l, W/2, H*0.48 + i * 30));
+
+    const pulse = 0.6 + 0.4 * Math.sin(G.t * 4);
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 30px sans-serif';
+    ctx.fillText('▶ タップ / スペース で スタート', W/2, H*0.80);
+    ctx.globalAlpha = 1;
+    if (G.best > 0) {
+        ctx.fillStyle = '#cde'; ctx.font = '16px sans-serif';
+        ctx.fillText(`最高記録: ${G.best.toFixed(1)}秒 / スコア ${G.bestScore}`, W/2, H*0.88);
+    }
+    ctx.restore();
+}
+function drawOver() {
+    overlayBG();
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ff6b6b'; ctx.font = 'bold 64px sans-serif';
+    ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 6;
+    ctx.strokeText('豆腐が落ちた…', W/2, H*0.28);
+    ctx.fillText('豆腐が落ちた…', W/2, H*0.28);
+
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 40px sans-serif';
+    ctx.fillText(`${G.t.toFixed(1)} 秒`, W/2, H*0.44);
+    ctx.font = 'bold 28px sans-serif'; ctx.fillStyle = '#ffe';
+    ctx.fillText(`SCORE ${G.score}`, W/2, H*0.53);
+
+    if (G.newRecord) {
+        const p = 0.6 + 0.4 * Math.sin(G.t * 8);
+        ctx.globalAlpha = p;
+        ctx.fillStyle = '#ffd447'; ctx.font = 'bold 34px sans-serif';
+        ctx.fillText('★ 新記録！ ★', W/2, H*0.63);
+        ctx.globalAlpha = 1;
+    } else {
+        ctx.fillStyle = '#cde'; ctx.font = '18px sans-serif';
+        ctx.fillText(`最高記録: ${G.best.toFixed(1)}秒 / ${G.bestScore}`, W/2, H*0.63);
+    }
+
+    const pulse = 0.6 + 0.4 * Math.sin(G.t * 4);
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 28px sans-serif';
+    ctx.fillText('▶ タップ / スペース で もう一度', W/2, H*0.78);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+}
+function overlayBG() {
+    ctx.fillStyle = 'rgba(8,12,30,.55)';
+    ctx.fillRect(0, 0, W, H);
+}
+
+/* ============================================================
+   ユーティリティ
+   ============================================================ */
+function roundRect(x, y, w, h, r) {
+    r = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+}
+
+/* ============================================================
+   メインループ
+   ============================================================ */
+let last = performance.now();
+function loop(now) {
+    let dt = (now - last) / 1000;
+    last = now;
+    if (dt > 1/30) dt = 1/30;   // タブ切替などでの暴走防止
+
+    // タイトルでも時間演出のため t を進める
+    if (G.state === 'title' || G.state === 'over') G.t += dt;
+
+    if (G.state === 'play') updatePlay(dt);
+    else if (G.state === 'falling') updateFalling(dt);
+    else { updateParticles(dt); updateSplashes(dt); }
+
+    draw();
+    requestAnimationFrame(loop);
+}
+// タイトル用に t を 0 起点で使い回すため保存
+G.t = 0;
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>
