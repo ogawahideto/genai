@@ -244,7 +244,7 @@ function newGame(){
     place(x,y,z,v,false);
   }
   current=BLACK; busy=false; gameOver=false; hoverIdx=-1;
-  hideOverlay(); updateHud(); setStatus('あなたの番です（黒）', true);
+  hideOverlay(); updateHud(); refreshValid(); setStatus('あなたの番です（黒）', true);
 }
 
 function place(x,y,z,v,pop){
@@ -674,7 +674,7 @@ function hideOverlay(){ document.getElementById('overlay').classList.remove('sho
 document.getElementById('newBtn').addEventListener('click', newGame);
 document.getElementById('againBtn').addEventListener('click', newGame);
 document.getElementById('hintBtn').addEventListener('click', function(){
-  showHints=!showHints; this.classList.toggle('off',!showHints);
+  showHints=!showHints; this.classList.toggle('off',!showHints); refreshValid();
 });
 document.getElementById('rotBtn').addEventListener('click', function(){
   autoRotate=!autoRotate; this.classList.toggle('off',!autoRotate);
