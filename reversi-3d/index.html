@@ -339,9 +339,9 @@ function afterMove(justMoved){
 }
 function handoff(){
   if (gameOver) return;
-  updateHud(); refreshValid();
-  if (current===HUMAN){ busy=false; setStatus('あなたの番です（黒）', true); }
-  else { busy=true; setStatus('CPU 思考中…', false); setTimeout(aiMove, 380); }
+  updateHud();
+  if (current===HUMAN){ busy=false; refreshValid(); setStatus('あなたの番です（黒）', true); }
+  else { busy=true; refreshValid(); setStatus('CPU 思考中…', false); setTimeout(aiMove, 380); }
 }
 
 // =========================================================================
