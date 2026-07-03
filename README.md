@@ -78,7 +78,7 @@ This repository contains a collection of small, self-contained web applications 
 #### [リバーシ](reversi/) (2025-09-05)
 ゲームアプリケーション
 
-#### [3D リバーシ — Obsidian Board](reversi-3d/) (2026-07-04)
+#### [3D リバーシ — 8×8×8 立体オセロ](reversi-3d/) (2026-07-04)
 ゲームアプリケーション
 
 #### [りんごカードゲーム - いいりんごの日](ringo-card-game/) (2025-11-04)
