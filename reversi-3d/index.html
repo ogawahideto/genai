@@ -121,8 +121,21 @@ Implementation Intent: 平面盤の3D描画ではなく、真に立体空間（8
   </div>
 
   <div class="panel">
-    <div class="row"><label>分解</label><input type="range" id="explode" min="100" max="240" value="155"></div>
-    <div class="row"><label>ズーム</label><input type="range" id="zoom" min="120" max="420" value="230"></div>
+    <div class="row"><label>拡大</label><input type="range" id="zoom" min="220" max="1300" value="560"></div>
+    <div class="row"><label>すき間</label><input type="range" id="explode" min="100" max="320" value="190"></div>
+    <div class="row"><label>表示</label>
+      <select id="viewmode" style="flex:1;padding:6px 8px;font-size:12px;">
+        <option value="all">全層まとめて</option>
+        <option value="one">1層だけ表示</option>
+      </select>
+    </div>
+    <div class="row" id="layerRow" style="display:none;"><label>層(高さ)</label>
+      <input type="range" id="layer" min="1" max="8" value="1">
+      <span id="layerNum" style="width:16px;text-align:center;font-weight:700;">1</span>
+    </div>
+    <div class="help" style="font-size:10.5px;color:#8194ba;line-height:1.55;">
+      拡大＝画面上の大きさ<br>すき間＝層を離して<b>中の石を透視</b>
+    </div>
   </div>
 
   <div class="statusbar" id="statusbar">
@@ -130,7 +143,11 @@ Implementation Intent: 平面盤の3D描画ではなく、真に立体空間（8
     <span id="statustext">あなたの番です（黒）</span>
   </div>
 
-  <div class="hint">ドラッグで立方体を回転<br>「分解」スライダーで内部を透視<br>光る枠のマスをクリックで着手</div>
+  <div class="hint">
+    ① ドラッグで回転 ／ ホイールで拡大<br>
+    ② <b style="color:#8fe6c0;">緑に光るマス</b>をクリックして着手<br>
+    ③ 見づらければ「1層だけ表示」で層を選ぶ
+  </div>
 
   <div class="overlay" id="overlay">
     <div class="card">
@@ -177,8 +194,9 @@ window.addEventListener('resize', resize); resize();
 
 // ---- Camera ----
 const cam = { yaw:-0.6, pitch:0.5, targetYaw:-0.6, targetPitch:0.5 };
-let spacing = 1.55;     // cell gap (explode)
-let focalV  = 230;      // zoom
+let spacing = 1.90;     // cell gap (explode / see inside)
+let focalV  = 560;      // zoom (magnification)
+let focusLayer = -1;    // -1 = all layers, else 0..7 (Y level shown alone)
 const CAM_DIST = 26;
 
 function rotate(p){
@@ -418,36 +436,40 @@ function render(){
     addLayerFrame(items, a.y, a.x, a.z, b.x, b.z, 'rgba(120,150,220,0.06)');
   }
 
-  // ---- valid-move markers (current player) ----
-  const markers = (!busy && showHints && !gameOver && current===HUMAN) ? validCache : [];
-  const pulse = 0.5+0.5*Math.sin(performance.now()/280);
-  for (const m of markers){
-    const w=cellWorld(m.x,m.y,m.z);
-    const pr=project(w);
-    const rad = 0.42*pr.s;
-    const isHover = (m.i===hoverIdx);
-    items.push({ kind:'marker', depth:pr.depth, x:pr.x, y:pr.y, r:rad,
-                 alpha:(isHover?0.9:0.35+0.35*pulse), hover:isHover });
-  }
-
   // ---- pieces (billboard spheres) ----
   pieces.forEach(pc=>{
+    if (focusLayer>=0 && pc.y!==focusLayer && !pc.anim){
+      // dimmed ghost for non-focused layers
+      const w=cellWorld(pc.x,pc.y,pc.z); const pr=project(w);
+      items.push({ kind:'sphere', depth:pr.depth, x:pr.x, y:pr.y, r:0.42*pr.s,
+                   col: pc.value===BLACK?COL.black:COL.white, flash:0, alpha:0.12 });
+      return;
+    }
     let scale=1, disp=pc.value, flash=0;
     if (pc.anim){
       const t=clamp((performance.now()-pc.anim.start)/pc.anim.dur,0,1);
       if (pc.anim.type==='pop'){ scale=easeOutBack(t); }
-      else { // flip
-        scale=1-0.30*Math.sin(t*Math.PI);
-        disp = t<0.5? pc.anim.from : pc.anim.to;
-        flash= Math.sin(t*Math.PI)*0.5;
-      }
+      else { scale=1-0.30*Math.sin(t*Math.PI); disp=t<0.5?pc.anim.from:pc.anim.to; flash=Math.sin(t*Math.PI)*0.5; }
     }
     const w=cellWorld(pc.x,pc.y,pc.z);
     const pr=project(w);
     const rad=0.42*pr.s*scale;
     items.push({ kind:'sphere', depth:pr.depth, x:pr.x, y:pr.y, r:rad,
-                 col: disp===BLACK?COL.black:COL.white, flash });
+                 col: disp===BLACK?COL.black:COL.white, flash, alpha:1 });
   });
+
+  // ---- valid-move markers (current player) — drawn on top of spheres ----
+  const markers = (!busy && showHints && !gameOver && current===HUMAN) ? validCache : [];
+  const pulse = 0.5+0.5*Math.sin(performance.now()/260);
+  for (const m of markers){
+    if (focusLayer>=0 && m.y!==focusLayer) continue;
+    const w=cellWorld(m.x,m.y,m.z);
+    const pr=project(w);
+    const rad = 0.48*pr.s;
+    const isHover = (m.i===hoverIdx);
+    items.push({ kind:'marker', depth: pr.depth - 100, x:pr.x, y:pr.y, r:rad,
+                 alpha:(isHover?1:0.5+0.35*pulse), hover:isHover });
+  }
 
   // depth sort: far first
   items.sort((a,b)=> b.depth-a.depth);
@@ -484,6 +506,7 @@ function addLine(items, a, b, color, lw){
 function drawSphere(it){
   const {x,y,r,col}=it;
   if (r<0.4) return;
+  ctx.globalAlpha = it.alpha!=null? it.alpha : 1;
   // contact shadow-ish dark halo
   const hx=x-r*0.34, hy=y-r*0.40;
   const hi=mix(col,[255,255,255], col[0]<120?0.55:0.9);
@@ -504,21 +527,47 @@ function drawSphere(it){
     ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
     ctx.fillStyle='rgba(255,255,255,'+it.flash+')'; ctx.fill();
   }
+  ctx.globalAlpha=1;
 }
 function drawMarker(it){
   const {x,y,r,alpha,hover}=it;
-  ctx.beginPath(); ctx.arc(x,y,r*0.9,0,Math.PI*2);
-  ctx.fillStyle='rgba('+COL.marker[0]+','+COL.marker[1]+','+COL.marker[2]+','+(alpha*0.32)+')';
-  ctx.fill();
-  ctx.lineWidth=hover?2.4:1.6;
-  ctx.strokeStyle='rgba('+COL.marker[0]+','+COL.marker[1]+','+COL.marker[2]+','+alpha+')';
-  ctx.stroke();
-  // small center cross for clarity
+  const M=COL.marker; const c=M[0]+','+M[1]+','+M[2];
+  // glowing halo
+  const halo=ctx.createRadialGradient(x,y,r*0.1,x,y,r*1.4);
+  halo.addColorStop(0,'rgba('+c+','+(alpha*0.55)+')');
+  halo.addColorStop(1,'rgba('+c+',0)');
+  ctx.beginPath(); ctx.arc(x,y,r*1.4,0,Math.PI*2); ctx.fillStyle=halo; ctx.fill();
+  // filled disc
+  ctx.beginPath(); ctx.arc(x,y,r*0.86,0,Math.PI*2);
+  ctx.fillStyle='rgba('+c+','+(alpha*0.30)+')'; ctx.fill();
+  // ring
+  ctx.lineWidth=hover?3.4:2.2;
+  ctx.strokeStyle='rgba('+c+','+alpha+')'; ctx.stroke();
+  // plus sign
   ctx.beginPath();
-  ctx.moveTo(x-r*0.28,y); ctx.lineTo(x+r*0.28,y);
-  ctx.moveTo(x,y-r*0.28); ctx.lineTo(x,y+r*0.28);
-  ctx.strokeStyle='rgba('+COL.marker[0]+','+COL.marker[1]+','+COL.marker[2]+','+(alpha*0.9)+')';
-  ctx.lineWidth=1.4; ctx.stroke();
+  ctx.moveTo(x-r*0.34,y); ctx.lineTo(x+r*0.34,y);
+  ctx.moveTo(x,y-r*0.34); ctx.lineTo(x,y+r*0.34);
+  ctx.strokeStyle='rgba('+c+','+alpha+')'; ctx.lineWidth=2; ctx.stroke();
+  if (hover){
+    drawTooltip(x, y - r*1.5, 'ここに置く');
+  }
+}
+function drawTooltip(px,py,txt){
+  ctx.font='bold 13px "Segoe UI",sans-serif';
+  const w=ctx.measureText(txt).width+18;
+  const bx=px-w/2, by=py-24;
+  ctx.fillStyle='rgba(10,14,24,0.9)';
+  roundRect(bx,by,w,22,7); ctx.fill();
+  ctx.strokeStyle='rgba(110,240,180,0.8)'; ctx.lineWidth=1.2; ctx.stroke();
+  ctx.fillStyle='#e6fff2';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(txt, px, by+11);
+  ctx.textAlign='start'; ctx.textBaseline='alphabetic';
+}
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
 }
 
 // =========================================================================
@@ -538,13 +587,13 @@ function loop(){
 let dragging=false, moved=false, lastX=0, lastY=0;
 
 function pick(mx,my){
-  // nearest valid-move marker in screen space
+  // nearest valid-move marker in screen space (respecting layer focus)
   let best=null, bestD=1e9;
   for (const m of validCache){
+    if (focusLayer>=0 && m.y!==focusLayer) continue;
     const pr=project(cellWorld(m.x,m.y,m.z));
     const d=Math.hypot(pr.x-mx, pr.y-my);
-    // scale threshold with sphere radius
-    if (d<bestD && d < 0.55*pr.s + 6){ bestD=d; best=m; }
+    if (d<bestD && d < 0.6*pr.s + 16){ bestD=d; best=m; }
   }
   return best;
 }
@@ -573,7 +622,7 @@ canvas.addEventListener('pointerup', e=>{
 canvas.addEventListener('pointercancel', ()=>{ dragging=false; canvas.classList.remove('dragging'); });
 canvas.addEventListener('wheel', e=>{
   e.preventDefault();
-  focalV=clamp(focalV - e.deltaY*0.25, 120, 420);
+  focalV=clamp(focalV - e.deltaY*0.7, 220, 1300);
   document.getElementById('zoom').value=focalV;
 },{passive:false});
 
@@ -632,6 +681,15 @@ document.getElementById('rotBtn').addEventListener('click', function(){
 });
 document.getElementById('explode').addEventListener('input', e=>{ spacing=e.target.value/100; });
 document.getElementById('zoom').addEventListener('input', e=>{ focalV=parseFloat(e.target.value); });
+document.getElementById('viewmode').addEventListener('change', e=>{
+  const one = e.target.value==='one';
+  document.getElementById('layerRow').style.display = one? 'flex':'none';
+  focusLayer = one ? (parseInt(document.getElementById('layer').value,10)-1) : -1;
+});
+document.getElementById('layer').addEventListener('input', e=>{
+  document.getElementById('layerNum').textContent=e.target.value;
+  focusLayer = parseInt(e.target.value,10)-1;
+});
 
 // go
 newGame();
