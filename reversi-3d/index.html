@@ -3,168 +3,126 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>3D リバーシ — Obsidian Board</title>
+<title>3D リバーシ — 8×8×8 立体オセロ</title>
 <!--
 AI Model: Claude Opus 4.8
-User Prompt: 3Dリバーシを作ってください。できる限り見た目を凝ってください
-AI Approach: 依存ライブラリを使わず、HTML5 Canvas 上に自作の3Dレンダラ（透視投影・
-             ペインターズアルゴリズム・ワールド固定ライティング・接地影・光沢グラデーション）
-             を実装。石は短い円柱として生成し、X軸まわりの回転で「ひっくり返し」を表現。
-             盤面はフェルト＋木枠、合法手マーカー、星目、カメラのドラッグ回転を備える。
-             対戦AIはネガマックス（αβ枝刈り＋位置評価＋着手可能数＋終盤石数）で実装。
-Implementation Intent: 外部依存ゼロのまま、見応えのある3Dリバーシを実現する教育的サンプル。
-                        3D数学（回転行列・透視投影・法線ライティング）とゲームAIの実演。
+User Prompt: 8x8x8で立体的に行うリバーシ（3D空間の立体オセロ）を作ってほしい
+AI Approach: 外部ライブラリ不使用。8×8×8=512セルの立方体空間でプレイする立体リバーシ。
+             石は26方向（3軸すべての ±/0 の組み合わせ、0,0,0を除く）に沿って挟んで返す。
+             HTML5 Canvas 2D 上に自作の3Dレンダラ（透視投影・深度ソート・ビルボード球）を実装。
+             立方体は自由回転・ズーム可能。「分解スライダー」でセル間隔を広げ内部を透視できる。
+             合法手は光るマーカーで提示し、最寄り投影点でクリック判定。
+             対戦AIはネガマックス+αβ枝刈り（立体位置評価＋着手可能数）で実装。
+Implementation Intent: 平面盤の3D描画ではなく、真に立体空間（8^3）で挟み返すリバーシを実現する。
 -->
 <style>
-  :root{
-    --glass: rgba(20,24,38,.62);
-    --glass-brd: rgba(255,255,255,.10);
-    --accent: #6fd3ff;
-    --gold: #ffd98a;
-  }
+  :root{ --glass:rgba(20,24,38,.62); --brd:rgba(255,255,255,.10); --accent:#6fd3ff; --gold:#ffd98a; }
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;overflow:hidden;}
   body{
     font-family:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI",sans-serif;
-    background:
-      radial-gradient(1200px 700px at 50% -10%, #2a3350 0%, #131826 45%, #080a12 100%);
-    color:#eef2ff;
-    -webkit-user-select:none;user-select:none;
-    touch-action:none;
+    background:radial-gradient(1200px 800px at 50% -10%, #2a3350 0%, #121727 45%, #06080f 100%);
+    color:#eef2ff;-webkit-user-select:none;user-select:none;touch-action:none;
   }
-  #stage{position:fixed;inset:0;display:block;}
   canvas{display:block;width:100%;height:100%;cursor:grab;}
   canvas.dragging{cursor:grabbing;}
 
-  /* ---- Top bar ---- */
-  .topbar{
-    position:fixed;top:0;left:0;right:0;
-    display:flex;align-items:center;gap:14px;
-    padding:12px 16px;
-    pointer-events:none;
-    z-index:10;
-  }
-  .brand{
-    pointer-events:auto;
-    font-weight:800;letter-spacing:.5px;font-size:18px;
+  .topbar{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:12px;
+    padding:12px 16px;pointer-events:none;z-index:10;flex-wrap:wrap;}
+  .brand{pointer-events:auto;font-weight:800;letter-spacing:.5px;font-size:18px;
     background:linear-gradient(90deg,var(--gold),#fff 40%,var(--accent));
-    -webkit-background-clip:text;background-clip:text;color:transparent;
-    text-shadow:0 1px 12px rgba(120,180,255,.15);
-  }
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
   .brand small{display:block;font-size:10px;letter-spacing:3px;color:#8fa0c8;-webkit-text-fill-color:#8fa0c8;font-weight:600;}
   .spacer{flex:1;}
-
-  /* ---- Score chips ---- */
-  .scores{
-    pointer-events:auto;
-    display:flex;gap:10px;align-items:center;
-  }
-  .chip{
-    display:flex;align-items:center;gap:9px;
-    background:var(--glass);
-    border:1px solid var(--glass-brd);
-    padding:8px 14px;border-radius:14px;
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-    box-shadow:0 6px 24px rgba(0,0,0,.35);
-    transition:transform .25s, box-shadow .25s;
-  }
+  .scores{pointer-events:auto;display:flex;gap:10px;align-items:center;}
+  .chip{display:flex;align-items:center;gap:9px;background:var(--glass);border:1px solid var(--brd);
+    padding:8px 14px;border-radius:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    box-shadow:0 6px 24px rgba(0,0,0,.35);transition:transform .25s,box-shadow .25s;}
   .chip.active{transform:translateY(-2px) scale(1.04);box-shadow:0 10px 30px rgba(90,150,255,.35);}
-  .chip.active.b{box-shadow:0 10px 30px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.18);}
   .stone-ico{width:22px;height:22px;border-radius:50%;flex:none;}
-  .stone-ico.b{background:radial-gradient(circle at 34% 30%, #6a6f7c, #1b1d24 60%, #05060a);box-shadow:inset 0 0 4px rgba(255,255,255,.25);}
+  .stone-ico.b{background:radial-gradient(circle at 34% 30%, #7a7f8e, #1b1d24 62%, #05060a);box-shadow:inset 0 0 4px rgba(255,255,255,.3);}
   .stone-ico.w{background:radial-gradient(circle at 34% 30%, #ffffff, #d7dbe6 55%, #9aa1b4);box-shadow:inset 0 0 4px rgba(0,0,0,.2);}
-  .chip .num{font-variant-numeric:tabular-nums;font-weight:800;font-size:20px;min-width:22px;text-align:center;}
+  .chip .num{font-variant-numeric:tabular-nums;font-weight:800;font-size:20px;min-width:26px;text-align:center;}
   .chip .lab{font-size:11px;color:#9fb0d6;letter-spacing:1px;}
 
-  /* ---- Controls ---- */
-  .controls{pointer-events:auto;display:flex;gap:8px;align-items:center;}
-  .btn,select{
-    pointer-events:auto;
-    background:var(--glass);color:#eaf0ff;
-    border:1px solid var(--glass-brd);
-    padding:9px 14px;border-radius:12px;font-size:13px;font-weight:600;
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-    cursor:pointer;transition:.18s;outline:none;
-  }
+  .controls{pointer-events:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .btn,select{pointer-events:auto;background:var(--glass);color:#eaf0ff;border:1px solid var(--brd);
+    padding:9px 12px;border-radius:12px;font-size:13px;font-weight:600;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);cursor:pointer;transition:.18s;outline:none;}
   .btn:hover,select:hover{background:rgba(60,80,120,.55);border-color:rgba(140,180,255,.4);}
-  .btn:active{transform:translateY(1px);}
-  select{appearance:none;padding-right:28px;
+  .btn.off{opacity:.5;}
+  select{appearance:none;padding-right:26px;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239fb0d6'/></svg>");
-    background-repeat:no-repeat;background-position:right 12px center;}
+    background-repeat:no-repeat;background-position:right 10px center;}
 
-  /* ---- Status / turn banner ---- */
-  .statusbar{
-    position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
-    display:flex;gap:10px;align-items:center;
-    background:var(--glass);border:1px solid var(--glass-brd);
-    padding:10px 18px;border-radius:16px;
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-    box-shadow:0 8px 30px rgba(0,0,0,.4);
-    z-index:10;font-size:14px;font-weight:600;letter-spacing:.3px;
-    transition:opacity .3s;
-  }
+  .panel{position:fixed;left:16px;bottom:16px;display:flex;flex-direction:column;gap:10px;
+    background:var(--glass);border:1px solid var(--brd);padding:12px 14px;border-radius:14px;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:10;width:210px;
+    box-shadow:0 8px 30px rgba(0,0,0,.4);}
+  .panel .row{display:flex;align-items:center;gap:10px;font-size:12px;color:#c3cee8;}
+  .panel .row label{flex:none;width:56px;color:#9fb0d6;}
+  input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:4px;border-radius:3px;
+    background:linear-gradient(90deg,var(--accent),#3a5aa8);outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+    background:#eaf2ff;box-shadow:0 2px 6px rgba(0,0,0,.5);cursor:pointer;}
+  input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#eaf2ff;border:none;cursor:pointer;}
+
+  .statusbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;gap:10px;align-items:center;
+    background:var(--glass);border:1px solid var(--brd);padding:10px 18px;border-radius:16px;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.4);
+    z-index:10;font-size:14px;font-weight:600;}
   .statusbar .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);}
-  .hint{position:fixed;right:16px;bottom:18px;font-size:11px;color:#7f8fb5;z-index:10;text-align:right;line-height:1.6;pointer-events:none;}
+  .hint{position:fixed;right:16px;bottom:16px;font-size:11px;color:#7f8fb5;z-index:10;text-align:right;line-height:1.7;pointer-events:none;}
 
-  /* ---- Win overlay ---- */
-  .overlay{
-    position:fixed;inset:0;z-index:20;display:none;
-    align-items:center;justify-content:center;
-    background:radial-gradient(600px 400px at 50% 40%, rgba(20,28,50,.55), rgba(5,7,12,.82));
-    backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
-  }
+  .overlay{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;
+    background:radial-gradient(600px 400px at 50% 40%, rgba(20,28,50,.55), rgba(5,7,12,.85));
+    backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);}
   .overlay.show{display:flex;animation:fade .4s ease;}
   @keyframes fade{from{opacity:0}to{opacity:1}}
-  .card{
-    text-align:center;padding:34px 44px;border-radius:22px;
-    background:linear-gradient(160deg, rgba(40,50,80,.85), rgba(16,20,34,.9));
-    border:1px solid rgba(255,255,255,.14);
-    box-shadow:0 30px 80px rgba(0,0,0,.6);
-    animation:pop .45s cubic-bezier(.2,1.3,.4,1);
-  }
+  .card{text-align:center;padding:34px 44px;border-radius:22px;
+    background:linear-gradient(160deg, rgba(40,50,80,.85), rgba(16,20,34,.92));
+    border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.6);
+    animation:pop .45s cubic-bezier(.2,1.3,.4,1);}
   @keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
   .card h1{font-size:30px;margin-bottom:6px;background:linear-gradient(90deg,var(--gold),#fff,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent;}
   .card p{color:#aebbdd;margin-bottom:20px;font-size:15px;}
   .card .final{display:flex;gap:26px;justify-content:center;margin-bottom:22px;}
   .card .final .s{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;}
-  .card .big-btn{
-    background:linear-gradient(90deg,#4a8cff,#6fd3ff);color:#06122a;font-weight:800;
-    border:none;padding:12px 30px;border-radius:14px;font-size:15px;cursor:pointer;
-    box-shadow:0 10px 26px rgba(80,150,255,.4);transition:.18s;
-  }
+  .card .big-btn{background:linear-gradient(90deg,#4a8cff,#6fd3ff);color:#06122a;font-weight:800;border:none;
+    padding:12px 30px;border-radius:14px;font-size:15px;cursor:pointer;box-shadow:0 10px 26px rgba(80,150,255,.4);transition:.18s;}
   .card .big-btn:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(80,150,255,.55);}
 
-  @media (max-width:680px){
-    .brand small{display:none;}
-    .chip .lab{display:none;}
-    .controls .lbl{display:none;}
-    .topbar{gap:8px;padding:8px;}
-    .chip{padding:6px 10px;}
-  }
+  @media (max-width:720px){ .brand small,.chip .lab,.controls .lbl{display:none;} .panel{width:170px;} }
 </style>
 </head>
 <body>
   <canvas id="stage"></canvas>
 
   <div class="topbar">
-    <div class="brand">OBSIDIAN 3D<small>REVERSI</small></div>
+    <div class="brand">CUBE REVERSI<small>8 × 8 × 8</small></div>
     <div class="spacer"></div>
     <div class="scores">
-      <div class="chip b active" id="chip-b"><span class="stone-ico b"></span><span class="num" id="score-b">2</span><span class="lab">あなた</span></div>
-      <div class="chip w" id="chip-w"><span class="stone-ico w"></span><span class="num" id="score-w">2</span><span class="lab">CPU</span></div>
+      <div class="chip active" id="chip-b"><span class="stone-ico b"></span><span class="num" id="score-b">4</span><span class="lab">あなた</span></div>
+      <div class="chip" id="chip-w"><span class="stone-ico w"></span><span class="num" id="score-w">4</span><span class="lab">CPU</span></div>
     </div>
     <div class="spacer"></div>
     <div class="controls">
       <span class="lbl" style="font-size:12px;color:#9fb0d6;">難易度</span>
       <select id="difficulty" title="難易度">
         <option value="1">やさしい</option>
-        <option value="3" selected>ふつう</option>
-        <option value="5">つよい</option>
-        <option value="7">鬼</option>
+        <option value="2" selected>ふつう</option>
+        <option value="3">つよい</option>
+        <option value="4">鬼</option>
       </select>
       <button class="btn" id="hintBtn" title="合法手の表示切替">ヒント</button>
+      <button class="btn" id="rotBtn" title="自動回転">自動回転</button>
       <button class="btn" id="newBtn">新規対局</button>
     </div>
+  </div>
+
+  <div class="panel">
+    <div class="row"><label>分解</label><input type="range" id="explode" min="100" max="240" value="155"></div>
+    <div class="row"><label>ズーム</label><input type="range" id="zoom" min="120" max="420" value="230"></div>
   </div>
 
   <div class="statusbar" id="statusbar">
@@ -172,12 +130,12 @@ Implementation Intent: 外部依存ゼロのまま、見応えのある3Dリバ�
     <span id="statustext">あなたの番です（黒）</span>
   </div>
 
-  <div class="hint">ドラッグで盤を回転 ・ ホイールでズーム<br>マスをクリックして着手</div>
+  <div class="hint">ドラッグで立方体を回転<br>「分解」スライダーで内部を透視<br>光る枠のマスをクリックで着手</div>
 
   <div class="overlay" id="overlay">
     <div class="card">
       <h1 id="winTitle">勝利！</h1>
-      <p id="winSub">お見事でした</p>
+      <p id="winSub"></p>
       <div class="final">
         <div><span class="stone-ico b" style="display:inline-block;vertical-align:middle;margin-right:8px;"></span><span class="s" id="final-b">0</span></div>
         <div><span class="stone-ico w" style="display:inline-block;vertical-align:middle;margin-right:8px;"></span><span class="s" id="final-w">0</span></div>
@@ -189,296 +147,232 @@ Implementation Intent: 外部依存ゼロのまま、見応えのある3Dリバ�
 <script>
 "use strict";
 /* =========================================================================
-   3D Reversi — self-contained software 3D renderer on Canvas 2D
-   No external libraries. Perspective projection + painter's algorithm +
-   world-fixed diffuse lighting + contact shadows + glossy caps.
+   CUBE REVERSI — 8x8x8 three-dimensional Othello
+   512 cells. Flips propagate along all 26 directions in 3D space.
+   Self-contained software 3D renderer (perspective + depth sort + billboard
+   spheres). No external libraries.
    ========================================================================= */
 
-const BLACK = 1, WHITE = 2, EMPTY = 0;
-const N = 8;                 // board size
-const CELL = 1;              // world units per cell
-const HALF = N * CELL / 2;   // 4
-const DISC_R = 0.40, DISC_H = 0.075;
-const HUMAN = BLACK;
+const S = 8, NCELL = S*S*S;      // 512
+const BLACK = 1, WHITE = 2, EMPTY = 0, HUMAN = BLACK;
+const idx = (x,y,z)=> (x*64 + y*8 + z);
+
+// ---- 26 direction vectors ----
+const DIRS = [];
+for (let dx=-1;dx<=1;dx++) for (let dy=-1;dy<=1;dy++) for (let dz=-1;dz<=1;dz++)
+  if (dx||dy||dz) DIRS.push([dx,dy,dz]);
 
 // ---- Canvas ----
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
-let W = 0, H = 0, DPR = 1;
+let W=0,H=0,DPR=1;
 function resize(){
-  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  DPR = Math.min(window.devicePixelRatio||1, 2);
   W = window.innerWidth; H = window.innerHeight;
-  canvas.width = W * DPR; canvas.height = H * DPR;
-  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  canvas.width=W*DPR; canvas.height=H*DPR;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
 }
-window.addEventListener('resize', resize);
-resize();
+window.addEventListener('resize', resize); resize();
 
 // ---- Camera ----
-const cam = { yaw: -0.55, pitch: 0.92, dist: 13.5, targetYaw:-0.55, targetPitch:0.92, targetDist:13.5 };
-function focal(){ return Math.min(W, H) * 1.32; }
+const cam = { yaw:-0.6, pitch:0.5, targetYaw:-0.6, targetPitch:0.5 };
+let spacing = 1.55;     // cell gap (explode)
+let focalV  = 230;      // zoom
+const CAM_DIST = 26;
 
-// rotate world point -> camera space (yaw around Y, then pitch around X)
 function rotate(p){
-  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
-  const x1 = p.x * cy + p.z * sy;
-  const z1 = -p.x * sy + p.z * cy;
-  const y1 = p.y;
-  const cx = Math.cos(cam.pitch), sx = Math.sin(cam.pitch);
-  const y2 = y1 * cx - z1 * sx;
-  const z2 = y1 * sx + z1 * cx;
-  return { x: x1, y: y2, z: z2 };
+  const cy=Math.cos(cam.yaw), sy=Math.sin(cam.yaw);
+  const x1=p.x*cy + p.z*sy, z1=-p.x*sy + p.z*cy, y1=p.y;
+  const cx=Math.cos(cam.pitch), sx=Math.sin(cam.pitch);
+  return { x:x1, y:y1*cx - z1*sx, z:y1*sx + z1*cx };
 }
-function inverseRotate(p){ // inverse of rotate()
-  const cx = Math.cos(cam.pitch), sx = Math.sin(cam.pitch);
-  const y1 = p.y * cx + p.z * sx;
-  const z1 = -p.y * sx + p.z * cx;
-  const x1 = p.x;
-  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
-  const x = x1 * cy - z1 * sy;
-  const z = x1 * sy + z1 * cy;
-  return { x: x, y: y1, z: z };
-}
-// camera world position (for lighting orientation)
-function camWorldPos(){ return inverseRotate({ x:0, y:0, z:-cam.dist }); }
-
 function project(p){
-  const c = rotate(p);
-  let pz = c.z + cam.dist;
-  if (pz < 0.05) pz = 0.05;
-  const s = focal() / pz;
-  return { x: W/2 + c.x * s, y: H/2 - c.y * s, depth: pz };
+  const c=rotate(p);
+  let pz=c.z + CAM_DIST; if (pz<0.05) pz=0.05;
+  const s=focalV/pz;
+  return { x:W/2 + c.x*s, y:H/2 - c.y*s, depth:pz, s };
+}
+// cell -> world coords (centered), spacing = explode factor
+function cellWorld(x,y,z){
+  return { x:(x-3.5)*spacing, y:(y-3.5)*spacing, z:(z-3.5)*spacing };
 }
 
-// ---- Lighting ----
-const LIGHT = norm({ x:-0.35, y:0.92, z:0.28 });
-function norm(v){ const l = Math.hypot(v.x,v.y,v.z)||1; return {x:v.x/l,y:v.y/l,z:v.z/l}; }
-function faceNormal(pts){
-  const a=pts[0], b=pts[1], c=pts[2];
-  const ux=b.x-a.x, uy=b.y-a.y, uz=b.z-a.z;
-  const vx=c.x-a.x, vy=c.y-a.y, vz=c.z-a.z;
-  return norm({ x: uy*vz-uz*vy, y: uz*vx-ux*vz, z: ux*vy-uy*vx });
-}
-function shade(rgb, b){
-  return 'rgb(' + Math.round(clamp(rgb[0]*b,0,255)) + ',' +
-                  Math.round(clamp(rgb[1]*b,0,255)) + ',' +
-                  Math.round(clamp(rgb[2]*b,0,255)) + ')';
-}
+// ---- helpers ----
 function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
 function mix(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+function rgb(c){ return 'rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')'; }
+function easeOutBack(t){ const s=1.70158; return 1+(s+1)*Math.pow(t-1,3)+s*Math.pow(t-1,2); }
 
-// palette
 const COL = {
-  woodTop:[120,74,42], woodSide:[86,50,26], frameEdge:[150,100,60],
-  feltA:[26,116,74], feltB:[22,104,66], grid:[12,60,42],
-  black:[26,28,36], white:[238,240,248], rim:[120,124,134],
-  marker:[120,255,190], star:[10,50,36]
+  black:[30,32,42], white:[236,238,247],
+  marker:[110,240,180]
 };
 
 // =========================================================================
 //  Game state
 // =========================================================================
-let board;          // board[r][c] = EMPTY/BLACK/WHITE
-let discs;          // discs[r][c] = disc object or null
-let current;        // whose turn
-let showHints = true;
-let busy = false;   // animating or AI thinking
-let gameOver = false;
-let hoverCell = null;
+let grid;              // Int8Array(512) logical
+let pieces;            // Map index -> {x,y,z,value,anim}
+let current, busy, gameOver, showHints=true, autoRotate=true;
+let hoverIdx=-1;
 
 function newGame(){
-  board = Array.from({length:N}, ()=>Array(N).fill(EMPTY));
-  discs = Array.from({length:N}, ()=>Array(N).fill(null));
-  const mid = N/2;
-  setStone(mid-1, mid-1, WHITE, false);
-  setStone(mid,   mid,   WHITE, false);
-  setStone(mid-1, mid,   BLACK, false);
-  setStone(mid,   mid-1, BLACK, false);
-  current = BLACK;
-  gameOver = false; busy = false;
-  hideOverlay();
-  updateHud();
-  setStatus('あなたの番です（黒）', true);
-}
-
-function cellWorld(r,c){
-  return { x: -HALF + CELL/2 + c*CELL, z: -HALF + CELL/2 + r*CELL };
-}
-
-function makeDisc(r,c,value){
-  const w = cellWorld(r,c);
-  return {
-    r, c, value,
-    x: w.x, z: w.z, y: DISC_H + 0.02,
-    flip: null,          // {start,dur,to}
-    pop: null            // {start,dur}
-  };
-}
-function setStone(r,c,value,pop){
-  board[r][c] = value;
-  const d = makeDisc(r,c,value);
-  if (pop) d.pop = { start: performance.now(), dur: 260 };
-  discs[r][c] = d;
-}
-
-// ---- Rules ----
-const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-function opp(p){ return p===BLACK?WHITE:BLACK; }
-function inb(r,c){ return r>=0&&r<N&&c>=0&&c<N; }
-function getFlips(bd,r,c,p){
-  if (bd[r][c]!==EMPTY) return [];
-  const o = opp(p); const all = [];
-  for (const [dr,dc] of DIRS){
-    let rr=r+dr, cc=c+dc; const line=[];
-    while (inb(rr,cc) && bd[rr][cc]===o){ line.push([rr,cc]); rr+=dr; cc+=dc; }
-    if (line.length && inb(rr,cc) && bd[rr][cc]===p) all.push(...line);
+  grid = new Int8Array(NCELL);
+  pieces = new Map();
+  // central 2x2x2 checkerboard by parity
+  for (const x of [3,4]) for (const y of [3,4]) for (const z of [3,4]){
+    const v = ((x+y+z)&1)===0 ? BLACK : WHITE;
+    place(x,y,z,v,false);
   }
-  return all;
+  current=BLACK; busy=false; gameOver=false; hoverIdx=-1;
+  hideOverlay(); updateHud(); setStatus('あなたの番です（黒）', true);
 }
-function validMoves(bd,p){
+
+function place(x,y,z,v,pop){
+  const i=idx(x,y,z);
+  grid[i]=v;
+  const p={ x,y,z, value:v, anim: pop?{type:'pop',start:performance.now(),dur:280}:null };
+  pieces.set(i,p);
+}
+
+// ---- rules ----
+function opp(p){ return p===BLACK?WHITE:BLACK; }
+function inb(v){ return v>=0 && v<S; }
+function getFlips(g,x,y,z,p){
+  if (g[idx(x,y,z)]!==EMPTY) return null;
+  const o=opp(p); let out=null;
+  for (const [dx,dy,dz] of DIRS){
+    let cx=x+dx, cy=y+dy, cz=z+dz; const line=[];
+    while (inb(cx)&&inb(cy)&&inb(cz) && g[idx(cx,cy,cz)]===o){
+      line.push(idx(cx,cy,cz)); cx+=dx; cy+=dy; cz+=dz;
+    }
+    if (line.length && inb(cx)&&inb(cy)&&inb(cz) && g[idx(cx,cy,cz)]===p){
+      if (!out) out=[]; for (const q of line) out.push(q);
+    }
+  }
+  return out;
+}
+function validMoves(g,p){
   const m=[];
-  for (let r=0;r<N;r++) for (let c=0;c<N;c++)
-    if (bd[r][c]===EMPTY && getFlips(bd,r,c,p).length) m.push([r,c]);
+  for (let x=0;x<S;x++) for (let y=0;y<S;y++) for (let z=0;z<S;z++){
+    const i=idx(x,y,z);
+    if (g[i]!==EMPTY) continue;
+    const f=getFlips(g,x,y,z,p);
+    if (f) m.push({x,y,z,i,flips:f.length});
+  }
   return m;
 }
-function countStones(bd){
+function countStones(g){
   let b=0,w=0;
-  for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-    if (bd[r][c]===BLACK) b++; else if (bd[r][c]===WHITE) w++;
-  }
+  for (let i=0;i<NCELL;i++){ if (g[i]===BLACK) b++; else if (g[i]===WHITE) w++; }
   return {b,w};
 }
 
 // =========================================================================
-//  Move execution with animation
+//  Move + animation
 // =========================================================================
-function playMove(r,c,p){
-  const flips = getFlips(board,r,c,p);
-  if (!flips.length) return false;
-  busy = true;
-  clearMarkers();
-  // place new stone
-  setStone(r,c,p,true);
-  board[r][c] = p;
-  // flip captured — staggered wave from the placed stone
-  const now = performance.now();
-  for (const [fr,fc] of flips){
-    const d = discs[fr][fc];
-    const dist = Math.abs(fr-r) + Math.abs(fc-c);
-    d.flip = { start: now + 120 + dist*55, dur: 420, to: p };
-    board[fr][fc] = p; // logical board updated immediately
-  }
-  updateHud();
-  waitAnim(()=> afterMove(p));
-  return true;
+let validCache=[];   // current player's valid moves (for input)
+
+function refreshValid(){
+  validCache = (!busy && !gameOver && current===HUMAN) ? validMoves(grid,current) : [];
 }
 
+function playMove(x,y,z,p){
+  const flips=getFlips(grid,x,y,z,p);
+  if (!flips) return false;
+  busy=true; hoverIdx=-1; validCache=[];
+  place(x,y,z,p,true);
+  const now=performance.now();
+  for (const fi of flips){
+    grid[fi]=p;
+    const pc=pieces.get(fi);
+    const fx=(fi/64)|0, fy=((fi>>3)&7), fz=(fi&7);
+    const dist=Math.abs(fx-x)+Math.abs(fy-y)+Math.abs(fz-z);
+    pc.anim={ type:'flip', start:now+90+dist*45, dur:400, from:pc.value, to:p };
+  }
+  updateHud();
+  waitAnim(()=>afterMove(p));
+  return true;
+}
 function waitAnim(cb){
-  const check = ()=>{
-    const now = performance.now();
-    let animating = false;
-    for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-      const d = discs[r][c]; if (!d) continue;
-      if (d.flip){
-        if (now >= d.flip.start + d.flip.dur){ d.value = d.flip.to; d.flip = null; }
-        else animating = true;
-      }
-      if (d.pop){
-        if (now >= d.pop.start + d.pop.dur) d.pop = null; else animating = true;
-      }
-    }
-    if (animating) requestAnimationFrame(check);
-    else cb();
+  const check=()=>{
+    const now=performance.now(); let anim=false;
+    pieces.forEach(pc=>{
+      if (!pc.anim) return;
+      if (now>=pc.anim.start+pc.anim.dur){
+        if (pc.anim.type==='flip') pc.value=pc.anim.to;
+        pc.anim=null;
+      } else anim=true;
+    });
+    if (anim) requestAnimationFrame(check); else cb();
   };
   check();
 }
-
 function afterMove(justMoved){
-  const next = opp(justMoved);
-  const nextMoves = validMoves(board, next);
-  if (nextMoves.length){
-    current = next;
-    turnHandoff();
-    return;
-  }
-  // next player must pass
-  const againMoves = validMoves(board, justMoved);
-  if (againMoves.length){
-    current = justMoved;
-    flashStatus((next===HUMAN?'あなた':'CPU') + 'はパスしました');
-    turnHandoff();
-    return;
+  const next=opp(justMoved);
+  if (validMoves(grid,next).length){ current=next; handoff(); return; }
+  if (validMoves(grid,justMoved).length){
+    current=justMoved;
+    flashStatus((next===HUMAN?'あなた':'CPU')+'はパス');
+    handoff(); return;
   }
   endGame();
 }
-
-function turnHandoff(){
+function handoff(){
   if (gameOver) return;
-  updateHud();
-  if (current === HUMAN){
-    busy = false;
-    setStatus('あなたの番です（黒）', true);
-  } else {
-    busy = true;
-    setStatus('CPU 思考中…', false);
-    setTimeout(aiMove, 420);
-  }
+  updateHud(); refreshValid();
+  if (current===HUMAN){ busy=false; setStatus('あなたの番です（黒）', true); }
+  else { busy=true; setStatus('CPU 思考中…', false); setTimeout(aiMove, 380); }
 }
 
 // =========================================================================
-//  AI — negamax + alpha-beta
+//  Positional weights (3D) + AI
 // =========================================================================
-const WEIGHTS = [
-  [120,-20, 20,  5,  5, 20,-20,120],
-  [-20,-40, -5, -5, -5, -5,-40,-20],
-  [ 20, -5, 15,  3,  3, 15, -5, 20],
-  [  5, -5,  3,  3,  3,  3, -5,  5],
-  [  5, -5,  3,  3,  3,  3, -5,  5],
-  [ 20, -5, 15,  3,  3, 15, -5, 20],
-  [-20,-40, -5, -5, -5, -5,-40,-20],
-  [120,-20, 20,  5,  5, 20,-20,120]
-];
-function cloneBoard(bd){ return bd.map(row=>row.slice()); }
-function applyTo(bd,r,c,p){
-  const flips = getFlips(bd,r,c,p);
-  bd[r][c]=p; for (const [fr,fc] of flips) bd[fr][fc]=p;
-  return flips.length;
-}
-function evaluate(bd,p){
-  const o = opp(p);
-  let pos=0, empties=0;
-  for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-    if (bd[r][c]===p) pos+=WEIGHTS[r][c];
-    else if (bd[r][c]===o) pos-=WEIGHTS[r][c];
-    else empties++;
+const W3 = new Float32Array(NCELL);
+(function buildWeights(){
+  for (let x=0;x<S;x++) for (let y=0;y<S;y++) for (let z=0;z<S;z++){
+    const ext = (x===0||x===7)+(y===0||y===7)+(z===0||z===7);
+    const near= (x===1||x===6)+(y===1||y===6)+(z===1||z===6);
+    let w;
+    if (ext===3) w=140;                 // 8 cube corners — most stable
+    else if (ext===2) w=(near? -10 : 18); // edge (or C-cell next to corner)
+    else if (ext===1) w=(near? -6 : 4);   // face
+    else w=(near? -3 : -1);               // interior
+    W3[idx(x,y,z)]=w;
   }
-  const myMob = validMoves(bd,p).length;
-  const opMob = validMoves(bd,o).length;
-  const mob = (myMob+opMob)? 12*(myMob-opMob)/(myMob+opMob) : 0;
-  const {b,w} = countStones(bd);
-  const mine = p===BLACK?b:w, theirs = p===BLACK?w:b;
-  let disc = 0;
-  if (empties < 12) disc = 25 * (mine-theirs); // endgame: material matters
-  return pos + mob*4 + disc;
+})();
+function applyTo(g,x,y,z,p){
+  const f=getFlips(g,x,y,z,p); if (!f) return false;
+  g[idx(x,y,z)]=p; for (const q of f) g[q]=p; return true;
 }
-function negamax(bd,p,depth,alpha,beta){
-  const moves = validMoves(bd,p);
-  if (depth===0){ return evaluate(bd,p); }
+function evaluate(g,p){
+  const o=opp(p); let pos=0, empt=0;
+  for (let i=0;i<NCELL;i++){
+    const v=g[i]; if (v===EMPTY){ empt++; continue; }
+    if (v===p) pos+=W3[i]; else pos-=W3[i];
+  }
+  const my=validMoves(g,p).length, op=validMoves(g,o).length;
+  const mob=(my+op)? 60*(my-op)/(my+op) : 0;
+  let mat=0;
+  if (empt<40){ const c=countStones(g); const mine=p===BLACK?c.b:c.w, th=p===BLACK?c.w:c.b; mat=6*(mine-th); }
+  return pos + mob + mat;
+}
+function negamax(g,p,depth,alpha,beta){
+  if (depth===0) return evaluate(g,p);
+  const moves=validMoves(g,p);
   if (!moves.length){
-    if (!validMoves(bd,opp(p)).length){
-      // terminal
-      const {b,w}=countStones(bd); const mine=p===BLACK?b:w, th=p===BLACK?w:b;
-      return (mine-th)*1000;
+    if (!validMoves(g,opp(p)).length){
+      const c=countStones(g); const mine=p===BLACK?c.b:c.w, th=p===BLACK?c.w:c.b;
+      return (mine-th)*100000;
     }
-    return -negamax(bd,opp(p),depth-1,-beta,-alpha); // pass
+    return -negamax(g,opp(p),depth-1,-beta,-alpha);
   }
-  // corner-first ordering for better pruning
-  moves.sort((a,b)=> WEIGHTS[b[0]][b[1]]-WEIGHTS[a[0]][a[1]]);
-  let best = -Infinity;
-  for (const [r,c] of moves){
-    const nb = cloneBoard(bd); applyTo(nb,r,c,p);
-    const val = -negamax(nb,opp(p),depth-1,-beta,-alpha);
+  moves.sort((a,b)=> W3[b.i]-W3[a.i]);
+  let best=-Infinity;
+  for (const m of moves){
+    const ng=g.slice(); applyTo(ng,m.x,m.y,m.z,p);
+    const val=-negamax(ng,opp(p),depth-1,-beta,-alpha);
     if (val>best) best=val;
     if (best>alpha) alpha=best;
     if (alpha>=beta) break;
@@ -487,234 +381,153 @@ function negamax(bd,p,depth,alpha,beta){
 }
 function aiMove(){
   if (gameOver) return;
-  const p = current;
-  const moves = validMoves(board,p);
+  const p=current, moves=validMoves(grid,p);
   if (!moves.length){ afterMove(opp(p)); return; }
-  let depth = parseInt(document.getElementById('difficulty').value,10);
-  const cnt = countStones(board);
-  const empties = 64 - cnt.b - cnt.w;
-  if (empties <= 10) depth = Math.max(depth, 10); // solve endgame deeper
-  moves.sort((a,b)=> WEIGHTS[b[0]][b[1]]-WEIGHTS[a[0]][a[1]]);
-  let bestVal=-Infinity, bestMoves=[];
-  for (const [r,c] of moves){
-    const nb = cloneBoard(board); applyTo(nb,r,c,p);
-    let val = -negamax(nb,opp(p),depth-1,-Infinity,Infinity);
-    if (depth<=1) val += (Math.random()*8-4); // easy: add jitter
-    if (val>bestVal+1e-6){ bestVal=val; bestMoves=[[r,c]]; }
-    else if (Math.abs(val-bestVal)<1e-6) bestMoves.push([r,c]);
+  let depth=parseInt(document.getElementById('difficulty').value,10);
+  const {b,w}=countStones(grid); const empt=NCELL-b-w;
+  if (empt<=8) depth=Math.max(depth,6);         // endgame: read deeper
+  moves.sort((a,b)=> W3[b.i]-W3[a.i]);
+  let bestVal=-Infinity, best=[];
+  for (const m of moves){
+    const ng=grid.slice(); applyTo(ng,m.x,m.y,m.z,p);
+    let val=-negamax(ng,opp(p),depth-1,-Infinity,Infinity);
+    if (depth<=1) val+= Math.random()*10-5;     // easy: jitter
+    if (val>bestVal+1e-6){ bestVal=val; best=[m]; }
+    else if (Math.abs(val-bestVal)<1e-6) best.push(m);
   }
-  const [r,c] = bestMoves[(Math.random()*bestMoves.length)|0];
-  playMove(r,c,p);
+  const m=best[(Math.random()*best.length)|0];
+  playMove(m.x,m.y,m.z,p);
 }
 
 // =========================================================================
 //  Rendering
 // =========================================================================
-function collectFaces(){
-  const faces = [];
-
-  // ---- Wood frame (base box) ----
-  const OUT = HALF + 0.55, TOP = 0.0, BOT = -0.55;
-  const topQuad = [
-    {x:-OUT,y:TOP,z:-OUT},{x:OUT,y:TOP,z:-OUT},{x:OUT,y:TOP,z:OUT},{x:-OUT,y:TOP,z:OUT}
-  ];
-  faces.push({ pts:topQuad, base:COL.woodTop, kind:'flat' });
-  // four sides
-  const sides = [
-    [{x:-OUT,y:TOP,z:-OUT},{x:OUT,y:TOP,z:-OUT},{x:OUT,y:BOT,z:-OUT},{x:-OUT,y:BOT,z:-OUT}],
-    [{x:OUT,y:TOP,z:OUT},{x:-OUT,y:TOP,z:OUT},{x:-OUT,y:BOT,z:OUT},{x:OUT,y:BOT,z:OUT}],
-    [{x:-OUT,y:TOP,z:OUT},{x:-OUT,y:TOP,z:-OUT},{x:-OUT,y:BOT,z:-OUT},{x:-OUT,y:BOT,z:OUT}],
-    [{x:OUT,y:TOP,z:-OUT},{x:OUT,y:TOP,z:OUT},{x:OUT,y:BOT,z:OUT},{x:OUT,y:BOT,z:-OUT}]
-  ];
-  for (const q of sides) faces.push({ pts:q, base:COL.woodSide, kind:'flat' });
-
-  // ---- Felt cells ----
-  const y = 0.02;
-  const moves = (!busy && showHints && current===HUMAN && !gameOver) ? validMoves(board,current) : [];
-  const moveSet = new Set(moves.map(m=>m[0]*8+m[1]));
-  for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-    const w = cellWorld(r,c); const h = CELL/2 - 0.012;
-    const base = ((r+c)&1) ? COL.feltA : COL.feltB;
-    faces.push({
-      pts:[
-        {x:w.x-h,y:y,z:w.z-h},{x:w.x+h,y:y,z:w.z-h},
-        {x:w.x+h,y:y,z:w.z+h},{x:w.x-h,y:y,z:w.z+h}
-      ],
-      base, kind:'felt',
-      hover: hoverCell && hoverCell[0]===r && hoverCell[1]===c && moveSet.has(r*8+c)
-    });
-  }
-
-  // ---- Star points (碁盤の星) ----
-  for (const [sr,sc] of [[2,2],[2,6],[6,2],[6,6]]){
-    const w = cellWorld(sr,sc);
-    const cx = w.x - CELL/2, cz = w.z - CELL/2;
-    faces.push({ pts: ringPts(cx,cz,0.028,0.07,10), base:COL.star, kind:'flat' });
-  }
-
-  // ---- Move markers ----
-  if (moves.length){
-    const pulse = 0.5 + 0.5*Math.sin(performance.now()/300);
-    for (const [r,c] of moves){
-      const w = cellWorld(r,c);
-      faces.push({
-        pts: ringPts(w.x, w.z, 0.03, 0.16, 20),
-        base: COL.marker, kind:'marker', alpha: 0.30 + 0.30*pulse
-      });
-    }
-  }
-
-  // ---- Contact shadows ----
-  for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-    const d = discs[r][c]; if (!d) continue;
-    const sc = d.pop ? popScale(d) : 1;
-    faces.push({
-      pts: ringPts(d.x+0.06, d.z+0.06, 0.028, DISC_R*1.02*sc, 20),
-      base:[0,0,0], kind:'shadow', alpha:0.30
-    });
-  }
-
-  // ---- Discs ----
-  for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-    const d = discs[r][c]; if (!d) continue;
-    addDiscFaces(faces, d);
-  }
-  return faces;
-}
-
-function ringPts(cx,cz,y,rad,segs){
-  const pts=[];
-  for (let i=0;i<segs;i++){
-    const t = i/segs*Math.PI*2;
-    pts.push({ x:cx+Math.cos(t)*rad, y:y, z:cz+Math.sin(t)*rad });
-  }
-  return pts;
-}
-function popScale(d){
-  const t = clamp((performance.now()-d.pop.start)/d.pop.dur,0,1);
-  const e = 1 - Math.pow(1-t,3);
-  return 0.2 + 0.8*e * (1 + 0.12*Math.sin(t*Math.PI));
-}
-
-function addDiscFaces(faces, d){
-  const segs = 26;
-  const scale = d.pop ? popScale(d) : 1;
-  const R = DISC_R * scale, Hh = DISC_H;
-  let a = 0;
-  if (d.flip){
-    const t = clamp((performance.now()-d.flip.start)/d.flip.dur,0,1);
-    a = (t<0?0:t) * Math.PI;               // 0..PI
-  }
-  const ca = Math.cos(a), sa = Math.sin(a);
-  const topVal = d.value;
-  const botVal = opp(d.value);
-  const topCol = topVal===BLACK?COL.black:COL.white;
-  const botCol = botVal===BLACK?COL.black:COL.white;
-  const rimCol = mix(topCol, botCol, 0.5);
-
-  function tp(lx,ly,lz){
-    const yy = ly*ca - lz*sa;
-    const zz = ly*sa + lz*ca;
-    return { x:d.x+lx, y:d.y+yy, z:d.z+zz };
-  }
-  const top=[], bot=[];
-  for (let i=0;i<segs;i++){
-    const t=i/segs*Math.PI*2;
-    const px=Math.cos(t)*R, pz=Math.sin(t)*R;
-    top.push(tp(px, Hh, pz));
-    bot.push(tp(px,-Hh, pz));
-  }
-  for (let i=0;i<segs;i++){
-    const j=(i+1)%segs;
-    faces.push({ pts:[top[i],top[j],bot[j],bot[i]], base:rimCol, kind:'flat' });
-  }
-  faces.push({ pts:top.slice(),           base:topCol, kind:'cap', capCol:topCol });
-  faces.push({ pts:bot.slice().reverse(), base:botCol, kind:'cap', capCol:botCol });
-}
-
 function render(){
-  const g = ctx.createRadialGradient(W*0.5, H*0.18, 60, W*0.5, H*0.5, Math.max(W,H)*0.8);
-  g.addColorStop(0,'#2b3556'); g.addColorStop(0.45,'#151a2a'); g.addColorStop(1,'#070912');
+  // background
+  const g=ctx.createRadialGradient(W*0.5,H*0.16,60,W*0.5,H*0.55,Math.max(W,H)*0.85);
+  g.addColorStop(0,'#28324f'); g.addColorStop(0.45,'#141a2b'); g.addColorStop(1,'#05070e');
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
 
-  const camPos = camWorldPos();
-  const faces = collectFaces();
+  const items=[];
 
-  const drawList = [];
-  for (const f of faces){
-    let sx=[], sy=[], depth=0, cxw=0,cyw=0,czw=0;
-    for (const p of f.pts){
-      const pr = project(p);
-      sx.push(pr.x); sy.push(pr.y); depth += pr.depth;
-      cxw+=p.x; cyw+=p.y; czw+=p.z;
-    }
-    const n = f.pts.length;
-    depth/=n; cxw/=n; cyw/=n; czw/=n;
-
-    let bright = 1;
-    if (f.kind!=='marker' && f.kind!=='shadow'){
-      let nrm = faceNormal(f.pts);
-      const dirx=camPos.x-cxw, diry=camPos.y-cyw, dirz=camPos.z-czw;
-      if (nrm.x*dirx+nrm.y*diry+nrm.z*dirz < 0){ nrm.x=-nrm.x;nrm.y=-nrm.y;nrm.z=-nrm.z; }
-      const diff = Math.max(0, nrm.x*LIGHT.x+nrm.y*LIGHT.y+nrm.z*LIGHT.z);
-      bright = 0.42 + 0.75*diff;
-    }
-    drawList.push({ f, sx, sy, depth, bright });
+  // ---- cube wireframe + per-layer frames ----
+  const lo=cellWorld(0,0,0), hi=cellWorld(7,7,7);
+  addBox(items, lo, hi, 'rgba(150,180,255,0.16)', 1.4);
+  for (let y=0;y<S;y++){
+    const a=cellWorld(0,y,0), b=cellWorld(7,y,7);
+    addLayerFrame(items, a.y, a.x, a.z, b.x, b.z, 'rgba(120,150,220,0.06)');
   }
 
-  drawList.sort((a,b)=> b.depth - a.depth);
+  // ---- valid-move markers (current player) ----
+  const markers = (!busy && showHints && !gameOver && current===HUMAN) ? validCache : [];
+  const pulse = 0.5+0.5*Math.sin(performance.now()/280);
+  for (const m of markers){
+    const w=cellWorld(m.x,m.y,m.z);
+    const pr=project(w);
+    const rad = 0.42*pr.s;
+    const isHover = (m.i===hoverIdx);
+    items.push({ kind:'marker', depth:pr.depth, x:pr.x, y:pr.y, r:rad,
+                 alpha:(isHover?0.9:0.35+0.35*pulse), hover:isHover });
+  }
 
-  for (const item of drawList){
-    const { f, sx, sy, bright } = item;
-    ctx.beginPath();
-    ctx.moveTo(sx[0], sy[0]);
-    for (let i=1;i<sx.length;i++) ctx.lineTo(sx[i], sy[i]);
-    ctx.closePath();
+  // ---- pieces (billboard spheres) ----
+  pieces.forEach(pc=>{
+    let scale=1, disp=pc.value, flash=0;
+    if (pc.anim){
+      const t=clamp((performance.now()-pc.anim.start)/pc.anim.dur,0,1);
+      if (pc.anim.type==='pop'){ scale=easeOutBack(t); }
+      else { // flip
+        scale=1-0.30*Math.sin(t*Math.PI);
+        disp = t<0.5? pc.anim.from : pc.anim.to;
+        flash= Math.sin(t*Math.PI)*0.5;
+      }
+    }
+    const w=cellWorld(pc.x,pc.y,pc.z);
+    const pr=project(w);
+    const rad=0.42*pr.s*scale;
+    items.push({ kind:'sphere', depth:pr.depth, x:pr.x, y:pr.y, r:rad,
+                 col: disp===BLACK?COL.black:COL.white, flash });
+  });
 
-    if (f.kind==='shadow'){
-      ctx.fillStyle = 'rgba(0,0,0,'+f.alpha+')';
-      ctx.fill();
-    } else if (f.kind==='marker'){
-      ctx.fillStyle = 'rgba('+COL.marker[0]+','+COL.marker[1]+','+COL.marker[2]+','+f.alpha+')';
-      ctx.fill();
-      ctx.lineWidth=1.5;
-      ctx.strokeStyle='rgba('+COL.marker[0]+','+COL.marker[1]+','+COL.marker[2]+',0.8)';
-      ctx.stroke();
-    } else if (f.kind==='cap'){
-      let cx=0, cy=0; for (let i=0;i<sx.length;i++){ cx+=sx[i]; cy+=sy[i]; }
-      cx/=sx.length; cy/=sy.length;
-      let rad=0; for (let i=0;i<sx.length;i++){ rad=Math.max(rad, Math.hypot(sx[i]-cx, sy[i]-cy)); }
-      rad = Math.max(rad, 2);
-      const base = f.capCol;
-      const hi   = mix(base,[255,255,255], base[0]<100?0.55:0.85);
-      const lo   = mix(base,[0,0,0], 0.45);
-      const gg = ctx.createRadialGradient(cx-rad*0.32, cy-rad*0.38, rad*0.05, cx, cy, rad*1.15);
-      gg.addColorStop(0, shade(hi, clamp(bright+0.15,0,1.6)));
-      gg.addColorStop(0.55, shade(base, bright));
-      gg.addColorStop(1, shade(lo, bright));
-      ctx.fillStyle = gg;
-      ctx.fill();
-    } else if (f.kind==='felt'){
-      ctx.fillStyle = f.hover ? shade(mix(f.base,[255,255,180],0.35), bright)
-                              : shade(f.base, bright);
-      ctx.fill();
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba('+COL.grid[0]+','+COL.grid[1]+','+COL.grid[2]+',0.9)';
-      ctx.stroke();
+  // depth sort: far first
+  items.sort((a,b)=> b.depth-a.depth);
+
+  for (const it of items){
+    if (it.kind==='line'){
+      ctx.beginPath(); ctx.moveTo(it.x1,it.y1); ctx.lineTo(it.x2,it.y2);
+      ctx.strokeStyle=it.color; ctx.lineWidth=it.lw||1; ctx.stroke();
+    } else if (it.kind==='marker'){
+      drawMarker(it);
     } else {
-      ctx.fillStyle = shade(f.base, bright);
-      ctx.fill();
+      drawSphere(it);
     }
   }
 }
 
+function addBox(items, lo, hi, color, lw){
+  const c=[
+    {x:lo.x,y:lo.y,z:lo.z},{x:hi.x,y:lo.y,z:lo.z},{x:hi.x,y:lo.y,z:hi.z},{x:lo.x,y:lo.y,z:hi.z},
+    {x:lo.x,y:hi.y,z:lo.z},{x:hi.x,y:hi.y,z:lo.z},{x:hi.x,y:hi.y,z:hi.z},{x:lo.x,y:hi.y,z:hi.z}
+  ];
+  const E=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  for (const [a,b] of E) addLine(items, c[a], c[b], color, lw);
+}
+function addLayerFrame(items, y, x0,z0, x1,z1, color){
+  const p=[{x:x0,y,z:z0},{x:x1,y,z:z0},{x:x1,y,z:z1},{x:x0,y,z:z1}];
+  for (let i=0;i<4;i++) addLine(items, p[i], p[(i+1)%4], color, 1);
+}
+function addLine(items, a, b, color, lw){
+  const pa=project(a), pb=project(b);
+  items.push({ kind:'line', depth:(pa.depth+pb.depth)/2, x1:pa.x,y1:pa.y,x2:pb.x,y2:pb.y, color, lw });
+}
+
+function drawSphere(it){
+  const {x,y,r,col}=it;
+  if (r<0.4) return;
+  // contact shadow-ish dark halo
+  const hx=x-r*0.34, hy=y-r*0.40;
+  const hi=mix(col,[255,255,255], col[0]<120?0.55:0.9);
+  const lo=mix(col,[0,0,0], 0.55);
+  const gg=ctx.createRadialGradient(hx,hy,r*0.08, x,y,r*1.02);
+  gg.addColorStop(0, rgb(hi));
+  gg.addColorStop(0.5, rgb(col));
+  gg.addColorStop(1, rgb(lo));
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=gg; ctx.fill();
+  // subtle rim
+  ctx.lineWidth=Math.max(0.6,r*0.06);
+  ctx.strokeStyle= col[0]<120?'rgba(120,140,200,0.25)':'rgba(120,130,160,0.35)';
+  ctx.stroke();
+  // specular dot
+  ctx.beginPath(); ctx.arc(hx,hy,r*0.16,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,'+(col[0]<120?0.5:0.85)+')'; ctx.fill();
+  if (it.flash>0){
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,'+it.flash+')'; ctx.fill();
+  }
+}
+function drawMarker(it){
+  const {x,y,r,alpha,hover}=it;
+  ctx.beginPath(); ctx.arc(x,y,r*0.9,0,Math.PI*2);
+  ctx.fillStyle='rgba('+COL.marker[0]+','+COL.marker[1]+','+COL.marker[2]+','+(alpha*0.32)+')';
+  ctx.fill();
+  ctx.lineWidth=hover?2.4:1.6;
+  ctx.strokeStyle='rgba('+COL.marker[0]+','+COL.marker[1]+','+COL.marker[2]+','+alpha+')';
+  ctx.stroke();
+  // small center cross for clarity
+  ctx.beginPath();
+  ctx.moveTo(x-r*0.28,y); ctx.lineTo(x+r*0.28,y);
+  ctx.moveTo(x,y-r*0.28); ctx.lineTo(x,y+r*0.28);
+  ctx.strokeStyle='rgba('+COL.marker[0]+','+COL.marker[1]+','+COL.marker[2]+','+(alpha*0.9)+')';
+  ctx.lineWidth=1.4; ctx.stroke();
+}
+
 // =========================================================================
-//  Main loop
+//  Loop
 // =========================================================================
 function loop(){
-  cam.yaw   += (cam.targetYaw   - cam.yaw)   * 0.12;
-  cam.pitch += (cam.targetPitch - cam.pitch) * 0.12;
-  cam.dist  += (cam.targetDist  - cam.dist)  * 0.12;
+  cam.yaw   += (cam.targetYaw-cam.yaw)*0.12;
+  cam.pitch += (cam.targetPitch-cam.pitch)*0.12;
+  if (autoRotate && !dragging){ cam.yaw+=0.0035; cam.targetYaw+=0.0035; }
   render();
   requestAnimationFrame(loop);
 }
@@ -724,107 +537,101 @@ function loop(){
 // =========================================================================
 let dragging=false, moved=false, lastX=0, lastY=0;
 
-function pickCell(mx,my){
+function pick(mx,my){
+  // nearest valid-move marker in screen space
   let best=null, bestD=1e9;
-  for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-    const w = cellWorld(r,c);
-    const pr = project({x:w.x, y:0.05, z:w.z});
-    const d = Math.hypot(pr.x-mx, pr.y-my);
-    if (d<bestD){ bestD=d; best=[r,c]; }
+  for (const m of validCache){
+    const pr=project(cellWorld(m.x,m.y,m.z));
+    const d=Math.hypot(pr.x-mx, pr.y-my);
+    // scale threshold with sphere radius
+    if (d<bestD && d < 0.55*pr.s + 6){ bestD=d; best=m; }
   }
-  return bestD < 46 ? best : null;
+  return best;
 }
 
 canvas.addEventListener('pointerdown', e=>{
   dragging=true; moved=false; lastX=e.clientX; lastY=e.clientY;
-  canvas.classList.add('dragging');
-  canvas.setPointerCapture(e.pointerId);
+  canvas.classList.add('dragging'); canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener('pointermove', e=>{
   if (dragging){
     const dx=e.clientX-lastX, dy=e.clientY-lastY;
-    if (Math.abs(dx)+Math.abs(dy) > 3) moved=true;
-    cam.targetYaw   += dx*0.008;
-    cam.targetPitch += dy*0.006;
-    cam.targetPitch = clamp(cam.targetPitch, 0.35, 1.45);
+    if (Math.abs(dx)+Math.abs(dy)>3) moved=true;
+    cam.targetYaw  += dx*0.008;
+    cam.targetPitch = clamp(cam.targetPitch + dy*0.006, -1.35, 1.35);
     lastX=e.clientX; lastY=e.clientY;
   } else {
-    hoverCell = pickCell(e.clientX, e.clientY);
+    const m = (!busy&&current===HUMAN)? pick(e.clientX,e.clientY):null;
+    hoverIdx = m? m.i : -1;
   }
 });
 canvas.addEventListener('pointerup', e=>{
   canvas.classList.remove('dragging');
-  if (dragging && !moved){ handleClick(e.clientX, e.clientY); }
+  if (dragging && !moved) handleClick(e.clientX,e.clientY);
   dragging=false;
 });
 canvas.addEventListener('pointercancel', ()=>{ dragging=false; canvas.classList.remove('dragging'); });
 canvas.addEventListener('wheel', e=>{
   e.preventDefault();
-  cam.targetDist = clamp(cam.targetDist + e.deltaY*0.01, 8.5, 22);
+  focalV=clamp(focalV - e.deltaY*0.25, 120, 420);
+  document.getElementById('zoom').value=focalV;
 },{passive:false});
 
 function handleClick(mx,my){
-  if (busy || gameOver || current!==HUMAN) return;
-  const cell = pickCell(mx,my);
-  if (!cell) return;
-  const [r,c]=cell;
-  if (getFlips(board,r,c,HUMAN).length){
-    playMove(r,c,HUMAN);
-  } else {
-    flashStatus('そこには置けません');
-  }
+  if (busy||gameOver||current!==HUMAN) return;
+  const m=pick(mx,my);
+  if (m) playMove(m.x,m.y,m.z,HUMAN);
 }
 
 // =========================================================================
 //  HUD
 // =========================================================================
 function updateHud(){
-  const {b,w} = countStones(board);
+  const {b,w}=countStones(grid);
   document.getElementById('score-b').textContent=b;
   document.getElementById('score-w').textContent=w;
   document.getElementById('chip-b').classList.toggle('active', current===BLACK && !gameOver);
   document.getElementById('chip-w').classList.toggle('active', current===WHITE && !gameOver);
 }
 let statusTimer=null;
-function setStatus(txt, human){
-  const sb=document.getElementById('statusbar');
-  sb.style.opacity='1';
+function setStatus(txt,human){
   document.getElementById('statustext').textContent=txt;
-  document.getElementById('statusdot').style.background = human? '#6fd3ff' : '#ffd98a';
-  document.getElementById('statusdot').style.boxShadow = '0 0 10px '+(human?'#6fd3ff':'#ffd98a');
+  const d=document.getElementById('statusdot');
+  d.style.background=human?'#6fd3ff':'#ffd98a';
+  d.style.boxShadow='0 0 10px '+(human?'#6fd3ff':'#ffd98a');
 }
 function flashStatus(txt){
-  setStatus(txt, current===HUMAN);
+  setStatus(txt,current===HUMAN);
   clearTimeout(statusTimer);
-  statusTimer=setTimeout(()=>{
-    if (!gameOver) setStatus(current===HUMAN?'あなたの番です（黒）':'CPU 思考中…', current===HUMAN);
-  }, 1400);
+  statusTimer=setTimeout(()=>{ if(!gameOver) setStatus(current===HUMAN?'あなたの番です（黒）':'CPU 思考中…',current===HUMAN); },1400);
 }
-function clearMarkers(){ hoverCell=null; }
-
 function endGame(){
-  gameOver=true; busy=false;
-  const {b,w}=countStones(board);
-  updateHud();
+  gameOver=true; busy=false; validCache=[];
+  const {b,w}=countStones(grid); updateHud();
   document.getElementById('final-b').textContent=b;
   document.getElementById('final-w').textContent=w;
-  let title, sub;
-  if (b>w){ title='あなたの勝ち！'; sub='黒 '+b+' 対 白 '+w+' — お見事！'; }
-  else if (w>b){ title='CPUの勝ち'; sub='黒 '+b+' 対 白 '+w+' — 惜しい！'; }
-  else { title='引き分け'; sub='黒 '+b+' 対 白 '+w; }
-  document.getElementById('winTitle').textContent=title;
-  document.getElementById('winSub').textContent=sub;
-  setStatus('対局終了', true);
-  setTimeout(()=>document.getElementById('overlay').classList.add('show'), 500);
+  let t,s;
+  if (b>w){ t='あなたの勝ち！'; s='黒 '+b+' 対 白 '+w+' — お見事！'; }
+  else if (w>b){ t='CPUの勝ち'; s='黒 '+b+' 対 白 '+w+' — 惜しい！'; }
+  else { t='引き分け'; s='黒 '+b+' 対 白 '+w; }
+  document.getElementById('winTitle').textContent=t;
+  document.getElementById('winSub').textContent=s;
+  setStatus('対局終了',true);
+  setTimeout(()=>document.getElementById('overlay').classList.add('show'),500);
 }
 function hideOverlay(){ document.getElementById('overlay').classList.remove('show'); }
 
-// buttons
+// ---- controls ----
 document.getElementById('newBtn').addEventListener('click', newGame);
 document.getElementById('againBtn').addEventListener('click', newGame);
 document.getElementById('hintBtn').addEventListener('click', function(){
-  showHints=!showHints; this.style.opacity = showHints?'1':'0.5';
+  showHints=!showHints; this.classList.toggle('off',!showHints);
 });
+document.getElementById('rotBtn').addEventListener('click', function(){
+  autoRotate=!autoRotate; this.classList.toggle('off',!autoRotate);
+});
+document.getElementById('explode').addEventListener('input', e=>{ spacing=e.target.value/100; });
+document.getElementById('zoom').addEventListener('input', e=>{ focalV=parseFloat(e.target.value); });
 
 // go
 newGame();
