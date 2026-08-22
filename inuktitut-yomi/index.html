@@ -3,21 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>イヌクティトゥット文字 読み変換 | Nihongo → ᐃᓄᒃᑎᑐᑦ</title>
+<title>日本語の読み → 世界の文字変換 | ᐃᓄᒃᑎᑐᑦ ⵜⵉⴼⵉⵏⴰⵖ සිංහල ግዕዝ</title>
 <!--
 AI Model: Claude Opus 4.8
 User Prompt: 新しいプロジェクトを作って、日本語の読みをイヌクティトゥット語で表記するアプリを作ってください
-AI Approach: 日本語のかな(モーラ)を、カナダ先住民音節文字(イヌクティトゥット文字/Unicode Canadian Aboriginal Syllabics)へ
-  子音+母音単位で近似マッピングして変換する単一HTMLアプリ。イヌクティトゥットは母音がa/i/uの3種のみで
-  一部子音を持たないため、e→i, o→u, は行→q系, ば行→v系, や行→j系 等の近似ルールを適用。
-  拗音・促音(っ)・撥音(ん)・長音(ー)・カタカナ→ひらがな正規化を実装し、モーラごとの内訳も表示する。
-Implementation Intent: 日本語の読み(かな)を入力すると、イヌクティトゥット音節文字とそのラテン翻字にリアルタイム変換する
-  教育的ツール。少数言語の文字体系と日本語音韻の違いを楽しく学べることを目的とする。
+           → その後「ティフィナグ文字も加えて」「シンハラ文字、ゲエズ文字も」と追加要望
+AI Approach: 日本語のかな(モーラ)を「子音+母音」の共通音素表現に分解し、4つの文字体系のレンダラーで
+  描き分ける単一HTMLアプリ。
+  - イヌクティトゥット文字(カナダ先住民音節文字): 母音a/i/uの3種に近似(え→i,お→u)、は行→q系等
+  - ティフィナグ文字(ベルベル/アマジグ・アルファベット): 子音字+母音字を連結、o→u近似
+  - シンハラ文字(アブギダ): 子音字(固有母音a)+母音記号(matra)、独立母音・ヴィラマ(්)対応
+  - ゲエズ文字/エチオピア文字(アブギダ): 各子音の7母音形(order)を持ちa/i/u/e/oを忠実にマッピング
+  拗音・促音(っ)・撥音(ん)・長音(ー)・カタカナ正規化を実装し、モーラごとの内訳表も表示する。
+Implementation Intent: 日本語の読み(かな)を入力すると、世界の少数言語で使われる4つの文字にリアルタイム変換する
+  教育的ツール。各文字体系の音韻構造(音節文字/アルファベット/アブギダ)の違いを楽しく学べることを目的とする。
 -->
 <style>
   :root{
-    --bg:#0d1b2a; --bg2:#1b263b; --card:#20304a; --accent:#e0aa3e;
-    --accent2:#63c7b2; --text:#eef2f7; --muted:#9fb0c3; --line:#33465f;
+    --bg:#0d1b2a; --card:#20304a; --card2:#1a2740; --text:#eef2f7;
+    --muted:#9fb0c3; --line:#33465f;
+    --inuk:#e0aa3e; --tif:#63c7b2; --sin:#e97fb0; --geez:#8fb4ff;
   }
   *{box-sizing:border-box;}
   body{
@@ -25,71 +30,91 @@ Implementation Intent: 日本語の読み(かな)を入力すると、イヌク�
     background:linear-gradient(160deg,var(--bg),#122236 60%,#0a1420);
     color:var(--text); min-height:100vh; line-height:1.6;
   }
-  header{
-    text-align:center; padding:28px 16px 12px;
-  }
-  header h1{
-    margin:0; font-size:clamp(20px,4.5vw,30px); letter-spacing:.02em;
-  }
-  header .syl-title{ color:var(--accent); }
-  header p{ margin:6px 0 0; color:var(--muted); font-size:14px; }
-  .wrap{ max-width:860px; margin:0 auto; padding:8px 16px 60px; }
+  header{ text-align:center; padding:26px 16px 6px; }
+  header h1{ margin:0; font-size:clamp(18px,4vw,26px); letter-spacing:.02em; }
+  header .scripts-line{ font-size:clamp(20px,6vw,34px); margin-top:8px; }
+  header .scripts-line span{ margin:0 .18em; }
+  .s-inuk{ color:var(--inuk); } .s-tif{ color:var(--tif); }
+  .s-sin{ color:var(--sin); } .s-geez{ color:var(--geez); }
+  header p{ margin:8px 0 0; color:var(--muted); font-size:14px; }
+  .wrap{ max-width:920px; margin:0 auto; padding:8px 16px 60px; }
   .card{
     background:var(--card); border:1px solid var(--line); border-radius:14px;
     padding:18px; margin:14px 0; box-shadow:0 8px 24px rgba(0,0,0,.25);
   }
   label.field-label{ display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
   textarea{
-    width:100%; min-height:92px; resize:vertical; border-radius:10px;
+    width:100%; min-height:80px; resize:vertical; border-radius:10px;
     border:1px solid var(--line); background:#0f1c2e; color:var(--text);
     font-size:18px; padding:12px; font-family:inherit; outline:none;
   }
-  textarea:focus{ border-color:var(--accent2); }
+  textarea:focus{ border-color:var(--tif); }
   .presets{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
   .presets button{
     background:#16273d; color:var(--text); border:1px solid var(--line);
-    border-radius:999px; padding:6px 14px; font-size:14px; cursor:pointer;
-    transition:.15s;
+    border-radius:999px; padding:6px 14px; font-size:14px; cursor:pointer; transition:.15s;
   }
-  .presets button:hover{ background:var(--accent2); color:#08131f; border-color:var(--accent2); }
-  .out-syl{
-    font-size:clamp(30px,9vw,56px); line-height:1.35; word-break:break-word;
-    color:var(--accent); min-height:64px; letter-spacing:.02em;
-  }
-  .out-lat{
-    font-size:18px; color:var(--accent2); word-break:break-word; margin-top:6px;
-    font-family:"SFMono-Regular",Consolas,monospace;
-  }
-  .row-between{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .presets button:hover{ background:var(--tif); color:#08131f; border-color:var(--tif); }
+
+  .script-card{ border-left:4px solid var(--line); }
+  .script-card.inuk{ border-left-color:var(--inuk); }
+  .script-card.tif{ border-left-color:var(--tif); }
+  .script-card.sin{ border-left-color:var(--sin); }
+  .script-card.geez{ border-left-color:var(--geez); }
+  .row-between{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .script-name{ font-size:15px; font-weight:700; }
+  .script-sub{ font-size:12px; color:var(--muted); font-weight:400; margin-left:8px; }
   .copy-btn{
-    background:var(--accent); color:#0c1626; border:none; border-radius:8px;
-    padding:8px 16px; font-weight:700; cursor:pointer; font-size:14px;
+    background:#2b3d5a; color:var(--text); border:1px solid var(--line); border-radius:8px;
+    padding:6px 14px; font-weight:700; cursor:pointer; font-size:13px;
   }
   .copy-btn:active{ transform:translateY(1px); }
-  h2.section{ font-size:15px; color:var(--muted); margin:0 0 10px; font-weight:600; }
-  .breakdown{ display:flex; flex-wrap:wrap; gap:8px; }
-  .mora{
-    background:#0f1c2e; border:1px solid var(--line); border-radius:10px;
-    padding:8px 10px; text-align:center; min-width:52px;
-  }
-  .mora .jp{ font-size:15px; color:var(--muted); }
-  .mora .sy{ font-size:26px; color:var(--accent); line-height:1.2; }
-  .mora .la{ font-size:12px; color:var(--accent2); font-family:monospace; }
-  .mora.pass{ opacity:.6; }
-  table.legend{ width:100%; border-collapse:collapse; font-size:13px; }
-  table.legend th, table.legend td{ border:1px solid var(--line); padding:6px 8px; text-align:center; }
-  table.legend th{ background:#16273d; color:var(--muted); }
-  table.legend .sy{ font-size:20px; color:var(--accent); }
+  .out-glyph{ font-size:clamp(26px,8vw,48px); line-height:1.5; word-break:break-word; margin-top:8px; min-height:52px; }
+  .out-lat{ font-size:15px; color:var(--muted); word-break:break-word; margin-top:4px; font-family:Consolas,monospace; }
+  .inuk .out-glyph{ color:var(--inuk); }
+  .tif  .out-glyph{ color:var(--tif); }
+  .sin  .out-glyph{ color:var(--sin); }
+  .geez .out-glyph{ color:var(--geez); }
+
+  /* 文字体系ごとのフォント指定（Windows/主要OSに搭載のフォントを優先） */
+  .f-inuk{ font-family:"Euphemia","Gadugi","Noto Sans Canadian Aboriginal",sans-serif; }
+  .f-tif { font-family:"Ebrima","Noto Sans Tifinagh",sans-serif; }
+  .f-sin { font-family:"Nirmala UI","Iskoola Pota","Noto Sans Sinhala",sans-serif; }
+  .f-geez{ font-family:"Nyala","Noto Sans Ethiopic","Abyssinica SIL",serif; }
+
+  h2.section{ font-size:15px; color:var(--muted); margin:0 0 12px; font-weight:600; }
+  .table-scroll{ overflow-x:auto; }
+  table.bd{ width:100%; border-collapse:collapse; font-size:14px; min-width:560px; }
+  table.bd th, table.bd td{ border:1px solid var(--line); padding:8px 6px; text-align:center; }
+  table.bd thead th{ background:#16273d; color:var(--muted); font-size:12px; }
+  table.bd td.jp{ font-size:16px; }
+  table.bd td.ro{ font-family:monospace; color:var(--muted); font-size:13px; }
+  table.bd td.g-inuk{ color:var(--inuk); font-size:22px; }
+  table.bd td.g-tif { color:var(--tif);  font-size:22px; }
+  table.bd td.g-sin { color:var(--sin);  font-size:22px; }
+  table.bd td.g-geez{ color:var(--geez); font-size:22px; }
   details{ margin-top:6px; }
-  summary{ cursor:pointer; color:var(--accent2); font-size:14px; }
+  summary{ cursor:pointer; color:var(--tif); font-size:14px; }
   .note{ font-size:13px; color:var(--muted); }
+  .rules{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; margin-top:10px; }
+  .rule-box{ background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .rule-box h3{ margin:0 0 6px; font-size:14px; }
+  .rule-box.inuk h3{ color:var(--inuk); } .rule-box.tif h3{ color:var(--tif); }
+  .rule-box.sin h3{ color:var(--sin); } .rule-box.geez h3{ color:var(--geez); }
+  .rule-box ul{ margin:0; padding-left:18px; font-size:12.5px; color:var(--muted); }
   footer{ text-align:center; color:var(--muted); font-size:12px; padding:20px; }
 </style>
 </head>
 <body>
 <header>
-  <h1>日本語 → <span class="syl-title">ᐃᓄᒃᑎᑐᑦ</span> イヌクティトゥット文字 変換</h1>
-  <p>日本語の読み（ひらがな・カタカナ）を、カナダ先住民の音節文字で表記します</p>
+  <h1>日本語の読み → 世界の文字へ変換</h1>
+  <div class="scripts-line">
+    <span class="f-inuk s-inuk">ᐃᓄᒃᑎᑐᑦ</span>
+    <span class="f-tif s-tif">ⵜⵉⴼⵉⵏⴰⵖ</span>
+    <span class="f-sin s-sin">සිංහල</span>
+    <span class="f-geez s-geez">ግዕዝ</span>
+  </div>
+  <p>ひらがな・カタカナの読みを、イヌクティトゥット／ティフィナグ／シンハラ／ゲエズ文字で表記します</p>
 </header>
 
 <div class="wrap">
@@ -100,201 +125,294 @@ Implementation Intent: 日本語の読み(かな)を入力すると、イヌク�
     <div class="presets" id="presets"></div>
   </div>
 
-  <div class="card">
-    <div class="row-between">
-      <h2 class="section">イヌクティトゥット文字</h2>
-      <button class="copy-btn" id="copyBtn">コピー</button>
-    </div>
-    <div class="out-syl" id="outSyl"></div>
-    <div class="out-lat" id="outLat"></div>
-  </div>
+  <div id="scriptCards"></div>
 
   <div class="card">
     <h2 class="section">モーラごとの内訳</h2>
-    <div class="breakdown" id="breakdown"></div>
+    <div class="table-scroll">
+      <table class="bd">
+        <thead>
+          <tr>
+            <th>かな</th><th>ローマ字</th>
+            <th>イヌクティトゥット</th><th>ティフィナグ</th><th>シンハラ</th><th>ゲエズ</th>
+          </tr>
+        </thead>
+        <tbody id="bdBody"></tbody>
+      </table>
+    </div>
   </div>
 
   <div class="card">
-    <h2 class="section">変換のしくみ</h2>
+    <h2 class="section">変換のしくみ（近似ルール）</h2>
     <p class="note">
-      イヌクティトゥット文字の母音は <b>a / i / u</b> の3種のみで、日本語のいくつかの子音は存在しません。
-      そのため以下のように<b>近似</b>して変換しています（音を完全に再現するものではありません）。
+      各文字体系は日本語と音の体系が異なるため、下記のように<b>近似</b>して変換します（音の完全再現ではありません）。
     </p>
-    <details open>
-      <summary>母音・子音の対応ルールを見る</summary>
-      <div style="overflow-x:auto; margin-top:10px;">
-        <table class="legend">
-          <tr><th>日本語</th><th>近似</th><th>a</th><th>i</th><th>u</th></tr>
-          <tr><td>母音</td><td>え→i, お→u</td><td class="sy">ᐊ</td><td class="sy">ᐃ</td><td class="sy">ᐅ</td></tr>
-          <tr><td>か行</td><td>k</td><td class="sy">ᑲ</td><td class="sy">ᑭ</td><td class="sy">ᑯ</td></tr>
-          <tr><td>が行</td><td>g</td><td class="sy">ᒐ</td><td class="sy">ᒋ</td><td class="sy">ᒍ</td></tr>
-          <tr><td>さ/ざ行</td><td>s（じ→j）</td><td class="sy">ᓴ</td><td class="sy">ᓯ</td><td class="sy">ᓱ</td></tr>
-          <tr><td>た/だ行</td><td>t（ち→ti, つ→tu）</td><td class="sy">ᑕ</td><td class="sy">ᑎ</td><td class="sy">ᑐ</td></tr>
-          <tr><td>な行</td><td>n</td><td class="sy">ᓇ</td><td class="sy">ᓂ</td><td class="sy">ᓄ</td></tr>
-          <tr><td>は行</td><td>h→q（喉音で近似）</td><td class="sy">ᖃ</td><td class="sy">ᕿ</td><td class="sy">ᖁ</td></tr>
-          <tr><td>ば行</td><td>b→v</td><td class="sy">ᕙ</td><td class="sy">ᕕ</td><td class="sy">ᕗ</td></tr>
-          <tr><td>ぱ行</td><td>p</td><td class="sy">ᐸ</td><td class="sy">ᐱ</td><td class="sy">ᐳ</td></tr>
-          <tr><td>ま行</td><td>m</td><td class="sy">ᒪ</td><td class="sy">ᒥ</td><td class="sy">ᒧ</td></tr>
-          <tr><td>や行</td><td>y→j</td><td class="sy">ᔭ</td><td>—</td><td class="sy">ᔪ</td></tr>
-          <tr><td>ら行</td><td>r</td><td class="sy">ᕋ</td><td class="sy">ᕆ</td><td class="sy">ᕈ</td></tr>
-          <tr><td>わ行</td><td>w→v</td><td class="sy">ᕙ</td><td>—</td><td>—</td></tr>
-        </table>
+    <div class="rules">
+      <div class="rule-box inuk">
+        <h3>イヌクティトゥット（音節文字）</h3>
+        <ul>
+          <li>母音は a/i/u の3種：え→i, お→u</li>
+          <li>は行→q系、ば/わ行→v系、や行→j系</li>
+          <li>ん→語末字 ᓐ、っ→次子音の語末字</li>
+        </ul>
       </div>
-      <p class="note" style="margin-top:10px;">
-        撥音「ん」→ 語末字 <b class="sy" style="color:var(--accent)">ᓐ</b>／
-        促音「っ」→ 次の子音の語末字（例 <b class="sy" style="color:var(--accent)">ᒃ</b>）／
-        長音「ー」→ 直前の母音を反復／拗音（きゃ等）→ 子音＋j系で近似。
-      </p>
-    </details>
+      <div class="rule-box tif">
+        <h3>ティフィナグ（アルファベット）</h3>
+        <ul>
+          <li>子音字＋母音字を連結（a/i/u/e、o→u）</li>
+          <li>し→ⵛ, じ→ⵊ, は行→ⵀ, ば行→ⴱ</li>
+          <li>ん→ⵏ、っ→次の子音字を重ねる</li>
+        </ul>
+      </div>
+      <div class="rule-box sin">
+        <h3>シンハラ（アブギダ）</h3>
+        <ul>
+          <li>子音字(固有母音a)＋母音記号(ි ු ෙ ො)</li>
+          <li>単独母音は අ ඉ උ එ ඔ、o→o</li>
+          <li>ん→න්、っ→子音＋ヴィラマ(්)</li>
+        </ul>
+      </div>
+      <div class="rule-box geez">
+        <h3>ゲエズ／エチオピア（アブギダ）</h3>
+        <ul>
+          <li>各子音が7母音形を持ち a/i/u/e/o を忠実表記</li>
+          <li>は行→h系(ሀ)、ば行→b系(በ)</li>
+          <li>ん→6画目(ን)、っ→次子音の6画目形</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note" style="margin-top:10px;">
+      共通：長音「ー」→直前の母音を反復／拗音（きゃ等）→「子音＋i形」＋「や行」で近似。
+      文字が□で表示される場合は、その文字体系のフォントが端末に無いためです。
+    </p>
   </div>
 
 </div>
 
-<footer>Created with Generative AI · イヌクティトゥット文字（Canadian Aboriginal Syllabics）による日本語の読み表記</footer>
+<footer>Created with Generative AI · 日本語の読みを世界の文字で表記するツール</footer>
 
 <script>
-// ==== かな → [イヌクティトゥット音節文字, ラテン翻字] マッピング表 ====
-const T = {
-  // 母音 (え→i, お→u)
-  'あ':['ᐊ','a'], 'い':['ᐃ','i'], 'う':['ᐅ','u'], 'え':['ᐃ','i'], 'お':['ᐅ','u'],
-  // か行 / が行
-  'か':['ᑲ','ka'],'き':['ᑭ','ki'],'く':['ᑯ','ku'],'け':['ᑭ','ki'],'こ':['ᑯ','ku'],
-  'が':['ᒐ','ga'],'ぎ':['ᒋ','gi'],'ぐ':['ᒍ','gu'],'げ':['ᒋ','gi'],'ご':['ᒍ','gu'],
-  // さ行 / ざ行  (じ→j)
-  'さ':['ᓴ','sa'],'し':['ᓯ','si'],'す':['ᓱ','su'],'せ':['ᓯ','si'],'そ':['ᓱ','su'],
-  'ざ':['ᓴ','sa'],'じ':['ᔨ','ji'],'ず':['ᓱ','su'],'ぜ':['ᓯ','si'],'ぞ':['ᓱ','su'],
-  // た行 / だ行
-  'た':['ᑕ','ta'],'ち':['ᑎ','ti'],'つ':['ᑐ','tu'],'て':['ᑎ','ti'],'と':['ᑐ','tu'],
-  'だ':['ᑕ','ta'],'ぢ':['ᔨ','ji'],'づ':['ᑐ','tu'],'で':['ᑎ','ti'],'ど':['ᑐ','tu'],
-  // な行
-  'な':['ᓇ','na'],'に':['ᓂ','ni'],'ぬ':['ᓄ','nu'],'ね':['ᓂ','ni'],'の':['ᓄ','nu'],
-  // は行 (h→q)
-  'は':['ᖃ','qa'],'ひ':['ᕿ','qi'],'ふ':['ᖁ','qu'],'へ':['ᕿ','qi'],'ほ':['ᖁ','qu'],
-  // ば行 (b→v) / ぱ行
-  'ば':['ᕙ','va'],'び':['ᕕ','vi'],'ぶ':['ᕗ','vu'],'べ':['ᕕ','vi'],'ぼ':['ᕗ','vu'],
-  'ぱ':['ᐸ','pa'],'ぴ':['ᐱ','pi'],'ぷ':['ᐳ','pu'],'ぺ':['ᐱ','pi'],'ぽ':['ᐳ','pu'],
-  // ま行
-  'ま':['ᒪ','ma'],'み':['ᒥ','mi'],'む':['ᒧ','mu'],'め':['ᒥ','mi'],'も':['ᒧ','mu'],
-  // や行 (y→j)
-  'や':['ᔭ','ja'],'ゆ':['ᔪ','ju'],'よ':['ᔪ','ju'],
-  // ら行
-  'ら':['ᕋ','ra'],'り':['ᕆ','ri'],'る':['ᕈ','ru'],'れ':['ᕆ','ri'],'ろ':['ᕈ','ru'],
-  // わ行 (w→v) / を→u
-  'わ':['ᕙ','va'],'ゐ':['ᕕ','vi'],'ゑ':['ᕕ','vi'],'を':['ᐅ','u'],
-  // 撥音
-  'ん':['ᓐ','n'],
-  // 小さい母音
-  'ぁ':['ᐊ','a'],'ぃ':['ᐃ','i'],'ぅ':['ᐅ','u'],'ぇ':['ᐃ','i'],'ぉ':['ᐅ','u'],
-  // ヴ
-  'ゔ':['ᕗ','vu'],
+/* =========================================================================
+   1) かな → 音素(子音, 母音) の共通中間表現
+   consonant: '' | k g s z sh j t ch ts d n h f b p m y r w v
+   vowel: a i u e o
+   ========================================================================= */
+const PHON = {
+  'あ':['','a'],'い':['','i'],'う':['','u'],'え':['','e'],'お':['','o'],
+  'か':['k','a'],'き':['k','i'],'く':['k','u'],'け':['k','e'],'こ':['k','o'],
+  'が':['g','a'],'ぎ':['g','i'],'ぐ':['g','u'],'げ':['g','e'],'ご':['g','o'],
+  'さ':['s','a'],'し':['sh','i'],'す':['s','u'],'せ':['s','e'],'そ':['s','o'],
+  'ざ':['z','a'],'じ':['j','i'],'ず':['z','u'],'ぜ':['z','e'],'ぞ':['z','o'],
+  'た':['t','a'],'ち':['ch','i'],'つ':['ts','u'],'て':['t','e'],'と':['t','o'],
+  'だ':['d','a'],'ぢ':['j','i'],'づ':['z','u'],'で':['d','e'],'ど':['d','o'],
+  'な':['n','a'],'に':['n','i'],'ぬ':['n','u'],'ね':['n','e'],'の':['n','o'],
+  'は':['h','a'],'ひ':['h','i'],'ふ':['f','u'],'へ':['h','e'],'ほ':['h','o'],
+  'ば':['b','a'],'び':['b','i'],'ぶ':['b','u'],'べ':['b','e'],'ぼ':['b','o'],
+  'ぱ':['p','a'],'ぴ':['p','i'],'ぷ':['p','u'],'ぺ':['p','e'],'ぽ':['p','o'],
+  'ま':['m','a'],'み':['m','i'],'む':['m','u'],'め':['m','e'],'も':['m','o'],
+  'や':['y','a'],'ゆ':['y','u'],'よ':['y','o'],
+  'ら':['r','a'],'り':['r','i'],'る':['r','u'],'れ':['r','e'],'ろ':['r','o'],
+  'わ':['w','a'],'ゐ':['w','i'],'ゑ':['w','e'],'を':['','o'],
+  'ゔ':['v','u'],
+  'ぁ':['','a'],'ぃ':['','i'],'ぅ':['','u'],'ぇ':['','e'],'ぉ':['','o'],
 };
+const SMALL_Y = { 'ゃ':'a', 'ゅ':'u', 'ょ':'o' };
 
-// 拗音（小さいゃゅょ）
-const SMALL_Y = { 'ゃ':['ᔭ','ja'], 'ゅ':['ᔪ','ju'], 'ょ':['ᔪ','ju'] };
+/* =========================================================================
+   2) 各文字体系のデータ & レンダラー
+   ========================================================================= */
+// --- ローマ字 ---
+const RC = {'':'',k:'k',g:'g',s:'s',z:'z',sh:'sh',j:'j',t:'t',ch:'ch',ts:'ts',
+  d:'d',n:'n',h:'h',f:'f',b:'b',p:'p',m:'m',y:'y',r:'r',w:'w',v:'v'};
+const romajiSyl = (c,v) => RC[c] + v;
+const properYouonRomaji = (c,gv) => (['sh','ch','j'].includes(c) ? RC[c]+gv : RC[c]+'y'+gv);
 
-// 子音 → 語末字（促音用）
-const FINALS = { 'k':'ᒃ','g':'ᒡ','s':'ᔅ','t':'ᑦ','n':'ᓐ','p':'ᑉ','m':'ᒻ','j':'ᔾ','v':'ᕝ','r':'ᕐ','q':'ᖅ','l':'ᓪ' };
+// --- イヌクティトゥット（音節文字, 母音a/i/uに縮約）---
+const INUK_SERIES = {'':'V',k:'k',g:'g',s:'s',z:'s',sh:'s',j:'j',t:'t',ch:'t',ts:'t',
+  d:'t',n:'n',h:'q',f:'v',b:'v',p:'p',m:'m',y:'j',r:'r',w:'v',v:'v'};
+const IG = {
+  k:{a:'ᑲ',i:'ᑭ',u:'ᑯ'}, g:{a:'ᒐ',i:'ᒋ',u:'ᒍ'}, s:{a:'ᓴ',i:'ᓯ',u:'ᓱ'},
+  t:{a:'ᑕ',i:'ᑎ',u:'ᑐ'}, n:{a:'ᓇ',i:'ᓂ',u:'ᓄ'}, p:{a:'ᐸ',i:'ᐱ',u:'ᐳ'},
+  m:{a:'ᒪ',i:'ᒥ',u:'ᒧ'}, j:{a:'ᔭ',i:'ᔨ',u:'ᔪ'}, v:{a:'ᕙ',i:'ᕕ',u:'ᕗ'},
+  r:{a:'ᕋ',i:'ᕆ',u:'ᕈ'}, q:{a:'ᖃ',i:'ᕿ',u:'ᖁ'}, l:{a:'ᓚ',i:'ᓕ',u:'ᓗ'},
+  V:{a:'ᐊ',i:'ᐃ',u:'ᐅ'}
+};
+const IFIN = {k:'ᒃ',g:'ᒡ',s:'ᔅ',t:'ᑦ',n:'ᓐ',p:'ᑉ',m:'ᒻ',j:'ᔾ',v:'ᕝ',r:'ᕐ',q:'ᖅ',l:'ᓪ',V:''};
+const mvi = v => (v==='e' ? 'i' : v==='o' ? 'u' : v);           // 母音縮約
+const inukSyl = (c,v) => IG[INUK_SERIES[c]][mvi(v)];
+const inukFinal = c => IFIN[INUK_SERIES[c]] || 'ᒃ';
+const inukLat = (c,v) => { const s = INUK_SERIES[c]; return (s==='V'?'':s) + mvi(v); };
 
-// 標準母音（長音の反復用）
-const VOWEL_SYL = { 'a':'ᐊ','i':'ᐃ','u':'ᐅ' };
+// --- ティフィナグ（アルファベット）---
+const TC = {'':'',k:'ⴽ',g:'ⴳ',s:'ⵙ',z:'ⵣ',sh:'ⵛ',j:'ⵊ',t:'ⵜ',ch:'ⵛ',ts:'ⵜⵙ',
+  d:'ⴷ',n:'ⵏ',h:'ⵀ',f:'ⴼ',b:'ⴱ',p:'ⵒ',m:'ⵎ',y:'ⵢ',r:'ⵔ',w:'ⵡ',v:'ⵠ'};
+const TV = {a:'ⴰ',i:'ⵉ',u:'ⵓ',e:'ⴻ',o:'ⵓ'};
+const tifSyl = (c,v) => TC[c] + TV[v];
+const tifFinal = c => TC[c];
 
-// カタカナ→ひらがな正規化（濁点等は個別コードで変換される）
+// --- シンハラ（アブギダ）---
+const SC = {'':'',k:'ක',g:'ග',s:'ස',z:'ස',sh:'ශ',j:'ජ',t:'ත',ch:'ච',ts:'ට',
+  d:'ද',n:'න',h:'හ',f:'ෆ',b:'බ',p:'ප',m:'ම',y:'ය',r:'ර',w:'ව',v:'ව'};
+const S_MATRA = {a:'',i:'ි',u:'ු',e:'ෙ',o:'ො'};
+const S_INDEP = {a:'අ',i:'ඉ',u:'උ',e:'එ',o:'ඔ'};
+const S_VIRAMA = '්';
+const sinSyl = (c,v) => (c==='' ? S_INDEP[v] : SC[c] + S_MATRA[v]);
+const sinFinal = c => SC[c] + S_VIRAMA;
+
+// --- ゲエズ／エチオピア（アブギダ, 各子音7母音形）---
+const GB = {'':0x12A0,k:0x12A8,g:0x1308,s:0x1230,z:0x12D8,sh:0x1238,j:0x1300,t:0x1270,
+  ch:0x1278,ts:0x1338,d:0x12F0,n:0x1290,h:0x1200,f:0x1348,b:0x1260,p:0x1350,m:0x1218,
+  y:0x12E8,r:0x1228,w:0x12C8,v:0x1268};
+const GORD = {a:3,i:2,u:1,e:4,o:6};   // 母音ごとの字形順(0=ä,1=u,2=i,3=a,4=e,5=ə,6=o)
+const geezSyl = (c,v) => String.fromCodePoint(GB[c] + GORD[v]);
+const geezFinal = c => String.fromCodePoint(GB[c] + 5);   // 6画目(ə形)=母音なし相当
+
+/* =========================================================================
+   3) 変換本体
+   ========================================================================= */
 function toHira(ch){
   const code = ch.codePointAt(0);
-  if(code >= 0x30A1 && code <= 0x30F6){ return String.fromCodePoint(code - 0x60); }
+  if(code >= 0x30A1 && code <= 0x30F6) return String.fromCodePoint(code - 0x60);
   return ch;
 }
 
-// 次のかなの語頭子音を求める（促音用）
-function leadConsonant(kana){
-  const e = T[toHira(kana||'')];
-  if(!e) return '';
-  const lat = e[1];
-  const first = lat[0];
-  return FINALS[first] ? first : '';
+function sylToken(jp, c, v){
+  return { jp, ro: romajiSyl(c,v),
+    inuk: inukSyl(c,v), inukLat: inukLat(c,v),
+    tif: tifSyl(c,v), sin: sinSyl(c,v), geez: geezSyl(c,v) };
+}
+function finalToken(jp, c){
+  return { jp, ro: RC[c] || '',
+    inuk: inukFinal(c), inukLat: (INUK_SERIES[c]||''),
+    tif: tifFinal(c), sin: sinFinal(c), geez: geezFinal(c) };
+}
+function youonToken(jp, c, gv){   // きゃ = 「子音+i形」+「や行」で近似
+  return { jp, ro: properYouonRomaji(c, gv),
+    inuk: inukSyl(c,'i') + inukSyl('y',gv), inukLat: inukLat(c,'i') + inukLat('y',gv),
+    tif: tifSyl(c,'i') + tifSyl('y',gv),
+    sin: sinSyl(c,'i') + sinSyl('y',gv),
+    geez: geezSyl(c,'i') + geezSyl('y',gv) };
+}
+function vowelRepeatToken(jp, v){
+  return { jp, ro: v,
+    inuk: inukSyl('',v), inukLat: mvi(v),
+    tif: TV[v], sin: S_INDEP[v], geez: geezSyl('',v) };
+}
+function passToken(jp){
+  return { jp, ro: jp, inuk: jp, inukLat: jp, tif: jp, sin: jp, geez: jp, pass: true };
 }
 
 function convert(text){
   const chars = [...text];
   const tokens = [];
-  let prevVowel = null;
+  let prevV = null;
 
   for(let i=0; i<chars.length; i++){
     const raw = chars[i];
+
     // 長音符
     if(raw === 'ー' || raw === 'ｰ'){
-      if(prevVowel && VOWEL_SYL[prevVowel]){
-        tokens.push({ jp: raw, sy: VOWEL_SYL[prevVowel], la: prevVowel });
-      }
+      if(prevV) tokens.push(vowelRepeatToken(raw, prevV));
       continue;
     }
     const c = toHira(raw);
 
-    // 促音「っ」
+    // 撥音「ん」
+    if(c === 'ん'){ tokens.push(finalToken(raw, 'n')); prevV = null; continue; }
+
+    // 促音「っ」→ 次の子音を借りる
     if(c === 'っ'){
-      const cons = leadConsonant(chars[i+1]);
-      if(cons && FINALS[cons]){
-        tokens.push({ jp: raw, sy: FINALS[cons], la: cons });
-      } else {
-        tokens.push({ jp: raw, sy: 'ᒃ', la: 'k' });
-      }
+      const np = PHON[toHira(chars[i+1] || '')];
+      const nc = (np && np[0]) ? np[0] : 'k';
+      tokens.push(finalToken(raw, nc));
       continue;
     }
 
-    const entry = T[c];
-    if(entry){
-      const nxt = chars[i+1] ? toHira(chars[i+1]) : '';
-      // 拗音 きゃ 等
-      if(SMALL_Y[nxt]){
-        const y = SMALL_Y[nxt];
-        tokens.push({ jp: raw + chars[i+1], sy: entry[0] + y[0], la: entry[1] + y[1] });
-        prevVowel = y[1].slice(-1);
-        i++;
-        continue;
+    const p = PHON[c];
+    if(p){
+      const nx = chars[i+1] ? toHira(chars[i+1]) : '';
+      // 拗音（い段 + 小さいゃゅょ）
+      if(Object.prototype.hasOwnProperty.call(SMALL_Y, nx) && p[1] === 'i' && p[0] !== ''){
+        const gv = SMALL_Y[nx];
+        tokens.push(youonToken(raw + chars[i+1], p[0], gv));
+        prevV = gv; i++; continue;
       }
-      tokens.push({ jp: raw, sy: entry[0], la: entry[1] });
-      prevVowel = entry[1].slice(-1);
+      tokens.push(sylToken(raw, p[0], p[1]));
+      prevV = p[1];
       continue;
     }
 
-    // 変換対象外（スペース・記号・漢字など）はそのまま通す
-    tokens.push({ jp: raw, sy: raw, la: raw, pass: true });
-    prevVowel = null;
+    // 変換対象外（スペース・記号・漢字など）はそのまま
+    tokens.push(passToken(raw));
+    prevV = null;
   }
   return tokens;
 }
 
-// ==== 描画 ====
+/* =========================================================================
+   4) 描画
+   ========================================================================= */
+const SCRIPTS = [
+  { key:'inuk', cls:'inuk', font:'f-inuk', name:'イヌクティトゥット文字', sub:'Inuktitut ᐃᓄᒃᑎᑐᑦ', lat:'inukLat' },
+  { key:'tif',  cls:'tif',  font:'f-tif',  name:'ティフィナグ文字',       sub:'Tifinagh ⵜⵉⴼⵉⵏⴰⵖ',  lat:'ro' },
+  { key:'sin',  cls:'sin',  font:'f-sin',  name:'シンハラ文字',           sub:'Sinhala සිංහල',      lat:'ro' },
+  { key:'geez', cls:'geez', font:'f-geez', name:'ゲエズ文字',             sub:'Ge’ez / Ethiopic ግዕዝ', lat:'ro' },
+];
+
 const inputEl = document.getElementById('input');
-const outSyl = document.getElementById('outSyl');
-const outLat = document.getElementById('outLat');
-const breakdown = document.getElementById('breakdown');
+const cardsWrap = document.getElementById('scriptCards');
+const bdBody = document.getElementById('bdBody');
 
-function render(){
-  const tokens = convert(inputEl.value);
-  outSyl.textContent = tokens.map(t => t.sy).join('');
-  outLat.textContent = tokens.filter(t=>!t.pass || t.la.trim()!=='').map(t => t.la).join('');
-
-  breakdown.innerHTML = '';
-  tokens.forEach(t => {
-    if(t.pass && t.jp.trim() === '') return;
-    const div = document.createElement('div');
-    div.className = 'mora' + (t.pass ? ' pass' : '');
-    div.innerHTML = `<div class="jp">${escapeHtml(t.jp)}</div>
-                     <div class="sy">${escapeHtml(t.sy)}</div>
-                     <div class="la">${escapeHtml(t.la)}</div>`;
-    breakdown.appendChild(div);
-  });
-}
+// スクリプトカードを生成
+const glyphEls = {}, latEls = {};
+SCRIPTS.forEach(s => {
+  const card = document.createElement('div');
+  card.className = `card script-card ${s.cls}`;
+  card.innerHTML = `
+    <div class="row-between">
+      <div class="script-name">${s.name}<span class="script-sub">${s.sub}</span></div>
+      <button class="copy-btn" data-key="${s.key}">コピー</button>
+    </div>
+    <div class="out-glyph ${s.font}" id="glyph-${s.key}"></div>
+    <div class="out-lat" id="lat-${s.key}"></div>`;
+  cardsWrap.appendChild(card);
+  glyphEls[s.key] = card.querySelector(`#glyph-${s.key}`);
+  latEls[s.key]  = card.querySelector(`#lat-${s.key}`);
+});
 
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
+function render(){
+  const tokens = convert(inputEl.value);
+
+  // 各文字体系の出力
+  SCRIPTS.forEach(s => {
+    glyphEls[s.key].textContent = tokens.map(t => t[s.key]).join('');
+    latEls[s.key].textContent   = tokens.map(t => t[s.lat]).join('');
+  });
+
+  // 内訳表
+  bdBody.innerHTML = '';
+  tokens.forEach(t => {
+    if(t.pass && t.jp.trim() === '') return;
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td class="jp">${escapeHtml(t.jp)}</td>` +
+      `<td class="ro">${escapeHtml(t.ro)}</td>` +
+      `<td class="g-inuk f-inuk">${escapeHtml(t.inuk)}</td>` +
+      `<td class="g-tif f-tif">${escapeHtml(t.tif)}</td>` +
+      `<td class="g-sin f-sin">${escapeHtml(t.sin)}</td>` +
+      `<td class="g-geez f-geez">${escapeHtml(t.geez)}</td>`;
+    bdBody.appendChild(tr);
+  });
+}
+
 inputEl.addEventListener('input', render);
 
 // プリセット
-const PRESETS = ['こんにちは','ありがとう','さくら','とうきょう','ねこ','すし','にほんご','ゆき'];
+const PRESETS = ['こんにちは','ありがとう','さくら','とうきょう','ねこ','すし','にほんご','がっこう'];
 const presetWrap = document.getElementById('presets');
 PRESETS.forEach(p => {
   const b = document.createElement('button');
@@ -304,9 +422,11 @@ PRESETS.forEach(p => {
 });
 
 // コピー
-document.getElementById('copyBtn').addEventListener('click', () => {
-  navigator.clipboard.writeText(outSyl.textContent).then(() => {
-    const btn = document.getElementById('copyBtn');
+cardsWrap.addEventListener('click', e => {
+  const btn = e.target.closest('.copy-btn');
+  if(!btn) return;
+  const text = glyphEls[btn.dataset.key].textContent;
+  navigator.clipboard.writeText(text).then(() => {
     const t = btn.textContent; btn.textContent = 'コピーしました';
     setTimeout(() => btn.textContent = t, 1200);
   }).catch(()=>{});
