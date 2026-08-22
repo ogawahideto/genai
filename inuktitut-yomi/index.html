@@ -9,8 +9,9 @@ AI Model: Claude Opus 4.8
 User Prompt: 新しいプロジェクトを作って、日本語の読みをイヌクティトゥット語で表記するアプリを作ってください
   → 追加要望: 「ティフィナグ文字も加えて」→「シンハラ文字、ゲエズ文字も」
   → 「イ文字、オル・チキ文字、グラゴル文字、ブギス文字を加えて、可愛い文字コンバータとしてください」
-AI Approach: 日本語のかな(モーラ)を「子音+母音」の共通音素表現へ分解し、8つの文字体系のレンダラーで
-  描き分ける単一HTMLアプリ。各文字体系の音韻構造の違いに合わせて近似変換する。
+  → 「バイバイイン文字を加えて、3×3のレイアウトにしよう」
+AI Approach: 日本語のかな(モーラ)を「子音+母音」の共通音素表現へ分解し、9つの文字体系のレンダラーで
+  描き分ける単一HTMLアプリ(3×3グリッド表示)。各文字体系の音韻構造の違いに合わせて近似変換する。
   - イヌクティトゥット(音節文字): 母音a/i/uへ縮約、は行→q系など
   - ティフィナグ(アルファベット): 子音字+母音字を連結
   - シンハラ(アブギダ): 子音字(固有母音a)+母音記号matra、独立母音・ヴィラマ対応
@@ -19,6 +20,7 @@ AI Approach: 日本語のかな(モーラ)を「子音+母音」の共通音素�
   - オル・チキ/サンタル(アルファベット): 子音字+母音字を連結
   - グラゴル(アルファベット): 丸っこい小文字グラゴルで子音字+母音字
   - ブギス/ロンタラ(アブギダ): 子音字(固有母音a)+母音記号、独立母音対応
+  - バイバイイン(フィリピン・アブギダ): 母音a/i/uへ縮約、ヴィラマ(᜔)で末子音表現
   拗音・促音(っ)・撥音(ん)・長音(ー)・カタカナ正規化を実装し、モーラごとの内訳表も表示。
 Implementation Intent: 日本語の読み(かな)を、世界の少数言語で使われる8つの「かわいい」文字にリアルタイム変換する
   教育的&遊び心のあるツール。音節文字/アルファベット/アブギダという文字体系の違いを楽しく体験できることを目的とする。
@@ -28,7 +30,7 @@ Implementation Intent: 日本語の読み(かな)を、世界の少数言語で�
     --bg:#1a1030; --card:#2a1f47; --card2:#231a3c; --text:#f5eefb;
     --muted:#b9a8d4; --line:#453a63;
     --inuk:#f6b93b; --tif:#4ecdc4; --sin:#ff8fb1; --geez:#7aa5ff;
-    --yi:#c39bff; --ol:#ffab6b; --glag:#7ee0a8; --bugi:#ff9a8b;
+    --yi:#c39bff; --ol:#ffab6b; --glag:#7ee0a8; --bugi:#ff9a8b; --bay:#ffe07a;
   }
   *{box-sizing:border-box;}
   body{
@@ -65,7 +67,9 @@ Implementation Intent: 日本語の読み(かな)を、世界の少数言語で�
   }
   .presets button:hover{ background:var(--sin); color:#2a0f1c; border-color:var(--sin); }
 
-  .cards-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin:14px 0; }
+  .cards-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:14px 0; }
+  @media(max-width:900px){ .cards-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media(max-width:600px){ .cards-grid{ grid-template-columns:1fr; } }
   .script-card{ background:var(--card); border:1px solid var(--line); border-radius:18px;
     padding:16px; border-top:5px solid var(--line); box-shadow:0 10px 24px rgba(0,0,0,.28); }
   .row-between{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
@@ -86,6 +90,7 @@ Implementation Intent: 日本語の読み(かな)を、世界の少数言語で�
   .ol{ border-top-color:var(--ol); }     .ol .out-glyph{ color:var(--ol); }
   .glag{ border-top-color:var(--glag); } .glag .out-glyph{ color:var(--glag); }
   .bugi{ border-top-color:var(--bugi); } .bugi .out-glyph{ color:var(--bugi); }
+  .bay{ border-top-color:var(--bay); }   .bay .out-glyph{ color:var(--bay); }
 
   .f-inuk{ font-family:"Euphemia","Gadugi","Noto Sans Canadian Aboriginal",sans-serif; }
   .f-tif { font-family:"Ebrima","Noto Sans Tifinagh",sans-serif; }
@@ -95,6 +100,7 @@ Implementation Intent: 日本語の読み(かな)を、世界の少数言語で�
   .f-ol  { font-family:"Nirmala UI","Noto Sans Ol Chiki",sans-serif; }
   .f-glag{ font-family:"Segoe UI Historic","Noto Sans Glagolitic","BabelStone Glagolitic",serif; }
   .f-bugi{ font-family:"Noto Sans Buginese","MPH 2B Damase",sans-serif; }
+  .f-bay { font-family:"Noto Sans Tagalog","Tagalog Stylized",sans-serif; }
 
   h2.section{ font-size:15px; color:var(--muted); margin:0 0 12px; font-weight:600; }
   .table-scroll{ overflow-x:auto; }
@@ -126,6 +132,7 @@ Implementation Intent: 日本語の読み(かな)を、世界の少数言語で�
     <span class="f-ol"   style="color:var(--ol)">ᱚᱞ</span>
     <span class="f-glag" style="color:var(--glag)">ⰳⰾ</span>
     <span class="f-bugi" style="color:var(--bugi)">ᨅᨘ</span>
+    <span class="f-bay"  style="color:var(--bay)">ᜊᜌ᜔</span>
   </div>
   <p>ひらがな・カタカナの読みを、世界の8つの「かわいい文字」で表記します ✨</p>
 </header>
@@ -173,6 +180,8 @@ Implementation Intent: 日本語の読み(かな)を、世界の少数言語で�
         <li>最古のスラブ文字（丸文字）</li><li>子音字＋母音字を連結</li><li>じ→ⰼ, し→ⱎ, ち→ⱍ</li></ul></div>
       <div class="rule-box"><h3 style="color:var(--bugi)">ブギス（ロンタラ）</h3><ul>
         <li>スラウェシ島のアブギダ</li><li>子音字(固有母音a)＋母音記号</li><li>末子音記号が無く ん/っ は近似</li></ul></div>
+      <div class="rule-box"><h3 style="color:var(--bay)">バイバイイン</h3><ul>
+        <li>フィリピンの伝統的アブギダ</li><li>母音a/i/uへ縮約（え→i, お→u）</li><li>ん/っ→ヴィラマ(᜔)で母音を消す</li></ul></div>
     </div>
     <p class="note" style="margin-top:10px;">
       共通：長音「ー」→直前の母音を反復／拗音（きゃ等）→「子音＋i形」＋「や行」で近似。
@@ -289,6 +298,15 @@ const bugiSyl   = (c,v) => BG[c] + BV[v];
 const bugiFinal = c => BG[c];
 const bugiVow   = v => BG[''] + BV[v];
 
+// --- バイバイイン（フィリピン・アブギダ, 母音a/i/uへ縮約）---
+const BAC = {'':'',k:'ᜃ',g:'ᜄ',s:'ᜐ',z:'ᜐ',sh:'ᜐ',j:'ᜇ',t:'ᜆ',ch:'ᜆ',ts:'ᜆ',
+  d:'ᜇ',n:'ᜈ',h:'ᜑ',f:'ᜉ',b:'ᜊ',p:'ᜉ',m:'ᜋ',y:'ᜌ',r:'ᜍ',w:'ᜏ',v:'ᜊ'};
+const BA_SIGN  = {a:'',i:'ᜒ',u:'ᜓ'};             // -i(e), -u(o) の母音符
+const BA_INDEP = {a:'ᜀ',i:'ᜁ',u:'ᜂ'};            // 独立母音
+const baySyl   = (c,v) => (c==='' ? BA_INDEP[mvi(v)] : BAC[c] + BA_SIGN[mvi(v)]);
+const bayFinal = c => BAC[c] + '᜔';               // ヴィラマ(pamudpod)で母音を消す
+const bayVow   = v => BA_INDEP[mvi(v)];
+
 // --- レンダラー登録（syl: 音節, fin: 末子音, vow: 単独母音）---
 const R = {
   inuk:{ syl:inukSyl, fin:inukFinal, vow:v=>inukSyl('',v) },
@@ -299,6 +317,7 @@ const R = {
   ol  :{ syl:olSyl,   fin:olFinal,   vow:olVow },
   glag:{ syl:glagSyl, fin:glagFinal, vow:glagVow },
   bugi:{ syl:bugiSyl, fin:bugiFinal, vow:bugiVow },
+  bay :{ syl:baySyl,  fin:bayFinal,  vow:bayVow },
 };
 
 const SCRIPTS = [
@@ -310,6 +329,7 @@ const SCRIPTS = [
   { key:'ol',   short:'オルチキ', name:'オル・チキ文字',        sub:'Ol Chiki ᱚᱞ ᱪᱤᱠᱤ',     font:'f-ol',   lat:'ro' },
   { key:'glag', short:'グラゴル', name:'グラゴル文字',          sub:'Glagolitic ⰳⰾⰰⰳⱁⰾⱏ',   font:'f-glag', lat:'ro' },
   { key:'bugi', short:'ブギス',  name:'ブギス文字（ロンタラ）', sub:'Buginese ᨒᨚᨈᨑ',        font:'f-bugi', lat:'ro' },
+  { key:'bay',  short:'バイバイイン', name:'バイバイイン文字',   sub:'Baybayin ᜊᜌ᜔ᜊᜌᜒᜈ᜔',   font:'f-bay',  lat:'ro' },
 ];
 const KEYS = SCRIPTS.map(s => s.key);
 
