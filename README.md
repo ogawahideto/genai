@@ -340,7 +340,7 @@ AI・チャットアプリケーション
 #### [Grid Canvas](hougan/) (2025-09-05)
 実験的アプリケーション
 
-#### [inuktitut-yomi](inuktitut-yomi/) (2026-08-22)
+#### [inuktitut-yomi](inuktitut-yomi/) (2026-08-23)
 実験的アプリケーション
 
 #### [地引網 - Jibiki Beach Net Fishing](jibiki/) (2025-09-13)
