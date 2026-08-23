@@ -27,70 +27,86 @@ Implementation Intent: 日本語の読み(かな)を、世界の少数言語で�
 -->
 <style>
   :root{
-    --bg:#1a1030; --card:#2a1f47; --card2:#231a3c; --text:#f5eefb;
-    --muted:#b9a8d4; --line:#453a63;
-    --inuk:#f6b93b; --tif:#4ecdc4; --sin:#ff8fb1; --geez:#7aa5ff;
-    --yi:#c39bff; --ol:#ffab6b; --glag:#7ee0a8; --bugi:#ff9a8b; --bay:#ffe07a;
+    /* パステル・アクセント（枠・チップ用） */
+    --inuk:#ffcf5c; --tif:#7fe0d4; --sin:#ff9ec3; --geez:#9db8ff;
+    --yi:#cdb0ff; --ol:#ffc08a; --glag:#9ee8bf; --bugi:#ffb0a6; --bay:#ffe28a;
+    /* 文字を描くための濃いめインク（白背景で読めるように） */
+    --inuk-ink:#d98a00; --tif-ink:#12a294; --sin-ink:#e64c8a; --geez-ink:#5570e8;
+    --yi-ink:#8b5cf0; --ol-ink:#e0791f; --glag-ink:#20a163; --bugi-ink:#e8564a; --bay-ink:#c69700;
+    --text:#5a4763; --muted:#9b86a8; --line:#f3d9e8; --ink:#6b5473;
   }
   *{box-sizing:border-box;}
   body{
-    margin:0; font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+    margin:0;
+    font-family:"Hiragino Maru Gothic ProN","Rounded Mplus 1c","Segoe UI Rounded",
+      "Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;
     background:
-      radial-gradient(1200px 500px at 20% -5%, rgba(255,143,177,.18), transparent 60%),
-      radial-gradient(1000px 500px at 90% 0%, rgba(122,165,255,.16), transparent 60%),
-      linear-gradient(160deg,var(--bg),#160c28 70%,#120a20);
-    color:var(--text); min-height:100vh; line-height:1.6;
+      radial-gradient(900px 480px at 12% -8%, rgba(255,158,195,.45), transparent 62%),
+      radial-gradient(820px 460px at 92% 4%, rgba(157,184,255,.42), transparent 60%),
+      radial-gradient(700px 500px at 60% 100%, rgba(158,232,191,.40), transparent 60%),
+      linear-gradient(170deg,#fff6fb,#fef2f8 45%,#f3f7ff);
+    background-attachment:fixed;
+    color:var(--text); min-height:100vh; line-height:1.7;
   }
-  header{ text-align:center; padding:28px 16px 6px; }
-  header h1{ margin:0; font-size:clamp(21px,5vw,32px); letter-spacing:.02em;
-    background:linear-gradient(90deg,#ff8fb1,#c39bff,#7aa5ff,#4ecdc4);
-    -webkit-background-clip:text; background-clip:text; color:transparent; }
-  header .scripts-line{ font-size:clamp(18px,5.2vw,30px); margin-top:10px; line-height:1.9; }
-  header .scripts-line span{ margin:0 .16em; white-space:nowrap; }
-  header p{ margin:10px 0 0; color:var(--muted); font-size:14px; }
-  .wrap{ max-width:960px; margin:0 auto; padding:8px 16px 60px; }
+  header{ text-align:center; padding:34px 16px 6px; }
+  header h1{ margin:0; font-size:clamp(24px,5.6vw,38px); font-weight:800; letter-spacing:.02em;
+    background:linear-gradient(90deg,#ff8fc4,#c39bff,#7aa5ff,#4ecdc4,#ffb86b);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 2px 0 rgba(255,255,255,.7)); }
+  header .scripts-line{ font-size:clamp(20px,5.6vw,32px); margin-top:14px; line-height:2; }
+  header .scripts-line span{ margin:0 .12em; display:inline-block; padding:2px 12px; border-radius:999px;
+    background:#fff; box-shadow:0 4px 12px rgba(214,150,190,.28); white-space:nowrap;
+    animation:bob 3s ease-in-out infinite; }
+  @keyframes bob{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-5px) } }
+  header p{ margin:12px 0 0; color:var(--muted); font-size:14px; }
+  .wrap{ max-width:980px; margin:0 auto; padding:8px 16px 70px; }
   .card{
-    background:var(--card); border:1px solid var(--line); border-radius:18px;
-    padding:18px; margin:14px 0; box-shadow:0 10px 28px rgba(0,0,0,.3);
+    background:rgba(255,255,255,.82); border:2px solid #fff; border-radius:26px;
+    padding:20px; margin:16px 0; box-shadow:0 14px 34px rgba(226,158,199,.24);
+    backdrop-filter:blur(4px);
   }
-  label.field-label{ display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+  label.field-label{ display:block; font-size:13px; color:var(--muted); margin-bottom:8px; font-weight:700; }
   textarea{
-    width:100%; min-height:78px; resize:vertical; border-radius:14px;
-    border:1px solid var(--line); background:#170f2a; color:var(--text);
-    font-size:18px; padding:12px 14px; font-family:inherit; outline:none;
+    width:100%; min-height:80px; resize:vertical; border-radius:20px;
+    border:2.5px solid #ffd6e8; background:#fffafd; color:var(--text);
+    font-size:19px; padding:14px 16px; font-family:inherit; outline:none; transition:.15s;
   }
-  textarea:focus{ border-color:var(--sin); }
-  .presets{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  textarea:focus{ border-color:#ff9ec3; box-shadow:0 0 0 4px rgba(255,158,195,.22); }
+  .presets{ display:flex; flex-wrap:wrap; gap:9px; margin-top:14px; }
   .presets button{
-    background:#20163a; color:var(--text); border:1px solid var(--line);
-    border-radius:999px; padding:6px 14px; font-size:14px; cursor:pointer; transition:.15s;
+    background:#fff; color:var(--text); border:2px solid #ffd6e8;
+    border-radius:999px; padding:7px 16px; font-size:14px; font-weight:700;
+    font-family:inherit; cursor:pointer; transition:.15s; box-shadow:0 3px 8px rgba(226,158,199,.18);
   }
-  .presets button:hover{ background:var(--sin); color:#2a0f1c; border-color:var(--sin); }
+  .presets button:hover{ background:#ff9ec3; color:#fff; border-color:#ff9ec3; transform:translateY(-2px); }
 
-  .cards-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:14px 0; }
+  .cards-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:16px 0; }
   @media(max-width:900px){ .cards-grid{ grid-template-columns:repeat(2,1fr); } }
   @media(max-width:600px){ .cards-grid{ grid-template-columns:1fr; } }
-  .script-card{ background:var(--card); border:1px solid var(--line); border-radius:18px;
-    padding:16px; border-top:5px solid var(--line); box-shadow:0 10px 24px rgba(0,0,0,.28); }
+  .script-card{ background:#fff; border:2.5px solid var(--line); border-radius:24px;
+    padding:16px 16px 18px; box-shadow:0 12px 26px rgba(226,158,199,.2); transition:.2s; }
+  .script-card:hover{ transform:translateY(-4px); box-shadow:0 18px 34px rgba(226,158,199,.34); }
   .row-between{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
-  .script-name{ font-size:15px; font-weight:700; }
-  .script-sub{ font-size:11.5px; color:var(--muted); font-weight:400; display:block; margin-top:2px; }
-  .copy-btn{ background:#392b5a; color:var(--text); border:1px solid var(--line);
-    border-radius:10px; padding:6px 13px; font-weight:700; cursor:pointer; font-size:13px; }
+  .script-name{ font-size:15px; font-weight:800; color:var(--ink); }
+  .script-sub{ font-size:11.5px; color:var(--muted); font-weight:500; display:block; margin-top:2px; }
+  .copy-btn{ color:#fff; border:none; border-radius:999px;
+    padding:7px 15px; font-weight:800; font-family:inherit; cursor:pointer; font-size:12.5px;
+    box-shadow:0 4px 10px rgba(0,0,0,.08); transition:.15s; }
+  .copy-btn:hover{ filter:brightness(1.05); transform:translateY(-1px); }
   .copy-btn:active{ transform:translateY(1px); }
-  .out-glyph{ font-size:clamp(24px,6vw,40px); line-height:1.55; word-break:break-word; margin-top:10px; min-height:48px; }
-  .out-lat{ font-size:14px; color:var(--muted); word-break:break-word; margin-top:4px; font-family:Consolas,monospace; }
+  .out-glyph{ font-size:clamp(26px,6.2vw,42px); line-height:1.55; word-break:break-word; margin-top:12px; min-height:50px; }
+  .out-lat{ font-size:14px; color:var(--muted); word-break:break-word; margin-top:6px; font-family:Consolas,monospace; }
 
-  /* 文字体系ごとの色 & フォント（各OS搭載フォントを優先） */
-  .inuk{ border-top-color:var(--inuk); } .inuk .out-glyph{ color:var(--inuk); }
-  .tif{ border-top-color:var(--tif); }   .tif .out-glyph{ color:var(--tif); }
-  .sin{ border-top-color:var(--sin); }   .sin .out-glyph{ color:var(--sin); }
-  .geez{ border-top-color:var(--geez); } .geez .out-glyph{ color:var(--geez); }
-  .yi{ border-top-color:var(--yi); }     .yi .out-glyph{ color:var(--yi); }
-  .ol{ border-top-color:var(--ol); }     .ol .out-glyph{ color:var(--ol); }
-  .glag{ border-top-color:var(--glag); } .glag .out-glyph{ color:var(--glag); }
-  .bugi{ border-top-color:var(--bugi); } .bugi .out-glyph{ color:var(--bugi); }
-  .bay{ border-top-color:var(--bay); }   .bay .out-glyph{ color:var(--bay); }
+  /* 文字体系ごとの色：枠=パステル / 文字=濃いインク / コピーボタン=パステル */
+  .inuk{ border-color:var(--inuk); } .inuk .out-glyph{ color:var(--inuk-ink); } .inuk .copy-btn{ background:var(--inuk-ink); }
+  .tif{ border-color:var(--tif); }   .tif .out-glyph{ color:var(--tif-ink); }   .tif .copy-btn{ background:var(--tif-ink); }
+  .sin{ border-color:var(--sin); }   .sin .out-glyph{ color:var(--sin-ink); }   .sin .copy-btn{ background:var(--sin-ink); }
+  .geez{ border-color:var(--geez); } .geez .out-glyph{ color:var(--geez-ink); } .geez .copy-btn{ background:var(--geez-ink); }
+  .yi{ border-color:var(--yi); }     .yi .out-glyph{ color:var(--yi-ink); }     .yi .copy-btn{ background:var(--yi-ink); }
+  .ol{ border-color:var(--ol); }     .ol .out-glyph{ color:var(--ol-ink); }     .ol .copy-btn{ background:var(--ol-ink); }
+  .glag{ border-color:var(--glag); } .glag .out-glyph{ color:var(--glag-ink); } .glag .copy-btn{ background:var(--glag-ink); }
+  .bugi{ border-color:var(--bugi); } .bugi .out-glyph{ color:var(--bugi-ink); } .bugi .copy-btn{ background:var(--bugi-ink); }
+  .bay{ border-color:var(--bay); }   .bay .out-glyph{ color:var(--bay-ink); }   .bay .copy-btn{ background:var(--bay-ink); }
 
   .f-inuk{ font-family:"Euphemia","Gadugi","Noto Sans Canadian Aboriginal",sans-serif; }
   .f-tif { font-family:"Ebrima","Noto Sans Tifinagh",sans-serif; }
@@ -102,20 +118,23 @@ Implementation Intent: 日本語の読み(かな)を、世界の少数言語で�
   .f-bugi{ font-family:"Noto Sans Buginese","MPH 2B Damase",sans-serif; }
   .f-bay { font-family:"Noto Sans Tagalog","Tagalog Stylized",sans-serif; }
 
-  h2.section{ font-size:15px; color:var(--muted); margin:0 0 12px; font-weight:600; }
-  .table-scroll{ overflow-x:auto; }
-  table.bd{ width:100%; border-collapse:collapse; font-size:14px; min-width:720px; }
-  table.bd th, table.bd td{ border:1px solid var(--line); padding:8px 6px; text-align:center; }
-  table.bd thead th{ background:#241a3f; color:var(--muted); font-size:12px; }
-  table.bd td.jp{ font-size:16px; }
+  h2.section{ font-size:16px; color:var(--ink); margin:0 0 12px; font-weight:800; }
+  .table-scroll{ overflow-x:auto; border-radius:18px; }
+  table.bd{ width:100%; border-collapse:separate; border-spacing:0; font-size:14px; min-width:720px;
+    border-radius:18px; overflow:hidden; }
+  table.bd th, table.bd td{ border-bottom:2px solid #fdeef5; padding:9px 6px; text-align:center; }
+  table.bd thead th{ background:linear-gradient(90deg,#ffeaf4,#eef2ff); color:var(--ink); font-size:12px; font-weight:800; }
+  table.bd tbody tr:nth-child(even){ background:#fffafd; }
+  table.bd td.jp{ font-size:16px; font-weight:700; color:var(--ink); }
   table.bd td.ro{ font-family:monospace; color:var(--muted); font-size:13px; }
-  table.bd td.g{ font-size:21px; }
+  table.bd td.g{ font-size:22px; }
   details{ margin-top:6px; }
-  summary{ cursor:pointer; color:var(--sin); font-size:14px; }
+  summary{ cursor:pointer; color:var(--sin-ink); font-size:14px; font-weight:700; }
   .note{ font-size:13px; color:var(--muted); }
-  .rules{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; margin-top:12px; }
-  .rule-box{ background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
-  .rule-box h3{ margin:0 0 6px; font-size:13.5px; }
+  .rules{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; margin-top:14px; }
+  .rule-box{ background:linear-gradient(160deg,#fffafd,#fef4fa); border:2px solid #ffe4f0;
+    border-radius:18px; padding:12px 14px; box-shadow:0 6px 14px rgba(226,158,199,.14); }
+  .rule-box h3{ margin:0 0 6px; font-size:13.5px; font-weight:800; }
   .rule-box ul{ margin:0; padding-left:16px; font-size:12.5px; color:var(--muted); }
   footer{ text-align:center; color:var(--muted); font-size:12px; padding:20px; }
 </style>
@@ -124,17 +143,17 @@ Implementation Intent: 日本語の読み(かな)を、世界の少数言語で�
 <header>
   <h1>🌸 可愛い文字コンバータ 🌸</h1>
   <div class="scripts-line">
-    <span class="f-inuk" style="color:var(--inuk)">ᐊᐃᐅ</span>
-    <span class="f-tif"  style="color:var(--tif)">ⵜⵉⴼⵉ</span>
-    <span class="f-sin"  style="color:var(--sin)">සිංහ</span>
-    <span class="f-geez" style="color:var(--geez)">ግዕዝ</span>
-    <span class="f-yi"   style="color:var(--yi)">ꆈꌠ</span>
-    <span class="f-ol"   style="color:var(--ol)">ᱚᱞ</span>
-    <span class="f-glag" style="color:var(--glag)">ⰳⰾ</span>
-    <span class="f-bugi" style="color:var(--bugi)">ᨅᨘ</span>
-    <span class="f-bay"  style="color:var(--bay)">ᜊᜌ᜔</span>
+    <span class="f-inuk" style="color:var(--inuk-ink)">ᐊᐃᐅ</span>
+    <span class="f-tif"  style="color:var(--tif-ink)">ⵜⵉⴼⵉ</span>
+    <span class="f-sin"  style="color:var(--sin-ink)">සිංහ</span>
+    <span class="f-geez" style="color:var(--geez-ink)">ግዕዝ</span>
+    <span class="f-yi"   style="color:var(--yi-ink)">ꆈꌠ</span>
+    <span class="f-ol"   style="color:var(--ol-ink)">ᱚᱞ</span>
+    <span class="f-glag" style="color:var(--glag-ink)">ⰳⰾ</span>
+    <span class="f-bugi" style="color:var(--bugi-ink)">ᨅᨘ</span>
+    <span class="f-bay"  style="color:var(--bay-ink)">ᜊᜌ᜔</span>
   </div>
-  <p>ひらがな・カタカナの読みを、世界の8つの「かわいい文字」で表記します ✨</p>
+  <p>ひらがな・カタカナの読みを、世界の9つの「かわいい文字」で表記します ✨</p>
 </header>
 
 <div class="wrap">
@@ -164,23 +183,23 @@ Implementation Intent: 日本語の読み(かな)を、世界の少数言語で�
       文字が□になる場合は、その文字のフォントが端末に入っていないためです。
     </p>
     <div class="rules">
-      <div class="rule-box"><h3 style="color:var(--inuk)">イヌクティトゥット</h3><ul>
+      <div class="rule-box"><h3 style="color:var(--inuk-ink)">イヌクティトゥット</h3><ul>
         <li>カナダ先住民の音節文字</li><li>母音a/i/uに縮約（え→i, お→u）</li><li>は行→q系, ば/わ行→v系</li></ul></div>
-      <div class="rule-box"><h3 style="color:var(--tif)">ティフィナグ</h3><ul>
+      <div class="rule-box"><h3 style="color:var(--tif-ink)">ティフィナグ</h3><ul>
         <li>ベルベル/アマジグのアルファベット</li><li>子音字＋母音字を連結（o→u）</li><li>し→ⵛ, じ→ⵊ, は行→ⵀ</li></ul></div>
-      <div class="rule-box"><h3 style="color:var(--sin)">シンハラ</h3><ul>
+      <div class="rule-box"><h3 style="color:var(--sin-ink)">シンハラ</h3><ul>
         <li>スリランカのアブギダ</li><li>子音字(固有母音a)＋母音記号</li><li>ん→න්, っ→ヴィラマ(්)</li></ul></div>
-      <div class="rule-box"><h3 style="color:var(--geez)">ゲエズ／エチオピア</h3><ul>
+      <div class="rule-box"><h3 style="color:var(--geez-ink)">ゲエズ／エチオピア</h3><ul>
         <li>各子音が7母音形を持つアブギダ</li><li>a/i/u/e/oを忠実に表記</li><li>ん→6画目形(ን)</li></ul></div>
-      <div class="rule-box"><h3 style="color:var(--yi)">イ文字（ノス）</h3><ul>
+      <div class="rule-box"><h3 style="color:var(--yi-ink)">イ文字（ノス）</h3><ul>
         <li>中国・彝族の音節文字</li><li>装飾的近似：子音×母音を音節へ割当</li><li>読みはローマ字を参照</li></ul></div>
-      <div class="rule-box"><h3 style="color:var(--ol)">オル・チキ</h3><ul>
+      <div class="rule-box"><h3 style="color:var(--ol-ink)">オル・チキ</h3><ul>
         <li>サンタル語のアルファベット</li><li>子音字＋母音字を連結</li><li>し→s系, ち→c系で近似</li></ul></div>
-      <div class="rule-box"><h3 style="color:var(--glag)">グラゴル</h3><ul>
+      <div class="rule-box"><h3 style="color:var(--glag-ink)">グラゴル</h3><ul>
         <li>最古のスラブ文字（丸文字）</li><li>子音字＋母音字を連結</li><li>じ→ⰼ, し→ⱎ, ち→ⱍ</li></ul></div>
-      <div class="rule-box"><h3 style="color:var(--bugi)">ブギス（ロンタラ）</h3><ul>
+      <div class="rule-box"><h3 style="color:var(--bugi-ink)">ブギス（ロンタラ）</h3><ul>
         <li>スラウェシ島のアブギダ</li><li>子音字(固有母音a)＋母音記号</li><li>末子音記号が無く ん/っ は近似</li></ul></div>
-      <div class="rule-box"><h3 style="color:var(--bay)">バイバイイン</h3><ul>
+      <div class="rule-box"><h3 style="color:var(--bay-ink)">バイバイイン</h3><ul>
         <li>フィリピンの伝統的アブギダ</li><li>母音a/i/uへ縮約（え→i, お→u）</li><li>ん/っ→ヴィラマ(᜔)で母音を消す</li></ul></div>
     </div>
     <p class="note" style="margin-top:10px;">
