@@ -197,22 +197,10 @@ AI・チャットアプリケーション
 #### [NeonBass - AI Bass Trainer](bass-training/) (2025-12-29)
 AI・チャットアプリケーション
 
-#### [Chromatic Renaissance](chromatic-renaissance/) (2026-04-05)
-AI・チャットアプリケーション
-
 #### [Anthropic & Claude 愛称ジェネレーター](claude_nickname/) (2025-09-05)
 AI・チャットアプリケーション
 
 #### [AI Models Showcase - 最先端AIモデル能力比較](comparison/) (2025-11-26)
-AI・チャットアプリケーション
-
-#### [Caption Room — 会議英語リスニング訓練](confengtrainer/) (2026-07-01)
-AI・チャットアプリケーション
-
-#### [恐竜大図鑑 - エンタメ満載](kyouryu-daizukan/) (2025-09-03)
-AI・チャットアプリケーション
-
-#### [何もしないアプリ](nani_mo_shinai/) (2025-06-26)
 AI・チャットアプリケーション
 
 #### [Claud0 - ゼロ出力AIアシスタント](nongenai/) (2025-09-05)
@@ -264,6 +252,9 @@ AI・チャットアプリケーション
 #### [犬も歩けば棒に当たる](inumo_arukeba/) (2025-09-05)
 ユーティリティ・ツールアプリケーション
 
+#### [何もしないアプリ](nani_mo_shinai/) (2025-06-26)
+ユーティリティ・ツールアプリケーション
+
 #### [sagi](sagi/) (2025-09-05)
 ユーティリティ・ツールアプリケーション
 
@@ -313,7 +304,13 @@ AI・チャットアプリケーション
 #### [Christmas to Kadomatsu Transformer](christmas-to-kadomatsu/) (2025-12-25)
 実験的アプリケーション
 
+#### [Chromatic Renaissance](chromatic-renaissance/) (2026-04-05)
+実験的アプリケーション
+
 #### [レモン彗星 (C/2025 A6) 軌道ビジュアライザ](comet-lemmon-orbit/) (2025-09-20)
+実験的アプリケーション
+
+#### [Caption Room — 会議英語リスニング訓練](confengtrainer/) (2026-07-01)
 実験的アプリケーション
 
 #### [水飲み鳥シミュレーター](drinking-bird/) (2025-09-05)
@@ -340,16 +337,19 @@ AI・チャットアプリケーション
 #### [Grid Canvas](hougan/) (2025-09-05)
 実験的アプリケーション
 
-#### [inuktitut-yomi](inuktitut-yomi/) (2026-08-23)
+#### [地引網 - Jibiki Beach Net Fishing](jibiki/) (2025-09-13)
 実験的アプリケーション
 
-#### [地引網 - Jibiki Beach Net Fishing](jibiki/) (2025-09-13)
+#### [kawaii-moji](kawaii-moji/) (2026-08-23)
 実験的アプリケーション
 
 #### [Kiro - 輝き](kiro/) (2025-12-06)
 実験的アプリケーション
 
 #### [第777回 紅白馬合戦 2026 - The Year of the Horse](kohaku-uma-gassen/) (2025-12-30)
+実験的アプリケーション
+
+#### [恐竜大図鑑 - エンタメ満載](kyouryu-daizukan/) (2025-09-03)
 実験的アプリケーション
 
 #### [みたらし団子ウォーズ](mitarashi-dango-wars/) (2025-11-04)
@@ -379,7 +379,7 @@ AI・チャットアプリケーション
 #### [昭和レトロポップ・ブラウザ｜どんなWebページも派手な昭和に](showa-browser/) (2026-06-19)
 実験的アプリケーション
 
-#### [秋分の日 ](shubun-no-hi/) ( Shubun no Hi|2025-09-23)
+#### [秋分の日 | Shubun no Hi](shubun-no-hi/) (2025-09-23)
 実験的アプリケーション
 
 #### [Freestyle Ski: Slopestyle 3D](ski-freestyle/) (2026-02-11)
