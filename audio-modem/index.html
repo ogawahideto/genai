@@ -211,11 +211,11 @@ Implementation Intent: スピーカーとマイクだけでファイルを送受
       <ul>
         <li>受信側の端末で「受信開始」を押してマイクを許可し、送信側で「送信(再生)」を押します。1台で試す場合は「WAVで保存」→「音声ファイルから復元」でも動作確認できます。</li>
         <li>静かな部屋で、スピーカーとマイクを 30cm〜1m 程度に近づけ、音量は大きめ(ただし音割れしない程度)にすると成功率が上がります。うまくいかない時は「低速(安定)」を選んでください。</li>
-        <li><b>変調方式:</b> 16値FSK。1600Hz から等間隔に並んだ16種類の音のどれか1つで4ビットを表します。</li>
+        <li><b>変調方式:</b> 16値FSK。1600Hz から等間隔に並んだ16種類の音のどれか1つで4ビットを表します。「2ch」「4ch」などのモードでは、高い周波数に別の16音の帯域を並べて同時に鳴らし、1回で複数の4ビットを送ります(マルチチャンネルFSK)。</li>
         <li><b>同期:</b> 先頭と末尾に「ピューイ」という周波数掃引音(チャープ)を鳴らし、受信側は FFT を用いた相互相関で位置を検出します。末尾チャープの位置から送受信機の時計のずれを補正します。</li>
         <li><b>反響対策:</b> 各シンボルの先頭(ガード区間)は部屋の残響が混ざるため捨て、残りの区間を Goertzel 法で解析して最も強い周波数を採用します。</li>
         <li><b>誤り検出:</b> ヘッダ(データ長)は3回繰り返して多数決+CRC16、本体は CRC32 で検証します。誤り訂正はないので、CRC エラーの時はもう一度送ってください。</li>
-        <li>速度は 低速≒67bps / 標準≒125bps / 高速≒250bps。数KB程度までの小さなファイル向けです。</li>
+        <li>速度は 低速≒67bps 〜 実験モード≒2000bps。速いモードほど高い周波数(最大約14kHz)を使うので、スピーカーやマイクの性能と距離・音量の影響を強く受けます。どこまで通るか試してみてください。</li>
       </ul>
     </details>
   </section>
@@ -235,20 +235,33 @@ const CFG = {
   toneAmp: 0.5,
   threshold: 0.3,      // チャープ検出のしきい値(正規化相関)
 };
-// T: シンボル長, G: 先頭ガード, W: 解析窓, df: トーン間隔(=2/W で直交)
+// T: シンボル長, G: 先頭ガード, W: 解析窓, df: トーン間隔(1/W の整数倍で直交)
+// ch: 同時に鳴らすチャンネル数。チャンネル c は base + c*16*df から始まる16音の帯域を使い、
+//     1シンボルで ch 個のニブル(4bit)を並列に送る (マルチチャンネルFSK)
 const MODES = [
-  { name: '低速(安定) 約67bps', T: 0.060, G: 0.015, W: 0.040, df: 50 },
-  { name: '標準 約125bps',      T: 0.032, G: 0.010, W: 0.020, df: 100 },
-  { name: '高速 約250bps',      T: 0.016, G: 0.004, W: 0.010, df: 200 },
+  { label: '低速(安定)',        T: 0.060, G: 0.015, W: 0.040, df: 50,  ch: 1 },
+  { label: '標準',              T: 0.032, G: 0.010, W: 0.020, df: 100, ch: 1 },
+  { label: '高速',              T: 0.016, G: 0.004, W: 0.010, df: 200, ch: 1 },
+  { label: '超高速 2ch',        T: 0.016, G: 0.004, W: 0.010, df: 100, ch: 2 },
+  { label: '爆速 4ch',          T: 0.016, G: 0.004, W: 0.010, df: 100, ch: 4 },
+  { label: '限界 4ch',          T: 0.012, G: 0.003, W: 0.008, df: 125, ch: 4 },
+  { label: '実験 6ch',          T: 0.012, G: 0.003, W: 0.008, df: 125, ch: 6 },
+  { label: '実験 4ch短シンボル', T: 0.008, G: 0.002, W: 0.005, df: 200, ch: 4 },
 ];
+for (const m of MODES) {
+  m.bps = Math.round(4 * m.ch / m.T);
+  m.fMax = CFG.base + (16 * m.ch - 1) * m.df;
+  m.name = `${m.label} 約${m.bps}bps (〜${(m.fMax / 1000).toFixed(1)}kHz)`;
+}
 const MODE_START = CFG.chirpDur + CFG.gap1;
 const DATA_START = MODE_START + MODES[0].T * CFG.modeSyms + CFG.gap2;
 const MAGIC = 0xA5;
 const HEADER_BYTES = 7, HEADER_COPIES = 3;
-const HEADER_SYMS = HEADER_BYTES * 2 * HEADER_COPIES;
+const HEADER_NIBBLES = HEADER_BYTES * 2 * HEADER_COPIES;
 const MAX_BODY = 1 << 24;
 
-const toneFreq = (mode, k) => CFG.base + k * mode.df;
+const toneFreq = (mode, k, c = 0) => CFG.base + (c * CFG.nTones + k) * mode.df;
+const toneAmpFor = mode => Math.min(CFG.toneAmp, 0.9 / mode.ch);  // 合計で音割れしないように
 
 // ---------- CRC ----------
 const CRC32_TABLE = (() => {
@@ -313,13 +326,15 @@ function parseBody(body) {
   const stored = ((body[p] << 24) | (body[p + 1] << 16) | (body[p + 2] << 8) | body[p + 3]) >>> 0;
   return { name, data, crcOk: stored === crc32(body.subarray(0, p)) };
 }
-function bytesToSyms(bytes, out) {
+function bytesToNibbles(bytes, out) {
   for (const b of bytes) out.push(b >> 4, b & 15);
   return out;
 }
-function frameSymbolCount(bodyLen) { return HEADER_SYMS + bodyLen * 2; }
+const headerSymCount = mode => Math.ceil(HEADER_NIBBLES / mode.ch);
+function frameSymbolCount(bodyLen, mode) { return Math.ceil((HEADER_NIBBLES + bodyLen * 2) / mode.ch); }
 function frameDuration(bodyLen, modeIdx) {
-  return DATA_START + frameSymbolCount(bodyLen) * MODES[modeIdx].T + CFG.tailGap + CFG.chirpDur + CFG.tail;
+  const mode = MODES[modeIdx];
+  return DATA_START + frameSymbolCount(bodyLen, mode) * mode.T + CFG.tailGap + CFG.chirpDur + CFG.tail;
 }
 
 // ---------- 信号生成 ----------
@@ -339,7 +354,7 @@ function makeChirp(fs) {
 }
 function addTone(out, tStart, dur, f, fs, amp) {
   const s0 = Math.round(tStart * fs), n = Math.round(dur * fs);
-  const r = Math.max(1, Math.round(0.0015 * fs));  // クリック音を防ぐ立ち上がり/立ち下がり
+  const r = Math.max(1, Math.round(Math.min(0.0015, dur * 0.12) * fs));  // クリック音を防ぐ立ち上がり/立ち下がり
   const w = 2 * Math.PI * f / fs;
   for (let i = 0; i < n && s0 + i < out.length; i++) {
     let e = 1;
@@ -352,10 +367,12 @@ function buildSignal(name, data, modeIdx, fs) {
   const mode = MODES[modeIdx];
   const body = makeBody(name, data);
   const header = makeHeader(body.length);
-  const syms = [];
-  for (let c = 0; c < HEADER_COPIES; c++) bytesToSyms(header, syms);
-  bytesToSyms(body, syms);
-  const endChirpT = DATA_START + syms.length * mode.T + CFG.tailGap;
+  const nibs = [];
+  for (let c = 0; c < HEADER_COPIES; c++) bytesToNibbles(header, nibs);
+  bytesToNibbles(body, nibs);
+  const nSyms = frameSymbolCount(body.length, mode);
+  while (nibs.length < nSyms * mode.ch) nibs.push(0);
+  const endChirpT = DATA_START + nSyms * mode.T + CFG.tailGap;
   const total = endChirpT + CFG.chirpDur + CFG.tail;
   const out = new Float32Array(Math.ceil(total * fs));
   const chirp = makeChirp(fs);
@@ -366,8 +383,11 @@ function buildSignal(name, data, modeIdx, fs) {
   }
   for (let j = 0; j < CFG.modeSyms; j++)
     addTone(out, MODE_START + j * MODES[0].T, MODES[0].T, toneFreq(MODES[0], modeIdx), fs, CFG.toneAmp);
-  for (let i = 0; i < syms.length; i++)
-    addTone(out, DATA_START + i * mode.T, mode.T, toneFreq(mode, syms[i]), fs, CFG.toneAmp);
+  const amp = toneAmpFor(mode);
+  for (let i = 0; i < nibs.length; i++) {
+    const s = Math.floor(i / mode.ch), c = i % mode.ch;
+    addTone(out, DATA_START + s * mode.T, mode.T, toneFreq(mode, nibs[i], c), fs, amp);
+  }
   return { samples: out, duration: total, bodyLen: body.length };
 }
 
@@ -535,16 +555,33 @@ class Receiver {
     return s1 * s1 + s2 * s2 - c * s1 * s2;
   }
   pos(t) { return this.t0 + t * this.fs * this.scale; }
+  // 1シンボル分を判定し、チャンネルごとの {v: 値, q: 1位/2位のエネルギー比} を返す
   detectSym(mode, tStart) {
     const start = Math.round(this.pos(tStart + mode.G));
     const n = Math.round(mode.W * this.fs);
-    let best = 0, bestE = -1, second = -1;
-    for (let k = 0; k < CFG.nTones; k++) {
-      const e = this.goertzel(start, n, toneFreq(mode, k));
-      if (e > bestE) { second = bestE; bestE = e; best = k; }
-      else if (e > second) second = e;
+    const res = [];
+    for (let c = 0; c < mode.ch; c++) {
+      let best = 0, bestE = -1, second = -1;
+      for (let k = 0; k < CFG.nTones; k++) {
+        const e = this.goertzel(start, n, toneFreq(mode, k, c));
+        if (e > bestE) { second = bestE; bestE = e; best = k; }
+        else if (e > second) second = e;
+      }
+      res.push({ v: best, q: second > 0 ? bestE / second : 99 });
     }
-    return { v: best, q: second > 0 ? bestE / second : 99 };
+    return res;
+  }
+  // データ部のニブル列 [from, from+count) を復調
+  readNibbles(from, count) {
+    const ch = this.mode.ch, out = [];
+    for (let s = Math.floor(from / ch); s * ch < from + count; s++) {
+      const r = this.detectSym(this.mode, this.symTime(s));
+      for (let c = 0; c < ch; c++) {
+        const i = s * ch + c;
+        if (i >= from && i < from + count) out.push(r[c]);
+      }
+    }
+    return out;
   }
   symTime(i) { return DATA_START + i * this.mode.T; }
   have(t) { return this.flushing || this.len >= this.pos(t) + 1; }
@@ -584,7 +621,7 @@ class Receiver {
         const m0 = MODES[0];
         if (!this.have(MODE_START + CFG.modeSyms * m0.T)) return false;
         const votes = [];
-        for (let j = 0; j < CFG.modeSyms; j++) votes.push(this.detectSym(m0, MODE_START + j * m0.T).v);
+        for (let j = 0; j < CFG.modeSyms; j++) votes.push(this.detectSym(m0, MODE_START + j * m0.T)[0].v);
         const cnt = {};
         let modeIdx = -1;
         for (const v of votes) { cnt[v] = (cnt[v] || 0) + 1; if (cnt[v] * 2 > votes.length) modeIdx = v; }
@@ -600,13 +637,10 @@ class Receiver {
         return true;
       }
       case 'header': {
-        if (!this.have(this.symTime(HEADER_SYMS))) return false;
+        if (!this.have(this.symTime(headerSymCount(this.mode)))) return false;
+        const all = this.readNibbles(0, HEADER_NIBBLES).map(r => r.v);
         const copies = [];
-        for (let c = 0; c < HEADER_COPIES; c++) {
-          const nib = [];
-          for (let i = 0; i < HEADER_BYTES * 2; i++) nib.push(this.detectSym(this.mode, this.symTime(c * HEADER_BYTES * 2 + i)).v);
-          copies.push(nib);
-        }
+        for (let c = 0; c < HEADER_COPIES; c++) copies.push(all.slice(c * HEADER_BYTES * 2, (c + 1) * HEADER_BYTES * 2));
         const toBytes = nib => { const b = new Uint8Array(nib.length / 2); for (let i = 0; i < b.length; i++) b[i] = (nib[2 * i] << 4) | nib[2 * i + 1]; return b; };
         let len = null;
         for (const nib of copies) { len = parseHeader(toBytes(nib)); if (len !== null) break; }
@@ -623,9 +657,10 @@ class Receiver {
           return true;
         }
         this.bodyLen = len;
-        this.totalSyms = frameSymbolCount(len);
+        this.totalSyms = frameSymbolCount(len, this.mode);
         this.endChirpT = this.symTime(this.totalSyms) + CFG.tailGap;
-        this.liveSym = HEADER_SYMS;
+        this.liveSym = headerSymCount(this.mode);
+        this.liveNibs = 0;
         this.liveBytes = new Uint8Array(len);
         this.log(`ヘッダ受信: 本体 ${len} バイト, 所要 約${this.endChirpT.toFixed(1)}秒`);
         this.state = 'body';
@@ -635,15 +670,19 @@ class Receiver {
       case 'body': {
         // 途中経過(時計補正なし)の逐次デコード
         while (this.liveSym < this.totalSyms && this.len >= this.pos(this.symTime(this.liveSym + 1))) {
-          const j = this.liveSym - HEADER_SYMS;
-          const v = this.detectSym(this.mode, this.symTime(this.liveSym)).v;
-          const bi = j >> 1;
-          this.liveBytes[bi] = j & 1 ? (this.liveBytes[bi] & 0xF0) | v : v << 4;
+          const r = this.detectSym(this.mode, this.symTime(this.liveSym));
+          for (let c = 0; c < this.mode.ch; c++) {
+            const j = this.liveSym * this.mode.ch + c - HEADER_NIBBLES;
+            if (j < 0 || j >= this.bodyLen * 2) continue;
+            const bi = j >> 1, v = r[c].v;
+            this.liveBytes[bi] = j & 1 ? (this.liveBytes[bi] & 0xF0) | v : v << 4;
+            this.liveNibs = j + 1;
+          }
           this.liveSym++;
         }
         const win = Math.round((0.05 + this.endChirpT * 0.002) * fs);
         const need = Math.round(this.pos(this.endChirpT)) + win + this.L;
-        const received = Math.min(this.bodyLen, (this.liveSym - HEADER_SYMS) >> 1);
+        const received = this.liveNibs >> 1;
         let name = null;
         if (received >= 1 + this.liveBytes[0]) name = new TextDecoder().decode(this.liveBytes.subarray(1, 1 + this.liveBytes[0]));
         this.ev.progress && this.ev.progress(Math.min(1, (this.len - this.t0) / (need - this.t0)), received, this.bodyLen, name);
@@ -671,8 +710,9 @@ class Receiver {
     }
     const body = new Uint8Array(this.bodyLen);
     let qSum = 0, weak = 0;
+    const nibs = this.readNibbles(HEADER_NIBBLES, this.bodyLen * 2);
     for (let j = 0; j < this.bodyLen * 2; j++) {
-      const r = this.detectSym(this.mode, this.symTime(HEADER_SYMS + j));
+      const r = nibs[j];
       qSum += Math.log10(Math.min(r.q, 1000));
       if (r.q < 2) weak++;
       const bi = j >> 1;
@@ -834,7 +874,7 @@ function addResult(f) {
   nameEl.textContent = (f.crcOk ? '✅ ' : '⚠ ') + f.name;
   const meta = document.createElement('div');
   meta.className = 'meta';
-  meta.textContent = `${fmtSize(f.data.length)} ・ ${f.mode} ・ ${f.crcOk ? 'CRC OK' : 'CRC エラー(データが壊れている可能性があります)'} ・ 信号品質 ${f.snr.toFixed(1)} dB ・ 時計補正 ${f.ppm.toFixed(0)} ppm`;
+  meta.textContent = `${fmtSize(f.data.length)} ・ ${f.mode} ・ ${f.crcOk ? 'CRC OK' : 'CRC エラー(データが壊れている可能性があります)'} ・ 信号品質 ${f.snr.toFixed(1)} dB ・ 時計補正 ${f.ppm.toFixed(0)} ppm ・ 実効 ${Math.round(f.data.length * 8 / f.duration)} bps`;
   const a = document.createElement('a');
   a.href = url; a.download = f.name; a.textContent = '⬇ ダウンロード';
   div.append(nameEl, meta, a);
@@ -910,7 +950,7 @@ function drawWaterfall() {
   $('level').style.background = peak > 0.95 ? 'var(--danger)' : 'var(--ok)';
   const W = wf.width, H = wf.height;
   wctx.drawImage(wf, -2, 0);
-  const fMin = 500, fMax = 5000, binHz = ctx.sampleRate / an.fftSize;
+  const fMin = 500, fMax = 15000, binHz = ctx.sampleRate / an.fftSize;
   for (let y = 0; y < H; y++) {
     const f = fMax - (fMax - fMin) * y / H;
     const v = freq[Math.round(f / binHz)] / 255;
