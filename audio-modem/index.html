@@ -214,8 +214,8 @@ Implementation Intent: スピーカーとマイクだけでファイルを送受
         <li><b>変調方式:</b> 16値FSK。1600Hz から等間隔に並んだ16種類の音のどれか1つで4ビットを表します。「2ch」「4ch」などのモードでは、高い周波数に別の16音の帯域を並べて同時に鳴らし、1回で複数の4ビットを送ります(マルチチャンネルFSK)。</li>
         <li><b>同期:</b> 先頭と末尾に「ピューイ」という周波数掃引音(チャープ)を鳴らし、受信側は FFT を用いた相互相関で位置を検出します。末尾チャープの位置から送受信機の時計のずれを補正します。</li>
         <li><b>反響対策:</b> 各シンボルの先頭(ガード区間)は部屋の残響が混ざるため捨て、残りの区間を Goertzel 法で解析して最も強い周波数を採用します。</li>
-        <li><b>誤り訂正:</b> 本体は Reed-Solomon 符号 (223バイトごとに32バイトのパリティ) を付け、1ブロックあたり16バイトまでの誤りを自動で直します。ブロックはインターリーブして連続した誤りを分散させ、普通に直せなかったブロックは、受信時に怪しかったバイトを「消失」として指定して再挑戦します(位置が分かっている誤りは2倍直せる)。最後に CRC32 で検証します。ヘッダ(データ長)は3回繰り返して多数決+CRC16。</li><li><b>OFDM モード:</b> 間隔 1/W で並べた 37〜61 本の搬送波をすべて同時に鳴らし、各搬送波の位相を前のシンボルから 0°/90°/180°/270° のどれだけ回したかで2ビットを送ります (DQPSK)。位相の「差」を見るので、スピーカーや部屋による位相のずれは打ち消されます。各シンボルの先頭(ガード区間)は反響を吸収するために捨てます。1バイトは1本の搬送波で4シンボルかけて送るので、特定の周波数が反響で打ち消されても被害はその搬送波の分だけに収まります。ヘッダは確実さ重視で 2ch FSK で送ります。位相の基準には、判定済みの過去のシンボルを重み付き平均したもの(判定帰還)を使い、雑音の影響を減らしています。</li><li><b>トーン較正:</b> ヘッダの直後に全16トーンを順に鳴らし、スピーカー・マイク・部屋の特性で弱くなるトーンを受信側で補正します。データはスクランブル(疑似乱数との XOR)して、テキストでも画像でも全トーンが均等に使われるようにしています。</li>
-        <li>速度は 低速≒67bps 〜 OFDM 8PSK≒40kbps。速いモードほど高い周波数(最大約19kHz)を使うので、スピーカーやマイクの性能と距離・音量の影響を強く受けます。どこまで通るか試してみてください。</li>
+        <li><b>誤り訂正:</b> 本体は Reed-Solomon 符号 (223バイトごとに32バイトのパリティ) を付け、1ブロックあたり16バイトまでの誤りを自動で直します。ブロックはインターリーブして連続した誤りを分散させ、普通に直せなかったブロックは、受信時に怪しかったバイトを「消失」として指定して再挑戦します(位置が分かっている誤りは2倍直せる)。最後に CRC32 で検証します。ヘッダ(データ長)は3回繰り返して多数決+CRC16。</li><li><b>OFDM モード:</b> 間隔 1/W で並べた 37〜61 本の搬送波をすべて同時に鳴らし、各搬送波の位相を前のシンボルから 0°/90°/180°/270° のどれだけ回したかで2ビットを送ります (DQPSK)。位相の「差」を見るので、スピーカーや部屋による位相のずれは打ち消されます。各シンボルの先頭(ガード区間)は反響を吸収するために捨てます。1バイトは1本の搬送波で4シンボルかけて送るので、特定の周波数が反響で打ち消されても被害はその搬送波の分だけに収まります。ヘッダは確実さ重視で 2ch FSK で送ります。位相の基準には、判定済みの過去のシンボルを重み付き平均したもの(判定帰還)を使い、雑音の影響を減らしています。</li><li><b>OFDM 16QAM:</b> 位相だけでなく振幅(音量)も使い、1搬送波で4ビットを送ります。スピーカーや部屋で搬送波ごとの音量・位相が変わるので、最初の基準シンボルで伝送路を測り、以降は判定した結果を使って推定を更新しながら補正します(同期検波)。一番速い代わりに、静かで近い環境が必要です。</li><li><b>トーン較正:</b> ヘッダの直後に全16トーンを順に鳴らし、スピーカー・マイク・部屋の特性で弱くなるトーンを受信側で補正します。データはスクランブル(疑似乱数との XOR)して、テキストでも画像でも全トーンが均等に使われるようにしています。</li>
+        <li>速度は 低速≒67bps 〜 OFDM 16QAM≒54kbps。速いモードほど高い周波数(最大約19kHz)を使うので、スピーカーやマイクの性能と距離・音量の影響を強く受けます。どこまで通るか試してみてください。</li>
       </ul>
     </details>
   </section>
@@ -261,6 +261,8 @@ const MODES = [
   // 長シンボル: 解析窓を 16ms に伸ばし、ガードの割合を減らして搬送波を 62.5Hz 間隔で 241 本詰める
   { label: 'OFDM 長シンボル', kind: 'ofdm', T: 0.018, G: 0.0015, W: 0.016, kLo: 24, N: 241 },
   { label: 'OFDM 8PSK',       kind: 'ofdm', T: 0.018, G: 0.0015, W: 0.016, kLo: 24, N: 241, bits: 3 },
+  // 16QAM: 位相に加えて振幅(音量)も使い、1搬送波あたり4bit。基準シンボルで伝送路を測って補正する(同期検波)
+  { label: 'OFDM 16QAM',      kind: 'ofdm', T: 0.018, G: 0.0015, W: 0.016, kLo: 24, N: 241, bits: 4 },
 ];
 for (const m of MODES) {
   if (m.kind === 'ofdm') {
@@ -531,7 +533,11 @@ const ofdmStart = () => DATA_START + headerSymCount(OFDM_HEADER_MODE) * OFDM_HEA
 // 1グループ = S シンボルで、各搬送波が B バイトを bits ビットずつ運ぶ
 // (DQPSK: 4シンボルで1バイト / D8PSK: 8シンボルで3バイト)。バイトを1本の搬送波に載せるので、
 // 特定の周波数が部屋の反響で打ち消されても、壊れるのはその搬送波のバイトだけで済む
-const ofdmGroup = mode => mode.bits === 3 ? { B: 3, S: 8 } : { B: 1, S: 4 };
+const ofdmGroup = mode => mode.bits === 3 ? { B: 3, S: 8 } : mode.bits === 4 ? { B: 1, S: 2 } : { B: 1, S: 4 };
+// 16QAM: 4bit を上位2bit→I軸、下位2bit→Q軸 の {-3,-1,1,3} に割り当てる (軸ごとにグレイ符号)。平均電力 1
+const QAM_NORM = Math.sqrt(10);
+const qamPoint = d => [(2 * grayEnc(d >> 2) - 3) / QAM_NORM, (2 * grayEnc(d & 3) - 3) / QAM_NORM];
+const newman = (c, N) => Math.PI * c * c / N;
 const ofdmDataSyms = (bodyLen, mode) => {
   const { B, S } = ofdmGroup(mode);
   return S * Math.ceil(fecLayout(bodyLen).txLen / (mode.N * B));
@@ -598,8 +604,9 @@ function addOfdm(out, mode, tx, fs) {
     for (let i = 0; i < L; i++) { cosA[c * L + i] = Math.cos(w * i); sinA[c * L + i] = Math.sin(w * i); }
   }
   // 基準シンボルの位相は Newman 位相 (πc²/N) にしてピークを抑える
-  const ph = new Float64Array(N);
-  for (let c = 0; c < N; c++) ph[c] = Math.PI * c * c / N;
+  // 16QAM では各シンボルの振幅と位相をそのまま決める (差動ではない)
+  const ph = new Float64Array(N), amp = new Float64Array(N).fill(1);
+  for (let c = 0; c < N; c++) ph[c] = newman(c, N);
   const first = Math.ceil(t0 * fs), last = Math.ceil((t0 + nSym * mode.T) * fs);
   for (let s = 0; s < nSym; s++) {
     if (s > 0) {
@@ -609,7 +616,13 @@ function addOfdm(out, mode, tx, fs) {
         let w = 0;
         for (let j = 0; j < B; j++) w = (w << 8) | (p0 + j < tx.length ? tx[p0 + j] : 0);
         const d = (w >>> (8 * B - mode.bits * (sub + 1))) & (M - 1);
-        ph[c] += grayEnc(d) * 2 * Math.PI / M;
+        if (mode.bits === 4) {
+          const [zr, zi] = qamPoint(d);
+          amp[c] = Math.hypot(zr, zi);
+          ph[c] = Math.atan2(zi, zr) + newman(c, N);
+        } else {
+          ph[c] += grayEnc(d) * 2 * Math.PI / M;
+        }
       }
     }
     // シンボルの開始時刻は小数サンプルのまま扱い、丸め誤差が位相に乗らないようにする
@@ -617,7 +630,7 @@ function addOfdm(out, mode, tx, fs) {
     const a = Math.ceil(ts * fs), b = Math.min(Math.ceil((ts + mode.T) * fs), out.length);
     for (let c = 0; c < N; c++) {
       const th = 2 * Math.PI * ofdmFreq(mode, c) * (a / fs - ts) + ph[c];
-      const ct = Math.cos(th), st = Math.sin(th);
+      const ct = amp[c] * Math.cos(th), st = amp[c] * Math.sin(th);
       const o = c * L;
       for (let i = 0; i < b - a; i++) out[a + i] += cosA[o + i] * ct - sinA[o + i] * st;
     }
@@ -1065,12 +1078,13 @@ class Receiver {
   // sink: { tx, stats?, unrel? }。搬送波ごとの途中のビット列は sink.w に貯める
   ofdmDecodeSym(s, ref, sink) {
     const X = this.ofdmSym(s);
+    if (this.mode.bits === 4) return this.qamDecodeSym(s, X, ref, sink);
     if (s === 0 || !ref) return X;
     const mode = this.mode, N = mode.N, M = 1 << mode.bits, { B, S } = ofdmGroup(mode);
     const g = Math.floor((s - 1) / S), sub = (s - 1) % S, step = 2 * Math.PI / M;
     if (!sink.w) { sink.w = new Uint32Array(N); sink.e = new Float32Array(N); }
     if (sub === 0) { sink.w.fill(0); sink.e.fill(0); }
-    const beta = CFG.ofdmRefBeta, { tx, stats, unrel } = sink;
+    const beta = CFG.ofdmRefBeta, { stats } = sink;
     const out = { re: new Float64Array(N), im: new Float64Array(N) };
     for (let c = 0; c < N; c++) {
       // 基準との位相差 = X * conj(ref)
@@ -1093,17 +1107,63 @@ class Receiver {
       out.re[c] = X.re[c] + beta * (ref.re[c] * cr - ref.im[c] * ci);
       out.im[c] = X.im[c] + beta * (ref.re[c] * ci + ref.im[c] * cr);
     }
-    if (sub === S - 1) {   // グループが揃ったらバイトに戻す
-      for (let c = 0; c < N; c++) {
-        for (let j = 0; j < B; j++) {
-          const p = (g * N + c) * B + j;
-          if (p >= tx.length) continue;
-          tx[p] = (sink.w[c] >>> (8 * (B - 1 - j))) & 255;
-          if (unrel) unrel[p] = sink.e[c];
-        }
+    if (sub === S - 1) this.flushGroup(g, sink);
+    return out;
+  }
+  // グループ(S シンボル)が揃ったら搬送波ごとのビット列をバイトに戻す
+  flushGroup(g, sink) {
+    const N = this.mode.N, { B } = ofdmGroup(this.mode), { tx, unrel } = sink;
+    for (let c = 0; c < N; c++) {
+      for (let j = 0; j < B; j++) {
+        const p = (g * N + c) * B + j;
+        if (p >= tx.length) continue;
+        tx[p] = (sink.w[c] >>> (8 * (B - 1 - j))) & 255;
+        if (unrel) unrel[p] = sink.e[c];
       }
     }
-    return out;
+  }
+  // 16QAM の同期検波。st は搬送波ごとの伝送路推定 H = num/den (振幅と位相のずれ)。
+  // 基準シンボル(既知: 振幅1・Newman 位相)で初期化し、以降は判定した点を使って
+  // num ← β·num + A·conj(z), den ← β·den + |z|² と更新して、ゆっくりした変化に追従する
+  qamDecodeSym(s, X, st, sink) {
+    const N = this.mode.N, beta = CFG.ofdmRefBeta;
+    const A = (c) => {   // X · conj(Newman 回転) = H · z
+      const th = newman(c, N), cr = Math.cos(th), sr = Math.sin(th);
+      return [X.re[c] * cr + X.im[c] * sr, X.im[c] * cr - X.re[c] * sr];
+    };
+    if (s === 0 || !st) {
+      st = { nr: new Float64Array(N), ni: new Float64Array(N), den: new Float64Array(N).fill(1) };
+      for (let c = 0; c < N; c++) [st.nr[c], st.ni[c]] = A(c);
+      return st;
+    }
+    const g = (s - 1) >> 1, sub = (s - 1) & 1;
+    if (!sink.w) { sink.w = new Uint32Array(N); sink.e = new Float32Array(N); }
+    if (sub === 0) { sink.w.fill(0); sink.e.fill(0); }
+    const lvl = v => Math.max(0, Math.min(3, Math.round((v * QAM_NORM + 3) / 2)));   // -3,-1,1,3 のどれに近いか
+    const dmin = 2 / QAM_NORM, { stats } = sink;
+    for (let c = 0; c < N; c++) {
+      const [ar, ai] = A(c);
+      const hr = st.nr[c] / st.den[c], hi = st.ni[c] / st.den[c];
+      const h2 = hr * hr + hi * hi || 1e-12;
+      const yr = (ar * hr + ai * hi) / h2, yi = (ai * hr - ar * hi) / h2;   // 補正後の点 Y = A / H
+      const ki = lvl(yr), kq = lvl(yi);
+      const zr = (2 * ki - 3) / QAM_NORM, zi = (2 * kq - 3) / QAM_NORM;
+      sink.w[c] = (sink.w[c] << 4) | (grayDec(ki) << 2) | grayDec(kq);
+      const err = Math.hypot(yr - zr, yi - zi);
+      sink.e[c] = Math.max(sink.e[c], err);
+      if (stats) {
+        stats.err2 += err * err;
+        stats.n++;
+        if (err > dmin / 4) stats.weak++;
+        if (!stats.car) stats.car = new Float64Array(N);
+        stats.car[c] += err * err;
+      }
+      st.nr[c] = beta * st.nr[c] + ar * zr + ai * zi;
+      st.ni[c] = beta * st.ni[c] + ai * zr - ar * zi;
+      st.den[c] = beta * st.den[c] + zr * zr + zi * zi;
+    }
+    if (sub === 1) this.flushGroup(g, sink);
+    return st;
   }
   finalize(win) {
     const fs = this.fs;
