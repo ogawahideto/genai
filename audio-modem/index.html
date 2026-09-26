@@ -214,8 +214,8 @@ Implementation Intent: スピーカーとマイクだけでファイルを送受
         <li><b>変調方式:</b> 16値FSK。1600Hz から等間隔に並んだ16種類の音のどれか1つで4ビットを表します。「2ch」「4ch」などのモードでは、高い周波数に別の16音の帯域を並べて同時に鳴らし、1回で複数の4ビットを送ります(マルチチャンネルFSK)。</li>
         <li><b>同期:</b> 先頭と末尾に「ピューイ」という周波数掃引音(チャープ)を鳴らし、受信側は FFT を用いた相互相関で位置を検出します。末尾チャープの位置から送受信機の時計のずれを補正します。</li>
         <li><b>反響対策:</b> 各シンボルの先頭(ガード区間)は部屋の残響が混ざるため捨て、残りの区間を Goertzel 法で解析して最も強い周波数を採用します。</li>
-        <li><b>誤り訂正:</b> 本体は Reed-Solomon 符号 (223バイトごとに32バイトのパリティ) を付け、1ブロックあたり16バイトまでの誤りを自動で直します。ブロックはインターリーブして連続した誤りを分散させ、最後に CRC32 で検証します。ヘッダ(データ長)は3回繰り返して多数決+CRC16。</li><li><b>トーン較正:</b> ヘッダの直後に全16トーンを順に鳴らし、スピーカー・マイク・部屋の特性で弱くなるトーンを受信側で補正します。データはスクランブル(疑似乱数との XOR)して、テキストでも画像でも全トーンが均等に使われるようにしています。</li>
-        <li>速度は 低速≒67bps 〜 極限モード≒3200bps。速いモードほど高い周波数(最大約19kHz)を使うので、スピーカーやマイクの性能と距離・音量の影響を強く受けます。どこまで通るか試してみてください。</li>
+        <li><b>誤り訂正:</b> 本体は Reed-Solomon 符号 (223バイトごとに32バイトのパリティ) を付け、1ブロックあたり16バイトまでの誤りを自動で直します。ブロックはインターリーブして連続した誤りを分散させ、最後に CRC32 で検証します。ヘッダ(データ長)は3回繰り返して多数決+CRC16。</li><li><b>OFDM モード:</b> 間隔 1/W で並べた 37〜61 本の搬送波をすべて同時に鳴らし、各搬送波の位相を前のシンボルから 0°/90°/180°/270° のどれだけ回したかで2ビットを送ります (DQPSK)。位相の「差」を見るので、スピーカーや部屋による位相のずれは打ち消されます。各シンボルの先頭(ガード区間)は反響を吸収するために捨てます。1バイトは1本の搬送波で4シンボルかけて送るので、特定の周波数が反響で打ち消されても被害はその搬送波の分だけに収まります。ヘッダは確実さ重視で 2ch FSK で送ります。</li><li><b>トーン較正:</b> ヘッダの直後に全16トーンを順に鳴らし、スピーカー・マイク・部屋の特性で弱くなるトーンを受信側で補正します。データはスクランブル(疑似乱数との XOR)して、テキストでも画像でも全トーンが均等に使われるようにしています。</li>
+        <li>速度は 低速≒67bps 〜 OFDM極限≒21kbps。速いモードほど高い周波数(最大約19kHz)を使うので、スピーカーやマイクの性能と距離・音量の影響を強く受けます。どこまで通るか試してみてください。</li>
       </ul>
     </details>
   </section>
@@ -251,13 +251,26 @@ const MODES = [
   { label: '極限 4ch 6ms',     T: 0.006, G: 0.0015, W: 0.004,  df: 250,        ch: 4 },
   { label: '極限 3ch 4ms',     T: 0.004, G: 0.0008, W: 0.003,  df: 1000 / 3,   ch: 3, base: 1000 },
   { label: '極限 4ch 5ms',     T: 0.005, G: 0.0011, W: 0.0036, df: 1000 / 3.6, ch: 4, base: 1000 },
+  // OFDM-DQPSK: 間隔 1/W で並べた N 本の搬送波を全部同時に鳴らし、各搬送波の位相を
+  // 前のシンボルから 0/90/180/270° 回すことで2bitずつ送る。kLo: 最低搬送波の番号 (周波数 = k/W)
+  { label: 'OFDM 安定', kind: 'ofdm', T: 0.014,  G: 0.0035, W: 0.010, kLo: 15, N: 37 },
+  { label: 'OFDM 標準', kind: 'ofdm', T: 0.010,  G: 0.0015, W: 0.008, kLo: 12, N: 53 },
+  { label: 'OFDM 高速', kind: 'ofdm', T: 0.0067, G: 0.0012, W: 0.005, kLo: 8,  N: 53 },
+  { label: 'OFDM 極限', kind: 'ofdm', T: 0.0057, G: 0.0012, W: 0.004, kLo: 6,  N: 61 },
 ];
 for (const m of MODES) {
-  m.bps = Math.round(4 * m.ch / m.T);
-  m.base = m.base || CFG.base;
-  m.fMax = m.base + (16 * m.ch - 1) * m.df;
+  if (m.kind === 'ofdm') {
+    m.bps = Math.round(2 * m.N / m.T);
+    m.fMax = (m.kLo + m.N - 1) / m.W;
+  } else {
+    m.bps = Math.round(4 * m.ch / m.T);
+    m.base = m.base || CFG.base;
+    m.fMax = m.base + (16 * m.ch - 1) * m.df;
+  }
   m.name = `${m.label} 約${m.bps}bps (〜${(m.fMax / 1000).toFixed(1)}kHz)`;
 }
+// モード番号は低速モードの16音のどれかで知らせるので最大16モード
+if (MODES.length > CFG.nTones) throw new Error('モードが多すぎます');
 const MODE_START = CFG.chirpDur + CFG.gap1;
 const DATA_START = MODE_START + MODES[0].T * CFG.modeSyms + CFG.gap2;
 const MAGIC = 0xA6;   // v2: 誤り訂正(RS)付き
@@ -482,15 +495,27 @@ function bytesToNibbles(bytes, out) {
   for (const b of bytes) out.push(b >> 4, b & 15);
   return out;
 }
-// シンボルの並び: [ヘッダ×3][較正 16シンボル][誤り訂正済みデータ]
+// FSK のシンボルの並び: [ヘッダ×3][較正 16シンボル][誤り訂正済みデータ]
+// OFDM の並び:          [ヘッダ×3 (2ch FSK)][OFDM 基準シンボル][OFDM データ]
+const OFDM_HEADER_MODE = MODES[3];
+const headerMode = mode => mode.kind === 'ofdm' ? OFDM_HEADER_MODE : mode;
 const headerSymCount = mode => Math.ceil(HEADER_NIBBLES / mode.ch);
 const dataSymStart = mode => headerSymCount(mode) + TRAIN_SYMS;
 function frameSymbolCount(bodyLen, mode) {
   return dataSymStart(mode) + Math.ceil(fecLayout(bodyLen).txLen * 2 / mode.ch);
 }
+const ofdmStart = () => DATA_START + headerSymCount(OFDM_HEADER_MODE) * OFDM_HEADER_MODE.T + 0.01;
+// 4シンボルで各搬送波が1バイト(2bit×4)を運ぶ。1バイトを1本の搬送波に載せるので、
+// 特定の周波数が部屋の反響で打ち消されても、壊れるのはその搬送波のバイトだけで済む
+const ofdmDataSyms = (bodyLen, mode) => 4 * Math.ceil(fecLayout(bodyLen).txLen / mode.N);
+const ofdmFreq = (mode, c) => (mode.kLo + c) / mode.W;
+const GRAY = [0, 1, 3, 2];   // 2bit → 位相の象限 (隣の象限との違いが1bitになる並び。逆変換も同じ表)
+function dataEndTime(bodyLen, mode) {
+  if (mode.kind === 'ofdm') return ofdmStart() + (1 + ofdmDataSyms(bodyLen, mode)) * mode.T;
+  return DATA_START + frameSymbolCount(bodyLen, mode) * mode.T;
+}
 function frameDuration(bodyLen, modeIdx) {
-  const mode = MODES[modeIdx];
-  return DATA_START + frameSymbolCount(bodyLen, mode) * mode.T + CFG.tailGap + CFG.chirpDur + CFG.tail;
+  return dataEndTime(bodyLen, MODES[modeIdx]) + CFG.tailGap + CFG.chirpDur + CFG.tail;
 }
 
 // ---------- 信号生成 ----------
@@ -519,22 +544,8 @@ function addTone(out, tStart, dur, f, fs, amp) {
     out[s0 + i] += amp * e * Math.sin(w * i);
   }
 }
-function buildSignal(name, data, modeIdx, fs) {
-  const mode = MODES[modeIdx];
-  const body = makeBody(name, data);
-  const header = makeHeader(body.length);
-  const hs = headerSymCount(mode), ds = dataSymStart(mode);
-  const nibs = [];
-  for (let c = 0; c < HEADER_COPIES; c++) bytesToNibbles(header, nibs);
-  while (nibs.length < hs * mode.ch) nibs.push(0);
-  for (let s = 0; s < TRAIN_SYMS; s++)
-    for (let c = 0; c < mode.ch; c++) nibs.push(s);   // 較正: 全チャンネルでトーン s を鳴らす
-  bytesToNibbles(fecEncode(body), nibs);
-  const nSyms = frameSymbolCount(body.length, mode);
-  while (nibs.length < nSyms * mode.ch) nibs.push(0);
-  const endChirpT = DATA_START + nSyms * mode.T + CFG.tailGap;
-  const total = endChirpT + CFG.chirpDur + CFG.tail;
-  const out = new Float32Array(Math.ceil(total * fs));
+// 先頭・末尾のチャープとモード番号のトーンを書き込む
+function addChirpsAndMode(out, modeIdx, endChirpT, fs) {
   const chirp = makeChirp(fs);
   const e0 = Math.round(endChirpT * fs);
   for (let i = 0; i < chirp.length; i++) {
@@ -543,6 +554,77 @@ function buildSignal(name, data, modeIdx, fs) {
   }
   for (let j = 0; j < CFG.modeSyms; j++)
     addTone(out, MODE_START + j * MODES[0].T, MODES[0].T, toneFreq(MODES[0], modeIdx), fs, CFG.toneAmp);
+}
+// OFDM データ部を out に書き込む
+function addOfdm(out, mode, tx, fs) {
+  const N = mode.N, nSym = 1 + 4 * Math.ceil(tx.length / N);
+  const t0 = ofdmStart();
+  const L = Math.ceil(mode.T * fs) + 2;
+  // cos(ωi + θ) = cos(ωi)cosθ - sin(ωi)sinθ を使い、1シンボル分のテーブルを使い回す
+  const cosA = new Float32Array(N * L), sinA = new Float32Array(N * L);
+  for (let c = 0; c < N; c++) {
+    const w = 2 * Math.PI * ofdmFreq(mode, c) / fs;
+    for (let i = 0; i < L; i++) { cosA[c * L + i] = Math.cos(w * i); sinA[c * L + i] = Math.sin(w * i); }
+  }
+  // 基準シンボルの位相は Newman 位相 (πc²/N) にしてピークを抑える
+  const ph = new Float64Array(N);
+  for (let c = 0; c < N; c++) ph[c] = Math.PI * c * c / N;
+  const first = Math.ceil(t0 * fs), last = Math.ceil((t0 + nSym * mode.T) * fs);
+  for (let s = 0; s < nSym; s++) {
+    if (s > 0) {
+      const g = (s - 1) >> 2, sub = (s - 1) & 3;
+      for (let c = 0; c < N; c++) {
+        const p = g * N + c;
+        const d = p < tx.length ? (tx[p] >> (6 - 2 * sub)) & 3 : 0;
+        ph[c] += GRAY[d] * Math.PI / 2;
+      }
+    }
+    // シンボルの開始時刻は小数サンプルのまま扱い、丸め誤差が位相に乗らないようにする
+    const ts = t0 + s * mode.T;
+    const a = Math.ceil(ts * fs), b = Math.min(Math.ceil((ts + mode.T) * fs), out.length);
+    for (let c = 0; c < N; c++) {
+      const th = 2 * Math.PI * ofdmFreq(mode, c) * (a / fs - ts) + ph[c];
+      const ct = Math.cos(th), st = Math.sin(th);
+      const o = c * L;
+      for (let i = 0; i < b - a; i++) out[a + i] += cosA[o + i] * ct - sinA[o + i] * st;
+    }
+  }
+  let peak = 0;
+  for (let i = first; i < last; i++) peak = Math.max(peak, Math.abs(out[i]));
+  const k = 0.9 / (peak || 1);
+  for (let i = first; i < last; i++) out[i] *= k;
+}
+function buildSignal(name, data, modeIdx, fs) {
+  const mode = MODES[modeIdx];
+  const body = makeBody(name, data);
+  const header = makeHeader(body.length);
+  const tx = fecEncode(body);
+  if (mode.kind === 'ofdm') {
+    const hm = OFDM_HEADER_MODE;
+    const nibs = [];
+    for (let c = 0; c < HEADER_COPIES; c++) bytesToNibbles(header, nibs);
+    const endChirpT = dataEndTime(body.length, mode) + CFG.tailGap;
+    const total = endChirpT + CFG.chirpDur + CFG.tail;
+    const out = new Float32Array(Math.ceil(total * fs));
+    addChirpsAndMode(out, modeIdx, endChirpT, fs);
+    for (let i = 0; i < nibs.length; i++)
+      addTone(out, DATA_START + Math.floor(i / hm.ch) * hm.T, hm.T, toneFreq(hm, nibs[i], i % hm.ch), fs, toneAmpFor(hm));
+    addOfdm(out, mode, tx, fs);
+    return { samples: out, duration: total, bodyLen: body.length };
+  }
+  const hs = headerSymCount(mode);
+  const nibs = [];
+  for (let c = 0; c < HEADER_COPIES; c++) bytesToNibbles(header, nibs);
+  while (nibs.length < hs * mode.ch) nibs.push(0);
+  for (let s = 0; s < TRAIN_SYMS; s++)
+    for (let c = 0; c < mode.ch; c++) nibs.push(s);   // 較正: 全チャンネルでトーン s を鳴らす
+  bytesToNibbles(tx, nibs);
+  const nSyms = frameSymbolCount(body.length, mode);
+  while (nibs.length < nSyms * mode.ch) nibs.push(0);
+  const endChirpT = DATA_START + nSyms * mode.T + CFG.tailGap;
+  const total = endChirpT + CFG.chirpDur + CFG.tail;
+  const out = new Float32Array(Math.ceil(total * fs));
+  addChirpsAndMode(out, modeIdx, endChirpT, fs);
   const amp = toneAmpFor(mode);
   for (let i = 0; i < nibs.length; i++) {
     const s = Math.floor(i / mode.ch), c = i % mode.ch;
@@ -728,7 +810,7 @@ class Receiver {
     const res = [];
     for (let c = 0; c < mode.ch; c++) {
       const e = this.toneEnergies(mode, tStart, c);
-      const g = this.eq && mode === this.mode ? this.eq[c] : null;
+      const g = this.eq && mode === this.fsk ? this.eq[c] : null;
       let best = 0, bestE = -1, second = -1;
       for (let k = 0; k < CFG.nTones; k++) {
         const v = g ? e[k] / g[k] : e[k];   // 較正で測った届きやすさで補正
@@ -741,11 +823,11 @@ class Receiver {
   }
   // 較正シンボルから各トーンの受信強度を測る
   calibrate() {
-    const hs = headerSymCount(this.mode);
+    const hs = headerSymCount(this.fsk);
     this.eq = [];
-    for (let c = 0; c < this.mode.ch; c++) {
+    for (let c = 0; c < this.fsk.ch; c++) {
       const g = [];
-      for (let k = 0; k < CFG.nTones; k++) g.push(this.toneEnergies(this.mode, this.symTime(hs + k), c)[k]);
+      for (let k = 0; k < CFG.nTones; k++) g.push(this.toneEnergies(this.fsk, this.symTime(hs + k), c)[k]);
       const mean = g.reduce((a, b) => a + b, 0) / g.length;
       this.eq.push(g.map(v => Math.max(v, mean * 0.02) / (mean || 1)));
     }
@@ -754,9 +836,9 @@ class Receiver {
   }
   // シンボル sym0 から始まるニブル列の [from, from+count) を復調
   readNibbles(sym0, from, count) {
-    const ch = this.mode.ch, out = [];
+    const ch = this.fsk.ch, out = [];
     for (let s = Math.floor(from / ch); s * ch < from + count; s++) {
-      const r = this.detectSym(this.mode, this.symTime(sym0 + s));
+      const r = this.detectSym(this.fsk, this.symTime(sym0 + s));
       for (let c = 0; c < ch; c++) {
         const i = s * ch + c;
         if (i >= from && i < from + count) out.push(r[c]);
@@ -764,7 +846,7 @@ class Receiver {
     }
     return out;
   }
-  symTime(i) { return DATA_START + i * this.mode.T; }
+  symTime(i) { return DATA_START + i * this.fsk.T; }
   have(t) { return this.flushing || this.len >= this.pos(t) + 1; }
   // ---- 状態機械 ----
   process() {
@@ -813,12 +895,13 @@ class Receiver {
         }
         this.modeIdx = modeIdx;
         this.mode = MODES[modeIdx];
+        this.fsk = headerMode(this.mode);
         this.log(`速度モード: ${this.mode.name}`);
         this.state = 'header';
         return true;
       }
       case 'header': {
-        if (!this.have(this.symTime(headerSymCount(this.mode)))) return false;
+        if (!this.have(this.symTime(headerSymCount(this.fsk)))) return false;
         const all = this.readNibbles(0, 0, HEADER_NIBBLES).map(r => r.v);
         const copies = [];
         for (let c = 0; c < HEADER_COPIES; c++) copies.push(all.slice(c * HEADER_BYTES * 2, (c + 1) * HEADER_BYTES * 2));
@@ -840,14 +923,41 @@ class Receiver {
         this.bodyLen = len;
         this.txLen = fecLayout(len).txLen;
         this.ks = keystream(this.txLen);
-        this.totalSyms = frameSymbolCount(len, this.mode);
-        this.endChirpT = this.symTime(this.totalSyms) + CFG.tailGap;
-        this.liveSym = dataSymStart(this.mode);
+        this.endChirpT = dataEndTime(len, this.mode) + CFG.tailGap;
         this.liveNibs = 0;
         this.liveBytes = new Uint8Array(this.txLen);
         this.log(`ヘッダ受信: 本体 ${len} バイト (誤り訂正込み ${this.txLen} バイト), 所要 約${this.endChirpT.toFixed(1)}秒`);
+        if (this.mode.kind === 'ofdm') {
+          this.totalSyms = 1 + ofdmDataSyms(len, this.mode);
+          this.liveSym = 0;
+          this.liveTx = new Uint8Array(this.txLen);
+          this.prevX = null;
+          this.state = 'ofdm';
+          this.ev.state && this.ev.state('body');
+          return true;
+        }
+        this.totalSyms = frameSymbolCount(len, this.mode);
+        this.liveSym = dataSymStart(this.mode);
         this.state = 'train';
         return true;
+      }
+      case 'ofdm': {
+        // 途中経過(時計補正・誤り訂正なし)の逐次デコード
+        const T = this.mode.T, t0 = ofdmStart();
+        while (this.liveSym < this.totalSyms && this.len >= this.pos(t0 + (this.liveSym + 1) * T)) {
+          const s = this.liveSym;
+          this.prevX = this.ofdmDecodeSym(s, this.prevX, this.liveTx, null);
+          if (s > 0 && ((s - 1) & 3) === 3) {
+            const g = (s - 1) >> 2;
+            for (let c = 0; c < this.mode.N; c++) {
+              const p = g * this.mode.N + c;
+              if (p < this.txLen) this.liveBytes[p] = this.liveTx[p] ^ this.ks[p];
+            }
+            this.liveNibs = Math.min(this.txLen, (g + 1) * this.mode.N) * 2;
+          }
+          this.liveSym++;
+        }
+        return this.bodyProgress();
       }
       case 'train': {
         if (!this.have(this.symTime(dataSymStart(this.mode)))) return false;
@@ -871,18 +981,75 @@ class Receiver {
           }
           this.liveSym++;
         }
-        const win = Math.round((0.05 + this.endChirpT * 0.002) * fs);
-        const need = Math.round(this.pos(this.endChirpT)) + win + this.L;
-        const received = Math.min(this.bodyLen, this.liveNibs >> 1);
-        let name = null;
-        if (received >= 1 + this.liveBytes[0]) name = new TextDecoder().decode(this.liveBytes.subarray(1, 1 + this.liveBytes[0]));
-        this.ev.progress && this.ev.progress(Math.min(1, (this.len - this.t0) / (need - this.t0)), received, this.bodyLen, name);
-        if (this.len < need && !this.flushing) return false;
-        this.finalize(win);
-        return true;
+        return this.bodyProgress();
       }
     }
     return false;
+  }
+  // 進捗を通知し、末尾チャープまで届いていれば最終デコードする
+  bodyProgress() {
+    const win = Math.round((0.05 + this.endChirpT * 0.002) * this.fs);
+    const need = Math.round(this.pos(this.endChirpT)) + win + this.L;
+    const received = Math.min(this.bodyLen, this.liveNibs >> 1);
+    let name = null;
+    if (received >= 1 + this.liveBytes[0]) name = new TextDecoder().decode(this.liveBytes.subarray(1, 1 + this.liveBytes[0]));
+    this.ev.progress && this.ev.progress(Math.min(1, (this.len - this.t0) / (need - this.t0)), received, this.bodyLen, name);
+    if (this.len < need && !this.flushing) return false;
+    this.finalize(win);
+    return true;
+  }
+  // ---- OFDM 復調 ----
+  // シンボル s の解析窓で各搬送波の複素振幅を求める。位相は窓の開始時刻(小数サンプル)基準
+  ofdmSym(s) {
+    const mode = this.mode, N = mode.N, fs = this.fs;
+    const n = Math.round(mode.W * fs);
+    if (!this.ofdmTab || this.ofdmTab.mode !== mode) {
+      const C = new Float32Array(N * n), S = new Float32Array(N * n);
+      for (let c = 0; c < N; c++) {
+        const w = 2 * Math.PI * ofdmFreq(mode, c) / fs;
+        for (let i = 0; i < n; i++) { C[c * n + i] = Math.cos(w * i); S[c * n + i] = Math.sin(w * i); }
+      }
+      this.ofdmTab = { mode, C, S };
+    }
+    const { C, S } = this.ofdmTab;
+    const p = this.pos(ofdmStart() + s * mode.T + mode.G);
+    const n0 = Math.round(p);
+    const x = new Float64Array(n);
+    for (let i = 0; i < n; i++) x[i] = this.sample(n0 + i);
+    const re = new Float64Array(N), im = new Float64Array(N);
+    for (let c = 0; c < N; c++) {
+      let a = 0, b = 0;
+      const o = c * n;
+      for (let i = 0; i < n; i++) { a += x[i] * C[o + i]; b -= x[i] * S[o + i]; }
+      const phi = -2 * Math.PI * ofdmFreq(mode, c) * (n0 - p) / fs;  // 丸めた分の位相を戻す
+      const cp = Math.cos(phi), sp = Math.sin(phi);
+      re[c] = a * cp - b * sp;
+      im[c] = a * sp + b * cp;
+    }
+    return { re, im };
+  }
+  // シンボル s を復調して tx に2bitずつ書き込み、この シンボルの複素振幅を返す
+  ofdmDecodeSym(s, prev, tx, stats) {
+    const X = this.ofdmSym(s);
+    if (s === 0 || !prev) return X;
+    const N = this.mode.N, g = (s - 1) >> 2, sub = (s - 1) & 3;
+    for (let c = 0; c < N; c++) {
+      // 前シンボルとの位相差 = X * conj(prev)
+      const re = X.re[c] * prev.re[c] + X.im[c] * prev.im[c];
+      const im = X.im[c] * prev.re[c] - X.re[c] * prev.im[c];
+      const ang = Math.atan2(im, re);
+      const q = ((Math.round(ang / (Math.PI / 2)) % 4) + 4) % 4;
+      const d = GRAY[q];
+      const p = g * N + c;
+      if (p < tx.length) tx[p] = sub === 0 ? d << 6 : tx[p] | (d << (6 - 2 * sub));
+      if (stats) {
+        let err = ang - Math.round(ang / (Math.PI / 2)) * Math.PI / 2;
+        stats.err2 += err * err;
+        stats.n++;
+        if (Math.abs(err) > Math.PI / 8) stats.weak++;
+      }
+    }
+    return X;
   }
   finalize(win) {
     const fs = this.fs;
@@ -900,14 +1067,25 @@ class Receiver {
       this.log('末尾チャープが見つかりません (時計補正なしで復元)');
     }
     const tx = new Uint8Array(this.txLen);
-    let qSum = 0, weak = 0;
-    const nibs = this.readNibbles(dataSymStart(this.mode), 0, this.txLen * 2);
-    for (let j = 0; j < nibs.length; j++) {
-      const r = nibs[j];
-      qSum += Math.log10(Math.min(r.q, 1000));
-      if (r.q < 2) weak++;
-      const bi = j >> 1;
-      tx[bi] = j & 1 ? tx[bi] | r.v : r.v << 4;
+    let snr, weak = 0;
+    if (this.mode.kind === 'ofdm') {
+      const stats = { err2: 0, n: 0, weak: 0 };
+      let prev = null;
+      for (let s = 0; s < this.totalSyms; s++) prev = this.ofdmDecodeSym(s, prev, tx, stats);
+      weak = stats.weak;
+      // 位相誤差の分散から見積もった SN 比
+      snr = 10 * Math.log10(1 / Math.max(stats.err2 / Math.max(stats.n, 1), 1e-6));
+    } else {
+      let qSum = 0;
+      const nibs = this.readNibbles(dataSymStart(this.mode), 0, this.txLen * 2);
+      for (let j = 0; j < nibs.length; j++) {
+        const r = nibs[j];
+        qSum += Math.log10(Math.min(r.q, 1000));
+        if (r.q < 2) weak++;
+        const bi = j >> 1;
+        tx[bi] = j & 1 ? tx[bi] | r.v : r.v << 4;
+      }
+      snr = 10 * qSum / nibs.length;
     }
     const fec = fecDecode(tx, this.bodyLen);
     this.log(`誤り訂正: ${fec.fixed} バイト訂正` + (fec.failed ? `, 訂正しきれないブロック ${fec.failed}/${fec.blocks}` : ''));
@@ -915,7 +1093,7 @@ class Receiver {
     const body = fec.body;
     const info = {
       mode: this.mode.name,
-      snr: 10 * qSum / nibs.length,
+      snr,
       weak,
       fixed: fec.fixed,
       failedBlocks: fec.failed,
@@ -1125,7 +1303,7 @@ $('btnStopListen').onclick = () => {
   listening = null;
   l.proc.disconnect(); l.src.disconnect();
   l.stream.getTracks().forEach(t => t.stop());
-  if (l.rx.state === 'body') { log('途中で停止 → 受信済みの分で復元を試みます'); l.rx.flush(); }
+  if (l.rx.state === 'body' || l.rx.state === 'ofdm') { log('途中で停止 → 受信済みの分で復元を試みます'); l.rx.flush(); }
   $('btnListen').disabled = false; $('btnStopListen').disabled = true;
   $('level').style.width = '0';
   if (!/受信完了|CRC/.test($('recvStatus').textContent)) $('recvStatus').textContent = '停止しました';
