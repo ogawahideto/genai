@@ -215,7 +215,7 @@ Implementation Intent: スピーカーとマイクだけでファイルを送受
         <li><b>同期:</b> 先頭と末尾に「ピューイ」という周波数掃引音(チャープ)を鳴らし、受信側は FFT を用いた相互相関で位置を検出します。末尾チャープの位置から送受信機の時計のずれを補正します。</li>
         <li><b>反響対策:</b> 各シンボルの先頭(ガード区間)は部屋の残響が混ざるため捨て、残りの区間を Goertzel 法で解析して最も強い周波数を採用します。</li>
         <li><b>誤り訂正:</b> 本体は Reed-Solomon 符号 (223バイトごとに32バイトのパリティ) を付け、1ブロックあたり16バイトまでの誤りを自動で直します。ブロックはインターリーブして連続した誤りを分散させ、最後に CRC32 で検証します。ヘッダ(データ長)は3回繰り返して多数決+CRC16。</li><li><b>トーン較正:</b> ヘッダの直後に全16トーンを順に鳴らし、スピーカー・マイク・部屋の特性で弱くなるトーンを受信側で補正します。データはスクランブル(疑似乱数との XOR)して、テキストでも画像でも全トーンが均等に使われるようにしています。</li>
-        <li>速度は 低速≒67bps 〜 実験モード≒2000bps。速いモードほど高い周波数(最大約14kHz)を使うので、スピーカーやマイクの性能と距離・音量の影響を強く受けます。どこまで通るか試してみてください。</li>
+        <li>速度は 低速≒67bps 〜 極限モード≒3200bps。速いモードほど高い周波数(最大約19kHz)を使うので、スピーカーやマイクの性能と距離・音量の影響を強く受けます。どこまで通るか試してみてください。</li>
       </ul>
     </details>
   </section>
@@ -247,10 +247,15 @@ const MODES = [
   { label: '限界 4ch',          T: 0.012, G: 0.003, W: 0.008, df: 125, ch: 4 },
   { label: '実験 6ch',          T: 0.012, G: 0.003, W: 0.008, df: 125, ch: 6 },
   { label: '実験 4ch短シンボル', T: 0.008, G: 0.002, W: 0.005, df: 200, ch: 4 },
+  // 極限モード: 反響よけのガードが 1ms 前後しかなく、17〜19kHz まで使う。低めの base で帯域を稼ぐ
+  { label: '極限 4ch 6ms',     T: 0.006, G: 0.0015, W: 0.004,  df: 250,        ch: 4 },
+  { label: '極限 3ch 4ms',     T: 0.004, G: 0.0008, W: 0.003,  df: 1000 / 3,   ch: 3, base: 1000 },
+  { label: '極限 4ch 5ms',     T: 0.005, G: 0.0011, W: 0.0036, df: 1000 / 3.6, ch: 4, base: 1000 },
 ];
 for (const m of MODES) {
   m.bps = Math.round(4 * m.ch / m.T);
-  m.fMax = CFG.base + (16 * m.ch - 1) * m.df;
+  m.base = m.base || CFG.base;
+  m.fMax = m.base + (16 * m.ch - 1) * m.df;
   m.name = `${m.label} 約${m.bps}bps (〜${(m.fMax / 1000).toFixed(1)}kHz)`;
 }
 const MODE_START = CFG.chirpDur + CFG.gap1;
@@ -261,7 +266,7 @@ const HEADER_NIBBLES = HEADER_BYTES * 2 * HEADER_COPIES;
 const TRAIN_SYMS = CFG.nTones;   // 各トーンの届き具合を測る較正シンボル
 const MAX_BODY = 1 << 24;
 
-const toneFreq = (mode, k, c = 0) => CFG.base + (c * CFG.nTones + k) * mode.df;
+const toneFreq = (mode, k, c = 0) => mode.base + (c * CFG.nTones + k) * mode.df;
 const toneAmpFor = mode => Math.min(CFG.toneAmp, 0.9 / mode.ch);  // 合計で音割れしないように
 
 // ---------- CRC ----------
