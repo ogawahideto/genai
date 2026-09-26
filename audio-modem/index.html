@@ -214,7 +214,7 @@ Implementation Intent: スピーカーとマイクだけでファイルを送受
         <li><b>変調方式:</b> 16値FSK。1600Hz から等間隔に並んだ16種類の音のどれか1つで4ビットを表します。「2ch」「4ch」などのモードでは、高い周波数に別の16音の帯域を並べて同時に鳴らし、1回で複数の4ビットを送ります(マルチチャンネルFSK)。</li>
         <li><b>同期:</b> 先頭と末尾に「ピューイ」という周波数掃引音(チャープ)を鳴らし、受信側は FFT を用いた相互相関で位置を検出します。末尾チャープの位置から送受信機の時計のずれを補正します。</li>
         <li><b>反響対策:</b> 各シンボルの先頭(ガード区間)は部屋の残響が混ざるため捨て、残りの区間を Goertzel 法で解析して最も強い周波数を採用します。</li>
-        <li><b>誤り検出:</b> ヘッダ(データ長)は3回繰り返して多数決+CRC16、本体は CRC32 で検証します。誤り訂正はないので、CRC エラーの時はもう一度送ってください。</li>
+        <li><b>誤り訂正:</b> 本体は Reed-Solomon 符号 (223バイトごとに32バイトのパリティ) を付け、1ブロックあたり16バイトまでの誤りを自動で直します。ブロックはインターリーブして連続した誤りを分散させ、最後に CRC32 で検証します。ヘッダ(データ長)は3回繰り返して多数決+CRC16。</li><li><b>トーン較正:</b> ヘッダの直後に全16トーンを順に鳴らし、スピーカー・マイク・部屋の特性で弱くなるトーンを受信側で補正します。データはスクランブル(疑似乱数との XOR)して、テキストでも画像でも全トーンが均等に使われるようにしています。</li>
         <li>速度は 低速≒67bps 〜 実験モード≒2000bps。速いモードほど高い周波数(最大約14kHz)を使うので、スピーカーやマイクの性能と距離・音量の影響を強く受けます。どこまで通るか試してみてください。</li>
       </ul>
     </details>
@@ -255,9 +255,10 @@ for (const m of MODES) {
 }
 const MODE_START = CFG.chirpDur + CFG.gap1;
 const DATA_START = MODE_START + MODES[0].T * CFG.modeSyms + CFG.gap2;
-const MAGIC = 0xA5;
+const MAGIC = 0xA6;   // v2: 誤り訂正(RS)付き
 const HEADER_BYTES = 7, HEADER_COPIES = 3;
 const HEADER_NIBBLES = HEADER_BYTES * 2 * HEADER_COPIES;
+const TRAIN_SYMS = CFG.nTones;   // 各トーンの届き具合を測る較正シンボル
 const MAX_BODY = 1 << 24;
 
 const toneFreq = (mode, k, c = 0) => CFG.base + (c * CFG.nTones + k) * mode.df;
@@ -285,6 +286,152 @@ function crc16(bytes) {
     for (let k = 0; k < 8; k++) c = c & 0x8000 ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF;
   }
   return c;
+}
+
+// ---------- Reed-Solomon 誤り訂正 (GF(256), 原始多項式 0x11d) ----------
+// 符号語 = データ k バイト + パリティ RS_NSYM バイト。1符号語あたり RS_NSYM/2 バイトまで訂正できる
+const RS_NSYM = 32, RS_K = 223;
+const GF_EXP = new Uint8Array(512), GF_LOG = new Uint8Array(256);
+(() => {
+  let x = 1;
+  for (let i = 0; i < 255; i++) {
+    GF_EXP[i] = x; GF_LOG[x] = i;
+    x <<= 1;
+    if (x & 0x100) x ^= 0x11d;
+  }
+  for (let i = 255; i < 512; i++) GF_EXP[i] = GF_EXP[i - 255];
+})();
+const gfMul = (a, b) => a && b ? GF_EXP[GF_LOG[a] + GF_LOG[b]] : 0;
+const gfDiv = (a, b) => a ? GF_EXP[(GF_LOG[a] + 255 - GF_LOG[b]) % 255] : 0;
+const gfPow = (a, n) => GF_EXP[(((GF_LOG[a] * n) % 255) + 255) % 255];
+const gfInv = a => GF_EXP[255 - GF_LOG[a]];
+const polyScale = (p, x) => p.map(v => gfMul(v, x));
+function polyAdd(p, q) {
+  const r = new Array(Math.max(p.length, q.length)).fill(0);
+  for (let i = 0; i < p.length; i++) r[i + r.length - p.length] = p[i];
+  for (let i = 0; i < q.length; i++) r[i + r.length - q.length] ^= q[i];
+  return r;
+}
+function polyMul(p, q) {
+  const r = new Array(p.length + q.length - 1).fill(0);
+  for (let j = 0; j < q.length; j++)
+    for (let i = 0; i < p.length; i++) r[i + j] ^= gfMul(p[i], q[j]);
+  return r;
+}
+function polyEval(p, x) {
+  let y = p[0];
+  for (let i = 1; i < p.length; i++) y = gfMul(y, x) ^ p[i];
+  return y;
+}
+const RS_GEN = (() => {
+  let g = [1];
+  for (let i = 0; i < RS_NSYM; i++) g = polyMul(g, [1, gfPow(2, i)]);
+  return g;
+})();
+function rsEncode(msg) {
+  const out = new Uint8Array(msg.length + RS_NSYM);
+  out.set(msg);
+  for (let i = 0; i < msg.length; i++) {
+    const c = out[i];
+    if (c) for (let j = 1; j < RS_GEN.length; j++) out[i + j] ^= gfMul(RS_GEN[j], c);
+  }
+  out.set(msg);
+  return out;
+}
+// 訂正に成功したら {data, fixed}、訂正不能なら null
+function rsDecode(cw) {
+  const nsym = RS_NSYM, n = cw.length;
+  const msg = Array.from(cw);
+  const synd = [0];
+  let any = false;
+  for (let i = 0; i < nsym; i++) { const s = polyEval(msg, gfPow(2, i)); synd.push(s); if (s) any = true; }
+  if (!any) return { data: cw.slice(0, n - nsym), fixed: 0 };
+  // Berlekamp-Massey で誤り位置多項式を求める
+  let errLoc = [1], oldLoc = [1];
+  const shift = synd.length - nsym;
+  for (let i = 0; i < nsym; i++) {
+    const K = i + shift;
+    let delta = synd[K];
+    for (let j = 1; j < errLoc.length; j++) delta ^= gfMul(errLoc[errLoc.length - 1 - j], synd[K - j]);
+    oldLoc = oldLoc.concat([0]);
+    if (delta) {
+      if (oldLoc.length > errLoc.length) {
+        const newLoc = polyScale(oldLoc, delta);
+        oldLoc = polyScale(errLoc, gfInv(delta));
+        errLoc = newLoc;
+      }
+      errLoc = polyAdd(errLoc, polyScale(oldLoc, delta));
+    }
+  }
+  while (errLoc.length && errLoc[0] === 0) errLoc.shift();
+  const errs = errLoc.length - 1;
+  if (errs * 2 > nsym) return null;
+  // Chien 探索で誤り位置を特定
+  const rev = errLoc.slice().reverse();
+  const pos = [];
+  for (let i = 0; i < n; i++) if (polyEval(rev, gfPow(2, i)) === 0) pos.push(n - 1 - i);
+  if (pos.length !== errs) return null;
+  // Forney のアルゴリズムで誤りの値を求める
+  const coefPos = pos.map(p => n - 1 - p);
+  let eLoc = [1];
+  for (const c of coefPos) eLoc = polyMul(eLoc, polyAdd([1], [gfPow(2, c), 0]));
+  const prod = polyMul(synd.slice().reverse(), eLoc);
+  const errEval = prod.slice(prod.length - eLoc.length);
+  const X = coefPos.map(c => gfPow(2, c));
+  for (let i = 0; i < X.length; i++) {
+    const xiInv = gfInv(X[i]);
+    let prime = 1;
+    for (let j = 0; j < X.length; j++) if (j !== i) prime = gfMul(prime, 1 ^ gfMul(xiInv, X[j]));
+    if (!prime) return null;
+    const y = gfMul(X[i], polyEval(errEval, xiInv));
+    msg[pos[i]] ^= gfDiv(y, prime);
+  }
+  for (let i = 0; i < nsym; i++) if (polyEval(msg, gfPow(2, i))) return null;
+  return { data: Uint8Array.from(msg.slice(0, n - nsym)), fixed: errs };
+}
+
+// ---------- 誤り訂正の配置 + スクランブル ----------
+// 本体を K 個の符号語にインターリーブ (本体の p バイト目 → 符号語 p%K の p/K 番目) して、
+// 連続した誤りが1つの符号語に集中しないようにする。
+// 送信バイト列の tx[j*K + b] = 符号語 b の j バイト目 なので、データ部分は tx[p] = body[p] のまま並ぶ
+function fecLayout(bodyLen) {
+  const K = Math.ceil(bodyLen / RS_K), k = Math.ceil(bodyLen / K);
+  return { K, k, n: k + RS_NSYM, txLen: K * (k + RS_NSYM) };
+}
+// テキストでも画像でも全トーンが均等に使われるよう、疑似乱数列と XOR する
+function keystream(len) {
+  const ks = new Uint8Array(len);
+  let x = 0x2545F491;
+  for (let i = 0; i < len; i++) { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; ks[i] = x >>> 24; }
+  return ks;
+}
+function fecEncode(body) {
+  const { K, k, n, txLen } = fecLayout(body.length);
+  const tx = new Uint8Array(txLen);
+  for (let b = 0; b < K; b++) {
+    const msg = new Uint8Array(k);
+    for (let i = 0; i < k; i++) { const p = b + K * i; if (p < body.length) msg[i] = body[p]; }
+    const cw = rsEncode(msg);
+    for (let j = 0; j < n; j++) tx[j * K + b] = cw[j];
+  }
+  const ks = keystream(txLen);
+  for (let i = 0; i < txLen; i++) tx[i] ^= ks[i];
+  return tx;
+}
+function fecDecode(rx, bodyLen) {
+  const { K, k, n, txLen } = fecLayout(bodyLen);
+  const ks = keystream(txLen);
+  const body = new Uint8Array(bodyLen);
+  let fixed = 0, failed = 0;
+  for (let b = 0; b < K; b++) {
+    const cw = new Uint8Array(n);
+    for (let j = 0; j < n; j++) cw[j] = rx[j * K + b] ^ ks[j * K + b];
+    const r = rsDecode(cw);
+    let msg = cw;
+    if (r) { fixed += r.fixed; msg = r.data; } else failed++;
+    for (let i = 0; i < k; i++) { const p = b + K * i; if (p < bodyLen) body[p] = msg[i]; }
+  }
+  return { body, fixed, failed, blocks: K };
 }
 
 // ---------- フレーム組み立て ----------
@@ -330,8 +477,12 @@ function bytesToNibbles(bytes, out) {
   for (const b of bytes) out.push(b >> 4, b & 15);
   return out;
 }
+// シンボルの並び: [ヘッダ×3][較正 16シンボル][誤り訂正済みデータ]
 const headerSymCount = mode => Math.ceil(HEADER_NIBBLES / mode.ch);
-function frameSymbolCount(bodyLen, mode) { return Math.ceil((HEADER_NIBBLES + bodyLen * 2) / mode.ch); }
+const dataSymStart = mode => headerSymCount(mode) + TRAIN_SYMS;
+function frameSymbolCount(bodyLen, mode) {
+  return dataSymStart(mode) + Math.ceil(fecLayout(bodyLen).txLen * 2 / mode.ch);
+}
 function frameDuration(bodyLen, modeIdx) {
   const mode = MODES[modeIdx];
   return DATA_START + frameSymbolCount(bodyLen, mode) * mode.T + CFG.tailGap + CFG.chirpDur + CFG.tail;
@@ -367,9 +518,13 @@ function buildSignal(name, data, modeIdx, fs) {
   const mode = MODES[modeIdx];
   const body = makeBody(name, data);
   const header = makeHeader(body.length);
+  const hs = headerSymCount(mode), ds = dataSymStart(mode);
   const nibs = [];
   for (let c = 0; c < HEADER_COPIES; c++) bytesToNibbles(header, nibs);
-  bytesToNibbles(body, nibs);
+  while (nibs.length < hs * mode.ch) nibs.push(0);
+  for (let s = 0; s < TRAIN_SYMS; s++)
+    for (let c = 0; c < mode.ch; c++) nibs.push(s);   // 較正: 全チャンネルでトーン s を鳴らす
+  bytesToNibbles(fecEncode(body), nibs);
   const nSyms = frameSymbolCount(body.length, mode);
   while (nibs.length < nSyms * mode.ch) nibs.push(0);
   const endChirpT = DATA_START + nSyms * mode.T + CFG.tailGap;
@@ -476,6 +631,7 @@ class Receiver {
     this.state = 'search';
     this.searchPos = pos;
     this.scale = 1;
+    this.eq = null;
     this.ev.state && this.ev.state('search');
   }
   // ---- バッファ管理 ----
@@ -556,26 +712,46 @@ class Receiver {
   }
   pos(t) { return this.t0 + t * this.fs * this.scale; }
   // 1シンボル分を判定し、チャンネルごとの {v: 値, q: 1位/2位のエネルギー比} を返す
-  detectSym(mode, tStart) {
+  toneEnergies(mode, tStart, c) {
     const start = Math.round(this.pos(tStart + mode.G));
     const n = Math.round(mode.W * this.fs);
+    const e = [];
+    for (let k = 0; k < CFG.nTones; k++) e.push(this.goertzel(start, n, toneFreq(mode, k, c)));
+    return e;
+  }
+  detectSym(mode, tStart) {
     const res = [];
     for (let c = 0; c < mode.ch; c++) {
+      const e = this.toneEnergies(mode, tStart, c);
+      const g = this.eq && mode === this.mode ? this.eq[c] : null;
       let best = 0, bestE = -1, second = -1;
       for (let k = 0; k < CFG.nTones; k++) {
-        const e = this.goertzel(start, n, toneFreq(mode, k, c));
-        if (e > bestE) { second = bestE; bestE = e; best = k; }
-        else if (e > second) second = e;
+        const v = g ? e[k] / g[k] : e[k];   // 較正で測った届きやすさで補正
+        if (v > bestE) { second = bestE; bestE = v; best = k; }
+        else if (v > second) second = v;
       }
       res.push({ v: best, q: second > 0 ? bestE / second : 99 });
     }
     return res;
   }
-  // データ部のニブル列 [from, from+count) を復調
-  readNibbles(from, count) {
+  // 較正シンボルから各トーンの受信強度を測る
+  calibrate() {
+    const hs = headerSymCount(this.mode);
+    this.eq = [];
+    for (let c = 0; c < this.mode.ch; c++) {
+      const g = [];
+      for (let k = 0; k < CFG.nTones; k++) g.push(this.toneEnergies(this.mode, this.symTime(hs + k), c)[k]);
+      const mean = g.reduce((a, b) => a + b, 0) / g.length;
+      this.eq.push(g.map(v => Math.max(v, mean * 0.02) / (mean || 1)));
+    }
+    const weakest = Math.min(...this.eq.flat());
+    this.log(`トーン較正: 最も弱いトーン ${(10 * Math.log10(weakest)).toFixed(1)} dB`);
+  }
+  // シンボル sym0 から始まるニブル列の [from, from+count) を復調
+  readNibbles(sym0, from, count) {
     const ch = this.mode.ch, out = [];
     for (let s = Math.floor(from / ch); s * ch < from + count; s++) {
-      const r = this.detectSym(this.mode, this.symTime(s));
+      const r = this.detectSym(this.mode, this.symTime(sym0 + s));
       for (let c = 0; c < ch; c++) {
         const i = s * ch + c;
         if (i >= from && i < from + count) out.push(r[c]);
@@ -638,7 +814,7 @@ class Receiver {
       }
       case 'header': {
         if (!this.have(this.symTime(headerSymCount(this.mode)))) return false;
-        const all = this.readNibbles(0, HEADER_NIBBLES).map(r => r.v);
+        const all = this.readNibbles(0, 0, HEADER_NIBBLES).map(r => r.v);
         const copies = [];
         for (let c = 0; c < HEADER_COPIES; c++) copies.push(all.slice(c * HEADER_BYTES * 2, (c + 1) * HEADER_BYTES * 2));
         const toBytes = nib => { const b = new Uint8Array(nib.length / 2); for (let i = 0; i < b.length; i++) b[i] = (nib[2 * i] << 4) | nib[2 * i + 1]; return b; };
@@ -657,32 +833,42 @@ class Receiver {
           return true;
         }
         this.bodyLen = len;
+        this.txLen = fecLayout(len).txLen;
+        this.ks = keystream(this.txLen);
         this.totalSyms = frameSymbolCount(len, this.mode);
         this.endChirpT = this.symTime(this.totalSyms) + CFG.tailGap;
-        this.liveSym = headerSymCount(this.mode);
+        this.liveSym = dataSymStart(this.mode);
         this.liveNibs = 0;
-        this.liveBytes = new Uint8Array(len);
-        this.log(`ヘッダ受信: 本体 ${len} バイト, 所要 約${this.endChirpT.toFixed(1)}秒`);
+        this.liveBytes = new Uint8Array(this.txLen);
+        this.log(`ヘッダ受信: 本体 ${len} バイト (誤り訂正込み ${this.txLen} バイト), 所要 約${this.endChirpT.toFixed(1)}秒`);
+        this.state = 'train';
+        return true;
+      }
+      case 'train': {
+        if (!this.have(this.symTime(dataSymStart(this.mode)))) return false;
+        this.calibrate();
         this.state = 'body';
         this.ev.state && this.ev.state('body');
         return true;
       }
       case 'body': {
-        // 途中経過(時計補正なし)の逐次デコード
+        // 途中経過(時計補正・誤り訂正なし)の逐次デコード。データ部は tx[p] = body[p] の位置に並んでいる
+        const ds = dataSymStart(this.mode);
         while (this.liveSym < this.totalSyms && this.len >= this.pos(this.symTime(this.liveSym + 1))) {
           const r = this.detectSym(this.mode, this.symTime(this.liveSym));
           for (let c = 0; c < this.mode.ch; c++) {
-            const j = this.liveSym * this.mode.ch + c - HEADER_NIBBLES;
-            if (j < 0 || j >= this.bodyLen * 2) continue;
+            const j = (this.liveSym - ds) * this.mode.ch + c;
+            if (j >= this.txLen * 2) continue;
             const bi = j >> 1, v = r[c].v;
             this.liveBytes[bi] = j & 1 ? (this.liveBytes[bi] & 0xF0) | v : v << 4;
+            if (j & 1) this.liveBytes[bi] ^= this.ks[bi];
             this.liveNibs = j + 1;
           }
           this.liveSym++;
         }
         const win = Math.round((0.05 + this.endChirpT * 0.002) * fs);
         const need = Math.round(this.pos(this.endChirpT)) + win + this.L;
-        const received = this.liveNibs >> 1;
+        const received = Math.min(this.bodyLen, this.liveNibs >> 1);
         let name = null;
         if (received >= 1 + this.liveBytes[0]) name = new TextDecoder().decode(this.liveBytes.subarray(1, 1 + this.liveBytes[0]));
         this.ev.progress && this.ev.progress(Math.min(1, (this.len - this.t0) / (need - this.t0)), received, this.bodyLen, name);
@@ -708,21 +894,27 @@ class Receiver {
     } else {
       this.log('末尾チャープが見つかりません (時計補正なしで復元)');
     }
-    const body = new Uint8Array(this.bodyLen);
+    const tx = new Uint8Array(this.txLen);
     let qSum = 0, weak = 0;
-    const nibs = this.readNibbles(HEADER_NIBBLES, this.bodyLen * 2);
-    for (let j = 0; j < this.bodyLen * 2; j++) {
+    const nibs = this.readNibbles(dataSymStart(this.mode), 0, this.txLen * 2);
+    for (let j = 0; j < nibs.length; j++) {
       const r = nibs[j];
       qSum += Math.log10(Math.min(r.q, 1000));
       if (r.q < 2) weak++;
       const bi = j >> 1;
-      body[bi] = j & 1 ? body[bi] | r.v : r.v << 4;
+      tx[bi] = j & 1 ? tx[bi] | r.v : r.v << 4;
     }
-    const parsed = parseBody(body);
+    const fec = fecDecode(tx, this.bodyLen);
+    this.log(`誤り訂正: ${fec.fixed} バイト訂正` + (fec.failed ? `, 訂正しきれないブロック ${fec.failed}/${fec.blocks}` : ''));
+    const parsed = parseBody(fec.body);
+    const body = fec.body;
     const info = {
       mode: this.mode.name,
-      snr: 10 * qSum / (this.bodyLen * 2),
+      snr: 10 * qSum / nibs.length,
       weak,
+      fixed: fec.fixed,
+      failedBlocks: fec.failed,
+      blocks: fec.blocks,
       duration: this.endChirpT,
       ppm: (this.scale - 1) * 1e6,
     };
@@ -736,7 +928,7 @@ class Receiver {
     this.resetSearch(endPos + this.L);
   }
 }
-if (typeof module !== 'undefined') module.exports = { CFG, MODES, buildSignal, Receiver, encodeWav, crc32 };
+if (typeof module !== 'undefined') module.exports = { CFG, MODES, buildSignal, Receiver, encodeWav, crc32, rsEncode, rsDecode, fecEncode, fecDecode };
 </script>
 
 <script>
@@ -874,7 +1066,7 @@ function addResult(f) {
   nameEl.textContent = (f.crcOk ? '✅ ' : '⚠ ') + f.name;
   const meta = document.createElement('div');
   meta.className = 'meta';
-  meta.textContent = `${fmtSize(f.data.length)} ・ ${f.mode} ・ ${f.crcOk ? 'CRC OK' : 'CRC エラー(データが壊れている可能性があります)'} ・ 信号品質 ${f.snr.toFixed(1)} dB ・ 時計補正 ${f.ppm.toFixed(0)} ppm ・ 実効 ${Math.round(f.data.length * 8 / f.duration)} bps`;
+  meta.textContent = `${fmtSize(f.data.length)} ・ ${f.mode} ・ ${f.crcOk ? 'CRC OK' : 'CRC エラー(データが壊れている可能性があります)'} ・ 信号品質 ${f.snr.toFixed(1)} dB ・ 誤り訂正 ${f.fixed} バイト${f.failedBlocks ? ` (訂正不能 ${f.failedBlocks}/${f.blocks} ブロック)` : ""} ・ 時計補正 ${f.ppm.toFixed(0)} ppm ・ 実効 ${Math.round(f.data.length * 8 / f.duration)} bps`;
   const a = document.createElement('a');
   a.href = url; a.download = f.name; a.textContent = '⬇ ダウンロード';
   div.append(nameEl, meta, a);
