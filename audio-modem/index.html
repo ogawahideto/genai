@@ -214,7 +214,7 @@ Implementation Intent: スピーカーとマイクだけでファイルを送受
         <li><b>変調方式:</b> 16値FSK。1600Hz から等間隔に並んだ16種類の音のどれか1つで4ビットを表します。「2ch」「4ch」などのモードでは、高い周波数に別の16音の帯域を並べて同時に鳴らし、1回で複数の4ビットを送ります(マルチチャンネルFSK)。</li>
         <li><b>同期:</b> 先頭と末尾に「ピューイ」という周波数掃引音(チャープ)を鳴らし、受信側は FFT を用いた相互相関で位置を検出します。末尾チャープの位置から送受信機の時計のずれを補正します。</li>
         <li><b>反響対策:</b> 各シンボルの先頭(ガード区間)は部屋の残響が混ざるため捨て、残りの区間を Goertzel 法で解析して最も強い周波数を採用します。</li>
-        <li><b>誤り訂正:</b> 本体は Reed-Solomon 符号 (223バイトごとに32バイトのパリティ) を付け、1ブロックあたり16バイトまでの誤りを自動で直します。ブロックはインターリーブして連続した誤りを分散させ、最後に CRC32 で検証します。ヘッダ(データ長)は3回繰り返して多数決+CRC16。</li><li><b>OFDM モード:</b> 間隔 1/W で並べた 37〜61 本の搬送波をすべて同時に鳴らし、各搬送波の位相を前のシンボルから 0°/90°/180°/270° のどれだけ回したかで2ビットを送ります (DQPSK)。位相の「差」を見るので、スピーカーや部屋による位相のずれは打ち消されます。各シンボルの先頭(ガード区間)は反響を吸収するために捨てます。1バイトは1本の搬送波で4シンボルかけて送るので、特定の周波数が反響で打ち消されても被害はその搬送波の分だけに収まります。ヘッダは確実さ重視で 2ch FSK で送ります。</li><li><b>トーン較正:</b> ヘッダの直後に全16トーンを順に鳴らし、スピーカー・マイク・部屋の特性で弱くなるトーンを受信側で補正します。データはスクランブル(疑似乱数との XOR)して、テキストでも画像でも全トーンが均等に使われるようにしています。</li>
+        <li><b>誤り訂正:</b> 本体は Reed-Solomon 符号 (223バイトごとに32バイトのパリティ) を付け、1ブロックあたり16バイトまでの誤りを自動で直します。ブロックはインターリーブして連続した誤りを分散させ、普通に直せなかったブロックは、受信時に怪しかったバイトを「消失」として指定して再挑戦します(位置が分かっている誤りは2倍直せる)。最後に CRC32 で検証します。ヘッダ(データ長)は3回繰り返して多数決+CRC16。</li><li><b>OFDM モード:</b> 間隔 1/W で並べた 37〜61 本の搬送波をすべて同時に鳴らし、各搬送波の位相を前のシンボルから 0°/90°/180°/270° のどれだけ回したかで2ビットを送ります (DQPSK)。位相の「差」を見るので、スピーカーや部屋による位相のずれは打ち消されます。各シンボルの先頭(ガード区間)は反響を吸収するために捨てます。1バイトは1本の搬送波で4シンボルかけて送るので、特定の周波数が反響で打ち消されても被害はその搬送波の分だけに収まります。ヘッダは確実さ重視で 2ch FSK で送ります。位相の基準には、判定済みの過去のシンボルを重み付き平均したもの(判定帰還)を使い、雑音の影響を減らしています。</li><li><b>トーン較正:</b> ヘッダの直後に全16トーンを順に鳴らし、スピーカー・マイク・部屋の特性で弱くなるトーンを受信側で補正します。データはスクランブル(疑似乱数との XOR)して、テキストでも画像でも全トーンが均等に使われるようにしています。</li>
         <li>速度は 低速≒67bps 〜 OFDM極限≒21kbps。速いモードほど高い周波数(最大約19kHz)を使うので、スピーカーやマイクの性能と距離・音量の影響を強く受けます。どこまで通るか試してみてください。</li>
       </ul>
     </details>
@@ -234,6 +234,7 @@ const CFG = {
   nTones: 16,
   toneAmp: 0.5,
   threshold: 0.3,      // チャープ検出のしきい値(正規化相関)
+  ofdmRefBeta: 0.75,    // OFDM の位相基準に過去のシンボルをどれだけ残すか (0 で通常の差動検波)
 };
 // T: シンボル長, G: 先頭ガード, W: 解析窓, df: トーン間隔(1/W の整数倍で直交)
 // ch: 同時に鳴らすチャンネル数。チャンネル c は base + c*16*df から始まる16音の帯域を使い、
@@ -356,21 +357,29 @@ function rsEncode(msg) {
   out.set(msg);
   return out;
 }
-// 訂正に成功したら {data, fixed}、訂正不能なら null
-function rsDecode(cw) {
+// 訂正に成功したら {data, fixed}、訂正不能なら null。
+// erase: 怪しいと分かっているバイト位置(消失)。位置が分かっている分、2e + f <= RS_NSYM まで直せる
+// margin: 検算用に残しておくパリティ数。消失を多く指定したときの誤訂正を防ぐ
+function rsDecode(cw, erase = [], margin = 0) {
   const nsym = RS_NSYM, n = cw.length;
   const msg = Array.from(cw);
   const synd = [0];
   let any = false;
   for (let i = 0; i < nsym; i++) { const s = polyEval(msg, gfPow(2, i)); synd.push(s); if (s) any = true; }
   if (!any) return { data: cw.slice(0, n - nsym), fixed: 0 };
-  // Berlekamp-Massey で誤り位置多項式を求める
+  if (erase.length > nsym) return null;
+  // 消失位置の影響を取り除いた Forney シンドローム
+  const fsynd = synd.slice(1);
+  for (const p of erase) {
+    const x = gfPow(2, n - 1 - p);
+    for (let j = 0; j < fsynd.length - 1; j++) fsynd[j] = gfMul(fsynd[j], x) ^ fsynd[j + 1];
+  }
+  // Berlekamp-Massey で(消失以外の)誤り位置多項式を求める
   let errLoc = [1], oldLoc = [1];
-  const shift = synd.length - nsym;
-  for (let i = 0; i < nsym; i++) {
-    const K = i + shift;
-    let delta = synd[K];
-    for (let j = 1; j < errLoc.length; j++) delta ^= gfMul(errLoc[errLoc.length - 1 - j], synd[K - j]);
+  for (let i = 0; i < nsym - erase.length; i++) {
+    const K = i;
+    let delta = fsynd[K];
+    for (let j = 1; j < errLoc.length; j++) delta ^= gfMul(errLoc[errLoc.length - 1 - j], fsynd[K - j]);
     oldLoc = oldLoc.concat([0]);
     if (delta) {
       if (oldLoc.length > errLoc.length) {
@@ -383,13 +392,14 @@ function rsDecode(cw) {
   }
   while (errLoc.length && errLoc[0] === 0) errLoc.shift();
   const errs = errLoc.length - 1;
-  if (errs * 2 > nsym) return null;
+  if (errs * 2 + erase.length > nsym - margin) return null;
   // Chien 探索で誤り位置を特定
   const rev = errLoc.slice().reverse();
   const pos = [];
   for (let i = 0; i < n; i++) if (polyEval(rev, gfPow(2, i)) === 0) pos.push(n - 1 - i);
   if (pos.length !== errs) return null;
-  // Forney のアルゴリズムで誤りの値を求める
+  for (const p of erase) if (!pos.includes(p)) pos.push(p);
+  // Forney のアルゴリズムで誤り(と消失)の値を求める
   const coefPos = pos.map(p => n - 1 - p);
   let eLoc = [1];
   for (const c of coefPos) eLoc = polyMul(eLoc, polyAdd([1], [gfPow(2, c), 0]));
@@ -405,7 +415,9 @@ function rsDecode(cw) {
     msg[pos[i]] ^= gfDiv(y, prime);
   }
   for (let i = 0; i < nsym; i++) if (polyEval(msg, gfPow(2, i))) return null;
-  return { data: Uint8Array.from(msg.slice(0, n - nsym)), fixed: errs };
+  let fixed = 0;
+  for (let i = 0; i < n; i++) if (msg[i] !== cw[i]) fixed++;
+  return { data: Uint8Array.from(msg.slice(0, n - nsym)), fixed };
 }
 
 // ---------- 誤り訂正の配置 + スクランブル ----------
@@ -436,20 +448,27 @@ function fecEncode(body) {
   for (let i = 0; i < txLen; i++) tx[i] ^= ks[i];
   return tx;
 }
-function fecDecode(rx, bodyLen) {
+// unrel: 受信バイトごとの「怪しさ」(大きいほど怪しい)。普通の訂正に失敗したブロックは、
+// 怪しい順に消失として指定して再挑戦する
+function fecDecode(rx, bodyLen, unrel = null) {
   const { K, k, n, txLen } = fecLayout(bodyLen);
   const ks = keystream(txLen);
   const body = new Uint8Array(bodyLen);
-  let fixed = 0, failed = 0;
+  let fixed = 0, failed = 0, rescued = 0;
   for (let b = 0; b < K; b++) {
     const cw = new Uint8Array(n);
     for (let j = 0; j < n; j++) cw[j] = rx[j * K + b] ^ ks[j * K + b];
-    const r = rsDecode(cw);
+    let r = rsDecode(cw);
+    if (!r && unrel) {
+      const order = Array.from({ length: n }, (_, j) => j).sort((a, c) => unrel[c * K + b] - unrel[a * K + b]);
+      for (let f = 4; f <= RS_NSYM - 8 && !r; f += 4) r = rsDecode(cw, order.slice(0, f), 8);
+      if (r) rescued++;
+    }
     let msg = cw;
     if (r) { fixed += r.fixed; msg = r.data; } else failed++;
     for (let i = 0; i < k; i++) { const p = b + K * i; if (p < bodyLen) body[p] = msg[i]; }
   }
-  return { body, fixed, failed, blocks: K };
+  return { body, fixed, failed, rescued, blocks: K };
 }
 
 // ---------- フレーム組み立て ----------
@@ -1028,28 +1047,38 @@ class Receiver {
     }
     return { re, im };
   }
-  // シンボル s を復調して tx に2bitずつ書き込み、この シンボルの複素振幅を返す
-  ofdmDecodeSym(s, prev, tx, stats) {
+  // シンボル s を復調して tx に2bitずつ書き込み、次のシンボル用の位相基準を返す。
+  // 基準は「直前のシンボル」だけでなく、判定済みの回転を戻した過去のシンボルを
+  // 重み付き平均したもの (判定帰還)。基準の雑音が減るぶん、ただの差動検波より誤りが減る
+  ofdmDecodeSym(s, ref, tx, stats, unrel) {
     const X = this.ofdmSym(s);
-    if (s === 0 || !prev) return X;
+    if (s === 0 || !ref) return X;
     const N = this.mode.N, g = (s - 1) >> 2, sub = (s - 1) & 3;
+    const beta = CFG.ofdmRefBeta;
+    const out = { re: new Float64Array(N), im: new Float64Array(N) };
     for (let c = 0; c < N; c++) {
-      // 前シンボルとの位相差 = X * conj(prev)
-      const re = X.re[c] * prev.re[c] + X.im[c] * prev.im[c];
-      const im = X.im[c] * prev.re[c] - X.re[c] * prev.im[c];
+      // 基準との位相差 = X * conj(ref)
+      const re = X.re[c] * ref.re[c] + X.im[c] * ref.im[c];
+      const im = X.im[c] * ref.re[c] - X.re[c] * ref.im[c];
       const ang = Math.atan2(im, re);
       const q = ((Math.round(ang / (Math.PI / 2)) % 4) + 4) % 4;
       const d = GRAY[q];
       const p = g * N + c;
       if (p < tx.length) tx[p] = sub === 0 ? d << 6 : tx[p] | (d << (6 - 2 * sub));
+      const err = ang - Math.round(ang / (Math.PI / 2)) * Math.PI / 2;
       if (stats) {
-        let err = ang - Math.round(ang / (Math.PI / 2)) * Math.PI / 2;
         stats.err2 += err * err;
         stats.n++;
         if (Math.abs(err) > Math.PI / 8) stats.weak++;
       }
+      if (unrel && p < unrel.length) unrel[p] = sub === 0 ? Math.abs(err) : Math.max(unrel[p], Math.abs(err));
+      // 基準を今回の判定ぶん回して X と平均する (q×90° 回転)
+      let rr = ref.re[c], ri = ref.im[c];
+      for (let k = 0; k < q; k++) { const t = rr; rr = -ri; ri = t; }
+      out.re[c] = X.re[c] + beta * rr;
+      out.im[c] = X.im[c] + beta * ri;
     }
-    return X;
+    return out;
   }
   finalize(win) {
     const fs = this.fs;
@@ -1067,11 +1096,12 @@ class Receiver {
       this.log('末尾チャープが見つかりません (時計補正なしで復元)');
     }
     const tx = new Uint8Array(this.txLen);
+    const unrel = new Float32Array(this.txLen);
     let snr, weak = 0;
     if (this.mode.kind === 'ofdm') {
       const stats = { err2: 0, n: 0, weak: 0 };
-      let prev = null;
-      for (let s = 0; s < this.totalSyms; s++) prev = this.ofdmDecodeSym(s, prev, tx, stats);
+      let ref = null;
+      for (let s = 0; s < this.totalSyms; s++) ref = this.ofdmDecodeSym(s, ref, tx, stats, unrel);
       weak = stats.weak;
       // 位相誤差の分散から見積もった SN 比
       snr = 10 * Math.log10(1 / Math.max(stats.err2 / Math.max(stats.n, 1), 1e-6));
@@ -1084,11 +1114,13 @@ class Receiver {
         if (r.q < 2) weak++;
         const bi = j >> 1;
         tx[bi] = j & 1 ? tx[bi] | r.v : r.v << 4;
+        const u = -Math.log(Math.max(r.q, 1e-9));
+        unrel[bi] = j & 1 ? Math.max(unrel[bi], u) : u;
       }
       snr = 10 * qSum / nibs.length;
     }
-    const fec = fecDecode(tx, this.bodyLen);
-    this.log(`誤り訂正: ${fec.fixed} バイト訂正` + (fec.failed ? `, 訂正しきれないブロック ${fec.failed}/${fec.blocks}` : ''));
+    const fec = fecDecode(tx, this.bodyLen, unrel);
+    this.log(`誤り訂正: ${fec.fixed} バイト訂正` + (fec.rescued ? ` (消失指定で救済 ${fec.rescued} ブロック)` : '') + (fec.failed ? `, 訂正しきれないブロック ${fec.failed}/${fec.blocks}` : ''));
     const parsed = parseBody(fec.body);
     const body = fec.body;
     const info = {
