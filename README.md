@@ -154,6 +154,9 @@ This repository contains a collection of small, self-contained web applications 
 
 ### 🎵 音楽・エンターテイメント (Music & Entertainment)
 
+#### [おとモデム - 音でファイル転送](audio-modem/) (2026-09-26)
+音楽・エンターテイメントアプリケーション
+
 #### [コード進行練習アプリ](chord_practice_app/) (2025-06-07)
 音楽・エンターテイメントアプリケーション
 
