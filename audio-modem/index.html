@@ -215,7 +215,7 @@ Implementation Intent: スピーカーとマイクだけでファイルを送受
         <li><b>同期:</b> 先頭と末尾に「ピューイ」という周波数掃引音(チャープ)を鳴らし、受信側は FFT を用いた相互相関で位置を検出します。末尾チャープの位置から送受信機の時計のずれを補正します。</li>
         <li><b>反響対策:</b> 各シンボルの先頭(ガード区間)は部屋の残響が混ざるため捨て、残りの区間を Goertzel 法で解析して最も強い周波数を採用します。</li>
         <li><b>誤り訂正:</b> 本体は Reed-Solomon 符号 (223バイトごとに32バイトのパリティ) を付け、1ブロックあたり16バイトまでの誤りを自動で直します。ブロックはインターリーブして連続した誤りを分散させ、普通に直せなかったブロックは、受信時に怪しかったバイトを「消失」として指定して再挑戦します(位置が分かっている誤りは2倍直せる)。最後に CRC32 で検証します。ヘッダ(データ長)は3回繰り返して多数決+CRC16。</li><li><b>OFDM モード:</b> 間隔 1/W で並べた 37〜61 本の搬送波をすべて同時に鳴らし、各搬送波の位相を前のシンボルから 0°/90°/180°/270° のどれだけ回したかで2ビットを送ります (DQPSK)。位相の「差」を見るので、スピーカーや部屋による位相のずれは打ち消されます。各シンボルの先頭(ガード区間)は反響を吸収するために捨てます。1バイトは1本の搬送波で4シンボルかけて送るので、特定の周波数が反響で打ち消されても被害はその搬送波の分だけに収まります。ヘッダは確実さ重視で 2ch FSK で送ります。位相の基準には、判定済みの過去のシンボルを重み付き平均したもの(判定帰還)を使い、雑音の影響を減らしています。</li><li><b>トーン較正:</b> ヘッダの直後に全16トーンを順に鳴らし、スピーカー・マイク・部屋の特性で弱くなるトーンを受信側で補正します。データはスクランブル(疑似乱数との XOR)して、テキストでも画像でも全トーンが均等に使われるようにしています。</li>
-        <li>速度は 低速≒67bps 〜 OFDM極限≒21kbps。速いモードほど高い周波数(最大約19kHz)を使うので、スピーカーやマイクの性能と距離・音量の影響を強く受けます。どこまで通るか試してみてください。</li>
+        <li>速度は 低速≒67bps 〜 OFDM 8PSK≒40kbps。速いモードほど高い周波数(最大約19kHz)を使うので、スピーカーやマイクの性能と距離・音量の影響を強く受けます。どこまで通るか試してみてください。</li>
       </ul>
     </details>
   </section>
@@ -248,20 +248,24 @@ const MODES = [
   { label: '限界 4ch',          T: 0.012, G: 0.003, W: 0.008, df: 125, ch: 4 },
   { label: '実験 6ch',          T: 0.012, G: 0.003, W: 0.008, df: 125, ch: 6 },
   { label: '実験 4ch短シンボル', T: 0.008, G: 0.002, W: 0.005, df: 200, ch: 4 },
-  // 極限モード: 反響よけのガードが 1ms 前後しかなく、17〜19kHz まで使う。低めの base で帯域を稼ぐ
+  // 極限モード: 反響よけのガードが 1.5ms しかなく、17kHz 以上まで使う
+  // (3ch 4ms / 4ch 5ms も試したが実機で通らなかったので削除)
   { label: '極限 4ch 6ms',     T: 0.006, G: 0.0015, W: 0.004,  df: 250,        ch: 4 },
-  { label: '極限 3ch 4ms',     T: 0.004, G: 0.0008, W: 0.003,  df: 1000 / 3,   ch: 3, base: 1000 },
-  { label: '極限 4ch 5ms',     T: 0.005, G: 0.0011, W: 0.0036, df: 1000 / 3.6, ch: 4, base: 1000 },
   // OFDM-DQPSK: 間隔 1/W で並べた N 本の搬送波を全部同時に鳴らし、各搬送波の位相を
   // 前のシンボルから 0/90/180/270° 回すことで2bitずつ送る。kLo: 最低搬送波の番号 (周波数 = k/W)
+  // bits: 3 なら 45° 刻みの8通り (D8PSK) で3bitずつ
   { label: 'OFDM 安定', kind: 'ofdm', T: 0.014,  G: 0.0035, W: 0.010, kLo: 15, N: 37 },
   { label: 'OFDM 標準', kind: 'ofdm', T: 0.010,  G: 0.0015, W: 0.008, kLo: 12, N: 53 },
   { label: 'OFDM 高速', kind: 'ofdm', T: 0.0067, G: 0.0012, W: 0.005, kLo: 8,  N: 53 },
   { label: 'OFDM 極限', kind: 'ofdm', T: 0.0057, G: 0.0012, W: 0.004, kLo: 6,  N: 61 },
+  // 長シンボル: 解析窓を 16ms に伸ばし、ガードの割合を減らして搬送波を 62.5Hz 間隔で 241 本詰める
+  { label: 'OFDM 長シンボル', kind: 'ofdm', T: 0.018, G: 0.0015, W: 0.016, kLo: 24, N: 241 },
+  { label: 'OFDM 8PSK',       kind: 'ofdm', T: 0.018, G: 0.0015, W: 0.016, kLo: 24, N: 241, bits: 3 },
 ];
 for (const m of MODES) {
   if (m.kind === 'ofdm') {
-    m.bps = Math.round(2 * m.N / m.T);
+    m.bits = m.bits || 2;
+    m.bps = Math.round(m.bits * m.N / m.T);
     m.fMax = (m.kLo + m.N - 1) / m.W;
   } else {
     m.bps = Math.round(4 * m.ch / m.T);
@@ -524,11 +528,18 @@ function frameSymbolCount(bodyLen, mode) {
   return dataSymStart(mode) + Math.ceil(fecLayout(bodyLen).txLen * 2 / mode.ch);
 }
 const ofdmStart = () => DATA_START + headerSymCount(OFDM_HEADER_MODE) * OFDM_HEADER_MODE.T + 0.01;
-// 4シンボルで各搬送波が1バイト(2bit×4)を運ぶ。1バイトを1本の搬送波に載せるので、
+// 1グループ = S シンボルで、各搬送波が B バイトを bits ビットずつ運ぶ
+// (DQPSK: 4シンボルで1バイト / D8PSK: 8シンボルで3バイト)。バイトを1本の搬送波に載せるので、
 // 特定の周波数が部屋の反響で打ち消されても、壊れるのはその搬送波のバイトだけで済む
-const ofdmDataSyms = (bodyLen, mode) => 4 * Math.ceil(fecLayout(bodyLen).txLen / mode.N);
+const ofdmGroup = mode => mode.bits === 3 ? { B: 3, S: 8 } : { B: 1, S: 4 };
+const ofdmDataSyms = (bodyLen, mode) => {
+  const { B, S } = ofdmGroup(mode);
+  return S * Math.ceil(fecLayout(bodyLen).txLen / (mode.N * B));
+};
 const ofdmFreq = (mode, c) => (mode.kLo + c) / mode.W;
-const GRAY = [0, 1, 3, 2];   // 2bit → 位相の象限 (隣の象限との違いが1bitになる並び。逆変換も同じ表)
+// グレイ符号: 隣り合う位相の違いが1ビットだけになるよう、ビット列と位相番号を対応させる
+const grayEnc = d => { let q = d; for (let t = d >> 1; t; t >>= 1) q ^= t; return q; };  // ビット → 位相番号
+const grayDec = q => q ^ (q >> 1);                                                       // 位相番号 → ビット
 function dataEndTime(bodyLen, mode) {
   if (mode.kind === 'ofdm') return ofdmStart() + (1 + ofdmDataSyms(bodyLen, mode)) * mode.T;
   return DATA_START + frameSymbolCount(bodyLen, mode) * mode.T;
@@ -576,7 +587,8 @@ function addChirpsAndMode(out, modeIdx, endChirpT, fs) {
 }
 // OFDM データ部を out に書き込む
 function addOfdm(out, mode, tx, fs) {
-  const N = mode.N, nSym = 1 + 4 * Math.ceil(tx.length / N);
+  const N = mode.N, M = 1 << mode.bits, { B, S } = ofdmGroup(mode);
+  const nSym = 1 + S * Math.ceil(tx.length / (N * B));
   const t0 = ofdmStart();
   const L = Math.ceil(mode.T * fs) + 2;
   // cos(ωi + θ) = cos(ωi)cosθ - sin(ωi)sinθ を使い、1シンボル分のテーブルを使い回す
@@ -591,11 +603,13 @@ function addOfdm(out, mode, tx, fs) {
   const first = Math.ceil(t0 * fs), last = Math.ceil((t0 + nSym * mode.T) * fs);
   for (let s = 0; s < nSym; s++) {
     if (s > 0) {
-      const g = (s - 1) >> 2, sub = (s - 1) & 3;
+      const g = Math.floor((s - 1) / S), sub = (s - 1) % S;
       for (let c = 0; c < N; c++) {
-        const p = g * N + c;
-        const d = p < tx.length ? (tx[p] >> (6 - 2 * sub)) & 3 : 0;
-        ph[c] += GRAY[d] * Math.PI / 2;
+        const p0 = (g * N + c) * B;
+        let w = 0;
+        for (let j = 0; j < B; j++) w = (w << 8) | (p0 + j < tx.length ? tx[p0 + j] : 0);
+        const d = (w >>> (8 * B - mode.bits * (sub + 1))) & (M - 1);
+        ph[c] += grayEnc(d) * 2 * Math.PI / M;
       }
     }
     // シンボルの開始時刻は小数サンプルのまま扱い、丸め誤差が位相に乗らないようにする
@@ -949,7 +963,7 @@ class Receiver {
         if (this.mode.kind === 'ofdm') {
           this.totalSyms = 1 + ofdmDataSyms(len, this.mode);
           this.liveSym = 0;
-          this.liveTx = new Uint8Array(this.txLen);
+          this.liveSink = { tx: new Uint8Array(this.txLen) };
           this.prevX = null;
           this.state = 'ofdm';
           this.ev.state && this.ev.state('body');
@@ -965,14 +979,12 @@ class Receiver {
         const T = this.mode.T, t0 = ofdmStart();
         while (this.liveSym < this.totalSyms && this.len >= this.pos(t0 + (this.liveSym + 1) * T)) {
           const s = this.liveSym;
-          this.prevX = this.ofdmDecodeSym(s, this.prevX, this.liveTx, null);
-          if (s > 0 && ((s - 1) & 3) === 3) {
-            const g = (s - 1) >> 2;
-            for (let c = 0; c < this.mode.N; c++) {
-              const p = g * this.mode.N + c;
-              if (p < this.txLen) this.liveBytes[p] = this.liveTx[p] ^ this.ks[p];
-            }
-            this.liveNibs = Math.min(this.txLen, (g + 1) * this.mode.N) * 2;
+          this.prevX = this.ofdmDecodeSym(s, this.prevX, this.liveSink);
+          const { B, S } = ofdmGroup(this.mode);
+          if (s > 0 && (s - 1) % S === S - 1) {
+            const g = Math.floor((s - 1) / S), per = this.mode.N * B;
+            for (let p = g * per; p < Math.min(this.txLen, (g + 1) * per); p++) this.liveBytes[p] = this.liveSink.tx[p] ^ this.ks[p];
+            this.liveNibs = Math.min(this.txLen, (g + 1) * per) * 2;
           }
           this.liveSym++;
         }
@@ -1047,36 +1059,49 @@ class Receiver {
     }
     return { re, im };
   }
-  // シンボル s を復調して tx に2bitずつ書き込み、次のシンボル用の位相基準を返す。
+  // シンボル s を復調して sink.tx に書き込み、次のシンボル用の位相基準を返す。
   // 基準は「直前のシンボル」だけでなく、判定済みの回転を戻した過去のシンボルを
-  // 重み付き平均したもの (判定帰還)。基準の雑音が減るぶん、ただの差動検波より誤りが減る
-  ofdmDecodeSym(s, ref, tx, stats, unrel) {
+  // 重み付き平均したもの (判定帰還)。基準の雑音が減るぶん、ただの差動検波より誤りが減る。
+  // sink: { tx, stats?, unrel? }。搬送波ごとの途中のビット列は sink.w に貯める
+  ofdmDecodeSym(s, ref, sink) {
     const X = this.ofdmSym(s);
     if (s === 0 || !ref) return X;
-    const N = this.mode.N, g = (s - 1) >> 2, sub = (s - 1) & 3;
-    const beta = CFG.ofdmRefBeta;
+    const mode = this.mode, N = mode.N, M = 1 << mode.bits, { B, S } = ofdmGroup(mode);
+    const g = Math.floor((s - 1) / S), sub = (s - 1) % S, step = 2 * Math.PI / M;
+    if (!sink.w) { sink.w = new Uint32Array(N); sink.e = new Float32Array(N); }
+    if (sub === 0) { sink.w.fill(0); sink.e.fill(0); }
+    const beta = CFG.ofdmRefBeta, { tx, stats, unrel } = sink;
     const out = { re: new Float64Array(N), im: new Float64Array(N) };
     for (let c = 0; c < N; c++) {
       // 基準との位相差 = X * conj(ref)
       const re = X.re[c] * ref.re[c] + X.im[c] * ref.im[c];
       const im = X.im[c] * ref.re[c] - X.re[c] * ref.im[c];
       const ang = Math.atan2(im, re);
-      const q = ((Math.round(ang / (Math.PI / 2)) % 4) + 4) % 4;
-      const d = GRAY[q];
-      const p = g * N + c;
-      if (p < tx.length) tx[p] = sub === 0 ? d << 6 : tx[p] | (d << (6 - 2 * sub));
-      const err = ang - Math.round(ang / (Math.PI / 2)) * Math.PI / 2;
+      const qi = Math.round(ang / step), q = ((qi % M) + M) % M;
+      sink.w[c] = (sink.w[c] << mode.bits) | grayDec(q);
+      const err = Math.abs(ang - qi * step);
+      sink.e[c] = Math.max(sink.e[c], err);
       if (stats) {
         stats.err2 += err * err;
         stats.n++;
-        if (Math.abs(err) > Math.PI / 8) stats.weak++;
+        if (err > step / 4) stats.weak++;
+        if (!stats.car) stats.car = new Float64Array(N);
+        stats.car[c] += err * err;
       }
-      if (unrel && p < unrel.length) unrel[p] = sub === 0 ? Math.abs(err) : Math.max(unrel[p], Math.abs(err));
-      // 基準を今回の判定ぶん回して X と平均する (q×90° 回転)
-      let rr = ref.re[c], ri = ref.im[c];
-      for (let k = 0; k < q; k++) { const t = rr; rr = -ri; ri = t; }
-      out.re[c] = X.re[c] + beta * rr;
-      out.im[c] = X.im[c] + beta * ri;
+      // 基準を今回の判定ぶん (q × 360°/M) 回して X と平均する
+      const cr = Math.cos(q * step), ci = Math.sin(q * step);
+      out.re[c] = X.re[c] + beta * (ref.re[c] * cr - ref.im[c] * ci);
+      out.im[c] = X.im[c] + beta * (ref.re[c] * ci + ref.im[c] * cr);
+    }
+    if (sub === S - 1) {   // グループが揃ったらバイトに戻す
+      for (let c = 0; c < N; c++) {
+        for (let j = 0; j < B; j++) {
+          const p = (g * N + c) * B + j;
+          if (p >= tx.length) continue;
+          tx[p] = (sink.w[c] >>> (8 * (B - 1 - j))) & 255;
+          if (unrel) unrel[p] = sink.e[c];
+        }
+      }
     }
     return out;
   }
@@ -1100,8 +1125,14 @@ class Receiver {
     let snr, weak = 0;
     if (this.mode.kind === 'ofdm') {
       const stats = { err2: 0, n: 0, weak: 0 };
+      const sink = { tx, stats, unrel };
       let ref = null;
-      for (let s = 0; s < this.totalSyms; s++) ref = this.ofdmDecodeSym(s, ref, tx, stats, unrel);
+      for (let s = 0; s < this.totalSyms; s++) ref = this.ofdmDecodeSym(s, ref, sink);
+      // 反響で弱まった搬送波は誤りが集中するので、搬送波ごとの平均位相誤差を「怪しさ」に足す
+      if (stats.car) {
+        const { B } = ofdmGroup(this.mode), N = this.mode.N, per = stats.n / N;
+        for (let p = 0; p < unrel.length; p++) unrel[p] += 2 * Math.sqrt(stats.car[Math.floor(p / B) % N] / per);
+      }
       weak = stats.weak;
       // 位相誤差の分散から見積もった SN 比
       snr = 10 * Math.log10(1 / Math.max(stats.err2 / Math.max(stats.n, 1), 1e-6));
