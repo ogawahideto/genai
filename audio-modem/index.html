@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<!--
+AI Model: Claude Opus 5.5
+User Prompt: 新しいプロジェクトを作り、ファイルを音声に変換して送受信するWebページを作ってほしい。すなわち、簡易的なモデムである。送信時は音声をスピーカーから流し、受信側は音声をマイクから拾ってファイルに戻す。
+AI Approach: 16値FSK(1シンボル=4bit)の音響モデム。先頭と末尾にチャープ(周波数掃引音)を置き、
+  受信側はFFTによる相互相関でチャープを検出して同期をとる。末尾チャープの位置から送受信機の
+  クロック誤差を補正し、各シンボルは反響を避けるガード区間の後ろをGoertzel法で判定する。
+  ヘッダ(長さ+CRC16)は3回繰り返して多数決、本体はCRC32で検証。速度は3段階で、モード番号を
+  チャープ直後に低速トーンで送るので受信側の設定は不要。Web Audio API + getUserMedia のみで外部依存なし。
+Implementation Intent: スピーカーとマイクだけでファイルを送受信できる「音で通信する」簡易モデムを体験し、
+  変調・同期・誤り検出といったデジタル通信の基本を学べるようにする。
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>おとモデム - 音でファイル転送</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #182032;
+    --panel2: #1f2940;
+    --text: #e6ebf5;
+    --muted: #8d99b3;
+    --accent: #4fd1c5;
+    --accent2: #f6ad55;
+    --danger: #fc8181;
+    --ok: #68d391;
+    --border: #2c3854;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    line-height: 1.6;
+  }
+  header {
+    text-align: center;
+    padding: 24px 16px 8px;
+  }
+  header h1 { margin: 0; font-size: 1.8rem; letter-spacing: .05em; }
+  header h1 span { color: var(--accent); }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: .9rem; }
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    min-width: 0;
+  }
+  section h2 { margin: 0 0 12px; font-size: 1.2rem; }
+  .full { grid-column: 1 / -1; }
+  label.block { display: block; font-size: .85rem; color: var(--muted); margin: 10px 0 4px; }
+  select, textarea, input[type=file] {
+    width: 100%;
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    font: inherit;
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button {
+    background: var(--accent);
+    color: #062522;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  button.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  button.warn { background: var(--accent2); color: #2d1a00; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .info { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+  .bar { height: 10px; background: var(--panel2); border-radius: 5px; overflow: hidden; margin-top: 10px; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
+  .status {
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: var(--panel2);
+    border-radius: 8px;
+    font-size: .9rem;
+    min-height: 2.4em;
+  }
+  canvas#waterfall {
+    width: 100%;
+    height: 160px;
+    background: #000;
+    border-radius: 8px;
+    margin-top: 10px;
+    display: block;
+  }
+  .meter { height: 6px; background: var(--panel2); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .meter > div { height: 100%; width: 0; background: var(--ok); }
+  #log {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: .78rem;
+    color: var(--muted);
+    max-height: 150px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    margin-top: 10px;
+    background: #0b0f18;
+    padding: 8px;
+    border-radius: 8px;
+  }
+  .file-item {
+    background: var(--panel2);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 10px;
+    border-left: 4px solid var(--ok);
+  }
+  .file-item.bad { border-left-color: var(--danger); }
+  .file-item .name { font-weight: 700; word-break: break-all; }
+  .file-item .meta { font-size: .8rem; color: var(--muted); }
+  .file-item pre {
+    background: #0b0f18;
+    padding: 8px;
+    border-radius: 6px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 200px;
+    overflow: auto;
+    font-size: .85rem;
+  }
+  .file-item img { max-width: 100%; max-height: 240px; border-radius: 6px; margin-top: 6px; }
+  .file-item a { color: var(--accent); }
+  details { font-size: .88rem; color: var(--muted); }
+  details summary { cursor: pointer; color: var(--text); }
+  details li { margin: 4px 0; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 4px; }
+  .tabs button { flex: 1; }
+  .tabs button:not(.active) { background: var(--panel2); color: var(--muted); border: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<header>
+  <h1>📻 おと<span>モデム</span></h1>
+  <p>ファイルを「音」に変えてスピーカーから送り、マイクで拾ってファイルに戻す簡易音響モデム</p>
+</header>
+
+<main>
+  <!-- 送信 -->
+  <section>
+    <h2>📤 送信</h2>
+    <div class="tabs">
+      <button id="tabFile" class="active">ファイル</button>
+      <button id="tabText">テキスト</button>
+    </div>
+    <div id="paneFile">
+      <label class="block">送るファイル</label>
+      <input type="file" id="sendFile">
+    </div>
+    <div id="paneText" hidden>
+      <label class="block">送るメッセージ (message.txt として送信)</label>
+      <textarea id="sendText" placeholder="こんにちは、音で届くかな?"></textarea>
+    </div>
+    <label class="block">通信速度</label>
+    <select id="speed"></select>
+    <div class="info" id="sendInfo">ファイルかテキストを選んでください。</div>
+    <div class="row">
+      <button id="btnPlay">▶ 送信(再生)</button>
+      <button id="btnStopPlay" class="secondary" disabled>■ 停止</button>
+      <button id="btnWav" class="secondary">💾 WAVで保存</button>
+    </div>
+    <div class="bar"><div id="sendBar"></div></div>
+    <div class="status" id="sendStatus">待機中</div>
+  </section>
+
+  <!-- 受信 -->
+  <section>
+    <h2>📥 受信</h2>
+    <div class="row" style="margin-top:0">
+      <button id="btnListen">🎤 受信開始</button>
+      <button id="btnStopListen" class="secondary" disabled>■ 受信停止</button>
+    </div>
+    <label class="block">または録音済みの WAV / 音声ファイルから復元</label>
+    <input type="file" id="recvFile" accept="audio/*,.wav">
+    <div class="meter"><div id="level"></div></div>
+    <canvas id="waterfall" width="600" height="160"></canvas>
+    <div class="bar"><div id="recvBar"></div></div>
+    <div class="status" id="recvStatus">待機中 (速度は自動判別されます)</div>
+    <div id="log"></div>
+  </section>
+
+  <!-- 受信結果 -->
+  <section class="full">
+    <h2>📦 受信したファイル</h2>
+    <div id="results"><div class="info">まだありません。</div></div>
+  </section>
+
+  <section class="full">
+    <details>
+      <summary>使い方と仕組み</summary>
+      <ul>
+        <li>受信側の端末で「受信開始」を押してマイクを許可し、送信側で「送信(再生)」を押します。1台で試す場合は「WAVで保存」→「音声ファイルから復元」でも動作確認できます。</li>
+        <li>静かな部屋で、スピーカーとマイクを 30cm〜1m 程度に近づけ、音量は大きめ(ただし音割れしない程度)にすると成功率が上がります。うまくいかない時は「低速(安定)」を選んでください。</li>
+        <li><b>変調方式:</b> 16値FSK。1600Hz から等間隔に並んだ16種類の音のどれか1つで4ビットを表します。</li>
+        <li><b>同期:</b> 先頭と末尾に「ピューイ」という周波数掃引音(チャープ)を鳴らし、受信側は FFT を用いた相互相関で位置を検出します。末尾チャープの位置から送受信機の時計のずれを補正します。</li>
+        <li><b>反響対策:</b> 各シンボルの先頭(ガード区間)は部屋の残響が混ざるため捨て、残りの区間を Goertzel 法で解析して最も強い周波数を採用します。</li>
+        <li><b>誤り検出:</b> ヘッダ(データ長)は3回繰り返して多数決+CRC16、本体は CRC32 で検証します。誤り訂正はないので、CRC エラーの時はもう一度送ってください。</li>
+        <li>速度は 低速≒67bps / 標準≒125bps / 高速≒250bps。数KB程度までの小さなファイル向けです。</li>
+      </ul>
+    </details>
+  </section>
+</main>
+
+<script id="core">
+// ===================== モデムのコア(UI非依存) =====================
+const CFG = {
+  chirpDur: 0.25, chirpF0: 900, chirpF1: 4200, chirpAmp: 0.6,
+  gap1: 0.10,          // 先頭チャープ後の無音(残響が消えるのを待つ)
+  modeSyms: 3,         // 速度モードを知らせるシンボル数
+  gap2: 0.05,
+  tailGap: 0.10,       // データ後、末尾チャープ前の無音
+  tail: 0.25,          // 末尾の余白
+  base: 1600,          // 最低トーン周波数
+  nTones: 16,
+  toneAmp: 0.5,
+  threshold: 0.3,      // チャープ検出のしきい値(正規化相関)
+};
+// T: シンボル長, G: 先頭ガード, W: 解析窓, df: トーン間隔(=2/W で直交)
+const MODES = [
+  { name: '低速(安定) 約67bps', T: 0.060, G: 0.015, W: 0.040, df: 50 },
+  { name: '標準 約125bps',      T: 0.032, G: 0.010, W: 0.020, df: 100 },
+  { name: '高速 約250bps',      T: 0.016, G: 0.004, W: 0.010, df: 200 },
+];
+const MODE_START = CFG.chirpDur + CFG.gap1;
+const DATA_START = MODE_START + MODES[0].T * CFG.modeSyms + CFG.gap2;
+const MAGIC = 0xA5;
+const HEADER_BYTES = 7, HEADER_COPIES = 3;
+const HEADER_SYMS = HEADER_BYTES * 2 * HEADER_COPIES;
+const MAX_BODY = 1 << 24;
+
+const toneFreq = (mode, k) => CFG.base + k * mode.df;
+
+// ---------- CRC ----------
+const CRC32_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC32_TABLE[(c ^ bytes[i]) & 255] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function crc16(bytes) {
+  let c = 0xFFFF;
+  for (let i = 0; i < bytes.length; i++) {
+    c ^= bytes[i] << 8;
+    for (let k = 0; k < 8; k++) c = c & 0x8000 ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF;
+  }
+  return c;
+}
+
+// ---------- フレーム組み立て ----------
+function makeHeader(bodyLen) {
+  const h = new Uint8Array(HEADER_BYTES);
+  h[0] = MAGIC;
+  h[1] = (bodyLen >>> 24) & 255; h[2] = (bodyLen >>> 16) & 255;
+  h[3] = (bodyLen >>> 8) & 255;  h[4] = bodyLen & 255;
+  const c = crc16(h.subarray(0, 5));
+  h[5] = c >> 8; h[6] = c & 255;
+  return h;
+}
+function parseHeader(h) {
+  if (h[0] !== MAGIC) return null;
+  if (crc16(h.subarray(0, 5)) !== ((h[5] << 8) | h[6])) return null;
+  const len = ((h[1] << 24) | (h[2] << 16) | (h[3] << 8) | h[4]) >>> 0;
+  return len > 5 && len <= MAX_BODY ? len : null;
+}
+// 本体: [名前長 1B][名前 UTF-8][データ][CRC32 4B]
+function makeBody(name, data) {
+  let nameBytes = new TextEncoder().encode(name);
+  while (nameBytes.length > 255) { name = name.slice(0, -1); nameBytes = new TextEncoder().encode(name); }
+  const body = new Uint8Array(1 + nameBytes.length + data.length + 4);
+  body[0] = nameBytes.length;
+  body.set(nameBytes, 1);
+  body.set(data, 1 + nameBytes.length);
+  const c = crc32(body.subarray(0, body.length - 4));
+  const p = body.length - 4;
+  body[p] = c >>> 24; body[p + 1] = (c >>> 16) & 255; body[p + 2] = (c >>> 8) & 255; body[p + 3] = c & 255;
+  return body;
+}
+function parseBody(body) {
+  if (body.length < 5) return null;
+  const nameLen = body[0];
+  if (1 + nameLen + 4 > body.length) return null;
+  const name = new TextDecoder().decode(body.subarray(1, 1 + nameLen));
+  const data = body.slice(1 + nameLen, body.length - 4);
+  const p = body.length - 4;
+  const stored = ((body[p] << 24) | (body[p + 1] << 16) | (body[p + 2] << 8) | body[p + 3]) >>> 0;
+  return { name, data, crcOk: stored === crc32(body.subarray(0, p)) };
+}
+function bytesToSyms(bytes, out) {
+  for (const b of bytes) out.push(b >> 4, b & 15);
+  return out;
+}
+function frameSymbolCount(bodyLen) { return HEADER_SYMS + bodyLen * 2; }
+function frameDuration(bodyLen, modeIdx) {
+  return DATA_START + frameSymbolCount(bodyLen) * MODES[modeIdx].T + CFG.tailGap + CFG.chirpDur + CFG.tail;
+}
+
+// ---------- 信号生成 ----------
+function makeChirp(fs) {
+  const L = Math.round(CFG.chirpDur * fs);
+  const h = new Float32Array(L);
+  const k = (CFG.chirpF1 - CFG.chirpF0) / CFG.chirpDur;
+  const taper = Math.round(0.01 * fs);
+  for (let i = 0; i < L; i++) {
+    const t = i / fs;
+    let e = 1;
+    if (i < taper) e = 0.5 - 0.5 * Math.cos(Math.PI * i / taper);
+    else if (i >= L - taper) e = 0.5 - 0.5 * Math.cos(Math.PI * (L - 1 - i) / taper);
+    h[i] = e * Math.sin(2 * Math.PI * (CFG.chirpF0 * t + 0.5 * k * t * t));
+  }
+  return h;
+}
+function addTone(out, tStart, dur, f, fs, amp) {
+  const s0 = Math.round(tStart * fs), n = Math.round(dur * fs);
+  const r = Math.max(1, Math.round(0.0015 * fs));  // クリック音を防ぐ立ち上がり/立ち下がり
+  const w = 2 * Math.PI * f / fs;
+  for (let i = 0; i < n && s0 + i < out.length; i++) {
+    let e = 1;
+    if (i < r) e = 0.5 - 0.5 * Math.cos(Math.PI * i / r);
+    else if (i > n - 1 - r) e = 0.5 - 0.5 * Math.cos(Math.PI * (n - 1 - i) / r);
+    out[s0 + i] += amp * e * Math.sin(w * i);
+  }
+}
+function buildSignal(name, data, modeIdx, fs) {
+  const mode = MODES[modeIdx];
+  const body = makeBody(name, data);
+  const header = makeHeader(body.length);
+  const syms = [];
+  for (let c = 0; c < HEADER_COPIES; c++) bytesToSyms(header, syms);
+  bytesToSyms(body, syms);
+  const endChirpT = DATA_START + syms.length * mode.T + CFG.tailGap;
+  const total = endChirpT + CFG.chirpDur + CFG.tail;
+  const out = new Float32Array(Math.ceil(total * fs));
+  const chirp = makeChirp(fs);
+  const e0 = Math.round(endChirpT * fs);
+  for (let i = 0; i < chirp.length; i++) {
+    out[i] += CFG.chirpAmp * chirp[i];
+    out[e0 + i] += CFG.chirpAmp * chirp[i];
+  }
+  for (let j = 0; j < CFG.modeSyms; j++)
+    addTone(out, MODE_START + j * MODES[0].T, MODES[0].T, toneFreq(MODES[0], modeIdx), fs, CFG.toneAmp);
+  for (let i = 0; i < syms.length; i++)
+    addTone(out, DATA_START + i * mode.T, mode.T, toneFreq(mode, syms[i]), fs, CFG.toneAmp);
+  return { samples: out, duration: total, bodyLen: body.length };
+}
+
+function encodeWav(samples, fs) {
+  const buf = new ArrayBuffer(44 + samples.length * 2);
+  const v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + samples.length * 2, true); str(8, 'WAVE');
+  str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, fs, true); v.setUint32(28, fs * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, 'data'); v.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
+// ---------- FFT (radix-2) ----------
+class FFT {
+  constructor(n) {
+    this.n = n;
+    this.rev = new Uint32Array(n);
+    const bits = Math.log2(n);
+    for (let i = 0; i < n; i++) {
+      let r = 0;
+      for (let b = 0; b < bits; b++) r |= ((i >> b) & 1) << (bits - 1 - b);
+      this.rev[i] = r;
+    }
+    this.cos = new Float64Array(n / 2);
+    this.sin = new Float64Array(n / 2);
+    for (let i = 0; i < n / 2; i++) {
+      this.cos[i] = Math.cos(2 * Math.PI * i / n);
+      this.sin[i] = Math.sin(2 * Math.PI * i / n);
+    }
+  }
+  transform(re, im, inverse) {
+    const n = this.n, rev = this.rev;
+    for (let i = 0; i < n; i++) {
+      const j = rev[i];
+      if (j > i) {
+        let t = re[i]; re[i] = re[j]; re[j] = t;
+        t = im[i]; im[i] = im[j]; im[j] = t;
+      }
+    }
+    const sgn = inverse ? 1 : -1;
+    for (let size = 2; size <= n; size <<= 1) {
+      const half = size >> 1, step = n / size;
+      for (let start = 0; start < n; start += size) {
+        for (let k = 0; k < half; k++) {
+          const wr = this.cos[k * step], wi = sgn * this.sin[k * step];
+          const a = start + k, b = a + half;
+          const xr = re[b] * wr - im[b] * wi;
+          const xi = re[b] * wi + im[b] * wr;
+          re[b] = re[a] - xr; im[b] = im[a] - xi;
+          re[a] += xr; im[a] += xi;
+        }
+      }
+    }
+    if (inverse) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+  }
+}
+const nextPow2 = x => 1 << Math.ceil(Math.log2(x));
+
+// ---------- 受信機 ----------
+// push() でサンプルを流し込むと、チャープ検出 → モード → ヘッダ → 本体 と状態遷移しながら復調する
+class Receiver {
+  constructor(fs, events = {}) {
+    this.fs = fs;
+    this.ev = events;
+    this.chirp = makeChirp(fs);
+    this.L = this.chirp.length;
+    let e = 0;
+    for (const v of this.chirp) e += v * v;
+    this.hNorm = Math.sqrt(e);
+    this.correlators = new Map();
+    this.searchN = nextPow2(this.L * 4);
+    this.buf = new Float32Array(Math.round(fs * 20));
+    this.base = 0;      // buf[0] の絶対サンプル位置
+    this.len = 0;       // 受信済みサンプル数(絶対位置)
+    this.flushing = false;
+    this.resetSearch(0);
+  }
+  log(msg) { this.ev.log && this.ev.log(msg); }
+  resetSearch(pos) {
+    this.state = 'search';
+    this.searchPos = pos;
+    this.scale = 1;
+    this.ev.state && this.ev.state('search');
+  }
+  // ---- バッファ管理 ----
+  push(data) {
+    const need = this.len + data.length - this.base;
+    if (need > this.buf.length) {
+      const keepFrom = Math.max(this.base, Math.min(this.len,
+        this.state === 'search' ? this.searchPos : this.t0 - this.fs));
+      const drop = keepFrom - this.base;
+      if (need - drop <= this.buf.length * 0.75) {
+        this.buf.copyWithin(0, drop, this.len - this.base);
+      } else {
+        const nb = new Float32Array(Math.max(this.buf.length * 2, (need - drop) * 2));
+        nb.set(this.buf.subarray(drop, this.len - this.base));
+        this.buf = nb;
+      }
+      this.base = keepFrom;
+    }
+    this.buf.set(data, this.len - this.base);
+    this.len += data.length;
+    this.process();
+  }
+  flush() {
+    this.flushing = true;
+    this.process();
+    this.flushing = false;
+  }
+  sample(abs) {
+    const i = abs - this.base;
+    return abs >= this.base && abs < this.len ? this.buf[i] : 0;
+  }
+  // ---- チャープとの正規化相互相関 (lag 0..N-L) ----
+  correlator(N) {
+    let c = this.correlators.get(N);
+    if (!c) {
+      const fft = new FFT(N);
+      const Hr = new Float64Array(N), Hi = new Float64Array(N);
+      Hr.set(this.chirp);
+      fft.transform(Hr, Hi, false);
+      for (let i = 0; i < N; i++) Hi[i] = -Hi[i];  // 共役
+      c = { fft, Hr, Hi, re: new Float64Array(N), im: new Float64Array(N), x: new Float64Array(N) };
+      this.correlators.set(N, c);
+    }
+    return c;
+  }
+  corrRange(p, N) {
+    const L = this.L, c = this.correlator(N);
+    const { re, im, x, Hr, Hi } = c;
+    for (let i = 0; i < N; i++) { x[i] = this.sample(p + i); re[i] = x[i]; im[i] = 0; }
+    c.fft.transform(re, im, false);
+    for (let i = 0; i < N; i++) {
+      const a = re[i], b = im[i];
+      re[i] = a * Hr[i] - b * Hi[i];
+      im[i] = a * Hi[i] + b * Hr[i];
+    }
+    c.fft.transform(re, im, true);
+    const out = new Float32Array(N - L + 1);
+    let e = 0;
+    for (let i = 0; i < L; i++) e += x[i] * x[i];
+    for (let k = 0; k <= N - L; k++) {
+      out[k] = re[k] / (Math.sqrt(Math.max(e, 0)) * this.hNorm + 1e-9);
+      if (k < N - L) e += x[k + L] * x[k + L] - x[k] * x[k];
+    }
+    return out;
+  }
+  // ---- トーン判定 ----
+  goertzel(start, n, f) {
+    const w = 2 * Math.PI * f / this.fs, c = 2 * Math.cos(w);
+    let s1 = 0, s2 = 0;
+    const off = start - this.base;
+    for (let i = 0; i < n; i++) {
+      const abs = start + i;
+      const x = abs >= this.base && abs < this.len ? this.buf[off + i] : 0;
+      const s = x + c * s1 - s2;
+      s2 = s1; s1 = s;
+    }
+    return s1 * s1 + s2 * s2 - c * s1 * s2;
+  }
+  pos(t) { return this.t0 + t * this.fs * this.scale; }
+  detectSym(mode, tStart) {
+    const start = Math.round(this.pos(tStart + mode.G));
+    const n = Math.round(mode.W * this.fs);
+    let best = 0, bestE = -1, second = -1;
+    for (let k = 0; k < CFG.nTones; k++) {
+      const e = this.goertzel(start, n, toneFreq(mode, k));
+      if (e > bestE) { second = bestE; bestE = e; best = k; }
+      else if (e > second) second = e;
+    }
+    return { v: best, q: second > 0 ? bestE / second : 99 };
+  }
+  symTime(i) { return DATA_START + i * this.mode.T; }
+  have(t) { return this.flushing || this.len >= this.pos(t) + 1; }
+  // ---- 状態機械 ----
+  process() {
+    for (let guard = 0; guard < 10000; guard++) {
+      if (!this.step()) break;
+    }
+  }
+  step() {
+    const fs = this.fs;
+    switch (this.state) {
+      case 'search': {
+        const N = this.searchN, L = this.L;
+        if (this.searchPos < this.base) this.searchPos = this.base;
+        if (!(this.searchPos + N <= this.len || (this.flushing && this.searchPos < this.len))) return false;
+        const c = this.corrRange(this.searchPos, N);
+        let k = 0, v = -1;
+        for (let i = 0; i < c.length; i++) if (c[i] > v) { v = c[i]; k = i; }
+        const margin = Math.round(0.02 * fs);
+        if (v >= CFG.threshold) {
+          if (k > c.length - 1 - margin && !(this.flushing && this.searchPos + N > this.len)) {
+            this.searchPos += k - margin;   // ブロック境界付近 → ずらして再評価
+          } else {
+            this.t0 = this.searchPos + k;
+            this.peak = v;
+            this.state = 'mode';
+            this.log(`チャープ検出 (相関 ${v.toFixed(2)}, ${(this.t0 / fs).toFixed(2)}s)`);
+            this.ev.state && this.ev.state('sync');
+          }
+        } else {
+          this.searchPos += c.length;
+        }
+        return true;
+      }
+      case 'mode': {
+        const m0 = MODES[0];
+        if (!this.have(MODE_START + CFG.modeSyms * m0.T)) return false;
+        const votes = [];
+        for (let j = 0; j < CFG.modeSyms; j++) votes.push(this.detectSym(m0, MODE_START + j * m0.T).v);
+        const cnt = {};
+        let modeIdx = -1;
+        for (const v of votes) { cnt[v] = (cnt[v] || 0) + 1; if (cnt[v] * 2 > votes.length) modeIdx = v; }
+        if (modeIdx < 0 || modeIdx >= MODES.length) {
+          this.log(`速度モードを判別できません (${votes.join(',')}) → 再探索`);
+          this.resetSearch(this.t0 + this.L);
+          return true;
+        }
+        this.modeIdx = modeIdx;
+        this.mode = MODES[modeIdx];
+        this.log(`速度モード: ${this.mode.name}`);
+        this.state = 'header';
+        return true;
+      }
+      case 'header': {
+        if (!this.have(this.symTime(HEADER_SYMS))) return false;
+        const copies = [];
+        for (let c = 0; c < HEADER_COPIES; c++) {
+          const nib = [];
+          for (let i = 0; i < HEADER_BYTES * 2; i++) nib.push(this.detectSym(this.mode, this.symTime(c * HEADER_BYTES * 2 + i)).v);
+          copies.push(nib);
+        }
+        const toBytes = nib => { const b = new Uint8Array(nib.length / 2); for (let i = 0; i < b.length; i++) b[i] = (nib[2 * i] << 4) | nib[2 * i + 1]; return b; };
+        let len = null;
+        for (const nib of copies) { len = parseHeader(toBytes(nib)); if (len !== null) break; }
+        if (len === null) {  // ニブル単位の多数決
+          const maj = copies[0].map((_, i) => {
+            const a = copies[0][i], b = copies[1][i], c = copies[2][i];
+            return a === b || a === c ? a : b === c ? b : a;
+          });
+          len = parseHeader(toBytes(maj));
+        }
+        if (len === null) {
+          this.log('ヘッダ破損 → 再探索');
+          this.resetSearch(this.t0 + this.L);
+          return true;
+        }
+        this.bodyLen = len;
+        this.totalSyms = frameSymbolCount(len);
+        this.endChirpT = this.symTime(this.totalSyms) + CFG.tailGap;
+        this.liveSym = HEADER_SYMS;
+        this.liveBytes = new Uint8Array(len);
+        this.log(`ヘッダ受信: 本体 ${len} バイト, 所要 約${this.endChirpT.toFixed(1)}秒`);
+        this.state = 'body';
+        this.ev.state && this.ev.state('body');
+        return true;
+      }
+      case 'body': {
+        // 途中経過(時計補正なし)の逐次デコード
+        while (this.liveSym < this.totalSyms && this.len >= this.pos(this.symTime(this.liveSym + 1))) {
+          const j = this.liveSym - HEADER_SYMS;
+          const v = this.detectSym(this.mode, this.symTime(this.liveSym)).v;
+          const bi = j >> 1;
+          this.liveBytes[bi] = j & 1 ? (this.liveBytes[bi] & 0xF0) | v : v << 4;
+          this.liveSym++;
+        }
+        const win = Math.round((0.05 + this.endChirpT * 0.002) * fs);
+        const need = Math.round(this.pos(this.endChirpT)) + win + this.L;
+        const received = Math.min(this.bodyLen, (this.liveSym - HEADER_SYMS) >> 1);
+        let name = null;
+        if (received >= 1 + this.liveBytes[0]) name = new TextDecoder().decode(this.liveBytes.subarray(1, 1 + this.liveBytes[0]));
+        this.ev.progress && this.ev.progress(Math.min(1, (this.len - this.t0) / (need - this.t0)), received, this.bodyLen, name);
+        if (this.len < need && !this.flushing) return false;
+        this.finalize(win);
+        return true;
+      }
+    }
+    return false;
+  }
+  finalize(win) {
+    const fs = this.fs;
+    const expected = Math.round(this.pos(this.endChirpT));
+    const N = nextPow2(2 * win + this.L + 1);
+    const c = this.corrRange(expected - win, N);
+    let k = 0, v = -1;
+    for (let i = 0; i <= 2 * win && i < c.length; i++) if (c[i] > v) { v = c[i]; k = i; }
+    let endPos = expected;
+    if (v >= CFG.threshold * 0.7) {
+      endPos = expected - win + k;
+      this.scale = (endPos - this.t0) / (this.endChirpT * fs);
+      this.log(`末尾チャープ検出 (相関 ${v.toFixed(2)}), 時計補正 ${((this.scale - 1) * 1e6).toFixed(0)} ppm`);
+    } else {
+      this.log('末尾チャープが見つかりません (時計補正なしで復元)');
+    }
+    const body = new Uint8Array(this.bodyLen);
+    let qSum = 0, weak = 0;
+    for (let j = 0; j < this.bodyLen * 2; j++) {
+      const r = this.detectSym(this.mode, this.symTime(HEADER_SYMS + j));
+      qSum += Math.log10(Math.min(r.q, 1000));
+      if (r.q < 2) weak++;
+      const bi = j >> 1;
+      body[bi] = j & 1 ? body[bi] | r.v : r.v << 4;
+    }
+    const parsed = parseBody(body);
+    const info = {
+      mode: this.mode.name,
+      snr: 10 * qSum / (this.bodyLen * 2),
+      weak,
+      duration: this.endChirpT,
+      ppm: (this.scale - 1) * 1e6,
+    };
+    if (parsed) {
+      this.log(parsed.crcOk ? `受信成功: ${parsed.name} (${parsed.data.length} バイト)` : `CRC エラー: ${parsed.name} (怪しいシンボル ${weak} 個)`);
+      this.ev.file && this.ev.file(Object.assign(parsed, info));
+    } else {
+      this.log('本体を解析できませんでした');
+      this.ev.file && this.ev.file(Object.assign({ name: 'broken.bin', data: body, crcOk: false }, info));
+    }
+    this.resetSearch(endPos + this.L);
+  }
+}
+if (typeof module !== 'undefined') module.exports = { CFG, MODES, buildSignal, Receiver, encodeWav, crc32 };
+</script>
+
+<script>
+// ===================== UI =====================
+const $ = id => document.getElementById(id);
+let audioCtx = null;
+const getCtx = () => {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+};
+
+// ---------- 送信 ----------
+MODES.forEach((m, i) => {
+  const o = document.createElement('option');
+  o.value = i; o.textContent = m.name;
+  if (i === 1) o.selected = true;
+  $('speed').appendChild(o);
+});
+
+let sendMode = 'file';
+$('tabFile').onclick = () => { sendMode = 'file'; $('tabFile').classList.add('active'); $('tabText').classList.remove('active'); $('paneFile').hidden = false; $('paneText').hidden = true; updateSendInfo(); };
+$('tabText').onclick = () => { sendMode = 'text'; $('tabText').classList.add('active'); $('tabFile').classList.remove('active'); $('paneText').hidden = false; $('paneFile').hidden = true; updateSendInfo(); };
+
+async function getPayload() {
+  if (sendMode === 'text') {
+    const t = $('sendText').value;
+    if (!t) return null;
+    return { name: 'message.txt', data: new TextEncoder().encode(t) };
+  }
+  const f = $('sendFile').files[0];
+  if (!f) return null;
+  return { name: f.name, data: new Uint8Array(await f.arrayBuffer()) };
+}
+const fmtTime = s => s < 60 ? `${s.toFixed(1)}秒` : `${Math.floor(s / 60)}分${Math.round(s % 60)}秒`;
+const fmtSize = n => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`;
+
+async function updateSendInfo() {
+  const p = await getPayload();
+  if (!p) { $('sendInfo').textContent = 'ファイルかテキストを選んでください。'; return; }
+  const bodyLen = 1 + Math.min(255, new TextEncoder().encode(p.name).length) + p.data.length + 4;
+  const d = frameDuration(bodyLen, +$('speed').value);
+  let msg = `${p.name} (${fmtSize(p.data.length)}) → 送信時間 約${fmtTime(d)}`;
+  if (d > 300) msg += ' ⚠ とても長いです。小さいファイルがおすすめ';
+  $('sendInfo').textContent = msg;
+}
+$('sendFile').onchange = updateSendInfo;
+$('sendText').oninput = updateSendInfo;
+$('speed').onchange = updateSendInfo;
+
+let playing = null;
+$('btnPlay').onclick = async () => {
+  const p = await getPayload();
+  if (!p) { $('sendStatus').textContent = '送るものがありません'; return; }
+  const ctx = getCtx();
+  const sig = buildSignal(p.name, p.data, +$('speed').value, ctx.sampleRate);
+  const ab = ctx.createBuffer(1, sig.samples.length, ctx.sampleRate);
+  ab.copyToChannel(sig.samples, 0);
+  const src = ctx.createBufferSource();
+  src.buffer = ab;
+  src.connect(ctx.destination);
+  const t0 = ctx.currentTime + 0.05;
+  src.start(t0);
+  playing = src;
+  $('btnPlay').disabled = true; $('btnStopPlay').disabled = false;
+  $('sendStatus').textContent = `🔊 送信中: ${p.name}`;
+  const tick = () => {
+    if (playing !== src) return;
+    const r = Math.max(0, Math.min(1, (ctx.currentTime - t0) / sig.duration));
+    $('sendBar').style.width = (r * 100) + '%';
+    requestAnimationFrame(tick);
+  };
+  tick();
+  src.onended = () => {
+    if (playing === src) {
+      $('sendStatus').textContent = `✅ 送信完了: ${p.name}`;
+      $('sendBar').style.width = '100%';
+    }
+    playing = null;
+    $('btnPlay').disabled = false; $('btnStopPlay').disabled = true;
+  };
+};
+$('btnStopPlay').onclick = () => {
+  if (!playing) return;
+  const s = playing;
+  playing = null;
+  s.stop();
+  $('sendStatus').textContent = '停止しました';
+};
+$('btnWav').onclick = async () => {
+  const p = await getPayload();
+  if (!p) { $('sendStatus').textContent = '送るものがありません'; return; }
+  const fs = 48000;
+  const sig = buildSignal(p.name, p.data, +$('speed').value, fs);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(encodeWav(sig.samples, fs));
+  a.download = p.name.replace(/\.[^.]*$/, '') + '_modem.wav';
+  a.click();
+  $('sendStatus').textContent = `💾 WAV を保存しました (${fmtTime(sig.duration)})`;
+};
+
+// ---------- 受信 ----------
+const logEl = $('log');
+function log(msg) {
+  const t = new Date().toLocaleTimeString();
+  logEl.textContent += `[${t}] ${msg}\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function makeReceiver(fs) {
+  return new Receiver(fs, {
+    log,
+    state: s => {
+      if (s === 'search') { $('recvStatus').textContent = listening ? '👂 信号を待っています…' : '待機中'; $('recvBar').style.width = '0'; }
+      if (s === 'sync') $('recvStatus').textContent = '🔔 同期信号を検出!';
+    },
+    progress: (r, got, total, name) => {
+      $('recvBar').style.width = (r * 100) + '%';
+      $('recvStatus').textContent = `📡 受信中${name ? ': ' + name : ''} (${got} / ${total} バイト)`;
+    },
+    file: addResult,
+  });
+}
+
+const isTextName = n => /\.(txt|md|csv|json|html?|js|css|xml|log|ini|py|c|h|java|ts)$/i.test(n);
+const imgType = n => { const m = n.match(/\.(png|jpe?g|gif|webp|bmp|svg)$/i); return m ? 'image/' + m[1].toLowerCase().replace('jpg', 'jpeg').replace('svg', 'svg+xml') : null; };
+let resultCount = 0;
+function addResult(f) {
+  if (resultCount++ === 0) $('results').innerHTML = '';
+  const div = document.createElement('div');
+  div.className = 'file-item' + (f.crcOk ? '' : ' bad');
+  const blob = new Blob([f.data], { type: imgType(f.name) || 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const nameEl = document.createElement('div');
+  nameEl.className = 'name';
+  nameEl.textContent = (f.crcOk ? '✅ ' : '⚠ ') + f.name;
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  meta.textContent = `${fmtSize(f.data.length)} ・ ${f.mode} ・ ${f.crcOk ? 'CRC OK' : 'CRC エラー(データが壊れている可能性があります)'} ・ 信号品質 ${f.snr.toFixed(1)} dB ・ 時計補正 ${f.ppm.toFixed(0)} ppm`;
+  const a = document.createElement('a');
+  a.href = url; a.download = f.name; a.textContent = '⬇ ダウンロード';
+  div.append(nameEl, meta, a);
+  if (isTextName(f.name)) {
+    const pre = document.createElement('pre');
+    pre.textContent = new TextDecoder().decode(f.data);
+    div.appendChild(pre);
+  } else if (imgType(f.name)) {
+    const img = document.createElement('img');
+    img.src = url;
+    div.appendChild(img);
+  }
+  $('results').prepend(div);
+  $('recvStatus').textContent = f.crcOk ? `✅ 受信完了: ${f.name}` : `⚠ 受信しましたが CRC エラー: ${f.name}`;
+  $('recvBar').style.width = '100%';
+}
+
+let listening = null;
+$('btnListen').onclick = async () => {
+  const ctx = getCtx();
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
+    });
+  } catch (e) {
+    $('recvStatus').textContent = '❌ マイクを使えません: ' + e.message;
+    return;
+  }
+  const src = ctx.createMediaStreamSource(stream);
+  const proc = ctx.createScriptProcessor(4096, 1, 1);
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.smoothingTimeConstant = 0;
+  const rx = makeReceiver(ctx.sampleRate);
+  proc.onaudioprocess = e => {
+    if (listening) rx.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  };
+  src.connect(analyser);
+  src.connect(proc);
+  proc.connect(ctx.destination);  // 出力は無音 (onaudioprocess を動かすために接続)
+  listening = { stream, src, proc, analyser, rx };
+  $('btnListen').disabled = true; $('btnStopListen').disabled = false;
+  $('recvStatus').textContent = '👂 信号を待っています…';
+  log(`受信開始 (サンプリング ${ctx.sampleRate} Hz)`);
+  drawWaterfall();
+};
+$('btnStopListen').onclick = () => {
+  if (!listening) return;
+  const l = listening;
+  listening = null;
+  l.proc.disconnect(); l.src.disconnect();
+  l.stream.getTracks().forEach(t => t.stop());
+  if (l.rx.state === 'body') { log('途中で停止 → 受信済みの分で復元を試みます'); l.rx.flush(); }
+  $('btnListen').disabled = false; $('btnStopListen').disabled = true;
+  $('level').style.width = '0';
+  if (!/受信完了|CRC/.test($('recvStatus').textContent)) $('recvStatus').textContent = '停止しました';
+  log('受信停止');
+};
+
+// ウォーターフォール(スペクトログラム)
+const wf = $('waterfall'), wctx = wf.getContext('2d');
+function drawWaterfall() {
+  if (!listening) return;
+  const an = listening.analyser, ctx = audioCtx;
+  const freq = new Uint8Array(an.frequencyBinCount);
+  an.getByteFrequencyData(freq);
+  const td = new Float32Array(an.fftSize);
+  an.getFloatTimeDomainData(td);
+  let peak = 0;
+  for (const v of td) peak = Math.max(peak, Math.abs(v));
+  $('level').style.width = Math.min(100, peak * 100) + '%';
+  $('level').style.background = peak > 0.95 ? 'var(--danger)' : 'var(--ok)';
+  const W = wf.width, H = wf.height;
+  wctx.drawImage(wf, -2, 0);
+  const fMin = 500, fMax = 5000, binHz = ctx.sampleRate / an.fftSize;
+  for (let y = 0; y < H; y++) {
+    const f = fMax - (fMax - fMin) * y / H;
+    const v = freq[Math.round(f / binHz)] / 255;
+    wctx.fillStyle = `hsl(${200 - v * 200},90%,${v * 60}%)`;
+    wctx.fillRect(W - 2, y, 2, 1);
+  }
+  requestAnimationFrame(drawWaterfall);
+}
+wctx.fillStyle = '#000';
+wctx.fillRect(0, 0, wf.width, wf.height);
+
+// 音声ファイルから復元
+$('recvFile').onchange = async () => {
+  const f = $('recvFile').files[0];
+  if (!f) return;
+  const ctx = getCtx();
+  $('recvStatus').textContent = '⏳ 解析中…';
+  log(`音声ファイル読み込み: ${f.name}`);
+  try {
+    const ab = await ctx.decodeAudioData(await f.arrayBuffer());
+    const data = ab.getChannelData(0);
+    const rx = makeReceiver(ab.sampleRate);
+    let found = false;
+    const orig = rx.ev.file;
+    rx.ev.file = x => { found = true; orig(x); };
+    // UI が固まらないよう少しずつ流し込む
+    const chunk = ab.sampleRate * 2;
+    for (let i = 0; i < data.length; i += chunk) {
+      rx.push(data.subarray(i, Math.min(data.length, i + chunk)));
+      await new Promise(r => setTimeout(r, 0));
+    }
+    rx.flush();
+    if (!found) $('recvStatus').textContent = '❌ 信号が見つかりませんでした';
+  } catch (e) {
+    $('recvStatus').textContent = '❌ 読み込み失敗: ' + e.message;
+  }
+  $('recvFile').value = '';
+};
+</script>
+</body>
+</html>
