@@ -160,6 +160,31 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .docinfo { display: grid; grid-template-columns: 7em 1fr; gap: 4px 10px; font-size: .95rem; }
   .docinfo div:nth-child(odd) { font-weight: bold; }
 
+  .modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 16px;
+  }
+  .modal.hidden { display: none; }
+  .modal-box {
+    background: var(--paper);
+    padding: 18px;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  }
+  .modal-box h3 { margin: 0 0 6px; letter-spacing: .4em; }
+  .modal-box p { font-size: .85rem; margin: 4px 0 8px; }
+  #stampPreview { background: #fffdf6; border: 1px dashed var(--line); width: 220px; height: 220px; }
+  #angleText { font-family: monospace; margin: 4px 0; }
+  .ink { height: 10px; background: #ddd; margin: 6px 0 12px; border: 1px solid var(--line); }
+  #inkMeter { height: 100%; width: 0; background: var(--shu); transition: width .15s; }
+  .btns { display: flex; gap: 10px; justify-content: center; }
+
   @media (max-width: 600px) {
     .cell { width: 25%; }
     .cell canvas { width: 64px; height: 64px; }
@@ -200,6 +225,21 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     <div class="banner" id="banner">差戻</div>
   </section>
 </main>
+
+<!-- 押印モーダル -->
+<div class="modal hidden" id="stampModal">
+  <div class="modal-box">
+    <h3>申請者押印</h3>
+    <p id="stampHint"></p>
+    <canvas id="stampPreview" width="220" height="220"></canvas>
+    <div id="angleText">0.0°</div>
+    <div class="ink"><div id="inkMeter"></div></div>
+    <div class="btns">
+      <button class="sub" id="inkBtn">朱肉をつける</button>
+      <button id="pressBtn">押す</button>
+    </div>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -422,12 +462,22 @@ async function submit() {
   const cells = buildRoute(applicant);
   $('flowSheet').scrollIntoView({ behavior: 'smooth' });
 
-  // 申請者の押印（お辞儀角度はランダム）
-  const myAngle = -5 - Math.random() * 25 + 15;
-  await sleep(400);
-  await stampAnimated(cells[0].querySelector('canvas'), applicant, { angle: myAngle });
+  // 申請者の押印（手押し）
+  const my = await stampMinigame(applicant);
+  sfx.stamp();
+  await stampAnimated(cells[0].querySelector('canvas'), applicant, { angle: my.angle, ink: my.ink });
   cells[0].querySelector('.date').textContent = fmtDate(state.date).slice(5, 10);
-  log(`${applicant}（申請者）が起案・押印しました。`, 'sys');
+  log(`${applicant}（申請者）が起案・押印しました。（傾き ${my.angle.toFixed(1)}° / 朱肉 ${(my.ink*100).toFixed(0)}%）`, 'sys');
+
+  // 申請者の印影チェック（係長が最初に目を光らせる）
+  const myProblem = judgeMyStamp(my);
+  if (myProblem) {
+    await sleep(500);
+    state.date = addBusinessDays(state.date, 1);
+    updateClock();
+    await reject(APPROVERS[0], myProblem);
+    return;
+  }
 
   for (let i = 0; i < APPROVERS.length; i++) {
     const ap = APPROVERS[i];
@@ -446,6 +496,7 @@ async function submit() {
       return;
     }
     // お辞儀：部下は上長側（左）に傾ける
+    sfx.stamp();
     await stampAnimated(cell.querySelector('canvas'), ap.name, {
       angle: -8 - Math.random() * 10,
       ink: 0.6 + Math.random() * 0.4,
@@ -466,6 +517,7 @@ async function submit() {
 
 async function reject(ap, reason) {
   log(`${ap.role} ${ap.name} により差し戻されました。理由：${reason}`, 'rej');
+  sfx.reject();
   showBanner('差戻');
   finish();
 }
@@ -486,6 +538,109 @@ function finish() {
   $('submitBtn').disabled = false;
   $('retryBtn').classList.remove('hidden');
 }
+
+// ============================================================
+// 申請者の手押しハンコ ミニゲーム
+// ============================================================
+/**
+ * 振り子のように揺れるハンコを、良いお辞儀角度で押す。
+ * 朱肉ボタンを押した回数で濃さが決まる。
+ */
+function stampMinigame(name) {
+  return new Promise((resolve) => {
+    const modal = $('stampModal');
+    const cv = $('stampPreview');
+    const ctx = cv.getContext('2d');
+    let ink = 0;
+    let t0 = performance.now();
+    let angle = 0;
+    let raf;
+    const speed = 1.6 + Math.random() * 1.6;
+    modal.classList.remove('hidden');
+    $('inkMeter').style.width = '0%';
+    $('stampHint').textContent = '朱肉をつけてから、上長に向かってお辞儀する角度（左に8〜25°）で押してください。';
+
+    function loop(t) {
+      angle = Math.sin((t - t0) / 1000 * speed) * 40;
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      // ガイド扇形
+      ctx.save();
+      ctx.translate(cv.width / 2, cv.height / 2);
+      ctx.fillStyle = 'rgba(60,110,58,.15)';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, cv.width * 0.48, -Math.PI / 2 - 25 * Math.PI / 180, -Math.PI / 2 - 8 * Math.PI / 180);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      drawHanko(ctx, name, { angle, ink: Math.max(0.15, ink) });
+      $('angleText').textContent = `${angle.toFixed(1)}°`;
+      raf = requestAnimationFrame(loop);
+    }
+    raf = requestAnimationFrame(loop);
+
+    $('inkBtn').onclick = () => {
+      ink = Math.min(1.6, ink + 0.12 + Math.random() * 0.08);
+      $('inkMeter').style.width = Math.min(100, ink / 1.6 * 100) + '%';
+      $('inkMeter').style.background = ink > 1.2 ? '#7a0d08' : '#c8261d';
+      sfx.pat();
+    };
+    $('pressBtn').onclick = () => {
+      cancelAnimationFrame(raf);
+      modal.classList.add('hidden');
+      resolve({ angle, ink });
+    };
+  });
+}
+
+/** 申請者の印影に文句をつける。問題なければ null */
+function judgeMyStamp({ angle, ink }) {
+  if (ink < 0.35) return `申請者印が薄すぎて判読できない（朱肉 ${(ink*100).toFixed(0)}%）`;
+  if (ink > 1.2) return `申請者印がにじんでおり、反社会的な印象を与える（朱肉 ${(ink*100).toFixed(0)}%）`;
+  if (angle > 0) return `申請者印が上長に背を向けている（${angle.toFixed(1)}°）。反抗の意思ありと判断`;
+  if (angle > -8) return `申請者印のお辞儀が浅い（${angle.toFixed(1)}°）。会釈は15°、敬礼は30°が基本`;
+  if (angle < -25) return `申請者印のお辞儀が深すぎて卑屈（${angle.toFixed(1)}°）`;
+  return null;
+}
+
+// ============================================================
+// 効果音（Web Audio API）
+// ============================================================
+const sfx = (() => {
+  let ac = null;
+  const ctx = () => (ac ||= new (window.AudioContext || window.webkitAudioContext)());
+  function noise(dur, freq, gain) {
+    const a = ctx();
+    const buf = a.createBuffer(1, a.sampleRate * dur, a.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+    const src = a.createBufferSource();
+    src.buffer = buf;
+    const f = a.createBiquadFilter();
+    f.type = 'lowpass'; f.frequency.value = freq;
+    const g = a.createGain(); g.gain.value = gain;
+    src.connect(f).connect(g).connect(a.destination);
+    src.start();
+  }
+  function tone(freq, dur, type = 'sine', gain = 0.2, slide = 0) {
+    const a = ctx();
+    const o = a.createOscillator();
+    const g = a.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, a.currentTime);
+    if (slide) o.frequency.exponentialRampToValueAtTime(freq * slide, a.currentTime + dur);
+    g.gain.setValueAtTime(gain, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+    o.connect(g).connect(a.destination);
+    o.start(); o.stop(a.currentTime + dur);
+  }
+  return {
+    stamp() { try { noise(0.18, 600, 0.9); tone(90, 0.15, 'sine', 0.5, 0.5); } catch (e) {} },
+    pat()   { try { noise(0.06, 1500, 0.3); } catch (e) {} },
+    reject(){ try { tone(220, 0.5, 'sawtooth', 0.12, 0.5); } catch (e) {} },
+    sigh()  { try { noise(1.2, 400, 0.25); } catch (e) {} },
+  };
+})();
 
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
