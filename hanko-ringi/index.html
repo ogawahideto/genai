@@ -160,6 +160,23 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .docinfo { display: grid; grid-template-columns: 7em 1fr; gap: 4px 10px; font-size: .95rem; }
   .docinfo div:nth-child(odd) { font-weight: bold; }
 
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+  .stats div { background: #fffdf6; border: 1px solid var(--line); padding: 6px 8px; font-size: .85rem; }
+  .stats span { display: block; font-size: .7rem; color: #666; }
+  .stats b { font-size: 1.25rem; font-family: monospace; margin-right: 2px; }
+  .ach-title { margin: 18px 0 6px; font-size: 1rem; border-left: 6px solid var(--shu); padding-left: 8px; }
+  .ach { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; }
+  .ach li { background: #e5ddc9; color: #888; padding: 6px 8px; font-size: .82rem; border: 1px dashed var(--line); }
+  .ach li.got { background: #fffdf6; color: var(--ink); border-style: solid; }
+  .ach li span { margin-right: 6px; }
+  #toasts { position: fixed; right: 16px; bottom: 16px; z-index: 200; display: flex; flex-direction: column; gap: 8px; max-width: calc(100vw - 32px); }
+  .toast {
+    background: #1f2a44; color: #fff; padding: 10px 14px; border-left: 6px solid #e2b007;
+    box-shadow: 0 4px 12px rgba(0,0,0,.4); animation: tin .3s ease-out; transition: opacity .6s, transform .6s;
+  }
+  .toast.out { opacity: 0; transform: translateX(40px); }
+  @keyframes tin { from { opacity: 0; transform: translateX(40px); } }
+
   .modal {
     position: fixed; inset: 0;
     background: rgba(0,0,0,.6);
@@ -224,7 +241,18 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     </div>
     <div class="banner" id="banner">差戻</div>
   </section>
+
+  <!-- 業務実績 -->
+  <section class="sheet" id="statsSheet">
+    <h2>業務実績報告書</h2>
+    <div class="stats" id="stats"></div>
+    <h3 id="achTitle" class="ach-title">実績</h3>
+    <ul class="ach" id="achList"></ul>
+    <div class="center"><button class="sub" id="resetBtn">人事異動（記録を消去）</button></div>
+  </section>
 </main>
+
+<div id="toasts"></div>
 
 <!-- 押印モーダル -->
 <div class="modal hidden" id="stampModal">
@@ -304,6 +332,98 @@ const state = {
 const $ = (id) => document.getElementById(id);
 
 // ============================================================
+// 統計・実績（localStorage に永続化）
+// ============================================================
+const SAVE_KEY = 'hankoRingi.v1';
+const HOURLY_YEN = 4800; // 決裁者の平均時給（推定・高め）
+const stats = Object.assign({
+  docs: 0, rejects: 0, expired: 0, approved: 0,
+  stamps: 0, days: 0, yen: 0,
+  streak: 0, maxStreak: 0, farthest: 0,
+  achievements: {},
+  date: null, docNo: 1,
+}, loadSave());
+
+function loadSave() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; }
+}
+function save() {
+  stats.date = state.date.toISOString();
+  stats.docNo = state.docNo;
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(stats)); } catch (e) {}
+}
+
+/** 営業日を進める。進んだぶんだけ人件費が溶ける */
+function advance(n) {
+  state.date = addBusinessDays(state.date, n);
+  stats.days += n;
+  stats.yen += n * HOURLY_YEN * 0.5; // 1営業日あたり30分「検討」している
+  updateClock();
+  renderStats();
+}
+
+const ACHIEVEMENTS = [
+  { id: 'first',     icon: '📄', name: '初めての起案',       desc: '稟議を1件提出した' },
+  { id: 'firstRej',  icon: '↩️', name: '洗礼',               desc: '初めて差し戻された' },
+  { id: 'streak5',   icon: '🔁', name: '差戻常連',           desc: '5連続で差し戻された' },
+  { id: 'streak20',  icon: '🌀', name: '無限ループの住人',   desc: '20連続で差し戻された' },
+  { id: 'kuppuku',   icon: '🙇', name: '卑屈',               desc: 'お辞儀が深すぎて差し戻された' },
+  { id: 'hankou',    icon: '😤', name: '反骨精神',           desc: '印鑑で上長に背を向けた' },
+  { id: 'usui',      icon: '🫥', name: '存在感の欠如',       desc: '印影が薄すぎて差し戻された' },
+  { id: 'nijimi',    icon: '🩸', name: '朱に交われば',       desc: '朱肉をつけすぎた' },
+  { id: 'president', icon: '🏢', name: '雲の上',             desc: '社長の決裁欄まで到達した' },
+  { id: 'expired',   icon: '⌛', name: '時すでに遅し',       desc: '全員の押印を集めたのに失効した' },
+  { id: 'torisage',  icon: '♾️', name: '取り下げの取り下げ', desc: '「本稟議の取り下げ」が差し戻された' },
+  { id: 'kaizen',    icon: '🛠️', name: '改善は改悪のもと',   desc: '「稟議フローの簡略化の提案」が差し戻された' },
+  { id: 'noReason',  icon: '🤐', name: '理由なき反抗',       desc: '理由を書かずに申請した' },
+  { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
+  { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
+  { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
+];
+
+function unlock(id) {
+  if (stats.achievements[id]) return;
+  const a = ACHIEVEMENTS.find(x => x.id === id);
+  if (!a) return;
+  stats.achievements[id] = fmtDate(state.date);
+  toast(`${a.icon} 実績解除「${a.name}」`, a.desc);
+  renderStats();
+  save();
+}
+
+function toast(title, body) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<b>${escapeHtml(title)}</b><br><small>${escapeHtml(body)}</small>`;
+  $('toasts').appendChild(el);
+  setTimeout(() => el.classList.add('out'), 3500);
+  setTimeout(() => el.remove(), 4200);
+}
+
+function renderStats() {
+  const yen = Math.floor(stats.yen).toLocaleString();
+  $('stats').innerHTML = `
+    <div><span>提出</span><b>${stats.docs}</b>件</div>
+    <div><span>差戻</span><b>${stats.rejects}</b>件</div>
+    <div><span>失効</span><b>${stats.expired}</b>件</div>
+    <div><span>承認</span><b>${stats.approved}</b>件</div>
+    <div><span>承認率</span><b>${(stats.docs ? stats.approved / stats.docs * 100 : 0).toFixed(3)}</b>%</div>
+    <div><span>押されたハンコ</span><b>${stats.stamps}</b>個</div>
+    <div><span>費やした営業日</span><b>${stats.days}</b>日</div>
+    <div><span>溶けた人件費</span><b>${yen}</b>円</div>
+    <div><span>連続差戻</span><b>${stats.streak}</b>回（最高${stats.maxStreak}）</div>`;
+  const got = Object.keys(stats.achievements).length;
+  $('achTitle').textContent = `実績 ${got} / ${ACHIEVEMENTS.length}`;
+  $('achList').innerHTML = ACHIEVEMENTS.map(a => {
+    const d = stats.achievements[a.id];
+    return `<li class="${d ? 'got' : ''}" title="${d ? escapeHtml(a.desc) + '（' + d + '）' : '？？？'}">
+      <span>${d ? a.icon : '🔒'}</span>${d ? escapeHtml(a.name) : '？？？'}</li>`;
+  }).join('');
+  if (stats.yen >= 1e6) unlock('million');
+  if (stats.days >= 250) unlock('year');
+}
+
+// ============================================================
 // 日付ユーティリティ
 // ============================================================
 function fmtDate(d) {
@@ -381,6 +501,8 @@ function drawHanko(ctx, name, opt = {}) {
 function stampAnimated(canvas, name, opt) {
   return new Promise((resolve) => {
     const ctx = canvas.getContext('2d');
+    // 非表示タブでは rAF が止まるので即押印（誰も見ていなくても稟議は進む）
+    if (document.hidden) { drawHanko(ctx, name, opt); resolve(); return; }
     const start = performance.now();
     const dur = 260;
     const base = document.createElement('canvas');
@@ -448,6 +570,10 @@ async function submit() {
 
   state.running = true;
   state.current = { kind, reason, applicant, submitted: new Date(state.date) };
+  stats.docs++;
+  unlock('first');
+  if (stats.docs >= 100) unlock('hundred');
+  if (!$('reason').value.trim()) unlock('noReason');
   $('submitBtn').disabled = true;
   $('retryBtn').classList.add('hidden');
   $('banner').className = 'banner';
@@ -467,14 +593,18 @@ async function submit() {
   sfx.stamp();
   await stampAnimated(cells[0].querySelector('canvas'), applicant, { angle: my.angle, ink: my.ink });
   cells[0].querySelector('.date').textContent = fmtDate(state.date).slice(5, 10);
+  stats.stamps++;
   log(`${applicant}（申請者）が起案・押印しました。（傾き ${my.angle.toFixed(1)}° / 朱肉 ${(my.ink*100).toFixed(0)}%）`, 'sys');
 
   // 申請者の印影チェック（係長が最初に目を光らせる）
   const myProblem = judgeMyStamp(my);
   if (myProblem) {
+    if (my.ink < 0.35) unlock('usui');
+    else if (my.ink > 1.2) unlock('nijimi');
+    else if (my.angle > 0) unlock('hankou');
+    else if (my.angle < -25) unlock('kuppuku');
     await sleep(500);
-    state.date = addBusinessDays(state.date, 1);
-    updateClock();
+    advance(1);
     await reject(APPROVERS[0], myProblem);
     return;
   }
@@ -483,12 +613,12 @@ async function submit() {
     const ap = APPROVERS[i];
     const cell = cells[i + 1];
     cell.classList.add('active');
+    if (ap.role === '社長') unlock('president');
     log(`${ap.role} ${ap.name} の決裁待ち…`, 'sys');
     await sleep(700 + Math.random() * 900);
 
     // 営業日が過ぎていく
-    state.date = addBusinessDays(state.date, 1 + Math.floor(Math.random() * 4));
-    updateClock();
+    advance(1 + Math.floor(Math.random() * 4));
     cell.classList.remove('active');
 
     if (Math.random() < ap.strict) {
@@ -503,21 +633,34 @@ async function submit() {
     });
     cell.querySelector('.date').textContent = fmtDate(state.date).slice(5, 10);
     log(`${ap.role} ${ap.name} が押印しました。`, 'ok');
+    stats.stamps++;
+    stats.farthest = Math.max(stats.farthest, i + 1);
   }
 
   // 全員押印……しかし
   await sleep(600);
-  state.date = addBusinessDays(state.date, 47);
-  updateClock();
+  advance(47);
   log('全決裁者の押印が完了しました。', 'ok');
   log('ただし、申請の有効期限（起案日より3営業日）を47営業日超過しているため、本申請は無効となりました。', 'rej');
   showBanner('失効', '#555');
+  stats.expired++;
+  stats.streak = 0;
+  unlock('expired');
   finish();
 }
 
 async function reject(ap, reason) {
   log(`${ap.role} ${ap.name} により差し戻されました。理由：${reason}`, 'rej');
   sfx.reject();
+  stats.rejects++;
+  stats.streak++;
+  stats.maxStreak = Math.max(stats.maxStreak, stats.streak);
+  unlock('firstRej');
+  if (stats.streak >= 5) unlock('streak5');
+  if (stats.streak >= 20) unlock('streak20');
+  const k = state.current.kind.label;
+  if (k.includes('取り下げ')) unlock('torisage');
+  if (k.includes('簡略化')) unlock('kaizen');
   showBanner('差戻');
   finish();
 }
@@ -535,6 +678,8 @@ function finish() {
   state.running = false;
   state.docNo++;
   updateClock();
+  renderStats();
+  save();
   $('submitBtn').disabled = false;
   $('retryBtn').classList.remove('hidden');
 }
@@ -659,7 +804,22 @@ $('retryBtn').addEventListener('click', () => {
   $('formSheet').scrollIntoView({ behavior: 'smooth' });
   submit();
 });
+if (stats.date) state.date = new Date(stats.date);
+state.docNo = stats.docNo || 1;
 updateClock();
+renderStats();
+$('resetBtn').addEventListener('click', () => {
+  if (state.running) return;
+  const b = $('resetBtn');
+  if (!b.dataset.armed) {
+    b.dataset.armed = '1';
+    b.textContent = '本当に？（もう一度押す）';
+    setTimeout(() => { delete b.dataset.armed; b.textContent = '人事異動（記録を消去）'; }, 3000);
+    return;
+  }
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  location.reload();
+});
 </script>
 </body>
 </html>
