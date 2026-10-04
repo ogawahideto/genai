@@ -184,6 +184,11 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .nema-btn { background: #fffdf6; color: var(--ink); border: 1px solid var(--line); box-shadow: 0 2px 0 var(--line); padding: 6px 4px; font-size: .85rem; letter-spacing: 0; }
   .nema-btn.done { background: #e9f2e4; border-color: var(--ok); }
   #nemaLog { font-family: monospace; font-size: .75rem; max-height: 110px; overflow-y: auto; margin-top: 6px; }
+  .fax-machine { background: #d8d4c8; padding: 10px; border-radius: 8px; border: 2px solid #9a968a; }
+  .fax-lcd { background: #9fb38a; color: #1c2a12; font-family: monospace; font-size: .8rem; padding: 4px 6px; margin-bottom: 8px; min-height: 1.6em; text-align: left; }
+  #faxPaper { width: 100%; max-width: 260px; background: #f7f5ee; box-shadow: inset 0 0 6px rgba(0,0,0,.2); }
+  .cell.extra { animation: drop .4s ease-out; }
+  @keyframes drop { from { transform: translateY(-30px); opacity: 0; } }
   .seal-row { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
   #sealPreview { width: 72px; height: 72px; background: #fffdf6; border: 1px dashed var(--line); flex: none; }
   #sealDesc { font-size: .85rem; margin: 0; color: #555; }
@@ -298,6 +303,17 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
 </main>
 
 <div id="toasts"></div>
+
+<!-- FAXモーダル -->
+<div class="modal hidden" id="faxModal">
+  <div class="modal-box fax-box">
+    <h3>FAX送信</h3>
+    <div class="fax-machine">
+      <div class="fax-lcd" id="faxStatus"></div>
+      <canvas id="faxPaper" width="260" height="300"></canvas>
+    </div>
+  </div>
+</div>
 
 <!-- 押印モーダル -->
 <div class="modal hidden" id="stampModal">
@@ -462,6 +478,10 @@ const ACHIEVEMENTS = [
   { id: 'nemaAll',   icon: '🤝', name: '根回しの達人',       desc: '全決裁者に根回しした' },
   { id: 'golf',      icon: '⛳', name: 'ナイスショット',     desc: 'ゴルフで根回しした' },
   { id: 'atamagoshi',icon: '🙅', name: '頭越し',             desc: '中間管理職を飛ばして根回しして怒られた' },
+  { id: 'statue',    icon: '🗿', name: '物言わぬ決裁者',     desc: '創業者の銅像に差し戻された' },
+  { id: 'fax',       icon: '📠', name: '昭和の残響',         desc: 'FAXで稟議書を送った' },
+  { id: 'budget',    icon: '📅', name: '来期に期待',         desc: '予算が来期に繰り越された' },
+  { id: 'withdrawOk',icon: '🫥', name: '無かったことに',     desc: '取り下げが承認され、取り下げ届が必要になった' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -795,14 +815,231 @@ async function submit() {
 
   // 全員押印……しかし
   await sleep(600);
-  advance(47);
   log('全決裁者の押印が完了しました。', 'ok');
-  log('ただし、申請の有効期限（起案日より3営業日）を47営業日超過しているため、本申請は無効となりました。', 'rej');
-  showBanner('失効', '#555');
+  await fate();
+}
+
+// ============================================================
+// 全員押印後の運命（どれを引いても承認はされない）
+// ============================================================
+async function fate() {
+  const kind = state.current.kind;
+  if (kind.label === '本稟議の取り下げ') return fateWithdraw();
+  const r = Math.random();
+  if (r < 0.3) return fateExpire();
+  if (r < 0.55) return fateExtraRoute();
+  if (r < 0.8) return fateFax();
+  return fateBudget();
+}
+
+function markExpired(banner, color = '#555') {
+  showBanner(banner, color);
   stats.expired++;
   stats.streak = 0;
-  unlock('expired');
   finish();
+}
+
+async function fateExpire() {
+  advance(47);
+  log('ただし、申請の有効期限（起案日より3営業日）を47営業日超過しているため、本申請は無効となりました。', 'rej');
+  unlock('expired');
+  markExpired('失効');
+}
+
+async function fateBudget() {
+  advance(5);
+  log('承認されました！', 'ok');
+  await sleep(900);
+  log('……ただし予算の執行は来期（2027年4月）以降となります。', 'sys');
+  await sleep(900);
+  log('なお来期には申請者・全決裁者が人事異動の予定のため、新体制にて再度ご申請ください。', 'rej');
+  unlock('budget');
+  markExpired('来期繰越');
+}
+
+async function fateWithdraw() {
+  advance(2);
+  log('「本稟議の取り下げ」が承認されました。', 'ok');
+  await sleep(900);
+  log('これにより本稟議は取り下げられ、承認の事実も取り下げられました。', 'sys');
+  await sleep(900);
+  log('つきましては、取り下げを正式に記録するため「取り下げ届」の稟議を起案してください。', 'rej');
+  const k = { label: '「本稟議の取り下げ」の取り下げ届', cost: 0 };
+  if (!KINDS.some(x => x.label === k.label)) {
+    KINDS.push(k);
+    const o = document.createElement('option');
+    o.textContent = k.label;
+    $('kind').appendChild(o);
+  }
+  $('kind').selectedIndex = KINDS.findIndex(x => x.label === k.label);
+  unlock('withdrawOk');
+  markExpired('取下', '#1f2a44');
+}
+
+/** 押印欄を1つ追加する */
+function addCell(role) {
+  const cell = document.createElement('div');
+  cell.className = 'cell extra';
+  cell.innerHTML = `<div class="role">${role}</div><canvas width="160" height="160"></canvas><div class="date"></div>`;
+  $('route').appendChild(cell);
+  return cell;
+}
+
+async function fateExtraRoute() {
+  advance(1);
+  log('総務部より連絡：「本件は金額に関わらず会長決裁事項です。押印欄を追加しておきました」', 'sys');
+  const extra = [
+    { role: '会長', name: '小林', shape: 'jitsuin' },
+    { role: '名誉会長', name: '加藤', shape: 'jitsuin' },
+  ];
+  for (const ap of extra) {
+    await sleep(700);
+    const cell = addCell(ap.role);
+    cell.classList.add('active');
+    say(cell, pick(['昔はこんな書類なかった', 'わしの若い頃は…', '（居眠り中）', '最近の若いもんは']));
+    await sleep(1400);
+    advance(5 + Math.floor(Math.random() * 10));
+    cell.classList.remove('active');
+    sfx.stamp();
+    await stampAnimated(cell.querySelector('canvas'), ap.name, { angle: -3 + Math.random() * 6, ink: 0.9, shape: ap.shape });
+    cell.querySelector('.date').textContent = fmtDate(state.date).slice(5, 10);
+    stats.stamps++;
+    log(`${ap.role} ${ap.name} が押印しました。`, 'ok');
+  }
+  await sleep(800);
+  log('総務部より連絡：「最終決裁は創業者の意思を確認する慣例です」', 'sys');
+  await sleep(700);
+  const cell = addCell('創業者の銅像');
+  cell.classList.add('active', 'statue');
+  drawStatue(cell.querySelector('canvas'));
+  say(cell, '……');
+  await sleep(2200);
+  advance(20);
+  cell.classList.remove('active');
+  say(cell, '…………');
+  unlock('statue');
+  await reject({ role: '創業者', name: '（銅像）' }, '創業者の銅像が首を縦に振らない（物理的に不可能）');
+}
+
+/** 押印欄に銅像を描く（ハンコの代わりに） */
+function drawStatue(cv) {
+  const g = cv.getContext('2d');
+  const w = cv.width, h = cv.height;
+  g.clearRect(0, 0, w, h);
+  const grd = g.createLinearGradient(0, 0, w, 0);
+  grd.addColorStop(0, '#3d5a4a'); grd.addColorStop(0.5, '#6f8f7a'); grd.addColorStop(1, '#2f4538');
+  g.fillStyle = grd;
+  // 台座
+  g.fillRect(w * 0.25, h * 0.78, w * 0.5, h * 0.16);
+  // 胴体
+  g.beginPath();
+  g.moveTo(w * 0.3, h * 0.78);
+  g.quadraticCurveTo(w * 0.28, h * 0.45, w * 0.5, h * 0.42);
+  g.quadraticCurveTo(w * 0.72, h * 0.45, w * 0.7, h * 0.78);
+  g.fill();
+  // 頭
+  g.beginPath();
+  g.arc(w * 0.5, h * 0.3, w * 0.12, 0, Math.PI * 2);
+  g.fill();
+  // 腕組み
+  g.strokeStyle = '#2a3d32'; g.lineWidth = w * 0.03;
+  g.beginPath(); g.moveTo(w * 0.36, h * 0.58); g.lineTo(w * 0.64, h * 0.6); g.stroke();
+  // 鳩のフン
+  g.fillStyle = '#f4f4ee';
+  g.beginPath(); g.arc(w * 0.46, h * 0.2, w * 0.025, 0, Math.PI * 2); g.fill();
+}
+
+// ============================================================
+// FAX（経理部への送付）
+// ============================================================
+async function fateFax() {
+  log('承認済み稟議書の原本を経理部へFAXで送付します。', 'sys');
+  await sleep(600);
+  const result = await faxSend();
+  advance(3);
+  unlock('fax');
+  if (result === 'jam') {
+    log('経理部より：「紙詰まりで半分しか届いていません。原本を社内便で郵送してください」', 'rej');
+    await sleep(800);
+    advance(4);
+    log('社内便が行方不明になりました（3階と4階の間で）。最初から申請し直してください。', 'rej');
+    markExpired('紛失');
+  } else if (result === 'toner') {
+    log('経理部より：「真っ白な紙が届きました。白紙の稟議は受理できません」', 'rej');
+    markExpired('白紙');
+  } else {
+    log('経理部より：「FAXは2026年度をもって廃止されました。メールで送ってください」', 'sys');
+    await sleep(900);
+    log('情報システム部より：「添付ファイル付きメールはセキュリティポリシーにより禁止です。FAXで送ってください」', 'rej');
+    markExpired('往復');
+  }
+}
+
+/** FAX送信演出。'jam' | 'toner' | 'loop' のいずれかで終わる */
+function faxSend() {
+  return new Promise((resolve) => {
+    const modal = $('faxModal');
+    const cv = $('faxPaper');
+    const g = cv.getContext('2d');
+    const outcome = pick(['jam', 'toner', 'loop']);
+    modal.classList.remove('hidden');
+    $('faxStatus').textContent = 'ダイヤル中… 03-XXXX-XXXX';
+    g.fillStyle = '#f7f5ee';
+    g.fillRect(0, 0, cv.width, cv.height);
+    sfx.fax();
+
+    const lines = [
+      '稟 議 書（承認済）', '',
+      `第${state.docNo}号`,
+      `件名：${state.current.kind.label}`.slice(0, 24),
+      `申請者：${state.current.applicant}`,
+      '', '上記の件、全決裁者の', '押印をもって承認する。', '',
+      '（押印欄）', '◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯',
+    ];
+    let y = 0;
+    const stopAt = outcome === 'jam' ? cv.height * 0.45 : cv.height;
+    let t0 = null;
+    setTimeout(() => { $('faxStatus').textContent = 'ピーーーギャーーーーー（送信中）'; }, 900);
+
+    function step(t) {
+      if (t0 === null) t0 = t;
+      if (t - t0 < 1500) return requestAnimationFrame(step);
+      y += 1.6;
+      // 感熱紙のノイズ
+      if (outcome !== 'toner') {
+        g.fillStyle = 'rgba(0,0,0,.05)';
+        for (let i = 0; i < 6; i++) g.fillRect(Math.random() * cv.width, y, Math.random() * 3, 1);
+        g.fillStyle = '#222';
+        g.font = '15px "MS Gothic", monospace';
+        const li = Math.floor((y - 20) / 22);
+        if ((y - 20) % 22 < 1.6 && li >= 0 && li < lines.length) {
+          g.fillText(lines[li], 16, y + 14);
+        }
+      }
+      if (y < stopAt) {
+        requestAnimationFrame(step);
+      } else {
+        if (outcome === 'jam') {
+          // くしゃっ
+          g.strokeStyle = '#999';
+          for (let i = 0; i < 14; i++) {
+            g.beginPath();
+            g.moveTo(Math.random() * cv.width, y - Math.random() * 30);
+            g.lineTo(Math.random() * cv.width, y + Math.random() * 10);
+            g.stroke();
+          }
+          $('faxStatus').textContent = 'エラー E-03：紙詰まり';
+        } else if (outcome === 'toner') {
+          $('faxStatus').textContent = '送信完了（※トナー残量 0%）';
+        } else {
+          $('faxStatus').textContent = '送信完了';
+        }
+        setTimeout(() => { modal.classList.add('hidden'); resolve(outcome); }, 1600);
+      }
+    }
+    if (document.hidden) { modal.classList.add('hidden'); return resolve(outcome); }
+    requestAnimationFrame(step);
+  });
 }
 
 async function reject(ap, reason) {
@@ -1028,6 +1265,23 @@ const sfx = (() => {
     pat()   { try { noise(0.06, 1500, 0.3); } catch (e) {} },
     reject(){ try { tone(220, 0.5, 'sawtooth', 0.12, 0.5); } catch (e) {} },
     sigh()  { try { noise(1.2, 400, 0.25); } catch (e) {} },
+    fax() {
+      try {
+        const a = ctx();
+        // ダイヤルトーン → ピー → ギャー
+        const seq = [[1100, 0.9], [2100, 0.8], [1650, 0.15], [1850, 0.15], [1300, 0.2], [2400, 0.3]];
+        let t = a.currentTime;
+        seq.forEach(([f, d]) => {
+          const o = a.createOscillator(), g = a.createGain();
+          o.type = 'square'; o.frequency.value = f;
+          g.gain.value = 0.04;
+          o.connect(g).connect(a.destination);
+          o.start(t); o.stop(t + d);
+          t += d + 0.05;
+        });
+        setTimeout(() => noise(1.2, 3000, 0.15), 2000);
+      } catch (e) {}
+    },
   };
 })();
 
