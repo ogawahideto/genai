@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<!--
+AI Model: Claude Opus 5.5
+User Prompt: 新しいプロジェクトを作り、役に立たないアプリを全力で作ってください。プロジェクトディレクトリを編集する範囲内で確認は不要です。作りこみつづけてください。少し作ってはgitにcommitして、開発履歴をのこしてください。
+AI Approach: 「ハンコを集めて回る稟議」を題材に、決して何も承認されないワークフローを全力で作り込む。
+             Canvasで朱肉の質感まで再現した印影を生成し、承認ルート・差し戻し理由・営業日カレンダーを擬似シミュレーションする。
+Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML・外部依存ゼロ・バニラJS。
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全自動稟議地獄</title>
+<style>
+  :root {
+    --paper: #f6f0e1;
+    --paper-dark: #e8dec5;
+    --ink: #2b2620;
+    --shu: #c8261d;
+    --line: #8a7e66;
+    --desk: #5b4632;
+    --ok: #3c6e3a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+    color: var(--ink);
+    background:
+      repeating-linear-gradient(90deg, rgba(0,0,0,.04) 0 2px, transparent 2px 40px),
+      linear-gradient(#6b533b, var(--desk));
+    min-height: 100vh;
+  }
+  header {
+    background: #1f2a44;
+    color: #f3f0e8;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 4px solid var(--shu);
+  }
+  header h1 { font-size: 1.25rem; margin: 0; letter-spacing: .1em; }
+  header h1 small { font-size: .7rem; opacity: .8; display: block; letter-spacing: 0; }
+  #clock { font-family: monospace; font-size: .9rem; text-align: right; }
+  main {
+    max-width: 880px;
+    margin: 16px auto;
+    padding: 0 16px 60px;
+  }
+  .sheet {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    box-shadow: 0 6px 18px rgba(0,0,0,.35);
+    padding: 20px;
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .sheet h2 {
+    text-align: center;
+    letter-spacing: .6em;
+    margin: 0 0 14px;
+    font-size: 1.4rem;
+    border-bottom: 3px double var(--ink);
+    padding-bottom: 6px;
+  }
+  label { display: block; font-weight: bold; margin: 10px 0 4px; }
+  select, textarea, input[type=text] {
+    width: 100%;
+    font: inherit;
+    padding: 6px 8px;
+    background: #fffdf6;
+    border: 1px solid var(--line);
+  }
+  textarea { height: 70px; resize: vertical; }
+  button {
+    font: inherit;
+    cursor: pointer;
+    background: var(--shu);
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    font-size: 1rem;
+    letter-spacing: .2em;
+    box-shadow: 0 3px 0 #7d1610;
+  }
+  button:active { transform: translateY(2px); box-shadow: 0 1px 0 #7d1610; }
+  button:disabled { background: #999; box-shadow: 0 3px 0 #666; cursor: not-allowed; }
+  button.sub { background: #4a4a4a; box-shadow: 0 3px 0 #222; }
+  .center { text-align: center; margin-top: 16px; }
+
+  /* 押印欄 */
+  .route {
+    display: flex;
+    flex-direction: row-reverse; /* 日本の押印欄は右から左へ偉くなる…わけではないが雰囲気で */
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0;
+    border: 2px solid var(--ink);
+    margin: 14px 0;
+  }
+  .cell {
+    width: 84px;
+    border-left: 1px solid var(--ink);
+    text-align: center;
+    background: #fffdf6;
+  }
+  .cell:last-child { border-left: none; }
+  .cell .role {
+    font-size: .72rem;
+    border-bottom: 1px solid var(--ink);
+    padding: 2px 0;
+    background: var(--paper-dark);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .cell canvas { width: 80px; height: 80px; display: block; margin: 0 auto; }
+  .cell.active { outline: 3px solid #e2b007; outline-offset: -3px; animation: blink 1s infinite; }
+  .cell .date { font-size: .6rem; height: 14px; color: #555; font-family: monospace; }
+  @keyframes blink { 50% { outline-color: transparent; } }
+
+  #log {
+    font-family: monospace;
+    font-size: .82rem;
+    max-height: 220px;
+    overflow-y: auto;
+    background: #fffdf6;
+    border: 1px inset var(--line);
+    padding: 8px;
+    white-space: pre-wrap;
+  }
+  #log .rej { color: var(--shu); font-weight: bold; }
+  #log .ok { color: var(--ok); }
+  #log .sys { color: #666; }
+
+  .banner {
+    position: absolute;
+    left: 50%; top: 45%;
+    transform: translate(-50%, -50%) rotate(-12deg);
+    font-size: 3.2rem;
+    font-weight: bold;
+    color: var(--shu);
+    border: 6px solid var(--shu);
+    padding: 4px 18px;
+    border-radius: 8px;
+    opacity: 0;
+    pointer-events: none;
+    letter-spacing: .2em;
+    white-space: nowrap;
+    background: rgba(246,240,225,.6);
+  }
+  .banner.show { animation: slam .35s ease-out forwards; }
+  @keyframes slam {
+    0% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(3); }
+    100% { opacity: .9; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
+  }
+  .hidden { display: none; }
+  .docinfo { display: grid; grid-template-columns: 7em 1fr; gap: 4px 10px; font-size: .95rem; }
+  .docinfo div:nth-child(odd) { font-weight: bold; }
+
+  @media (max-width: 600px) {
+    .cell { width: 25%; }
+    .cell canvas { width: 64px; height: 64px; }
+    .banner { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>全自動稟議地獄<small>〜何ひとつ承認されないワークフロー〜</small></h1>
+  <div id="clock"></div>
+</header>
+
+<main>
+  <!-- 申請フォーム -->
+  <section class="sheet" id="formSheet">
+    <h2>稟議申請書</h2>
+    <label for="kind">申請種別</label>
+    <select id="kind"></select>
+    <label for="reason">申請理由（具体的に、かつ簡潔に、しかし詳細に）</label>
+    <textarea id="reason" placeholder="例：ペンのインクが切れたため"></textarea>
+    <label for="applicant">申請者氏名（印鑑の作成に使用します）</label>
+    <input type="text" id="applicant" maxlength="4" value="山田">
+    <div class="center">
+      <button id="submitBtn">提出する</button>
+    </div>
+  </section>
+
+  <!-- 審査状況 -->
+  <section class="sheet hidden" id="flowSheet">
+    <h2>決裁状況</h2>
+    <div class="docinfo" id="docinfo"></div>
+    <div class="route" id="route"></div>
+    <div id="log"></div>
+    <div class="center">
+      <button class="sub hidden" id="retryBtn">再申請する</button>
+    </div>
+    <div class="banner" id="banner">差戻</div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+// ============================================================
+// データ
+// ============================================================
+const KINDS = [
+  { label: 'ボールペン1本の購入（110円）', cost: 110 },
+  { label: 'トイレ休憩（5分）', cost: 0 },
+  { label: '定時退社', cost: 0 },
+  { label: '付箋（黄色・小）の補充', cost: 220 },
+  { label: '稟議フローの簡略化の提案', cost: 0 },
+  { label: '本稟議の取り下げ', cost: 0 },
+  { label: '窓を開ける', cost: 0 },
+  { label: 'エアコンの設定温度を1℃下げる', cost: 3 },
+];
+
+const APPROVERS = [
+  { role: '係長', name: '佐藤', strict: 0.25 },
+  { role: '課長', name: '鈴木', strict: 0.30 },
+  { role: '次長', name: '高橋', strict: 0.30 },
+  { role: '部長', name: '田中', strict: 0.35 },
+  { role: '本部長', name: '伊藤', strict: 0.35 },
+  { role: '常務', name: '渡辺', strict: 0.40 },
+  { role: '専務', name: '山本', strict: 0.40 },
+  { role: '社長', name: '中村', strict: 0.45 },
+];
+
+const REJECT_REASONS = [
+  '印影がお辞儀をしていない（上長側に傾けること）',
+  '朱肉の色が規定より0.3%薄い',
+  '申請理由が具体的すぎる',
+  '申請理由が抽象的すぎる',
+  '前例がない',
+  '前例がある（二番煎じ）',
+  '日付が和暦ではない',
+  '日付が和暦である（グローバル化の流れに反する）',
+  '本件は別部署の管轄の可能性がある（どの部署かは不明）',
+  '決裁者が本日、気分が乗らない',
+  'フォントが明朝体である（ゴシック体が望ましい、かもしれない）',
+  '「ご確認ください」ではなく「ご確認のほどよろしくお願い申し上げます」が正しい',
+  '本申請を行うための事前申請が提出されていない',
+  '大安ではない',
+  'ハンコの位置が枠から0.5mmはみ出している',
+  '申請書の紙が白すぎる',
+  '担当者が会議中（会議の議題は「会議の削減について」）',
+  '差し戻し理由を考え中',
+];
+
+// ============================================================
+// 状態
+// ============================================================
+const state = {
+  // 擬似カレンダー：営業日で進む
+  date: new Date(2026, 9, 5, 9, 0),
+  docNo: 1,
+  running: false,
+  current: null,
+};
+
+const $ = (id) => document.getElementById(id);
+
+// ============================================================
+// 日付ユーティリティ
+// ============================================================
+function fmtDate(d) {
+  const w = '日月火水木金土'[d.getDay()];
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${w})`;
+}
+function addBusinessDays(d, n) {
+  const r = new Date(d);
+  while (n > 0) {
+    r.setDate(r.getDate() + 1);
+    if (r.getDay() !== 0 && r.getDay() !== 6) n--;
+  }
+  return r;
+}
+function updateClock() {
+  $('clock').innerHTML = `社内暦: ${fmtDate(state.date)}<br>稟議番号: 第${state.docNo}号`;
+}
+
+// ============================================================
+// ハンコ描画
+// ============================================================
+/**
+ * 印影を描く。
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {string} name 氏名（縦書き）
+ * @param {object} opt  angle: 傾き(deg), ink: 0..1 朱肉の濃さ, size
+ */
+function drawHanko(ctx, name, opt = {}) {
+  const size = opt.size || ctx.canvas.width;
+  const angle = (opt.angle || 0) * Math.PI / 180;
+  const ink = opt.ink ?? 1;
+  const off = document.createElement('canvas');
+  off.width = off.height = size;
+  const o = off.getContext('2d');
+  const c = size / 2;
+  const r = size * 0.4;
+
+  o.translate(c, c);
+  o.rotate(angle);
+  o.strokeStyle = o.fillStyle = '#c8261d';
+  o.lineWidth = size * 0.045;
+  o.beginPath();
+  o.arc(0, 0, r, 0, Math.PI * 2);
+  o.stroke();
+
+  // 縦書きの氏名
+  const chars = [...name].slice(0, 4);
+  const fs = Math.min(r * 1.5 / chars.length, r * 0.95);
+  o.font = `bold ${fs}px "Yu Mincho","Hiragino Mincho ProN",serif`;
+  o.textAlign = 'center';
+  o.textBaseline = 'middle';
+  const total = fs * chars.length;
+  chars.forEach((ch, i) => {
+    o.fillText(ch, 0, -total / 2 + fs * (i + 0.5));
+  });
+
+  // 朱肉のかすれ：ランダムに点を抜く
+  o.setTransform(1, 0, 0, 1, 0, 0);
+  o.globalCompositeOperation = 'destination-out';
+  const holes = Math.floor(size * size * 0.02 * (1.4 - ink));
+  for (let i = 0; i < holes; i++) {
+    o.globalAlpha = Math.random() * 0.8;
+    const s = Math.random() * size * 0.025;
+    o.fillRect(Math.random() * size, Math.random() * size, s, s);
+  }
+  o.globalAlpha = 1;
+  o.globalCompositeOperation = 'source-over';
+
+  ctx.globalAlpha = 0.55 + 0.45 * ink;
+  ctx.drawImage(off, 0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.globalAlpha = 1;
+}
+
+/** 押印アニメーション：上から降ってきてドン */
+function stampAnimated(canvas, name, opt) {
+  return new Promise((resolve) => {
+    const ctx = canvas.getContext('2d');
+    const start = performance.now();
+    const dur = 260;
+    const base = document.createElement('canvas');
+    base.width = canvas.width; base.height = canvas.height;
+    base.getContext('2d').drawImage(canvas, 0, 0);
+    function frame(t) {
+      const p = Math.min(1, (t - start) / dur);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(base, 0, 0);
+      if (p < 1) {
+        const s = 1 + (1 - p) * 1.8;
+        ctx.save();
+        ctx.globalAlpha = p * 0.6;
+        ctx.translate(canvas.width/2, canvas.height/2);
+        ctx.scale(s, s);
+        ctx.translate(-canvas.width/2, -canvas.height/2);
+        drawHanko(ctx, name, { ...opt, ink: (opt.ink ?? 1) * p });
+        ctx.restore();
+        requestAnimationFrame(frame);
+      } else {
+        drawHanko(ctx, name, opt);
+        resolve();
+      }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// ============================================================
+// ログ
+// ============================================================
+function log(msg, cls = '') {
+  const el = document.createElement('div');
+  if (cls) el.className = cls;
+  el.textContent = `[${fmtDate(state.date)}] ${msg}`;
+  $('log').appendChild(el);
+  $('log').scrollTop = $('log').scrollHeight;
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+// ============================================================
+// 稟議フロー
+// ============================================================
+function buildRoute(applicant) {
+  const route = $('route');
+  route.innerHTML = '';
+  const people = [{ role: '申請者', name: applicant }, ...APPROVERS];
+  people.forEach((p, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.innerHTML = `<div class="role">${p.role}</div><canvas width="160" height="160"></canvas><div class="date"></div>`;
+    cell.dataset.idx = i;
+    route.appendChild(cell);
+  });
+  return [...route.children];
+}
+
+async function submit() {
+  if (state.running) return;
+  const kind = KINDS[$('kind').selectedIndex];
+  const reason = $('reason').value.trim() || '（理由未記入）';
+  const applicant = ($('applicant').value.trim() || '山田').slice(0, 4);
+
+  state.running = true;
+  state.current = { kind, reason, applicant, submitted: new Date(state.date) };
+  $('submitBtn').disabled = true;
+  $('retryBtn').classList.add('hidden');
+  $('banner').className = 'banner';
+  $('flowSheet').classList.remove('hidden');
+  $('log').innerHTML = '';
+  $('docinfo').innerHTML = `
+    <div>稟議番号</div><div>第${state.docNo}号</div>
+    <div>件名</div><div>${escapeHtml(kind.label)}</div>
+    <div>申請理由</div><div>${escapeHtml(reason)}</div>
+    <div>起案日</div><div>${fmtDate(state.date)}</div>`;
+
+  const cells = buildRoute(applicant);
+  $('flowSheet').scrollIntoView({ behavior: 'smooth' });
+
+  // 申請者の押印（お辞儀角度はランダム）
+  const myAngle = -5 - Math.random() * 25 + 15;
+  await sleep(400);
+  await stampAnimated(cells[0].querySelector('canvas'), applicant, { angle: myAngle });
+  cells[0].querySelector('.date').textContent = fmtDate(state.date).slice(5, 10);
+  log(`${applicant}（申請者）が起案・押印しました。`, 'sys');
+
+  for (let i = 0; i < APPROVERS.length; i++) {
+    const ap = APPROVERS[i];
+    const cell = cells[i + 1];
+    cell.classList.add('active');
+    log(`${ap.role} ${ap.name} の決裁待ち…`, 'sys');
+    await sleep(700 + Math.random() * 900);
+
+    // 営業日が過ぎていく
+    state.date = addBusinessDays(state.date, 1 + Math.floor(Math.random() * 4));
+    updateClock();
+    cell.classList.remove('active');
+
+    if (Math.random() < ap.strict) {
+      await reject(ap, pick(REJECT_REASONS));
+      return;
+    }
+    // お辞儀：部下は上長側（左）に傾ける
+    await stampAnimated(cell.querySelector('canvas'), ap.name, {
+      angle: -8 - Math.random() * 10,
+      ink: 0.6 + Math.random() * 0.4,
+    });
+    cell.querySelector('.date').textContent = fmtDate(state.date).slice(5, 10);
+    log(`${ap.role} ${ap.name} が押印しました。`, 'ok');
+  }
+
+  // 全員押印……しかし
+  await sleep(600);
+  state.date = addBusinessDays(state.date, 47);
+  updateClock();
+  log('全決裁者の押印が完了しました。', 'ok');
+  log('ただし、申請の有効期限（起案日より3営業日）を47営業日超過しているため、本申請は無効となりました。', 'rej');
+  showBanner('失効', '#555');
+  finish();
+}
+
+async function reject(ap, reason) {
+  log(`${ap.role} ${ap.name} により差し戻されました。理由：${reason}`, 'rej');
+  showBanner('差戻');
+  finish();
+}
+
+function showBanner(text, color) {
+  const b = $('banner');
+  b.textContent = text;
+  b.style.color = b.style.borderColor = color || '';
+  b.className = 'banner';
+  void b.offsetWidth;
+  b.classList.add('show');
+}
+
+function finish() {
+  state.running = false;
+  state.docNo++;
+  updateClock();
+  $('submitBtn').disabled = false;
+  $('retryBtn').classList.remove('hidden');
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// ============================================================
+// 初期化
+// ============================================================
+KINDS.forEach(k => {
+  const o = document.createElement('option');
+  o.textContent = k.label;
+  $('kind').appendChild(o);
+});
+$('submitBtn').addEventListener('click', submit);
+$('retryBtn').addEventListener('click', () => {
+  $('formSheet').scrollIntoView({ behavior: 'smooth' });
+  submit();
+});
+updateClock();
+</script>
+</body>
+</html>
