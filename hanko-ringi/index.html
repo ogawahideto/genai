@@ -517,6 +517,9 @@ const ACHIEVEMENTS = [
   { id: 'teijiConcept',icon: '🕔', name: '定時は概念',       desc: '17:30を迎えて17:00に戻された' },
   { id: 'sasen',     icon: '🧳', name: '自分で自分を左遷',   desc: '自分の異動の稟議に押印した' },
   { id: 'dodge',     icon: '🛡️', name: '危機回避',           desc: '自分に不利な稟議を差し戻した' },
+  { id: 'akapen',    icon: '🖍️', name: '赤ペン先生',         desc: '課長に申請理由を添削された' },
+  { id: 'butsumetsu',icon: '🪦', name: '日が悪い',           desc: '社内六曜の仏滅で差し戻された' },
+  { id: 'proxy',     icon: '👥', name: '代理の不在証明',     desc: '代理決裁を理由に差し戻された' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -581,8 +584,34 @@ function addBusinessDays(d, n) {
   }
   return r;
 }
+/** 社内六曜（総務部独自算出。暦学的根拠なし） */
+const ROKUYO = ['大安', '赤口', '先勝', '友引', '先負', '仏滅'];
+function rokuyo(d) {
+  return ROKUYO[(d.getFullYear() + d.getMonth() * 7 + d.getDate() * 3) % 6];
+}
 function updateClock() {
-  $('clock').innerHTML = `社内暦: ${fmtDate(state.date)}<br>稟議番号: 第${state.docNo}号`;
+  $('clock').innerHTML = `社内暦: ${fmtDate(state.date)}【${rokuyo(state.date)}】<br>稟議番号: 第${state.docNo}号`;
+}
+
+/** 申請理由の添削（課長の趣味） */
+function critiqueReason(text) {
+  const t = text.trim();
+  if (!t) return null;
+  const rules = [
+    [/至急|急ぎ|早急|ASAP/i, '「急ぎ」の案件ほど慎重に審議すべきである'],
+    [/DX|AI|IT|デジタル|クラウド|アジャイル/i, '横文字・カタカナ語が含まれている。上の者が理解できない'],
+    [/効率|削減|簡略|短縮|自動化/, '効率化すると我々の仕事が減るので不可'],
+    [/お願い|ください/, '「お願い」ではなく「ご高配を賜りたく」が正しい'],
+    [/なぜ|どうして(?!も)|\?|？/, '申請理由に疑問形を使うのは決裁者への挑戦と見なす'],
+    [/ため$/, '「〜のため」で文を終えるのは体言止めの濫用'],
+    [/私|僕|俺/, '一人称を用いるのは組織人としての自覚に欠ける'],
+    [/!|！/, '感嘆符は感情的である'],
+    [/[0-9０-９]/, '数字の根拠資料が添付されていない'],
+  ];
+  for (const [re, msg] of rules) if (re.test(t)) return `申請理由：${msg}`;
+  if ([...t].length < 10) return `申請理由が${[...t].length}文字しかない。熱意が感じられない`;
+  if ([...t].length > 80) return `申請理由が${[...t].length}文字もある。読む時間がない`;
+  return null;
 }
 
 // ============================================================
@@ -818,12 +847,48 @@ async function submit() {
     advance(1 + Math.floor(Math.random() * 4));
     cell.classList.remove('active');
 
+    // 前の決裁者が代理決裁だった場合
+    if (state.current.proxy && Math.random() < 0.65) {
+      const pr = state.current.proxy;
+      say(cell, '代理？ 本人の確認は？');
+      unlock('proxy');
+      await reject(ap, `${pr.role}欄が代理決裁となっている。${pr.role}本人の事後承認が必要（本人は休暇明けで何も覚えていない）`);
+      return;
+    }
+    state.current.proxy = null;
+
     if (isOverHead(i) && Math.random() < 0.8) {
       const boss = APPROVERS[Math.max(...state.nema.keys())];
       say(cell, `${boss.role}には話を通したんだって？`);
       unlock('atamagoshi');
       await reject(ap, `頭越しに${boss.role}へ根回しした。まず${ap.role}である私に話を通すのが筋`);
       return;
+    }
+    // 課長は申請理由を添削する
+    if (ap.role === '課長' && Math.random() < 0.7) {
+      const c = critiqueReason(state.current.reason === '（理由未記入）' ? '' : state.current.reason);
+      if (c) {
+        say(cell, '赤ペン入れといたから');
+        unlock('akapen');
+        await reject(ap, c);
+        return;
+      }
+    }
+    // 社長は社内六曜を気にする
+    if (ap.role === '社長') {
+      const rk = rokuyo(state.date);
+      if (rk === '仏滅') {
+        say(cell, '今日は仏滅だよ君');
+        unlock('butsumetsu');
+        await reject(ap, `本日は社内六曜で仏滅（${fmtDate(state.date)}）`);
+        return;
+      }
+      if (rk === '友引' && Math.random() < 0.5) {
+        say(cell, '友引だから他のも道連れね');
+        stats.rejects += 2;
+        await reject(ap, '本日は友引のため、無関係の稟議2件も道連れで差し戻した');
+        return;
+      }
     }
     const strict = ap.strict * (state.nema.get(i) ?? 1);
     if (Math.random() < strict) {
@@ -834,6 +899,18 @@ async function submit() {
       await reject(ap, reason);
       if (reason === PRE_REASON) preparePreApplication();
       return;
+    }
+    // たまに休暇中で代理が押す
+    if (i < APPROVERS.length - 1 && Math.random() < 0.1) {
+      say(cell, `（${ap.name}は有給休暇中です）`);
+      await sleep(700);
+      sfx.stamp();
+      await stampAnimated(cell.querySelector('canvas'), '代理', { angle: -10, ink: 0.7, shape: 'oval' });
+      cell.querySelector('.date').textContent = fmtDate(state.date).slice(5, 10);
+      log(`${ap.role} ${ap.name} は休暇中のため、隣の席の人が代理で押印しました。`, 'sys');
+      stats.stamps++;
+      state.current.proxy = ap;
+      continue;
     }
     say(cell, pick(['よし', 'ポン', 'まあいいでしょう', '（無言で押印）', '異議なし', 'とりあえず押しとく']));
     // お辞儀：部下は上長側（左）に傾ける
