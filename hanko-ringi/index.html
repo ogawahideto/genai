@@ -177,6 +177,13 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .toast.out { opacity: 0; transform: translateX(40px); }
   @keyframes tin { from { opacity: 0; transform: translateX(40px); } }
 
+  .nema { margin-top: 14px; border: 1px solid var(--line); background: #fbf6e8; padding: 6px 10px; }
+  .nema summary { cursor: pointer; font-weight: bold; }
+  .nema .note { font-size: .8rem; color: #555; margin: 6px 0; }
+  .nema-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+  .nema-btn { background: #fffdf6; color: var(--ink); border: 1px solid var(--line); box-shadow: 0 2px 0 var(--line); padding: 6px 4px; font-size: .85rem; letter-spacing: 0; }
+  .nema-btn.done { background: #e9f2e4; border-color: var(--ok); }
+  #nemaLog { font-family: monospace; font-size: .75rem; max-height: 110px; overflow-y: auto; margin-top: 6px; }
   .seal-row { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
   #sealPreview { width: 72px; height: 72px; background: #fffdf6; border: 1px dashed var(--line); flex: none; }
   #sealDesc { font-size: .85rem; margin: 0; color: #555; }
@@ -256,6 +263,12 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
       <canvas id="sealPreview" width="120" height="120"></canvas>
       <p id="sealDesc"></p>
     </div>
+    <details class="nema">
+      <summary>根回し（任意・推奨・事実上必須）</summary>
+      <p class="note">提出前に決裁者へ話を通しておくと、通りやすくなる…かもしれません。ただし誰かを飛ばすと「頭越し」になります。</p>
+      <div class="nema-grid" id="nemaGrid"></div>
+      <div id="nemaLog"></div>
+    </details>
     <div class="center">
       <button id="submitBtn">提出する</button>
     </div>
@@ -338,6 +351,16 @@ const SEALS = [
   { id: 'digital', label: 'デジタル印（PNG）',    shape: 'digital', desc: 'DX推進室が配布した画像。印刷して貼ることになる。', noInk: true },
 ];
 
+const NEMAWASHI = [
+  { act: '廊下で偶然を装って挨拶', days: 0, yen: 0,     eff: 0.85, line: '「おう、元気か」' },
+  { act: '缶コーヒーを差し入れ',   days: 0, yen: 130,   eff: 0.75, line: '「微糖じゃないんだ」' },
+  { act: '菓子折りを持参',         days: 1, yen: 3240,  eff: 0.55, line: '「気を遣わなくていいのに」（受け取る）' },
+  { act: '喫煙所で雑談',           days: 1, yen: 0,     eff: 0.6,  line: '「で、何の話だっけ」' },
+  { act: '飲み会に付き合う',       days: 1, yen: 6800,  eff: 0.4,  line: '「二次会行くぞ」' },
+  { act: '週末のゴルフに同行',     days: 2, yen: 28000, eff: 0.25, line: '「ナイスショット！」（100回言った）' },
+  { act: '子供の受験の相談に乗る', days: 3, yen: 0,     eff: 0.3,  line: '「君は話がわかるね」' },
+];
+
 const PRE_REASON = '本申請を行うための事前申請が提出されていない';
 
 const THINKING = [
@@ -381,6 +404,7 @@ const state = {
   docNo: 1,
   running: false,
   current: null,
+  nema: new Map(), // 決裁者index -> 効き目(倍率)
 };
 
 const $ = (id) => document.getElementById(id);
@@ -435,6 +459,9 @@ const ACHIEVEMENTS = [
   { id: 'shachi',    icon: '🐋', name: '便利は悪',           desc: 'シャチハタで差し戻された' },
   { id: 'dx',        icon: '💾', name: 'DXの夜明け（遠い）', desc: 'デジタル印で差し戻された' },
   { id: 'jitsuin',   icon: '💍', name: '重すぎる愛',         desc: '実印で差し戻された' },
+  { id: 'nemaAll',   icon: '🤝', name: '根回しの達人',       desc: '全決裁者に根回しした' },
+  { id: 'golf',      icon: '⛳', name: 'ナイスショット',     desc: 'ゴルフで根回しした' },
+  { id: 'atamagoshi',icon: '🙅', name: '頭越し',             desc: '中間管理職を飛ばして根回しして怒られた' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -470,6 +497,7 @@ function renderStats() {
     <div><span>押されたハンコ</span><b>${stats.stamps}</b>個</div>
     <div><span>費やした営業日</span><b>${stats.days}</b>日</div>
     <div><span>溶けた人件費</span><b>${yen}</b>円</div>
+    <div><span>うち根回し費</span><b>${Math.floor(stats.nemaYen || 0).toLocaleString()}</b>円</div>
     <div><span>連続差戻</span><b>${stats.streak}</b>回（最高${stats.maxStreak}）</div>`;
   const got = Object.keys(stats.achievements).length;
   $('achTitle').textContent = `実績 ${got} / ${ACHIEVEMENTS.length}`;
@@ -681,6 +709,7 @@ async function submit() {
   if (stats.docs >= 100) unlock('hundred');
   if (!$('reason').value.trim()) unlock('noReason');
   $('submitBtn').disabled = true;
+  renderNemawashi();
   $('retryBtn').classList.add('hidden');
   $('retryBtn').textContent = '再申請する';
   $('banner').className = 'banner';
@@ -733,7 +762,15 @@ async function submit() {
     advance(1 + Math.floor(Math.random() * 4));
     cell.classList.remove('active');
 
-    if (Math.random() < ap.strict) {
+    if (isOverHead(i) && Math.random() < 0.8) {
+      const boss = APPROVERS[Math.max(...state.nema.keys())];
+      say(cell, `${boss.role}には話を通したんだって？`);
+      unlock('atamagoshi');
+      await reject(ap, `頭越しに${boss.role}へ根回しした。まず${ap.role}である私に話を通すのが筋`);
+      return;
+    }
+    const strict = ap.strict * (state.nema.get(i) ?? 1);
+    if (Math.random() < strict) {
       // 事前申請の中では事前申請を要求されやすい（再帰）
       const depth = state.current.kind.depth || 0;
       const reason = Math.random() < 0.15 + depth * 0.1 ? PRE_REASON : pick(REJECT_REASONS);
@@ -784,6 +821,48 @@ async function reject(ap, reason) {
   finish();
 }
 
+/** 根回しUI */
+function renderNemawashi() {
+  $('nemaGrid').innerHTML = '';
+  APPROVERS.forEach((ap, i) => {
+    const done = state.nema.has(i);
+    const b = document.createElement('button');
+    b.className = 'nema-btn' + (done ? ' done' : '');
+    b.innerHTML = `${ap.role}<br><small>${ap.name}${done ? ' ✔' : ''}</small>`;
+    b.disabled = state.running;
+    b.onclick = () => nemawashi(i);
+    $('nemaGrid').appendChild(b);
+  });
+}
+
+function nemawashi(i) {
+  if (state.running) return;
+  const ap = APPROVERS[i];
+  // 偉い人ほど高くつく
+  const pool = NEMAWASHI.slice(Math.min(i >> 1, 3), Math.min(NEMAWASHI.length, 3 + i));
+  const n = pick(pool);
+  const prev = state.nema.get(i) ?? 1;
+  state.nema.set(i, prev * n.eff);
+  stats.yen += n.yen;
+  stats.nemaYen = (stats.nemaYen || 0) + n.yen;
+  if (n.days) advance(n.days); else renderStats();
+  const el = document.createElement('div');
+  el.textContent = `[${fmtDate(state.date)}] ${ap.role} ${ap.name}：${n.act}（${n.yen.toLocaleString()}円）→ ${n.line}`;
+  $('nemaLog').prepend(el);
+  sfx.pat();
+  if (state.nema.size === APPROVERS.length) unlock('nemaAll');
+  if (n.act.includes('ゴルフ')) unlock('golf');
+  renderNemawashi();
+  save();
+}
+
+/** 頭越しチェック：自分より上の人だけ根回しされていたら怒る */
+function isOverHead(i) {
+  if (state.nema.has(i)) return false;
+  for (const j of state.nema.keys()) if (j > i) return true;
+  return false;
+}
+
 /** 事前申請を生成して申請種別に追加する */
 function preparePreApplication() {
   const base = state.current.kind;
@@ -830,6 +909,10 @@ function showBanner(text, color) {
 
 function finish() {
   state.running = false;
+  // 根回しの効果は1回限り（みんな忘れる）
+  if (state.nema.size) log('※ 根回しの効果は本件限りです。決裁者たちはもう忘れました。', 'sys');
+  state.nema.clear();
+  renderNemawashi();
   state.docNo++;
   updateClock();
   renderStats();
@@ -981,6 +1064,7 @@ function renderSealPreview() {
 $('seal').addEventListener('change', renderSealPreview);
 $('applicant').addEventListener('input', renderSealPreview);
 renderSealPreview();
+renderNemawashi();
 if (stats.date) state.date = new Date(stats.date);
 state.docNo = stats.docNo || 1;
 updateClock();
