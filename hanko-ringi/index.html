@@ -177,6 +177,10 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .toast.out { opacity: 0; transform: translateX(40px); }
   @keyframes tin { from { opacity: 0; transform: translateX(40px); } }
 
+  .seal-row { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+  #sealPreview { width: 72px; height: 72px; background: #fffdf6; border: 1px dashed var(--line); flex: none; }
+  #sealDesc { font-size: .85rem; margin: 0; color: #555; }
+
   .bubble {
     position: absolute;
     transform: translate(-50%, -100%) scale(.6);
@@ -246,6 +250,12 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     <textarea id="reason" placeholder="例：ペンのインクが切れたため"></textarea>
     <label for="applicant">申請者氏名（印鑑の作成に使用します）</label>
     <input type="text" id="applicant" maxlength="4" value="山田">
+    <label for="seal">使用する印鑑</label>
+    <select id="seal"></select>
+    <div class="seal-row">
+      <canvas id="sealPreview" width="120" height="120"></canvas>
+      <p id="sealDesc"></p>
+    </div>
     <div class="center">
       <button id="submitBtn">提出する</button>
     </div>
@@ -314,9 +324,18 @@ const APPROVERS = [
   { role: '次長', name: '高橋', strict: 0.30 },
   { role: '部長', name: '田中', strict: 0.35 },
   { role: '本部長', name: '伊藤', strict: 0.35 },
-  { role: '常務', name: '渡辺', strict: 0.40 },
+  { role: '常務', name: '渡辺', strict: 0.40, shape: 'oval' },
   { role: '専務', name: '山本', strict: 0.40 },
-  { role: '社長', name: '中村', strict: 0.45 },
+  { role: '社長', name: '中村', strict: 0.45, shape: 'jitsuin' },
+];
+
+const SEALS = [
+  { id: 'mitome',  label: '認印（100円ショップ）', shape: 'mitome',  desc: '最も無難。無難すぎて印象に残らない。' },
+  { id: 'kaku',    label: '角印',                 shape: 'kaku',    desc: '法人っぽさを演出できる。個人が使うと僭越。' },
+  { id: 'jitsuin', label: '実印（象牙風・48,000円）', shape: 'jitsuin', desc: '役所に登録済みの本気の印鑑。重い。' },
+  { id: 'oval',    label: '小判型の銀行印',       shape: 'oval',    desc: 'なぜ銀行印を会社に持ってきたのか。' },
+  { id: 'shachi',  label: '浸透印（シャチハタ）', shape: 'shachi',  desc: '朱肉いらずで便利。便利なものは嫌われる。', noInk: true },
+  { id: 'digital', label: 'デジタル印（PNG）',    shape: 'digital', desc: 'DX推進室が配布した画像。印刷して貼ることになる。', noInk: true },
 ];
 
 const PRE_REASON = '本申請を行うための事前申請が提出されていない';
@@ -413,6 +432,9 @@ const ACHIEVEMENTS = [
   { id: 'noReason',  icon: '🤐', name: '理由なき反抗',       desc: '理由を書かずに申請した' },
   { id: 'matryoshka',icon: '🪆', name: 'マトリョーシカ',     desc: '3次事前申請に到達した' },
   { id: 'recursion', icon: '🔂', name: 'スタックオーバーフロー', desc: '6次事前申請に到達した' },
+  { id: 'shachi',    icon: '🐋', name: '便利は悪',           desc: 'シャチハタで差し戻された' },
+  { id: 'dx',        icon: '💾', name: 'DXの夜明け（遠い）', desc: 'デジタル印で差し戻された' },
+  { id: 'jitsuin',   icon: '💍', name: '重すぎる愛',         desc: '実印で差し戻された' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -496,29 +518,76 @@ function drawHanko(ctx, name, opt = {}) {
   off.width = off.height = size;
   const o = off.getContext('2d');
   const c = size / 2;
-  const r = size * 0.4;
+  const shape = opt.shape || 'mitome';
+  const r = size * (shape === 'jitsuin' ? 0.46 : 0.4);
 
   o.translate(c, c);
   o.rotate(angle);
-  o.strokeStyle = o.fillStyle = '#c8261d';
+  o.strokeStyle = o.fillStyle = shape === 'shachi' ? '#e0301e' : '#c8261d';
   o.lineWidth = size * 0.045;
   o.beginPath();
-  o.arc(0, 0, r, 0, Math.PI * 2);
+  if (shape === 'kaku') {
+    o.rect(-r, -r, r * 2, r * 2);
+  } else if (shape === 'oval') {
+    o.ellipse(0, 0, r * 0.62, r, 0, 0, Math.PI * 2);
+  } else {
+    o.arc(0, 0, r, 0, Math.PI * 2);
+  }
   o.stroke();
+  if (shape === 'jitsuin') {
+    // 実印は二重枠で威圧感を出す
+    o.lineWidth = size * 0.015;
+    o.beginPath();
+    o.arc(0, 0, r * 0.86, 0, Math.PI * 2);
+    o.stroke();
+  }
 
   // 縦書きの氏名
   const chars = [...name].slice(0, 4);
-  const fs = Math.min(r * 1.5 / chars.length, r * 0.95);
+  const inner = shape === 'oval' ? r * 0.75 : r;
+  const fs = Math.min(inner * 1.5 / chars.length, (shape === 'oval' ? r * 0.55 : r * 0.95));
   o.font = `bold ${fs}px "Yu Mincho","Hiragino Mincho ProN",serif`;
   o.textAlign = 'center';
   o.textBaseline = 'middle';
-  const total = fs * chars.length;
-  chars.forEach((ch, i) => {
-    o.fillText(ch, 0, -total / 2 + fs * (i + 0.5));
-  });
+  if (shape === 'kaku' || shape === 'jitsuin') {
+    // 角印・実印は「之印」をつけて2列に
+    const all = [...chars, '之', '印'];
+    const col = Math.ceil(all.length / 2);
+    const f2 = Math.min(r * 1.6 / col, r * 0.8);
+    o.font = `bold ${f2}px "Yu Mincho","Hiragino Mincho ProN",serif`;
+    all.forEach((ch, i) => {
+      const x = i < col ? f2 * 0.5 : -f2 * 0.5; // 右の列から読む
+      const k = i < col ? i : i - col;
+      o.fillText(ch, x, -f2 * col / 2 + f2 * (k + 0.5));
+    });
+  } else {
+    const total = fs * chars.length;
+    chars.forEach((ch, i) => {
+      o.fillText(ch, 0, -total / 2 + fs * (i + 0.5));
+    });
+  }
+
+  o.setTransform(1, 0, 0, 1, 0, 0);
+  if (shape === 'digital') {
+    // デジタル印：わざと荒いピクセルにする
+    const px = Math.max(3, Math.floor(size / 30));
+    const tmp = document.createElement('canvas');
+    tmp.width = tmp.height = Math.ceil(size / px);
+    const t = tmp.getContext('2d');
+    t.drawImage(off, 0, 0, tmp.width, tmp.height);
+    o.clearRect(0, 0, size, size);
+    o.imageSmoothingEnabled = false;
+    o.drawImage(tmp, 0, 0, size, size);
+    ctx.drawImage(off, 0, 0, ctx.canvas.width, ctx.canvas.height);
+    return;
+  }
+  if (shape === 'shachi') {
+    // シャチハタ：むらが一切ない、それが罪
+    ctx.drawImage(off, 0, 0, ctx.canvas.width, ctx.canvas.height);
+    return;
+  }
 
   // 朱肉のかすれ：ランダムに点を抜く
-  o.setTransform(1, 0, 0, 1, 0, 0);
   o.globalCompositeOperation = 'destination-out';
   const holes = Math.floor(size * size * 0.02 * (1.4 - ink));
   for (let i = 0; i < holes; i++) {
@@ -627,9 +696,10 @@ async function submit() {
   $('flowSheet').scrollIntoView({ behavior: 'smooth' });
 
   // 申請者の押印（手押し）
-  const my = await stampMinigame(applicant);
+  const seal = SEALS[$('seal').selectedIndex];
+  const my = await stampMinigame(applicant, seal);
   sfx.stamp();
-  await stampAnimated(cells[0].querySelector('canvas'), applicant, { angle: my.angle, ink: my.ink });
+  await stampAnimated(cells[0].querySelector('canvas'), applicant, { angle: my.angle, ink: my.ink, shape: seal.shape });
   cells[0].querySelector('.date').textContent = fmtDate(state.date).slice(5, 10);
   stats.stamps++;
   log(`${applicant}（申請者）が起案・押印しました。（傾き ${my.angle.toFixed(1)}° / 朱肉 ${(my.ink*100).toFixed(0)}%）`, 'sys');
@@ -637,7 +707,10 @@ async function submit() {
   // 申請者の印影チェック（係長が最初に目を光らせる）
   const myProblem = judgeMyStamp(my);
   if (myProblem) {
-    if (my.ink < 0.35) unlock('usui');
+    if (seal.id === 'shachi') unlock('shachi');
+    else if (seal.id === 'digital') unlock('dx');
+    else if (myProblem.includes('実印')) unlock('jitsuin');
+    else if (my.ink < 0.35) unlock('usui');
     else if (my.ink > 1.2) unlock('nijimi');
     else if (my.angle > 0) unlock('hankou');
     else if (my.angle < -25) unlock('kuppuku');
@@ -675,6 +748,7 @@ async function submit() {
     await stampAnimated(cell.querySelector('canvas'), ap.name, {
       angle: -8 - Math.random() * 10,
       ink: 0.6 + Math.random() * 0.4,
+      shape: ap.shape,
     });
     cell.querySelector('.date').textContent = fmtDate(state.date).slice(5, 10);
     log(`${ap.role} ${ap.name} が押印しました。`, 'ok');
@@ -771,7 +845,7 @@ function finish() {
  * 振り子のように揺れるハンコを、良いお辞儀角度で押す。
  * 朱肉ボタンを押した回数で濃さが決まる。
  */
-function stampMinigame(name) {
+function stampMinigame(name, seal) {
   return new Promise((resolve) => {
     const modal = $('stampModal');
     const cv = $('stampPreview');
@@ -783,6 +857,8 @@ function stampMinigame(name) {
     const speed = 1.6 + Math.random() * 1.6;
     modal.classList.remove('hidden');
     $('inkMeter').style.width = '0%';
+    $('inkBtn').disabled = !!seal.noInk;
+    if (seal.noInk) { ink = 1; $('inkMeter').style.width = '62%'; }
     $('stampHint').textContent = '朱肉をつけてから、上長に向かってお辞儀する角度（左に8〜25°）で押してください。';
 
     function loop(t) {
@@ -798,7 +874,7 @@ function stampMinigame(name) {
       ctx.closePath();
       ctx.fill();
       ctx.restore();
-      drawHanko(ctx, name, { angle, ink: Math.max(0.15, ink) });
+      drawHanko(ctx, name, { angle, ink: seal.noInk ? 1 : Math.max(0.15, ink), shape: seal.shape });
       $('angleText').textContent = `${angle.toFixed(1)}°`;
       raf = requestAnimationFrame(loop);
     }
@@ -813,13 +889,18 @@ function stampMinigame(name) {
     $('pressBtn').onclick = () => {
       cancelAnimationFrame(raf);
       modal.classList.add('hidden');
-      resolve({ angle, ink });
+      resolve({ angle, ink, seal });
     };
   });
 }
 
 /** 申請者の印影に文句をつける。問題なければ null */
-function judgeMyStamp({ angle, ink }) {
+function judgeMyStamp({ angle, ink, seal }) {
+  if (seal.id === 'shachi') return '浸透印（シャチハタ）は朱肉を使っていないため、誠意が感じられない';
+  if (seal.id === 'digital') return 'デジタル印は不可。印刷して押印し、スキャンしてPDF化し、再度印刷して提出すること';
+  if (seal.id === 'kaku') return '個人が角印を使うのは会社を私物化しているのと同義';
+  if (seal.id === 'oval' && Math.random() < 0.7) return '銀行印の印影を社内に晒すのはセキュリティ上問題がある（印影はすでに全員に回覧済み）';
+  if (seal.id === 'jitsuin' && Math.random() < 0.6) return 'この程度の稟議に実印とは何事か。重すぎて決裁者が萎縮する';
   if (ink < 0.35) return `申請者印が薄すぎて判読できない（朱肉 ${(ink*100).toFixed(0)}%）`;
   if (ink > 1.2) return `申請者印がにじんでおり、反社会的な印象を与える（朱肉 ${(ink*100).toFixed(0)}%）`;
   if (angle > 0) return `申請者印が上長に背を向けている（${angle.toFixed(1)}°）。反抗の意思ありと判断`;
@@ -884,6 +965,22 @@ $('retryBtn').addEventListener('click', () => {
   $('formSheet').scrollIntoView({ behavior: 'smooth' });
   submit();
 });
+SEALS.forEach(sl => {
+  const o = document.createElement('option');
+  o.textContent = sl.label;
+  $('seal').appendChild(o);
+});
+function renderSealPreview() {
+  const sl = SEALS[$('seal').selectedIndex];
+  const cv = $('sealPreview');
+  const g = cv.getContext('2d');
+  g.clearRect(0, 0, cv.width, cv.height);
+  drawHanko(g, ($('applicant').value.trim() || '山田').slice(0, 4), { shape: sl.shape, ink: 1 });
+  $('sealDesc').textContent = sl.desc;
+}
+$('seal').addEventListener('change', renderSealPreview);
+$('applicant').addEventListener('input', renderSealPreview);
+renderSealPreview();
 if (stats.date) state.date = new Date(stats.date);
 state.docNo = stats.docNo || 1;
 updateClock();
