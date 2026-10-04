@@ -189,6 +189,14 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   #faxPaper { width: 100%; max-width: 260px; background: #f7f5ee; box-shadow: inset 0 0 6px rgba(0,0,0,.2); }
   .cell.extra { animation: drop .4s ease-out; }
   @keyframes drop { from { transform: translateY(-30px); opacity: 0; } }
+  .tabs { display: flex; gap: 4px; margin-bottom: -1px; }
+  .tab { background: #c9bda0; color: var(--ink); box-shadow: none; letter-spacing: .1em; padding: 8px 16px; border: 1px solid var(--line); border-bottom: none; }
+  .tab.on { background: var(--paper); font-weight: bold; }
+  .note { font-size: .85rem; color: #555; }
+  .desk-wrap { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #desk { width: 100%; height: auto; display: block; cursor: none; border: 1px solid var(--line); }
+  #goHome { position: absolute; right: 10px; top: 10px; font-size: .8rem; padding: 6px 10px; transition: left .15s, top .15s; }
+  .desk-hud { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: monospace; font-size: .9rem; margin-top: 8px; }
   .seal-row { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
   #sealPreview { width: 72px; height: 72px; background: #fffdf6; border: 1px dashed var(--line); flex: none; }
   #sealDesc { font-size: .85rem; margin: 0; color: #555; }
@@ -253,6 +261,11 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
 </header>
 
 <main>
+  <nav class="tabs">
+    <button class="tab on" data-mode="apply">申請する側</button>
+    <button class="tab" data-mode="approve">決裁する側</button>
+  </nav>
+  <div id="modeApply">
   <!-- 申請フォーム -->
   <section class="sheet" id="formSheet">
     <h2>稟議申請書</h2>
@@ -291,6 +304,21 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     <div class="banner" id="banner">差戻</div>
     <div class="bubble" id="bubble"></div>
   </section>
+
+  </div><!-- /modeApply -->
+
+  <!-- 決裁者モード -->
+  <div id="modeApprove" class="hidden">
+    <section class="sheet" id="deskSheet">
+      <h2>決裁業務</h2>
+      <p class="note">あなたは課長です。届いた稟議書の「課長」欄に、お辞儀の角度（左8〜25°）で押印してください。右クリック（スマホは長押し）で差し戻し。怪しい書類には注意。</p>
+      <div class="desk-wrap" id="deskWrap">
+        <canvas id="desk" width="720" height="460"></canvas>
+        <button class="sub" id="goHome">定時で帰る</button>
+      </div>
+      <div class="desk-hud" id="deskHud"></div>
+    </section>
+  </div>
 
   <!-- 業務実績 -->
   <section class="sheet" id="statsSheet">
@@ -482,6 +510,13 @@ const ACHIEVEMENTS = [
   { id: 'fax',       icon: '📠', name: '昭和の残響',         desc: 'FAXで稟議書を送った' },
   { id: 'budget',    icon: '📅', name: '来期に期待',         desc: '予算が来期に繰り越された' },
   { id: 'withdrawOk',icon: '🫥', name: '無かったことに',     desc: '取り下げが承認され、取り下げ届が必要になった' },
+  { id: 'desk50',    icon: '🖋️', name: 'ハンコ製造機',       desc: '決裁者として50件押印した' },
+  { id: 'pile100',   icon: '🏔️', name: '未決の山脈',         desc: '未決書類が100件を超えた' },
+  { id: 'teiji',     icon: '🏃', name: '定時退社（未遂）',   desc: '「定時で帰る」ボタンを押した' },
+  { id: 'teijiChase',icon: '🐭', name: '逃げる定時',         desc: '「定時で帰る」ボタンに10回逃げられた' },
+  { id: 'teijiConcept',icon: '🕔', name: '定時は概念',       desc: '17:30を迎えて17:00に戻された' },
+  { id: 'sasen',     icon: '🧳', name: '自分で自分を左遷',   desc: '自分の異動の稟議に押印した' },
+  { id: 'dodge',     icon: '🛡️', name: '危機回避',           desc: '自分に不利な稟議を差し戻した' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -518,6 +553,7 @@ function renderStats() {
     <div><span>費やした営業日</span><b>${stats.days}</b>日</div>
     <div><span>溶けた人件費</span><b>${yen}</b>円</div>
     <div><span>うち根回し費</span><b>${Math.floor(stats.nemaYen || 0).toLocaleString()}</b>円</div>
+    <div><span>決裁者として処理</span><b>${stats.deskDocs || 0}</b>件</div>
     <div><span>連続差戻</span><b>${stats.streak}</b>回（最高${stats.maxStreak}）</div>`;
   const got = Object.keys(stats.achievements).length;
   $('achTitle').textContent = `実績 ${got} / ${ACHIEVEMENTS.length}`;
@@ -1288,6 +1324,406 @@ const sfx = (() => {
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+
+// ============================================================
+// 決裁者モード（Canvasゲーム）
+// ============================================================
+const Desk = (() => {
+  const cv = $('desk');
+  const g = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  let ME = '山田'; // 課長であるあなたの印鑑（申請者氏名を流用）
+  const SUBJECTS = [
+    'コピー用紙（A4・500枚）の購入', 'ホワイトボードマーカー（黒）の補充', '会議室Bの予約延長',
+    '観葉植物への水やり当番の変更', '社内報の誤字（1文字）の訂正', '電球（トイレ）の交換',
+    '新年会の店の選定方法を決める会議の開催', 'セロハンテープの台の購入', '名刺の追加印刷（50枚）',
+    'エレベーターのボタンを押す係の設置', '稟議書の様式の改訂についての稟議', 'シュレッダーのゴミ捨て',
+    '傘立ての増設', '部署の金魚の餌の購入', '「承認」ハンコのインク補充', '週報の週報の作成',
+  ];
+  const TRAPS = [
+    '課長（あなた）の地方支社への異動', '課長（あなた）の役職手当の廃止', '課長席の撤去',
+    '課長（あなた）の有給休暇の全消化の取り消し',
+  ];
+  const APPLICANTS = ['山田', '佐々木', '松本', '井上', '木村', '林', '清水', '森'];
+
+  let running = false, raf = 0, last = 0;
+  let pending, processed, mistakes, minutes, spawnTimer, doc, anim, msg, mouse, swingT, overtimeCount, stampsOnDoc;
+
+  function reset() {
+    pending = 12; processed = 0; mistakes = 0; minutes = 9 * 60; spawnTimer = 0;
+    overtimeCount = 0; swingT = 0; msg = null; anim = null;
+    mouse = { x: W / 2, y: H / 2, inside: false };
+    nextDoc();
+  }
+
+  function nextDoc() {
+    if (pending <= 0) { pending = 0; doc = null; return; }
+    pending--;
+    const trap = Math.random() < 0.08;
+    doc = {
+      subject: trap ? pick(TRAPS) : pick(SUBJECTS),
+      applicant: pick(APPLICANTS),
+      trap,
+      no: Math.floor(Math.random() * 90000) + 10000,
+      x: 0, // スライド用オフセット
+    };
+    stampsOnDoc = [];
+    anim = { type: 'in', t: 0 };
+  }
+
+  // 書類のレイアウト
+  const D = { x: 190, y: 30, w: 340, h: 400 };
+  const BOX = 62;
+  const roles = ['部長', '次長', '課長', '係長', '申請者'];
+  function boxRect(i) { // 右から左へ（申請者が右端）
+    const total = roles.length * BOX;
+    const x0 = D.x + (D.w - total) / 2;
+    return { x: x0 + i * BOX, y: D.y + 250, w: BOX, h: BOX + 16 };
+  }
+  const TARGET = 2; // 課長欄
+
+  function drawDoc(ox) {
+    g.save();
+    g.translate(ox, 0);
+    g.fillStyle = 'rgba(0,0,0,.25)';
+    g.fillRect(D.x + 6, D.y + 6, D.w, D.h);
+    g.fillStyle = '#fbf7ec';
+    g.fillRect(D.x, D.y, D.w, D.h);
+    g.fillStyle = '#2b2620';
+    g.textAlign = 'center';
+    g.font = 'bold 24px "Yu Mincho","Hiragino Mincho ProN",serif';
+    g.fillText('稟　議　書', D.x + D.w / 2, D.y + 44);
+    g.fillRect(D.x + 40, D.y + 54, D.w - 80, 2);
+    g.textAlign = 'left';
+    g.font = '14px "Yu Mincho","Hiragino Mincho ProN",serif';
+    g.fillText(`No. ${doc.no}`, D.x + 24, D.y + 84);
+    g.fillText('件名：', D.x + 24, D.y + 116);
+    wrapText(doc.subject, D.x + 70, D.y + 116, D.w - 94, 20);
+    g.fillText(`申請者：${doc.applicant}`, D.x + 24, D.y + 190);
+    g.fillText('上記につき、ご決裁をお願いいたします。', D.x + 24, D.y + 220);
+    roles.forEach((r, i) => {
+      const b = boxRect(i);
+      g.strokeStyle = '#2b2620';
+      g.lineWidth = 1;
+      g.strokeRect(b.x, b.y, b.w, b.h);
+      g.beginPath(); g.moveTo(b.x, b.y + 16); g.lineTo(b.x + b.w, b.y + 16); g.stroke();
+      g.font = '11px "Yu Mincho",serif';
+      g.textAlign = 'center';
+      g.fillStyle = i === TARGET ? '#c8261d' : '#2b2620';
+      g.fillText(r, b.x + b.w / 2, b.y + 12);
+      if (i === TARGET && !anim) {
+        g.fillStyle = 'rgba(226,176,7,' + (0.15 + 0.1 * Math.sin(performance.now() / 200)) + ')';
+        g.fillRect(b.x + 1, b.y + 17, b.w - 2, b.h - 18);
+      }
+    });
+    // 既に押されている申請者・係長の印
+    [[4, doc.applicant, -12], [3, '佐藤', -15]].forEach(([i, nm, a]) => {
+      const b = boxRect(i);
+      stampAt(b.x + b.w / 2, b.y + 16 + BOX / 2, nm, a, 0.9);
+    });
+    stampsOnDoc.forEach(st => stampAt(st.x, st.y, ME, st.a, 1));
+    g.restore();
+  }
+
+  const stampCache = new Map();
+  function stampImg(name, angle, ink) {
+    const key = name + Math.round(angle) + ink;
+    if (!stampCache.has(key)) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 96;
+      drawHanko(c.getContext('2d'), name, { angle, ink });
+      stampCache.set(key, c);
+      if (stampCache.size > 400) stampCache.delete(stampCache.keys().next().value);
+    }
+    return stampCache.get(key);
+  }
+  function stampAt(x, y, name, angle, ink, alpha = 1) {
+    const s = BOX - 10;
+    g.globalAlpha = alpha;
+    g.drawImage(stampImg(name, angle, ink), x - s / 2, y - s / 2, s, s);
+    g.globalAlpha = 1;
+  }
+
+  function wrapText(text, x, y, maxW, lh) {
+    let line = '';
+    for (const ch of text) {
+      if (g.measureText(line + ch).width > maxW) { g.fillText(line, x, y); line = ch; y += lh; }
+      else line += ch;
+    }
+    g.fillText(line, x, y);
+  }
+
+  function drawPile(x, y, n, label) {
+    const shown = Math.min(n, 70);
+    for (let i = 0; i < shown; i++) {
+      g.fillStyle = i % 2 ? '#f3eedf' : '#e9e2cf';
+      const jitter = Math.sin(i * 12.9898) * 4;
+      g.fillRect(x + jitter, y - i * 4, 130, 6);
+    }
+    g.fillStyle = '#fff';
+    g.font = 'bold 14px sans-serif';
+    g.textAlign = 'center';
+    g.fillText(label, x + 65, y + 28);
+    g.font = 'bold 22px monospace';
+    g.fillText(`${n}`, x + 65, y + 52);
+    // 溢れた書類が机に散らかる
+    if (n > 70) {
+      for (let i = 0; i < Math.min(n - 70, 120); i++) {
+        const rx = (Math.sin(i * 78.233) * 0.5 + 0.5) * (W - 60);
+        const ry = (Math.sin(i * 39.425) * 0.5 + 0.5) * (H - 40);
+        g.save();
+        g.translate(rx + 30, ry + 20);
+        g.rotate(Math.sin(i * 3.1) * 1.2);
+        g.fillStyle = 'rgba(245,240,226,.9)';
+        g.fillRect(-28, -18, 56, 36);
+        g.restore();
+      }
+    }
+  }
+
+  function fmtTime(m) {
+    return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.floor(m % 60)).padStart(2, '0')}`;
+  }
+
+  function render() {
+    // 机
+    const grd = g.createLinearGradient(0, 0, 0, H);
+    grd.addColorStop(0, '#7a5c3e'); grd.addColorStop(1, '#5b4632');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(0,0,0,.06)';
+    for (let i = 0; i < 12; i++) g.fillRect(0, i * 40 + 10, W, 2);
+
+    drawPile(30, 400, pending, '未決');
+    g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(560, 405, 130, 8);
+    drawPile(560, 400, Math.min(processed, 70), '既決');
+    g.fillStyle = '#fff'; g.font = 'bold 22px monospace'; g.textAlign = 'center';
+
+    if (doc) {
+      let ox = 0;
+      if (anim) {
+        const p = Math.max(0, Math.min(1, anim.t / 300));
+        if (anim.type === 'in') ox = (1 - p) * -400;
+        if (anim.type === 'ok') ox = p * 500;
+        if (anim.type === 'back') ox = p * -500;
+      }
+      drawDoc(ox);
+    } else {
+      g.fillStyle = '#fff';
+      g.font = 'bold 22px "Yu Mincho",serif';
+      g.textAlign = 'center';
+      g.fillText('未決書類がありません（今だけ）', W / 2, H / 2);
+    }
+
+    // 時計
+    g.fillStyle = '#1f2a44';
+    g.fillRect(W / 2 - 60, 2, 120, 26);
+    g.fillStyle = minutes >= 17 * 60 ? '#ff6b5b' : '#e8f0ff';
+    g.font = 'bold 18px monospace';
+    g.textAlign = 'center';
+    g.fillText(fmtTime(minutes), W / 2, 21);
+
+    // メッセージ
+    if (msg) {
+      g.globalAlpha = Math.min(1, msg.life / 400);
+      g.fillStyle = msg.color;
+      g.font = 'bold 22px "Yu Mincho",serif';
+      g.textAlign = 'center';
+      g.strokeStyle = '#fff'; g.lineWidth = 4;
+      g.strokeText(msg.text, W / 2, H - 24);
+      g.fillText(msg.text, W / 2, H - 24);
+      g.globalAlpha = 1;
+    }
+
+    // ハンコカーソル（振り子）
+    if (mouse.inside) {
+      const a = currentAngle();
+      stampAt(mouse.x, mouse.y, ME, a, 1, 0.55);
+      const okA = a <= -8 && a >= -25;
+      g.font = 'bold 13px monospace';
+      g.textAlign = 'left';
+      g.fillStyle = okA ? '#3c6e3a' : '#c8261d';
+      g.fillText(`${a.toFixed(0)}°`, mouse.x + 30, mouse.y - 22);
+      g.strokeStyle = 'rgba(0,0,0,.3)';
+      g.beginPath(); g.arc(mouse.x, mouse.y, 2, 0, Math.PI * 2); g.stroke();
+    }
+  }
+
+  function currentAngle() {
+    return Math.sin(swingT / 1000 * (1.8 + processed * 0.03)) * 35;
+  }
+
+  function say(text, color = '#c8261d') { msg = { text, color, life: 1600 }; }
+
+  function update(dt) {
+    swingT += dt;
+    minutes += dt / 1000 * 2; // 1秒 = 2分
+    spawnTimer += dt;
+    const interval = Math.max(500, 2200 - processed * 15);
+    while (spawnTimer > interval) { spawnTimer -= interval; pending++; }
+    if (!doc && pending > 0 && !anim) nextDoc();
+    if (anim) {
+      anim.t += dt;
+      if (anim.t >= 300) {
+        const t = anim.type;
+        anim = null;
+        if (t === 'ok' || t === 'back') nextDoc();
+      }
+    }
+    if (msg) { msg.life -= dt; if (msg.life <= 0) msg = null; }
+
+    // 定時は概念
+    if (minutes >= 17 * 60 + 30) {
+      overtimeCount++;
+      minutes = 17 * 60;
+      pending += 30;
+      say('部長「悪いけど、これも今日中にね」（+30件）', '#1f2a44');
+      unlock('teijiConcept');
+    }
+    if (pending >= 100) unlock('pile100');
+    hud();
+  }
+
+  function hud() {
+    $('deskHud').innerHTML = `<span>処理済 ${processed}件</span><span>未決 ${pending}件</span><span>ミス ${mistakes}回</span><span>「今日中に」 ${overtimeCount}回</span>`;
+  }
+
+  function stamp(x, y) {
+    if (!doc || anim) return;
+    const a = currentAngle();
+    const b = boxRect(TARGET);
+    const cx = b.x + b.w / 2, cy = b.y + 16 + BOX / 2;
+    const inBox = Math.abs(x - cx) < b.w / 2 - 6 && Math.abs(y - cy) < BOX / 2 - 4;
+    stampsOnDoc.push({ x, y, a });
+    sfx.stamp();
+    if (doc.trap) {
+      unlock('sasen');
+      say('自分の左遷を自分で承認しました。おめでとうございます', '#1f2a44');
+      mistakes++;
+      anim = { type: 'ok', t: -400 };
+      processed++;
+      stats.deskDocs = (stats.deskDocs || 0) + 1;
+      return;
+    }
+    if (!inBox) {
+      mistakes++;
+      pending++;
+      say('枠外に押印！ 書類は再作成されます（+1件）');
+      anim = { type: 'back', t: -300 };
+      return;
+    }
+    if (a > -8 || a < -25) {
+      mistakes++;
+      pending++;
+      say(a > -8 ? `お辞儀が足りない（${a.toFixed(0)}°）部長に睨まれた（+1件）` : `お辞儀しすぎ（${a.toFixed(0)}°）係長が恐縮した（+1件）`);
+      anim = { type: 'back', t: -300 };
+      return;
+    }
+    processed++;
+    minutes += 6;
+    stats.stamps++;
+    stats.deskDocs = (stats.deskDocs || 0) + 1;
+    say(pick(['ヨシ！', '承認（課長決裁のみ）', '次長に回しました', 'ポン']), '#3c6e3a');
+    anim = { type: 'ok', t: -200 };
+    if (processed >= 50) unlock('desk50');
+    renderStats();
+  }
+
+  function sendBack() {
+    if (!doc || anim) return;
+    if (doc.trap) {
+      say('危ないところでした。異動は回避（一時的に）', '#3c6e3a');
+      unlock('dodge');
+      anim = { type: 'back', t: 0 };
+      return;
+    }
+    // 差し戻すと、いずれ再提出されて戻ってくる
+    say('差し戻しました（そのうち戻ってきます）', '#555');
+    setTimeout(() => { if (running) pending += 1; }, 3000);
+    anim = { type: 'back', t: 0 };
+  }
+
+  function loop(t) {
+    const dt = Math.min(100, t - last);
+    last = t;
+    update(dt);
+    render();
+    raf = requestAnimationFrame(loop);
+  }
+
+  function toCanvas(e) {
+    const r = cv.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height };
+  }
+
+  let pressTimer = null;
+  cv.addEventListener('pointermove', e => { Object.assign(mouse, toCanvas(e), { inside: true }); });
+  cv.addEventListener('pointerleave', () => { mouse.inside = false; });
+  cv.addEventListener('pointerdown', e => {
+    if (e.button === 2) return;
+    Object.assign(mouse, toCanvas(e), { inside: true });
+    if (e.pointerType === 'touch') {
+      // 長押しで差し戻し
+      pressTimer = setTimeout(() => { pressTimer = null; sendBack(); }, 550);
+    } else {
+      stamp(mouse.x, mouse.y);
+    }
+  });
+  cv.addEventListener('pointerup', e => {
+    if (e.pointerType === 'touch' && pressTimer) {
+      clearTimeout(pressTimer); pressTimer = null;
+      stamp(mouse.x, mouse.y);
+    }
+  });
+  cv.addEventListener('contextmenu', e => { e.preventDefault(); sendBack(); });
+
+  // 定時で帰るボタンは逃げる
+  const home = $('goHome');
+  function flee() {
+    const wrap = $('deskWrap').getBoundingClientRect();
+    const bw = home.offsetWidth, bh = home.offsetHeight;
+    home.style.right = 'auto';
+    home.style.left = Math.random() * (wrap.width - bw) + 'px';
+    home.style.top = Math.random() * (wrap.height - bh) + 'px';
+    home.dataset.fled = (+home.dataset.fled || 0) + 1;
+    if (+home.dataset.fled >= 10) unlock('teijiChase');
+  }
+  home.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') flee(); });
+  home.addEventListener('click', () => {
+    unlock('teiji');
+    say('帰ろうとしたら部長と目が合いました（+10件）', '#1f2a44');
+    pending += 10;
+    flee();
+  });
+
+  return {
+    start() {
+      if (running) return;
+      ME = ($('applicant').value.trim() || '山田').slice(0, 4);
+      if (!doc && pending === undefined) reset();
+      running = true;
+      last = performance.now();
+      raf = requestAnimationFrame(loop);
+    },
+    stop() {
+      running = false;
+      cancelAnimationFrame(raf);
+      renderStats();
+      save();
+    },
+  };
+})();
+
+function setMode(mode) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.mode === mode));
+  $('modeApply').classList.toggle('hidden', mode !== 'apply');
+  $('modeApprove').classList.toggle('hidden', mode !== 'approve');
+  if (mode === 'approve') Desk.start(); else Desk.stop();
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  if (state.running) return toast('稟議の審査中です', '審査が終わるまで席を離れられません');
+  setMode(t.dataset.mode);
+}));
 
 // ============================================================
 // 初期化
