@@ -177,6 +177,27 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .toast.out { opacity: 0; transform: translateX(40px); }
   @keyframes tin { from { opacity: 0; transform: translateX(40px); } }
 
+  .bubble {
+    position: absolute;
+    transform: translate(-50%, -100%) scale(.6);
+    background: #fff;
+    border: 2px solid var(--ink);
+    border-radius: 14px;
+    padding: 6px 10px;
+    font-size: .85rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 5;
+    text-align: center;
+  }
+  .bubble::after {
+    content: ''; position: absolute; left: 50%; bottom: -10px; margin-left: -8px;
+    border: 8px solid transparent; border-top-color: var(--ink); border-bottom: 0;
+  }
+  .bubble.show { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+  #kind option { max-width: 100%; }
+
   .modal {
     position: fixed; inset: 0;
     background: rgba(0,0,0,.6);
@@ -240,6 +261,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
       <button class="sub hidden" id="retryBtn">再申請する</button>
     </div>
     <div class="banner" id="banner">差戻</div>
+    <div class="bubble" id="bubble"></div>
   </section>
 
   <!-- 業務実績 -->
@@ -297,6 +319,16 @@ const APPROVERS = [
   { role: '社長', name: '中村', strict: 0.45 },
 ];
 
+const PRE_REASON = '本申請を行うための事前申請が提出されていない';
+
+const THINKING = [
+  'うーん…', '前向きに検討します', '一旦持ち帰ります', 'これ誰が決めたの？',
+  'ちょっと今バタバタしてて', '部長はなんて言ってた？', 'ふむ…', '前例ある？',
+  'エビデンスは？', 'ハンコどこやったかな', '朱肉が乾いてる', '会議のあとで見ます',
+  '俺の若い頃はなあ', 'これ急ぎ？', '老眼鏡がない', 'あとで電話して',
+  '横文字が多いね', 'コンセンサス取れてる？', 'ふーん', '…（無言で湯呑みを置く）',
+];
+
 const REJECT_REASONS = [
   '印影がお辞儀をしていない（上長側に傾けること）',
   '朱肉の色が規定より0.3%薄い',
@@ -313,6 +345,9 @@ const REJECT_REASONS = [
   '本申請を行うための事前申請が提出されていない',
   '大安ではない',
   'ハンコの位置が枠から0.5mmはみ出している',
+  '事前申請の事前申請が提出されていない',
+  'この申請書の様式は先月改訂されている（新様式はまだ存在しない）',
+  'ホチキスの角度が45°ではない',
   '申請書の紙が白すぎる',
   '担当者が会議中（会議の議題は「会議の削減について」）',
   '差し戻し理由を考え中',
@@ -376,6 +411,8 @@ const ACHIEVEMENTS = [
   { id: 'torisage',  icon: '♾️', name: '取り下げの取り下げ', desc: '「本稟議の取り下げ」が差し戻された' },
   { id: 'kaizen',    icon: '🛠️', name: '改善は改悪のもと',   desc: '「稟議フローの簡略化の提案」が差し戻された' },
   { id: 'noReason',  icon: '🤐', name: '理由なき反抗',       desc: '理由を書かずに申請した' },
+  { id: 'matryoshka',icon: '🪆', name: 'マトリョーシカ',     desc: '3次事前申請に到達した' },
+  { id: 'recursion', icon: '🔂', name: 'スタックオーバーフロー', desc: '6次事前申請に到達した' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -576,12 +613,13 @@ async function submit() {
   if (!$('reason').value.trim()) unlock('noReason');
   $('submitBtn').disabled = true;
   $('retryBtn').classList.add('hidden');
+  $('retryBtn').textContent = '再申請する';
   $('banner').className = 'banner';
   $('flowSheet').classList.remove('hidden');
   $('log').innerHTML = '';
   $('docinfo').innerHTML = `
     <div>稟議番号</div><div>第${state.docNo}号</div>
-    <div>件名</div><div>${escapeHtml(kind.label)}</div>
+    <div>件名</div><div>${escapeHtml(kind.label)}${kind.depth ? `<br><small>（${kind.depth}次事前申請）</small>` : ''}</div>
     <div>申請理由</div><div>${escapeHtml(reason)}</div>
     <div>起案日</div><div>${fmtDate(state.date)}</div>`;
 
@@ -615,16 +653,23 @@ async function submit() {
     cell.classList.add('active');
     if (ap.role === '社長') unlock('president');
     log(`${ap.role} ${ap.name} の決裁待ち…`, 'sys');
-    await sleep(700 + Math.random() * 900);
+    say(cell, pick(THINKING));
+    await sleep(900 + Math.random() * 900);
 
     // 営業日が過ぎていく
     advance(1 + Math.floor(Math.random() * 4));
     cell.classList.remove('active');
 
     if (Math.random() < ap.strict) {
-      await reject(ap, pick(REJECT_REASONS));
+      // 事前申請の中では事前申請を要求されやすい（再帰）
+      const depth = state.current.kind.depth || 0;
+      const reason = Math.random() < 0.15 + depth * 0.1 ? PRE_REASON : pick(REJECT_REASONS);
+      say(cell, reason.length > 22 ? '差し戻し。理由は書いておいた' : reason + '。差し戻し');
+      await reject(ap, reason);
+      if (reason === PRE_REASON) preparePreApplication();
       return;
     }
+    say(cell, pick(['よし', 'ポン', 'まあいいでしょう', '（無言で押印）', '異議なし', 'とりあえず押しとく']));
     // お辞儀：部下は上長側（左）に傾ける
     sfx.stamp();
     await stampAnimated(cell.querySelector('canvas'), ap.name, {
@@ -663,6 +708,41 @@ async function reject(ap, reason) {
   if (k.includes('簡略化')) unlock('kaizen');
   showBanner('差戻');
   finish();
+}
+
+/** 事前申請を生成して申請種別に追加する */
+function preparePreApplication() {
+  const base = state.current.kind;
+  const depth = (base.depth || 0) + 1;
+  const root = base.root || base.label;
+  const kind = { label: `「${base.label}」の事前申請`, cost: 0, depth, root };
+  KINDS.push(kind);
+  const o = document.createElement('option');
+  o.textContent = depth >= 3 ? `「${root}」の${depth}次事前申請` : kind.label;
+  $('kind').appendChild(o);
+  $('kind').selectedIndex = KINDS.length - 1;
+  $('retryBtn').textContent = `${depth}次事前申請を起案する`;
+  log(`※ 「${depth}次事前申請」の様式が申請種別に追加されました。`, 'sys');
+  stats.maxDepth = Math.max(stats.maxDepth || 0, depth);
+  if (depth >= 3) unlock('matryoshka');
+  if (depth >= 6) unlock('recursion');
+}
+
+/** 決裁者の吹き出し */
+function say(cell, text) {
+  const b = $('bubble');
+  const sheet = $('flowSheet').getBoundingClientRect();
+  const r = cell.getBoundingClientRect();
+  b.textContent = text;
+  b.className = 'bubble show';
+  const w = Math.min(220, sheet.width - 20);
+  b.style.maxWidth = w + 'px';
+  let left = r.left - sheet.left + r.width / 2;
+  left = Math.max(w / 2 + 10, Math.min(sheet.width - w / 2 - 10, left));
+  b.style.left = left + 'px';
+  b.style.top = (r.top - sheet.top - 8) + 'px';
+  clearTimeout(say.t);
+  say.t = setTimeout(() => b.classList.remove('show'), 1600);
 }
 
 function showBanner(text, color) {
