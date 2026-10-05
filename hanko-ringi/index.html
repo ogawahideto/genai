@@ -205,6 +205,29 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .jirei .j-main { font-size: 1.6rem; font-weight: bold; margin: 16px 0; }
   .jirei .j-sub { font-size: .85rem; }
   #jireiStamp { width: 72px; height: 72px; position: absolute; right: 24px; bottom: 132px; opacity: .9; }
+  .meet-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+  .agenda { font-weight: bold; font-size: 1.05rem; }
+  .meet-meta { font-family: monospace; font-size: .85rem; display: flex; gap: 12px; }
+  .gauge-label { font-size: .8rem; margin-top: 10px; }
+  .gauge { height: 16px; background: #ddd; border: 1px solid var(--line); margin: 4px 0 12px; overflow: hidden; }
+  #gauge { height: 100%; width: 0; background: linear-gradient(90deg, #3c6e3a, #e2b007); transition: width .5s; }
+  .room { background: #d9d2bf; border: 1px solid var(--line); padding: 14px; border-radius: 6px; }
+  .table { background: #8a6a48; border-radius: 40px; padding: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; }
+  .seat { background: #f6f0e1; border-radius: 10px; text-align: center; padding: 6px 4px; font-size: .75rem; position: relative; transition: transform .2s; }
+  .seat .face { font-size: 1.8rem; line-height: 1.2; }
+  .seat.talk { transform: translateY(-4px); box-shadow: 0 0 0 3px #e2b007; }
+  .seat.me { background: #fff8d8; }
+  .seat.sleep .face::after { content: 'z'; position: absolute; top: 2px; right: 8px; font-size: .8rem; color: #555; }
+  .meet-log { margin-top: 10px; background: #fffdf6; border: 1px inset var(--line); height: 200px; overflow-y: auto; padding: 8px; font-size: .85rem; }
+  .meet-log div { margin: 2px 0; }
+  .meet-log .who { font-weight: bold; margin-right: 4px; }
+  .meet-log .up { color: #3c6e3a; }
+  .meet-log .down { color: var(--shu); }
+  .meet-log .side { color: #6a4aa0; }
+  .meet-log .sys { color: #777; font-style: italic; }
+  .meet-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+  .meet-btns button { font-size: .85rem; padding: 8px 12px; letter-spacing: .05em; }
+  .meet-hud { font-family: monospace; font-size: .85rem; margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; }
   .tabs { display: flex; gap: 4px; margin-bottom: -1px; }
   .tab { background: #c9bda0; color: var(--ink); box-shadow: none; letter-spacing: .1em; padding: 8px 16px; border: 1px solid var(--line); border-bottom: none; }
   .tab.on { background: var(--paper); font-weight: bold; }
@@ -281,6 +304,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   <nav class="tabs">
     <button class="tab on" data-mode="apply">申請する側</button>
     <button class="tab" data-mode="approve">決裁する側</button>
+    <button class="tab" data-mode="meeting">会議に出る</button>
   </nav>
   <div id="modeApply">
   <!-- 申請フォーム -->
@@ -335,6 +359,31 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
         <button class="sub" id="goHome">定時で帰る</button>
       </div>
       <div class="desk-hud" id="deskHud"></div>
+    </section>
+  </div>
+
+  <!-- 会議モード -->
+  <div id="modeMeeting" class="hidden">
+    <section class="sheet" id="meetSheet">
+      <h2>定例会議</h2>
+      <div class="meet-head">
+        <div id="meetAgenda" class="agenda"></div>
+        <div class="meet-meta"><span id="meetClock"></span><span id="meetCost"></span></div>
+      </div>
+      <div class="gauge-label">結論への到達度 <span id="gaugeText"></span></div>
+      <div class="gauge"><div id="gauge"></div></div>
+      <div class="room">
+        <div class="table" id="meetTable"></div>
+      </div>
+      <div id="meetLog" class="meet-log"></div>
+      <div class="meet-btns">
+        <button class="sub" data-act="agree">同意する</button>
+        <button class="sub" data-act="object">異議を唱える</button>
+        <button class="sub" data-act="minutes">議事録を取る</button>
+        <button class="sub" data-act="clock">時計を見る</button>
+        <button data-act="wrap">まとめに入る</button>
+      </div>
+      <div class="meet-hud" id="meetHud"></div>
     </section>
   </div>
 
@@ -594,6 +643,13 @@ const ACHIEVEMENTS = [
   { id: 'ceo',       icon: '👑', name: '頂点（でも差し戻される）', desc: '社長に就任した' },
   { id: 'selfReject',icon: '🪞', name: '己との戦い',         desc: '自分の稟議を自分で差し戻した' },
   { id: 'frame',     icon: '🖼️', name: '額装',               desc: '差し戻された稟議書を額に入れて保存した' },
+  { id: 'meeting1',  icon: '🗓️', name: '次回に持ち越し',     desc: '会議を1回終えた（何も決まらなかった）' },
+  { id: 'meeting10', icon: '🔄', name: '会議のための会議',   desc: '会議を10回終えた' },
+  { id: 'almost',    icon: '🤏', name: 'あと少しだった',     desc: '結論ゲージが90%を超えた' },
+  { id: 'sidetrack', icon: '🍻', name: '脱線事故',           desc: '会議の議題がいつの間にか変わった' },
+  { id: 'meetLong',  icon: '⏳', name: '長丁場',             desc: '会議が2時間を超えた' },
+  { id: 'tasks5',    icon: '📋', name: '言い出しっぺ',       desc: '会議で宿題を5件振られた' },
+  { id: 'minutes50', icon: '📝', name: '書記の鑑',           desc: '議事録を50行取った（誰も読まない）' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -631,6 +687,7 @@ function renderStats() {
     <div><span>溶けた人件費</span><b>${yen}</b>円</div>
     <div><span>うち根回し費</span><b>${Math.floor(stats.nemaYen || 0).toLocaleString()}</b>円</div>
     <div><span>決裁者として処理</span><b>${stats.deskDocs || 0}</b>件</div>
+    <div><span>出席した会議</span><b>${stats.meetings || 0}</b>回</div>
     <div><span>連続差戻</span><b>${stats.streak}</b>回（最高${stats.maxStreak}）</div>`;
   const got = Object.keys(stats.achievements).length;
   $('achTitle').textContent = `実績 ${got} / ${ACHIEVEMENTS.length}`;
@@ -2003,11 +2060,228 @@ const Desk = (() => {
   };
 })();
 
+// ============================================================
+// 会議モード：結論には決して到達しない
+// ============================================================
+const Meeting = (() => {
+  const MEMBERS = [
+    { role: '部長', name: '田中', face: '👨‍💼', boss: true },
+    { role: '次長', name: '高橋', face: '🧔' },
+    { role: '課長', name: '鈴木', face: '👩‍💼' },
+    { role: '係長', name: '佐藤', face: '🧑' },
+    { role: '外部コンサル', name: 'ジョン', face: '🕴️' },
+    { role: '他部署の人', name: '（誰？）', face: '🙂' },
+    { role: '議事録係', name: '新人', face: '🧑‍💻' },
+  ];
+  const UP = [
+    'その方向で良いと思います', '方向性としては賛成です', '大枠では合意ですね', '進めましょう',
+    'スケジュール感としてはアリかと', 'ここまでは握れましたね', '異論はないです',
+  ];
+  const DOWN = [
+    'そもそも論なんですが', '前提から見直しませんか', 'それって本当に必要？', 'ちょっと視座を上げると…',
+    '一度ゼロベースで考えましょう', '関係部署の意見を聞いてからですね', 'リスクの洗い出しが先では',
+    '社長がどう思うかな', 'エビデンスが弱い', '前回の会議の結論を確認したいんですが（誰も覚えていない）',
+  ];
+  const NEUTRAL = [
+    'なるほど', 'ちょっといいですか', 'ですよね', 'うーん', 'まあ、そうですね', '確かに',
+    '一旦持ち帰らせてください', '認識合わせをしたいんですが', 'いい質問ですね',
+    'アグリーです', 'それな', 'ペンディングで', 'マストではない', 'ふわっとしてますね',
+    'シナジーが…', 'ナレッジとして…', 'イシューは何か',
+  ];
+  const SIDE = [
+    'それより来週の飲み会の店なんだけど', 'そういえば駐車場の件どうなった？', 'この会議室、暑くない？',
+    '昨日のプロ野球見た？', 'プロジェクターがつかないんだけど', '次の会議室の予約って誰がした？',
+  ];
+  const AGENDAS = [
+    '会議の削減について', '会議室の予約ルールについて', 'ハンコの廃止について（第48回）',
+    '議事録の書式統一について', '新しいゴミ箱の設置場所について', '定例会議の開催頻度について',
+    '次回の会議の議題について', '効率化推進プロジェクトのキックオフのための準備会議',
+  ];
+
+  let timer = 0, running = false;
+  let gauge, minutes, cost, tasks, lines, minutesCount, agenda, peak, meetingNo = 0, sleepers;
+
+  function init() {
+    meetingNo++;
+    gauge = 0; minutes = 0; cost = 0; tasks = 0; lines = 0; minutesCount = 0; peak = 0;
+    sleepers = new Set();
+    agenda = pick(AGENDAS);
+    $('meetAgenda').textContent = `第${meetingNo}回　議題：${agenda}`;
+    $('meetLog').innerHTML = '';
+    $('meetTable').innerHTML = '';
+    const me = { role: 'あなた', name: ($('applicant').value.trim() || '山田').slice(0, 4), face: '😐', me: true };
+    [...MEMBERS, me].forEach((m, i) => {
+      const d = document.createElement('div');
+      d.className = 'seat' + (m.me ? ' me' : '');
+      d.dataset.i = i;
+      d.innerHTML = `<div class="face">${m.face}</div>${m.role}<br><small>${escapeHtml(m.name)}</small>`;
+      $('meetTable').appendChild(d);
+    });
+    sysLine('会議を開始します。（開始時刻を5分過ぎています）');
+    render();
+  }
+
+  function seat(i) { return $('meetTable').children[i]; }
+
+  function line(who, text, cls = '') {
+    const d = document.createElement('div');
+    d.className = cls;
+    d.innerHTML = `<span class="who">${escapeHtml(who)}：</span>${escapeHtml(text)}`;
+    $('meetLog').appendChild(d);
+    $('meetLog').scrollTop = $('meetLog').scrollHeight;
+    lines++;
+  }
+  function sysLine(text) {
+    const d = document.createElement('div');
+    d.className = 'sys';
+    d.textContent = `── ${text}`;
+    $('meetLog').appendChild(d);
+    $('meetLog').scrollTop = $('meetLog').scrollHeight;
+  }
+
+  function setGauge(v) {
+    gauge = Math.max(0, Math.min(99, v)); // 100%には決してならない
+    peak = Math.max(peak, gauge);
+    if (peak >= 90) unlock('almost');
+  }
+
+  function talk() {
+    const idx = Math.floor(Math.random() * MEMBERS.length);
+    const m = MEMBERS[idx];
+    if (sleepers.has(idx) && Math.random() < 0.8) return;
+    [...$('meetTable').children].forEach(c => c.classList.remove('talk'));
+    seat(idx).classList.add('talk');
+    const r = Math.random();
+    // 結論に近づくほど「そもそも論」が出やすくなる
+    const downChance = Math.min(0.6, 0.15 + gauge / 130);
+    if (r < downChance) {
+      const t = pick(DOWN);
+      line(`${m.role} ${m.name}`, t, 'down');
+      setGauge(gauge * (m.boss ? 0.2 : 0.55));
+    } else if (r < downChance + 0.3) {
+      line(`${m.role} ${m.name}`, pick(UP), 'up');
+      setGauge(gauge + 5 + Math.random() * 12);
+    } else if (r < downChance + 0.38) {
+      line(`${m.role} ${m.name}`, pick(SIDE), 'side');
+      setGauge(gauge - 8);
+      if (Math.random() < 0.3) {
+        agenda = pick(AGENDAS);
+        $('meetAgenda').textContent = `第${meetingNo}回　議題：${agenda}（いつの間にか変更）`;
+        sysLine('議題が変わりました。誰も気づいていません。');
+        unlock('sidetrack');
+      }
+    } else {
+      line(`${m.role} ${m.name}`, pick(NEUTRAL));
+    }
+    // 居眠り
+    if (Math.random() < 0.05 && !MEMBERS[idx].boss) {
+      const z = Math.floor(Math.random() * MEMBERS.length);
+      if (!MEMBERS[z].boss) { sleepers.add(z); seat(z).classList.add('sleep'); }
+    }
+  }
+
+  function tick() {
+    minutes += 2;
+    cost += (MEMBERS.length + 1) * HOURLY_YEN / 30; // 2分ぶん
+    stats.yen += (MEMBERS.length + 1) * HOURLY_YEN / 30;
+    talk();
+    if (minutes % 60 === 0) sysLine(`開始から${minutes / 60}時間が経過しました。`);
+    if (minutes === 120) unlock('meetLong');
+    render();
+  }
+
+  function render() {
+    $('gauge').style.width = gauge + '%';
+    $('gaugeText').textContent = `${gauge.toFixed(0)}%`;
+    $('meetClock').textContent = `経過 ${Math.floor(minutes / 60)}時間${minutes % 60}分`;
+    $('meetCost').textContent = `人件費 ${Math.floor(cost).toLocaleString()}円`;
+    $('meetHud').innerHTML = `<span>発言数 ${lines}</span><span>議事録 ${minutesCount}行</span><span>宿題 ${tasks}件</span><span>居眠り ${sleepers.size}人</span><span>累計会議 ${stats.meetings || 0}回</span>`;
+  }
+
+  function act(type) {
+    if (!running) return;
+    const me = ($('applicant').value.trim() || '山田').slice(0, 4);
+    if (type === 'agree') {
+      line(`あなた ${me}`, pick(['賛成です', 'いいと思います', 'おっしゃる通りです']), 'up');
+      setGauge(gauge + 3);
+      if (Math.random() < 0.4) {
+        tasks++;
+        stats.tasks = (stats.tasks || 0) + 1;
+        line('部長 田中', 'じゃあ、それ君がまとめといて', 'down');
+        if (stats.tasks >= 5) unlock('tasks5');
+      }
+    } else if (type === 'object') {
+      line(`あなた ${me}`, pick(['少しよろしいですか', '懸念点がありまして', '別の観点から言うと']), 'down');
+      setGauge(gauge - 15);
+      if (Math.random() < 0.5) {
+        line('部長 田中', 'じゃあ対案を次回までに', 'down');
+        tasks++;
+      }
+    } else if (type === 'minutes') {
+      minutesCount++;
+      stats.minutesLines = (stats.minutesLines || 0) + 1;
+      const last = [...$('meetLog').children].filter(d => !d.classList.contains('sys')).slice(-1)[0];
+      sysLine(`議事録に記録：「${last ? last.textContent.slice(0, 30) : '（特になし）'}…」`);
+      if (stats.minutesLines >= 50) unlock('minutes50');
+    } else if (type === 'clock') {
+      line(`あなた ${me}`, '（チラッ）', '');
+      if (Math.random() < 0.5) line('部長 田中', '時間のことは気にしなくていいから', 'down');
+      minutes += 10;
+    } else if (type === 'wrap') {
+      line(`あなた ${me}`, 'では、そろそろまとめに入りましょうか', '');
+      if (gauge >= 85) {
+        conclude();
+      } else {
+        line('部長 田中', 'いや、まだ議論が尽くされていない', 'down');
+        setGauge(gauge - 10);
+      }
+    }
+    render();
+  }
+
+  function conclude() {
+    stop();
+    line('部長 田中', 'うん、方向性は見えてきた。では結論は…', '');
+    setTimeout(() => {
+      line('部長 田中', '次回の会議で決めましょう', 'down');
+      sysLine(`会議終了。所要${Math.floor(minutes / 60)}時間${minutes % 60}分、人件費${Math.floor(cost).toLocaleString()}円。決まったこと：次回の会議の日程（未定）`);
+      stats.meetings = (stats.meetings || 0) + 1;
+      unlock('meeting1');
+      if (stats.meetings >= 10) unlock('meeting10');
+      renderStats();
+      save();
+      render();
+      setTimeout(() => {
+        if ($('modeMeeting').classList.contains('hidden')) { gauge = undefined; return; }
+        init(); start();
+      }, 4000);
+    }, 1500);
+  }
+
+  function start() {
+    if (running) return;
+    if (gauge === undefined) init();
+    running = true;
+    timer = setInterval(tick, 1600);
+  }
+  function stop() {
+    running = false;
+    clearInterval(timer);
+    renderStats();
+    save();
+  }
+
+  document.querySelectorAll('.meet-btns button').forEach(b => b.addEventListener('click', () => act(b.dataset.act)));
+  return { start, stop };
+})();
+
 function setMode(mode) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.mode === mode));
   $('modeApply').classList.toggle('hidden', mode !== 'apply');
   $('modeApprove').classList.toggle('hidden', mode !== 'approve');
+  $('modeMeeting').classList.toggle('hidden', mode !== 'meeting');
   if (mode === 'approve') Desk.start(); else Desk.stop();
+  if (mode === 'meeting') Meeting.start(); else Meeting.stop();
 }
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
   if (state.running) return toast('稟議の審査中です', '審査が終わるまで席を離れられません');
