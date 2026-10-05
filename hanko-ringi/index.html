@@ -247,6 +247,9 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .join .oath li { margin: 4px 0; }
   .join label { text-align: left; }
   #joinStamp { width: 80px; height: 80px; display: block; margin: 8px auto; border: 1px dashed var(--line); background: #fffdf6; }
+  .ai-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .ai-btn { font-size: .8rem; padding: 5px 10px; letter-spacing: 0; background: #34507a; box-shadow: 0 2px 0 #1f3350; }
+  #aiNote { color: #666; font-size: .75rem; }
   .tabs { display: flex; gap: 4px; margin-bottom: -1px; }
   .tab { background: #c9bda0; color: var(--ink); box-shadow: none; letter-spacing: .1em; padding: 8px 16px; border: 1px solid var(--line); border-bottom: none; }
   .tab.on { background: var(--paper); font-weight: bold; }
@@ -340,6 +343,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     <select id="kind"></select>
     <label for="reason">申請理由（具体的に、かつ簡潔に、しかし詳細に）</label>
     <textarea id="reason" placeholder="例：ペンのインクが切れたため"></textarea>
+    <div class="ai-row"><button class="sub ai-btn" id="aiBtn" type="button">🤖 AI稟議アシスタントに書かせる</button><small id="aiNote"></small></div>
     <label for="applicant">申請者氏名（印鑑の作成に使用します）</label>
     <input type="text" id="applicant" maxlength="4" value="山田">
     <label for="seal">使用する印鑑</label>
@@ -709,6 +713,7 @@ const ACHIEVEMENTS = [
   { id: 'resign',    icon: '🕊️', name: '唯一の承認（ではない）', desc: '退職届が即日受理された' },
   { id: 'stay',      icon: '⛓️', name: '社畜の鑑',           desc: 'エンディングを見たのに会社に残った' },
   { id: 'deadlock',  icon: '🔒', name: 'デッドロック',       desc: '朱肉がなくて朱肉の補充を申請できなかった' },
+  { id: 'ai',        icon: '🤖', name: '生成AI活用（形だけ）', desc: 'AI稟議アシスタントに申請理由を書かせた' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -1601,6 +1606,64 @@ function checkInkDeadlock() {
   } else {
     log(`朱肉がないので朱肉の補充を申請できません。（デッドロック ${stats.inkTries}/3）`, 'sys');
   }
+}
+
+// ============================================================
+// AI稟議アシスタント（外部APIなし・テンプレート合成）
+// ============================================================
+function aiWrite() {
+  const kind = KINDS[$('kind').selectedIndex].label;
+  const open = ['平素より格別のご高配を賜り、厚く御礼申し上げます。', '時下ますますご清栄のこととお慶び申し上げます。', '日頃より多大なるご指導ご鞭撻を賜り、心より感謝申し上げます。'];
+  const body = [
+    `さて、このたび「${kind}」につきまして、諸般の事情を総合的に勘案し、関係各位とも綿密な事前調整を重ねた結果、`,
+    `標記の件「${kind}」に関しまして、中長期的な視座に立ち、全社的なシナジーの最大化を図るべく、`,
+    `表題の「${kind}」について、ステークホルダーの皆様のご期待にお応えすべく、多角的な観点から検討を重ねました結果、`,
+  ];
+  const mid = ['本件の実施が不可欠であるとの結論に至った次第でございます。', '本件をご承認いただくことが最善であると愚考いたしております。', '本件に着手することが喫緊の課題であると認識しております。'];
+  const close = ['何卒ご高配賜りますよう、伏してお願い申し上げます。', 'ご多忙の折、誠に恐縮ではございますが、ご査収のほどよろしくお願い申し上げます。', '末筆ながら、皆様のますますのご健勝をお祈り申し上げます。'];
+  const text = pick(open) + pick(body) + pick(mid) + pick(close) + '（※この文章はAIにより生成されました）';
+  $('reason').value = '';
+  $('aiBtn').disabled = true;
+  $('aiNote').textContent = '生成中…';
+  let i = 0;
+  const chars = [...text];
+  const t = setInterval(() => {
+    $('reason').value += chars.slice(i, i + 3).join('');
+    i += 3;
+    if (i >= chars.length) {
+      clearInterval(t);
+      $('aiBtn').disabled = false;
+      $('aiNote').textContent = `${chars.length}文字生成しました（トークン消費：推定3,200円）`;
+      stats.yen += 3200;
+      stats.aiUsed = (stats.aiUsed || 0) + 1;
+      unlock('ai');
+      renderStats();
+      save();
+    }
+  }, 30);
+}
+
+/** 社内報ニュースをプレイ状況から生成 */
+function makeNews() {
+  const nm = ($('applicant').value.trim() || '山田').slice(0, 4);
+  const items = [
+    `【社内報】稟議推進課 ${nm}さん、差し戻し${stats.rejects}件で「差し戻され部門」月間MVPに`,
+    `【社内報】当社の稟議承認率、${stats.docs}件中${stats.approved}件で業界最低水準を${stats.docs ? '堅持' : '維持'}`,
+    `【社内報】会議削減委員会、第${12 + (stats.meetings || 0)}回会議を開催。結論は次回に持ち越し`,
+    `【社内報】ハンコの累計押印数が${stats.stamps}個を突破。朱肉メーカーより感謝状`,
+    `【社内報】稟議に費やされた人件費、累計${Math.floor(stats.yen).toLocaleString()}円に。DX推進室は「想定内」`,
+    '【社内報】創業者の銅像、本日も首を縦に振らず',
+    '【社内報】FAX廃止の稟議、FAXで送信され紛失',
+    '【社内報】社内六曜、来月から「超仏滅」を新設',
+    '【総務部より】朱肉の私的利用はご遠慮ください',
+    '【人事部より】退職届の様式は人事部にて随時受付中です（即日受理）',
+  ];
+  return items;
+}
+function refreshTicker() {
+  const t = $('ticker');
+  const news = makeNews().sort(() => Math.random() - 0.5).slice(0, 4);
+  t.textContent = '【本日の社訓】　' + pick(SHAKUN) + '　　　' + news.join('　　　') + '　　　' + pick(SHAKUN);
 }
 
 /** 根回しUI */
@@ -2632,7 +2695,9 @@ renderSealPreview();
 renderNemawashi();
 $('frameBtn').addEventListener('click', saveFramed);
 $('jireiOk').addEventListener('click', () => $('jireiModal').classList.add('hidden'));
-$('ticker').textContent = '【本日の社訓】　' + SHAKUN.join('　　　');
+refreshTicker();
+$('ticker').addEventListener('animationiteration', refreshTicker);
+$('aiBtn').addEventListener('click', aiWrite);
 if (stats.date) state.date = new Date(stats.date);
 state.docNo = stats.docNo || 1;
 updateClock();
