@@ -242,6 +242,11 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .cr b { flex: 1; font-weight: normal; }
   .cr.solo { justify-content: center; text-align: center; font-size: 1.2rem; }
   .ending-btns { position: relative; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .join .co { margin: 0; font-size: .8rem; color: #666; letter-spacing: .2em; }
+  .join .oath { text-align: left; font-size: .85rem; padding-left: 1.4em; margin: 10px 0; }
+  .join .oath li { margin: 4px 0; }
+  .join label { text-align: left; }
+  #joinStamp { width: 80px; height: 80px; display: block; margin: 8px auto; border: 1px dashed var(--line); background: #fffdf6; }
   .tabs { display: flex; gap: 4px; margin-bottom: -1px; }
   .tab { background: #c9bda0; color: var(--ink); box-shadow: none; letter-spacing: .1em; padding: 8px 16px; border: 1px solid var(--line); border-bottom: none; }
   .tab.on { background: var(--paper); font-weight: bold; }
@@ -423,6 +428,25 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
 </main>
 
 <div id="toasts"></div>
+
+<!-- 入社式 -->
+<div class="modal hidden" id="joinModal">
+  <div class="modal-box join">
+    <p class="co">株式会社 前例（ゼンレイ）</p>
+    <h3>入社誓約書</h3>
+    <ol class="oath">
+      <li>私は、前例に従い、前例のないことは致しません。</li>
+      <li>私は、すべての物事を稟議にかけ、自らは何も決めません。</li>
+      <li>私は、ハンコを上長に向かって傾けて押します。</li>
+      <li>私は、会議の結論を次回の会議に委ねます。</li>
+      <li>私は、本誓約書への押印をもって上記に同意します（拒否権はありません）。</li>
+    </ol>
+    <label for="joinName">氏名（ハンコになります。4文字まで）</label>
+    <input type="text" id="joinName" maxlength="4" value="山田">
+    <canvas id="joinStamp" width="160" height="160"></canvas>
+    <button id="joinBtn">押印して入社する</button>
+  </div>
+</div>
 
 <!-- エンディング -->
 <div class="ending hidden" id="ending">
@@ -633,6 +657,7 @@ function advance(n) {
 }
 
 const ACHIEVEMENTS = [
+  { id: 'join',      icon: '🌸', name: '入社',               desc: '誓約書に押印して入社した（拒否権なし）' },
   { id: 'first',     icon: '📄', name: '初めての起案',       desc: '稟議を1件提出した' },
   { id: 'firstRej',  icon: '↩️', name: '洗礼',               desc: '初めて差し戻された' },
   { id: 'streak5',   icon: '🔁', name: '差戻常連',           desc: '5連続で差し戻された' },
@@ -1547,7 +1572,7 @@ function showEnding() {
 
 function newGamePlus() {
   // 実績と図鑑だけを持って再就職
-  const keep = { achievements: stats.achievements, reasons: stats.reasons, ng: (stats.ng || 0) + 1 };
+  const keep = { achievements: stats.achievements, reasons: stats.reasons, ng: (stats.ng || 0) + 1, name: stats.name };
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(keep)); } catch (e) {}
   location.reload();
 }
@@ -2525,6 +2550,27 @@ KINDS.forEach(k => {
   $('kind').appendChild(o);
 });
 $('submitBtn').addEventListener('click', submit);
+// 入社式（初回のみ）
+if (!stats.joined) {
+  if (stats.name) $('joinName').value = stats.name;
+  $('joinModal').classList.remove('hidden');
+  $('joinBtn').addEventListener('click', async () => {
+    const nm = ($('joinName').value.trim() || '山田').slice(0, 4);
+    $('joinBtn').disabled = true;
+    sfx.stamp();
+    await stampAnimated($('joinStamp'), nm, { angle: -15, ink: 1 });
+    $('applicant').value = nm;
+    stats.name = nm;
+    renderSealPreview();
+    stats.joined = fmtDate(state.date);
+    save();
+    setTimeout(() => {
+      $('joinModal').classList.add('hidden');
+      toast('🌸 入社おめでとうございます', `${nm}さんの配属先：稟議推進課（課員1名）`);
+      unlock('join');
+    }, 700);
+  }, { once: true });
+}
 if (stats.inkPad !== undefined && stats.inkPad <= 0) offerInkRefill();
 // サウンド設定（ブラウザごとの好みなので localStorage）
 (() => {
@@ -2576,7 +2622,12 @@ function renderSealPreview() {
   $('sealDesc').textContent = sl.desc;
 }
 $('seal').addEventListener('change', renderSealPreview);
-$('applicant').addEventListener('input', renderSealPreview);
+$('applicant').addEventListener('input', () => {
+  stats.name = $('applicant').value.trim();
+  renderSealPreview();
+  save();
+});
+if (stats.name) $('applicant').value = stats.name;
 renderSealPreview();
 renderNemawashi();
 $('frameBtn').addEventListener('click', saveFramed);
