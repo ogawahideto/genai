@@ -737,6 +737,9 @@ const ACHIEVEMENTS = [
   { id: 'ai',        icon: '🤖', name: '生成AI活用（形だけ）', desc: 'AI稟議アシスタントに申請理由を書かせた' },
   { id: 'shred',     icon: '🗑️', name: '証拠隠滅',           desc: '稟議書をシュレッダーにかけた' },
   { id: 'season',    icon: '🎏', name: '季節の風物詩',       desc: '社内暦の行事で差し戻された' },
+  { id: 'phone10',   icon: '☎️', name: '電話番',             desc: '決裁中に電話に10回出た' },
+  { id: 'ignorePhone',icon: '📵', name: '居留守',            desc: '電話に出なかった' },
+  { id: 'watched',   icon: '👀', name: '背後の気配',         desc: '部長に背後から見られた' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -2088,6 +2091,9 @@ const sfx = (() => {
     pat()   { try { noise(0.06, 1500, 0.3); } catch (e) {} },
     reject(){ try { tone(220, 0.5, 'sawtooth', 0.12, 0.5); } catch (e) {} },
     sigh()  { try { noise(1.2, 400, 0.25); } catch (e) {} },
+    ring() {
+      try { for (let j = 0; j < 16; j++) tone(j % 2 ? 1300 : 1600, 0.04, 'square', 0.03, 0, null, j * 0.04); } catch (e) {}
+    },
     shred() {
       try {
         // ガーーー（モーター音＋紙を噛む音）
@@ -2173,10 +2179,24 @@ const Desk = (() => {
 
   let running = false, raf = 0, last = 0;
   let pending, processed, mistakes, minutes, spawnTimer, doc, anim, msg, mouse, swingT, overtimeCount, stampsOnDoc;
+  let phone = { ringing: false, t: 0, next: 12000 };
+  let boss = { on: false, t: 0, next: 20000 };
+  const PHONE = { x: 70, y: 70, r: 34 };
+  const CALLS = [
+    ['部長', '例の件、どうなった？（どの件かは言わない）', 2],
+    ['経理部', '先月の稟議の領収書、原本で出して', 3],
+    ['総務部', '稟議書の様式が変わりました。過去分も差し替えで', 5],
+    ['他部署', 'すみません、間違えました', 0],
+    ['取引先', '御社の稟議、まだですか？（3年待っています）', 1],
+    ['奥さん', '今日は早く帰れる？', 0],
+    ['自動音声', 'こちらは稟議推進キャンペーンのご案内です', 0],
+  ];
 
   function reset() {
     pending = 12; processed = 0; mistakes = 0; minutes = 9 * 60; spawnTimer = 0;
     overtimeCount = 0; swingT = 0; msg = null; anim = null;
+    phone = { ringing: false, t: 0, next: 12000 };
+    boss = { on: false, t: 0, next: 20000 };
     mouse = { x: W / 2, y: H / 2, inside: false };
     nextDoc();
   }
@@ -2360,6 +2380,24 @@ const Desk = (() => {
       g.globalAlpha = 1;
     }
 
+    // 電話
+    drawPhone();
+    // 背後の部長
+    if (boss.on) {
+      const p = Math.min(1, boss.t / 600, (6000 - boss.t) / 600);
+      g.save();
+      g.globalAlpha = 0.9;
+      g.font = '120px serif';
+      g.textAlign = 'center';
+      g.fillText('👨‍💼', W + 40 - p * 110, H - 70);
+      g.font = 'bold 14px "Yu Mincho",serif';
+      g.fillStyle = '#fff';
+      g.strokeStyle = '#000'; g.lineWidth = 3;
+      g.strokeText('（じーっ）', W - p * 110, H - 190);
+      g.fillText('（じーっ）', W - p * 110, H - 190);
+      g.restore();
+    }
+
     // ハンコカーソル（振り子）
     if (mouse.inside) {
       const a = currentAngle();
@@ -2374,6 +2412,37 @@ const Desk = (() => {
     }
   }
 
+  function drawPhone() {
+    const shake = phone.ringing ? Math.sin(performance.now() / 30) * 4 : 0;
+    g.save();
+    g.translate(PHONE.x + shake, PHONE.y);
+    g.fillStyle = '#e8e2d0';
+    g.fillRect(-32, -18, 64, 40);
+    g.fillStyle = '#c8c0aa';
+    g.fillRect(-36, -30, 72, 14);
+    g.fillStyle = '#555';
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) g.fillRect(-14 + i * 10, -10 + j * 9, 6, 5);
+    if (phone.ringing) {
+      g.fillStyle = '#c8261d';
+      g.font = 'bold 14px sans-serif';
+      g.textAlign = 'center';
+      g.fillText('プルルル', 0, 42);
+      g.fillStyle = '#ff4d3d';
+      g.beginPath(); g.arc(26, -12, 4, 0, Math.PI * 2); g.fill();
+    }
+    g.restore();
+  }
+
+  function answerPhone() {
+    phone.ringing = false;
+    phone.next = 10000 + Math.random() * 20000;
+    const [who, text, add] = pick(CALLS);
+    pending += add;
+    say(`☎ ${who}「${text}」${add ? `（+${add}件）` : ''}`, '#1f2a44');
+    stats.calls = (stats.calls || 0) + 1;
+    if (stats.calls >= 10) unlock('phone10');
+  }
+
   function currentAngle() {
     return Math.sin(swingT / 1000 * (1.8 + processed * 0.03)) * 35;
   }
@@ -2381,7 +2450,7 @@ const Desk = (() => {
   function say(text, color = '#c8261d') { msg = { text, color, life: 1600 }; }
 
   function update(dt) {
-    swingT += dt;
+    swingT += dt * (boss.on ? 2.3 : 1);
     minutes += dt / 1000 * 2; // 1秒 = 2分
     spawnTimer += dt;
     const interval = Math.max(500, 2200 - processed * 15);
@@ -2396,6 +2465,31 @@ const Desk = (() => {
       }
     }
     if (msg) { msg.life -= dt; if (msg.life <= 0) msg = null; }
+
+    // 電話
+    if (phone.ringing) {
+      phone.t += dt;
+      if (Math.floor(phone.t / 1200) !== Math.floor((phone.t - dt) / 1200)) sfx.ring();
+      if (phone.t > 6000) {
+        phone.ringing = false;
+        phone.next = 10000 + Math.random() * 20000;
+        pending += 5;
+        say('電話に出なかったので部長が直接来た（+5件）', '#c8261d');
+        unlock('ignorePhone');
+      }
+    } else if ((phone.next -= dt) <= 0) {
+      phone.ringing = true; phone.t = 0;
+      sfx.ring();
+    }
+    // 部長が背後に立つ（見られていると手が震えて振り子が速くなる）
+    if (boss.on) {
+      boss.t += dt;
+      if (boss.t > 6000) { boss.on = false; boss.next = 15000 + Math.random() * 25000; }
+    } else if ((boss.next -= dt) <= 0) {
+      boss.on = true; boss.t = 0;
+      say('部長が背後に立っている……', '#1f2a44');
+      unlock('watched');
+    }
 
     // 定時は概念
     if (minutes >= 17 * 60 + 30) {
@@ -2487,6 +2581,10 @@ const Desk = (() => {
   cv.addEventListener('pointerdown', e => {
     if (e.button === 2) return;
     Object.assign(mouse, toCanvas(e), { inside: true });
+    if (phone.ringing && Math.hypot(mouse.x - PHONE.x, mouse.y - PHONE.y) < PHONE.r + 10) {
+      answerPhone();
+      return;
+    }
     if (e.pointerType === 'touch') {
       // 長押しで差し戻し
       pressTimer = setTimeout(() => { pressTimer = null; sendBack(); }, 550);
