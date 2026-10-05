@@ -299,6 +299,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .ink { height: 10px; background: #ddd; margin: 6px 0 12px; border: 1px solid var(--line); }
   #inkMeter { height: 100%; width: 0; background: var(--shu); transition: width .15s; }
   .btns { display: flex; gap: 10px; justify-content: center; }
+  .ink-left { font-size: .75rem; color: #666; margin: -8px 0 10px; }
 
   @media (max-width: 600px) {
     .cell { width: 25%; }
@@ -462,6 +463,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     <canvas id="stampPreview" width="220" height="220"></canvas>
     <div id="angleText">0.0°</div>
     <div class="ink"><div id="inkMeter"></div></div>
+    <div class="ink-left" id="inkLeft"></div>
     <div class="btns">
       <button class="sub" id="inkBtn">朱肉をつける</button>
       <button id="pressBtn">押す</button>
@@ -681,6 +683,7 @@ const ACHIEVEMENTS = [
   { id: 'minutes50', icon: '📝', name: '書記の鑑',           desc: '議事録を50行取った（誰も読まない）' },
   { id: 'resign',    icon: '🕊️', name: '唯一の承認（ではない）', desc: '退職届が即日受理された' },
   { id: 'stay',      icon: '⛓️', name: '社畜の鑑',           desc: 'エンディングを見たのに会社に残った' },
+  { id: 'deadlock',  icon: '🔒', name: 'デッドロック',       desc: '朱肉がなくて朱肉の補充を申請できなかった' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -1549,6 +1552,32 @@ function newGamePlus() {
   location.reload();
 }
 
+// ============================================================
+// 朱肉切れデッドロック
+// ============================================================
+const INK_KIND = { label: '朱肉の補充（350円）', cost: 350, inkRefill: true };
+function offerInkRefill() {
+  if (KINDS.includes(INK_KIND)) return;
+  KINDS.push(INK_KIND);
+  const o = document.createElement('option');
+  o.textContent = INK_KIND.label;
+  $('kind').appendChild(o);
+  toast('🟥 朱肉が切れました', '申請種別に「朱肉の補充」が追加されました');
+}
+function checkInkDeadlock() {
+  if (!state.current || !state.current.kind.inkRefill || stats.inkPad > 0) return;
+  stats.inkTries = (stats.inkTries || 0) + 1;
+  if (stats.inkTries >= 3) {
+    stats.inkPad = 60;
+    stats.inkTries = 0;
+    log('総務部の人が見かねて朱肉を貸してくれました。（返却期限：本日中。返却には「朱肉返却届」が必要です）', 'ok');
+    toast('🤝 総務部より', '朱肉を貸してもらえました（朱肉残量 60回）');
+    unlock('deadlock');
+  } else {
+    log(`朱肉がないので朱肉の補充を申請できません。（デッドロック ${stats.inkTries}/3）`, 'sys');
+  }
+}
+
 /** 根回しUI */
 function renderNemawashi() {
   $('nemaGrid').innerHTML = '';
@@ -1637,6 +1666,7 @@ function showBanner(text, color) {
 
 function finish() {
   state.running = false;
+  checkInkDeadlock();
   if (stats.rejects >= 20) offerResignation(false);
   const before = stats.rank || '平社員';
   const now = rankOf(stats.docs).name;
@@ -1676,9 +1706,19 @@ function stampMinigame(name, seal) {
     const speed = 1.6 + Math.random() * 1.6;
     modal.classList.remove('hidden');
     $('inkMeter').style.width = '0%';
-    $('inkBtn').disabled = !!seal.noInk;
+    if (stats.inkPad === undefined) stats.inkPad = 60;
+    const inkOut = stats.inkPad <= 0;
+    $('inkBtn').disabled = !!seal.noInk || inkOut;
+    $('inkBtn').textContent = inkOut ? '朱肉切れ' : '朱肉をつける';
+    $('inkLeft').textContent = seal.noInk ? '（朱肉不要）' : `朱肉残量：あと${Math.max(0, stats.inkPad)}回`;
+    if (inkOut && !seal.noInk) {
+      offerInkRefill();
+      $('stampHint').textContent = '朱肉が切れています。「朱肉の補充」を稟議してください。（その稟議にも押印が必要です）';
+    }
     if (seal.noInk) { ink = 1; $('inkMeter').style.width = '62%'; }
-    $('stampHint').textContent = '朱肉をつけてから、上長に向かってお辞儀する角度（左に8〜25°）で押してください。';
+    if (!(stats.inkPad <= 0 && !seal.noInk)) {
+      $('stampHint').textContent = '朱肉をつけてから、上長に向かってお辞儀する角度（左に8〜25°）で押してください。';
+    }
 
     function loop(t) {
       angle = Math.sin((t - t0) / 1000 * speed) * 40;
@@ -1700,6 +1740,14 @@ function stampMinigame(name, seal) {
     raf = requestAnimationFrame(loop);
 
     $('inkBtn').onclick = () => {
+      if (stats.inkPad <= 0) return;
+      stats.inkPad--;
+      $('inkLeft').textContent = `朱肉残量：あと${stats.inkPad}回`;
+      if (stats.inkPad <= 0) {
+        $('inkBtn').disabled = true;
+        $('inkBtn').textContent = '朱肉切れ';
+        offerInkRefill();
+      }
       ink = Math.min(1.6, ink + 0.12 + Math.random() * 0.08);
       $('inkMeter').style.width = Math.min(100, ink / 1.6 * 100) + '%';
       $('inkMeter').style.background = ink > 1.2 ? '#7a0d08' : '#c8261d';
@@ -2477,6 +2525,7 @@ KINDS.forEach(k => {
   $('kind').appendChild(o);
 });
 $('submitBtn').addEventListener('click', submit);
+if (stats.inkPad !== undefined && stats.inkPad <= 0) offerInkRefill();
 // サウンド設定（ブラウザごとの好みなので localStorage）
 (() => {
   let pref = {};
