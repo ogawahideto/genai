@@ -250,6 +250,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .ai-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
   .ai-btn { font-size: .8rem; padding: 5px 10px; letter-spacing: 0; background: #34507a; box-shadow: 0 2px 0 #1f3350; }
   #aiNote { color: #666; font-size: .75rem; }
+  #shredCanvas { width: min(480px, 92vw); height: auto; }
   .tabs { display: flex; gap: 4px; margin-bottom: -1px; }
   .tab { background: #c9bda0; color: var(--ink); box-shadow: none; letter-spacing: .1em; padding: 8px 16px; border: 1px solid var(--line); border-bottom: none; }
   .tab.on { background: var(--paper); font-weight: bold; }
@@ -372,6 +373,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     <div class="center">
       <button class="sub hidden" id="retryBtn">再申請する</button>
       <button class="sub hidden" id="frameBtn">額装して保存</button>
+      <button class="sub hidden" id="shredBtn">シュレッダーにかける</button>
     </div>
     <div class="banner" id="banner">差戻</div>
     <div class="bubble" id="bubble"></div>
@@ -459,6 +461,11 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     <button id="ngBtn">再就職する（実績を引き継ぐ）</button>
     <button class="sub" id="stayBtn">やっぱり残る</button>
   </div>
+</div>
+
+<!-- シュレッダー -->
+<div class="modal hidden" id="shredModal">
+  <canvas id="shredCanvas" width="480" height="520"></canvas>
 </div>
 
 <!-- 辞令モーダル -->
@@ -714,6 +721,7 @@ const ACHIEVEMENTS = [
   { id: 'stay',      icon: '⛓️', name: '社畜の鑑',           desc: 'エンディングを見たのに会社に残った' },
   { id: 'deadlock',  icon: '🔒', name: 'デッドロック',       desc: '朱肉がなくて朱肉の補充を申請できなかった' },
   { id: 'ai',        icon: '🤖', name: '生成AI活用（形だけ）', desc: 'AI稟議アシスタントに申請理由を書かせた' },
+  { id: 'shred',     icon: '🗑️', name: '証拠隠滅',           desc: '稟議書をシュレッダーにかけた' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -997,6 +1005,7 @@ async function submit() {
   $('retryBtn').classList.add('hidden');
   $('retryBtn').textContent = '再申請する';
   $('frameBtn').classList.add('hidden');
+  $('shredBtn').classList.add('hidden');
   $('banner').className = 'banner';
   $('flowSheet').classList.remove('hidden');
   $('log').innerHTML = '';
@@ -1435,6 +1444,79 @@ function showJirei(rank) {
 
 /** 決裁状況を一枚の画像にして保存する（額装） */
 function saveFramed() {
+  const cv = composeFramed();
+  const a = document.createElement('a');
+  a.download = `ringi_${state.docNo - 1}.png`;
+  a.href = cv.toDataURL('image/png');
+  a.click();
+  unlock('frame');
+}
+
+/** シュレッダーにかける */
+function shred() {
+  const src = composeFramed();
+  const modal = $('shredModal');
+  const cv = $('shredCanvas');
+  const g = cv.getContext('2d');
+  modal.classList.remove('hidden');
+  const W = cv.width, H = cv.height;
+  const docW = 360, docH = docW * src.height / src.width;
+  const x0 = (W - docW) / 2;
+  const slotY = 150;
+  const strips = 24;
+  const sw = docW / strips;
+  const pieces = [];
+  let feed = 0;
+  let last = performance.now();
+  const t0 = last;
+  sfx.shred();
+  function frame(t) {
+    const dt = t - last; last = t;
+    feed += dt * 0.09;
+    g.clearRect(0, 0, W, H);
+    // まだ入っていない部分（上）
+    const remain = Math.max(0, docH - feed);
+    if (remain > 0) {
+      const sy = (feed / docH) * src.height;
+      g.drawImage(src, 0, sy, src.width, src.height - sy, x0, slotY - remain, docW, remain);
+    }
+    // 裁断片（下）：細長い短冊が揺れながら落ちる
+    const cut = Math.min(feed, docH);
+    for (let i = 0; i < strips; i++) {
+      const wob = Math.sin(t / 120 + i) * 2 + (i % 2 ? 1 : -1) * Math.min(cut, 60) * 0.05;
+      g.save();
+      g.translate(x0 + i * sw + sw / 2 + wob, slotY + 30);
+      g.rotate(Math.sin(t / 300 + i * 1.7) * 0.03);
+      g.drawImage(src, (i / strips) * src.width, 0, src.width / strips, (cut / docH) * src.height, -sw / 2 + 0.5, 0, sw - 1, cut);
+      g.restore();
+    }
+    // シュレッダー本体
+    g.fillStyle = '#3a3f47';
+    g.fillRect(x0 - 30, slotY - 6, docW + 60, 40);
+    g.fillStyle = '#111';
+    g.fillRect(x0 - 6, slotY, docW + 12, 6);
+    g.fillStyle = '#7cd67c';
+    g.beginPath(); g.arc(x0 + docW + 14, slotY + 18, 4, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#ddd';
+    g.font = '11px sans-serif';
+    g.fillText('SHRED-MASTER 3000', x0 - 20, slotY + 26);
+    // 下のゴミ箱
+    g.fillStyle = 'rgba(60,60,70,.85)';
+    g.fillRect(x0 - 20, H - 60, docW + 40, 60);
+    if (t - t0 < 4800) requestAnimationFrame(frame);
+    else {
+      modal.classList.add('hidden');
+      stats.shredded = (stats.shredded || 0) + 1;
+      toast('🗑️ 裁断完了', pick(['証拠は残りません（控えは5部あります）', '機密文書回収業者が来るのは来年です', '裁断くずを再生紙にして新しい稟議書を作ります']));
+      unlock('shred');
+      save();
+    }
+  }
+  if (document.hidden) { modal.classList.add('hidden'); unlock('shred'); return; }
+  requestAnimationFrame(frame);
+}
+
+function composeFramed() {
   const W = 960, H = 640;
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
@@ -1493,12 +1575,7 @@ function saveFramed() {
   g.font = '13px sans-serif';
   g.textAlign = 'right';
   g.fillText('全自動稟議地獄', W - 60, H - 58);
-
-  const a = document.createElement('a');
-  a.download = `ringi_${state.docNo - 1}.png`;
-  a.href = cv.toDataURL('image/png');
-  a.click();
-  unlock('frame');
+  return cv;
 }
 
 // ============================================================
@@ -1773,6 +1850,7 @@ function finish() {
   $('submitBtn').disabled = false;
   $('retryBtn').classList.remove('hidden');
   $('frameBtn').classList.remove('hidden');
+  $('shredBtn').classList.remove('hidden');
 }
 
 // ============================================================
@@ -1941,6 +2019,22 @@ const sfx = (() => {
     pat()   { try { noise(0.06, 1500, 0.3); } catch (e) {} },
     reject(){ try { tone(220, 0.5, 'sawtooth', 0.12, 0.5); } catch (e) {} },
     sigh()  { try { noise(1.2, 400, 0.25); } catch (e) {} },
+    shred() {
+      try {
+        // ガーーー（モーター音＋紙を噛む音）
+        const a = ctx();
+        const o = a.createOscillator(), g = a.createGain(), f = a.createBiquadFilter();
+        o.type = 'sawtooth'; o.frequency.value = 95;
+        f.type = 'lowpass'; f.frequency.value = 700;
+        g.gain.setValueAtTime(0.0001, a.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.12, a.currentTime + 0.2);
+        g.gain.setValueAtTime(0.12, a.currentTime + 4.2);
+        g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 4.7);
+        o.connect(f).connect(g).connect(out());
+        o.start(); o.stop(a.currentTime + 4.8);
+        for (let i = 0; i < 30; i++) setTimeout(() => noise(0.12, 2500, 0.15), 300 + i * 130);
+      } catch (e) {}
+    },
     fax() {
       try {
         // ダイヤルトーン → ピー → ギャー
@@ -2694,6 +2788,7 @@ if (stats.name) $('applicant').value = stats.name;
 renderSealPreview();
 renderNemawashi();
 $('frameBtn').addEventListener('click', saveFramed);
+$('shredBtn').addEventListener('click', shred);
 $('jireiOk').addEventListener('click', () => $('jireiModal').classList.add('hidden'));
 refreshTicker();
 $('ticker').addEventListener('animationiteration', refreshTicker);
