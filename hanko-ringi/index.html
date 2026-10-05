@@ -257,6 +257,13 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .ai-btn { font-size: .8rem; padding: 5px 10px; letter-spacing: 0; background: #34507a; box-shadow: 0 2px 0 #1f3350; }
   #aiNote { color: #666; font-size: .75rem; }
   #shredCanvas { width: min(480px, 92vw); height: auto; }
+  .rules { max-width: 560px; text-align: left; }
+  .rules h3 { text-align: center; }
+  .rule-body { max-height: 55vh; overflow-y: auto; background: #fffdf6; border: 1px solid var(--line); padding: 10px 14px; font-size: .85rem; line-height: 1.7; margin-bottom: 12px; }
+  .rule-body h4 { margin: 12px 0 4px; font-size: .9rem; border-bottom: 1px solid var(--line); }
+  .rule-body p { margin: 2px 0 6px; }
+  .rule-body .art { font-weight: bold; margin-right: .5em; }
+  .rules button { display: block; margin: 0 auto; }
   .tabs { display: flex; gap: 4px; margin-bottom: -1px; }
   .tab { background: #c9bda0; color: var(--ink); box-shadow: none; letter-spacing: .1em; padding: 8px 16px; border: 1px solid var(--line); border-bottom: none; }
   .tab.on { background: var(--paper); font-weight: bold; }
@@ -334,6 +341,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
       <button class="snd-btn" id="sndBtn" title="効果音">🔊</button>
       <button class="snd-btn" id="ambBtn" title="オフィス環境音">🏢</button>
       <button class="snd-btn" id="speedBtn" title="審査速度">×1</button>
+      <button class="snd-btn" id="ruleBtn" title="稟議規程">📖</button>
     </div>
   </div>
 </header>
@@ -464,6 +472,16 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     <input type="text" id="joinName" maxlength="4" value="山田">
     <canvas id="joinStamp" width="160" height="160"></canvas>
     <button id="joinBtn">押印して入社する</button>
+  </div>
+</div>
+
+<!-- 稟議規程 -->
+<div class="modal hidden" id="ruleModal">
+  <div class="modal-box rules">
+    <h3>稟議規程</h3>
+    <p class="note">制定 昭和48年4月1日 ／ 最終改定 次回の会議で決定予定</p>
+    <div class="rule-body" id="ruleBody"></div>
+    <button id="ruleClose">閉じる（読んだことにする）</button>
   </div>
 </div>
 
@@ -740,6 +758,7 @@ const ACHIEVEMENTS = [
   { id: 'phone10',   icon: '☎️', name: '電話番',             desc: '決裁中に電話に10回出た' },
   { id: 'ignorePhone',icon: '📵', name: '居留守',            desc: '電話に出なかった' },
   { id: 'watched',   icon: '👀', name: '背後の気配',         desc: '部長に背後から見られた' },
+  { id: 'rules',     icon: '📖', name: '社内初の読了者',     desc: '稟議規程を最後まで読んだ' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -1814,6 +1833,59 @@ function refreshTicker() {
   t.textContent = '【本日の社訓】　' + pick(SHAKUN) + '　　　' + news.join('　　　') + '　　　' + pick(SHAKUN);
 }
 
+// ============================================================
+// 稟議規程
+// ============================================================
+const RULES = [
+  ['第1章 総則', [
+    'この規程は、当社における意思決定を円滑に遅延させることを目的とする。',
+    'この規程において「稟議」とは、決裁権限を有する者全員が責任を分散するための手続をいう。',
+    '前例のない事項は、前例ができるまで稟議に付すことができない。',
+    '本規程に定めのない事項は、前例による。前例もない場合は、次回の会議で定める。',
+  ]],
+  ['第2章 起案', [
+    '起案者は、起案に先立ち、起案してよいかどうかを上長に口頭で確認しなければならない。',
+    '前条の確認は、口頭確認の事前申請書をもって行う。',
+    '申請理由は具体的かつ簡潔に、しかし詳細に記載しなければならない。',
+    '申請理由に「急ぎ」「至急」「効率化」の文言を用いてはならない。',
+    '起案者は、起案した稟議の行方について、尋ねてはならない。',
+  ]],
+  ['第3章 押印', [
+    '押印は朱肉を用いた印章によって行う。浸透印（いわゆるシャチハタ）は、誠意の観点から使用を認めない。',
+    '下位者の印影は、上位者の押印欄に向かって8度以上25度以下傾けなければならない（お辞儀印）。',
+    '前条の角度は、総務部所定の分度器（貸出制）をもって計測する。',
+    '朱肉の色調は、総務部保管の基準朱肉（昭和48年製）と比較し、差異が0.3%以内でなければならない。',
+    '印影が押印欄から0.5mm以上はみ出した場合、当該稟議書は再作成とする。',
+    'デジタル印は、印刷・押印・スキャン・再印刷の工程を経た場合に限り、使用できない。',
+  ]],
+  ['第4章 決裁', [
+    '決裁は、係長、課長、次長、部長、本部長、常務、専務、社長の順に行う。',
+    '決裁者は、決裁にあたり少なくとも1営業日以上、思案に耽らなければならない。',
+    '決裁者は、差し戻しの理由を明示するよう努めるものとする（努力義務）。',
+    '決裁者が不在のときは、隣の席の者が代理で押印する。ただし代理決裁は、次の決裁者により無効とされることがある。',
+    '社長は、社内六曜が仏滅の日に決裁してはならない。',
+    '最終決裁は、創業者の意思を確認することにより行う。創業者の意思は、銅像の表情から推察する。',
+  ]],
+  ['第5章 根回し', [
+    '起案者は、提出前に決裁者へ根回しをすることができる。',
+    '根回しは、職位の低い者から順に行わなければならない。これに反した場合を「頭越し」という。',
+    '根回しの効果は当該稟議1件に限り、決裁者は翌日には忘れるものとする。',
+  ]],
+  ['第6章 雑則', [
+    '承認された稟議は、承認された日から起算して3営業日以内に執行しなければ失効する。',
+    '前条の規定にかかわらず、決裁には平均47営業日を要する。',
+    '退職届は稟議に該当しないため、本規程の適用を受けず、即日受理する。',
+    '本規程の改廃は、稟議により行う。',
+    '本規程を最後まで読んだ者は、その旨を総務部に届け出なければならない（届出様式は未制定）。',
+  ]],
+];
+function renderRules() {
+  let n = 0;
+  $('ruleBody').innerHTML = RULES.map(([ch, arts]) =>
+    `<h4>${ch}</h4>` + arts.map(a => `<p><span class="art">第${++n}条</span>${escapeHtml(a)}</p>`).join('')
+  ).join('') + '<p class="note">附則　この規程は、誰も読まないことを前提として施行する。</p>';
+}
+
 /** 根回しUI */
 function renderNemawashi() {
   $('nemaGrid').innerHTML = '';
@@ -2874,6 +2946,13 @@ KINDS.forEach(k => {
   $('kind').appendChild(o);
 });
 $('submitBtn').addEventListener('click', submit);
+renderRules();
+$('ruleBtn').addEventListener('click', () => { $('ruleModal').classList.remove('hidden'); $('ruleBody').scrollTop = 0; });
+$('ruleClose').addEventListener('click', () => $('ruleModal').classList.add('hidden'));
+$('ruleBody').addEventListener('scroll', () => {
+  const b = $('ruleBody');
+  if (b.scrollTop + b.clientHeight >= b.scrollHeight - 4) unlock('rules');
+});
 // キーボード操作（押印モーダル）
 document.addEventListener('keydown', e => {
   if ($('stampModal').classList.contains('hidden')) return;
