@@ -45,6 +45,10 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   header h1 { font-size: 1.25rem; margin: 0; letter-spacing: .1em; }
   header h1 small { font-size: .7rem; opacity: .8; display: block; letter-spacing: 0; }
   #clock { font-family: monospace; font-size: .9rem; text-align: right; }
+  .hdr-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .snd { display: flex; gap: 4px; }
+  .snd-btn { background: #2d3a5c; box-shadow: none; padding: 4px 8px; font-size: 1rem; letter-spacing: 0; border: 1px solid #4a5a80; }
+  .snd-btn.off { opacity: .4; }
   .ticker { background: #11182b; color: #e2b007; overflow: hidden; white-space: nowrap; font-size: .8rem; padding: 3px 0; }
   .ticker-in { display: inline-block; padding-left: 100%; animation: tick 60s linear infinite; }
   @keyframes tick { to { transform: translateX(-100%); } }
@@ -306,7 +310,13 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
 <body>
 <header>
   <h1>全自動稟議地獄<small>〜何ひとつ承認されないワークフロー〜</small></h1>
-  <div id="clock"></div>
+  <div class="hdr-right">
+    <div id="clock"></div>
+    <div class="snd">
+      <button class="snd-btn" id="sndBtn" title="効果音">🔊</button>
+      <button class="snd-btn" id="ambBtn" title="オフィス環境音">🏢</button>
+    </div>
+  </div>
 </header>
 <div class="ticker"><div class="ticker-in" id="ticker"></div></div>
 
@@ -1722,33 +1732,74 @@ function judgeMyStamp({ angle, ink, seal }) {
 // 効果音（Web Audio API）
 // ============================================================
 const sfx = (() => {
-  let ac = null;
-  const ctx = () => (ac ||= new (window.AudioContext || window.webkitAudioContext)());
-  function noise(dur, freq, gain) {
+  let ac = null, master = null, amb = null, ambTimer = 0, hum = null;
+  let muted = false;
+  const ctx = () => {
+    if (!ac) {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      master = ac.createGain();
+      master.gain.value = muted ? 0 : 1;
+      master.connect(ac.destination);
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  };
+  const out = () => (ctx(), master);
+  function noise(dur, freq, gain, dest, type = 'lowpass') {
     const a = ctx();
-    const buf = a.createBuffer(1, a.sampleRate * dur, a.sampleRate);
+    const buf = a.createBuffer(1, Math.max(1, a.sampleRate * dur), a.sampleRate);
     const d = buf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
     const src = a.createBufferSource();
     src.buffer = buf;
     const f = a.createBiquadFilter();
-    f.type = 'lowpass'; f.frequency.value = freq;
+    f.type = type; f.frequency.value = freq;
     const g = a.createGain(); g.gain.value = gain;
-    src.connect(f).connect(g).connect(a.destination);
+    src.connect(f).connect(g).connect(dest || out());
     src.start();
   }
-  function tone(freq, dur, type = 'sine', gain = 0.2, slide = 0) {
+  function tone(freq, dur, type = 'sine', gain = 0.2, slide = 0, dest, when = 0) {
     const a = ctx();
     const o = a.createOscillator();
     const g = a.createGain();
+    const t = a.currentTime + when;
     o.type = type;
-    o.frequency.setValueAtTime(freq, a.currentTime);
-    if (slide) o.frequency.exponentialRampToValueAtTime(freq * slide, a.currentTime + dur);
-    g.gain.setValueAtTime(gain, a.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
-    o.connect(g).connect(a.destination);
-    o.start(); o.stop(a.currentTime + dur);
+    o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+    g.gain.setValueAtTime(gain, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(dest || out());
+    o.start(t); o.stop(t + dur);
   }
+
+  // ---- オフィス環境音 ----
+  function ambientEvent() {
+    const r = Math.random();
+    if (r < 0.55) {
+      // キーボードのカタカタ（数打鍵）
+      const n = 3 + Math.floor(Math.random() * 10);
+      for (let i = 0; i < n; i++) setTimeout(() => amb && noise(0.025, 2500 + Math.random() * 2000, 0.25, amb, 'bandpass'), i * (60 + Math.random() * 90));
+    } else if (r < 0.65) {
+      // 遠くで鳴る電話（誰も出ない）
+      for (let k = 0; k < 3; k++) {
+        for (let j = 0; j < 20; j++) {
+          tone(j % 2 ? 1300 : 1600, 0.05, 'square', 0.015, 0, amb, k * 3 + j * 0.05);
+        }
+      }
+    } else if (r < 0.75) {
+      // 咳払い
+      noise(0.18, 350, 0.5, amb);
+      setTimeout(() => amb && noise(0.12, 300, 0.35, amb), 220);
+    } else if (r < 0.82) {
+      // 遠くのハンコ
+      noise(0.1, 500, 0.3, amb);
+    } else if (r < 0.88) {
+      // ため息
+      noise(1.0, 500, 0.12, amb);
+    }
+    ambTimer = setTimeout(ambientEvent, 400 + Math.random() * 1800);
+  }
+
   return {
     stamp() { try { noise(0.18, 600, 0.9); tone(90, 0.15, 'sine', 0.5, 0.5); } catch (e) {} },
     pat()   { try { noise(0.06, 1500, 0.3); } catch (e) {} },
@@ -1756,19 +1807,41 @@ const sfx = (() => {
     sigh()  { try { noise(1.2, 400, 0.25); } catch (e) {} },
     fax() {
       try {
-        const a = ctx();
         // ダイヤルトーン → ピー → ギャー
         const seq = [[1100, 0.9], [2100, 0.8], [1650, 0.15], [1850, 0.15], [1300, 0.2], [2400, 0.3]];
-        let t = a.currentTime;
-        seq.forEach(([f, d]) => {
-          const o = a.createOscillator(), g = a.createGain();
-          o.type = 'square'; o.frequency.value = f;
-          g.gain.value = 0.04;
-          o.connect(g).connect(a.destination);
-          o.start(t); o.stop(t + d);
-          t += d + 0.05;
-        });
+        let t = 0;
+        seq.forEach(([f, d]) => { tone(f, d, 'square', 0.04, 0, null, t); t += d + 0.05; });
         setTimeout(() => noise(1.2, 3000, 0.15), 2000);
+      } catch (e) {}
+    },
+    setMuted(m) {
+      muted = m;
+      if (master) master.gain.value = m ? 0 : 1;
+    },
+    get muted() { return muted; },
+    ambient(on) {
+      try {
+        const a = ctx();
+        if (on && !amb) {
+          amb = a.createGain();
+          amb.gain.value = 0.35;
+          amb.connect(out());
+          // コピー機／空調のうなり
+          hum = a.createOscillator();
+          hum.type = 'sawtooth';
+          hum.frequency.value = 55;
+          const lp = a.createBiquadFilter();
+          lp.type = 'lowpass'; lp.frequency.value = 160;
+          const hg = a.createGain(); hg.gain.value = 0.05;
+          hum.connect(lp).connect(hg).connect(amb);
+          hum.start();
+          ambientEvent();
+        } else if (!on && amb) {
+          clearTimeout(ambTimer);
+          hum.stop();
+          amb.disconnect();
+          amb = null;
+        }
       } catch (e) {}
     },
   };
@@ -2404,6 +2477,30 @@ KINDS.forEach(k => {
   $('kind').appendChild(o);
 });
 $('submitBtn').addEventListener('click', submit);
+// サウンド設定（ブラウザごとの好みなので localStorage）
+(() => {
+  let pref = {};
+  try { pref = JSON.parse(localStorage.getItem('hankoRingi.sound')) || {}; } catch (e) {}
+  const savePref = () => { try { localStorage.setItem('hankoRingi.sound', JSON.stringify(pref)); } catch (e) {} };
+  sfx.setMuted(!!pref.muted);
+  $('sndBtn').classList.toggle('off', !!pref.muted);
+  $('ambBtn').classList.add('off');
+  $('sndBtn').addEventListener('click', () => {
+    pref.muted = !pref.muted;
+    sfx.setMuted(pref.muted);
+    $('sndBtn').classList.toggle('off', pref.muted);
+    $('sndBtn').textContent = pref.muted ? '🔇' : '🔊';
+    savePref();
+  });
+  if (pref.muted) $('sndBtn').textContent = '🔇';
+  let ambOn = false;
+  $('ambBtn').addEventListener('click', () => {
+    ambOn = !ambOn;
+    sfx.ambient(ambOn);
+    $('ambBtn').classList.toggle('off', !ambOn);
+    if (ambOn) toast('🏢 オフィス環境音', 'キーボード、鳴り止まない電話、咳払い、ため息');
+  });
+})();
 if (stats.rejects >= 20) offerResignation(true);
 $('ngBtn').addEventListener('click', newGamePlus);
 $('stayBtn').addEventListener('click', () => {
