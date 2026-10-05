@@ -99,7 +99,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     display: flex;
     flex-direction: row-reverse; /* 日本の押印欄は右から左へ偉くなる…わけではないが雰囲気で */
     flex-wrap: wrap;
-    justify-content: flex-end;
+    justify-content: flex-start; /* row-reverse なので右詰め */
     gap: 0;
     border: 2px solid var(--ink);
     margin: 14px 0;
@@ -110,7 +110,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     text-align: center;
     background: #fffdf6;
   }
-  .cell:last-child { border-left: none; }
+  .cell:last-child { border-left: 1px solid var(--ink); }
   .cell .role {
     font-size: .72rem;
     border-bottom: 1px solid var(--ink);
