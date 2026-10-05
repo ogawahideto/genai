@@ -228,6 +228,16 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .meet-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
   .meet-btns button { font-size: .85rem; padding: 8px 12px; letter-spacing: .05em; }
   .meet-hud { font-family: monospace; font-size: .85rem; margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; }
+  .ending { position: fixed; inset: 0; background: #000; color: #f3f0e8; z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 16px; }
+  .ending.hidden { display: none; }
+  .credits { position: absolute; inset: 0 0 90px; overflow: hidden; mask-image: linear-gradient(transparent, #000 15%, #000 85%, transparent); -webkit-mask-image: linear-gradient(transparent, #000 15%, #000 85%, transparent); }
+  .credits-roll { position: absolute; left: 50%; width: min(560px, 92vw); transform: translateX(-50%); top: 100%; animation: roll 40s linear forwards; }
+  @keyframes roll { to { top: 0; transform: translate(-50%, -100%); } }
+  .cr { display: flex; gap: 16px; margin: 14px 0; font-size: 1rem; }
+  .cr span { flex: 0 0 40%; text-align: right; color: #b9b2a0; font-size: .85rem; padding-top: 2px; }
+  .cr b { flex: 1; font-weight: normal; }
+  .cr.solo { justify-content: center; text-align: center; font-size: 1.2rem; }
+  .ending-btns { position: relative; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
   .tabs { display: flex; gap: 4px; margin-bottom: -1px; }
   .tab { background: #c9bda0; color: var(--ink); box-shadow: none; letter-spacing: .1em; padding: 8px 16px; border: 1px solid var(--line); border-bottom: none; }
   .tab.on { background: var(--paper); font-weight: bold; }
@@ -402,6 +412,15 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
 </main>
 
 <div id="toasts"></div>
+
+<!-- エンディング -->
+<div class="ending hidden" id="ending">
+  <div class="credits"><div class="credits-roll" id="creditsRoll"></div></div>
+  <div class="ending-btns">
+    <button id="ngBtn">再就職する（実績を引き継ぐ）</button>
+    <button class="sub" id="stayBtn">やっぱり残る</button>
+  </div>
+</div>
 
 <!-- 辞令モーダル -->
 <div class="modal hidden" id="jireiModal">
@@ -650,6 +669,8 @@ const ACHIEVEMENTS = [
   { id: 'meetLong',  icon: '⏳', name: '長丁場',             desc: '会議が2時間を超えた' },
   { id: 'tasks5',    icon: '📋', name: '言い出しっぺ',       desc: '会議で宿題を5件振られた' },
   { id: 'minutes50', icon: '📝', name: '書記の鑑',           desc: '議事録を50行取った（誰も読まない）' },
+  { id: 'resign',    icon: '🕊️', name: '唯一の承認（ではない）', desc: '退職届が即日受理された' },
+  { id: 'stay',      icon: '⛓️', name: '社畜の鑑',           desc: 'エンディングを見たのに会社に残った' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -722,7 +743,8 @@ function rokuyo(d) {
   return ROKUYO[(d.getFullYear() + d.getMonth() * 7 + d.getDate() * 3) % 6];
 }
 function updateClock() {
-  $('clock').innerHTML = `社内暦: ${fmtDate(state.date)}【${rokuyo(state.date)}】<br>${rankOf(stats.docs).name}　稟議番号: 第${state.docNo}号`;
+  const ng = stats.ng ? `（再就職${stats.ng}社目）` : '';
+  $('clock').innerHTML = `社内暦: ${fmtDate(state.date)}【${rokuyo(state.date)}】<br>${rankOf(stats.docs).name}${ng}　稟議番号: 第${state.docNo}号`;
 }
 
 /** 申請理由の添削（課長の趣味） */
@@ -952,6 +974,9 @@ async function submit() {
   cells[0].querySelector('.date').textContent = fmtDate(state.date).slice(5, 10);
   stats.stamps++;
   log(`${applicant}（申請者）が起案・押印しました。（傾き ${my.angle.toFixed(1)}° / 朱肉 ${(my.ink*100).toFixed(0)}%）`, 'sys');
+
+  // 退職届だけは異様に速い
+  if (kind.resign) return resignFlow(cells);
 
   // 申請者の印影チェック（係長が最初に目を光らせる）
   const myProblem = judgeMyStamp(my);
@@ -1433,6 +1458,87 @@ function saveFramed() {
   unlock('frame');
 }
 
+// ============================================================
+// 退職届（唯一、通る書類）
+// ============================================================
+const RESIGN_KIND = { label: '退職届', cost: 0, resign: true };
+
+function offerResignation(silent) {
+  if (KINDS.includes(RESIGN_KIND)) return;
+  KINDS.push(RESIGN_KIND);
+  const o = document.createElement('option');
+  o.textContent = '退職届';
+  $('kind').appendChild(o);
+  if (!silent) toast('📨 人事部より', '「退職届」の様式が申請種別に追加されました');
+}
+
+async function resignFlow(cells) {
+  log('人事部：「退職届ですね！少々お待ちください！」', 'ok');
+  const lines = ['待ってました', '（即押印）', 'お疲れさま！', '寂しくなるね（棒）', '引き継ぎは要らないよ', '送別会は無しで', 'ポン', '達者でな'];
+  for (let i = 0; i < state.route.length; i++) {
+    const ap = state.route[i];
+    const cell = cells[i + 1];
+    say(cell, lines[i % lines.length]);
+    sfx.stamp();
+    await stampAnimated(cell.querySelector('canvas'), ap.name, { angle: -15, ink: 1, shape: ap.shape });
+    cell.querySelector('.date').textContent = fmtDate(state.date).slice(5, 10);
+    stats.stamps++;
+    await sleep(180);
+  }
+  log('全決裁者が即日押印しました。所要時間：0営業日。', 'ok');
+  log('※ 退職届は稟議ではないため、承認件数には含まれません。', 'sys');
+  showBanner('受理', '#3c6e3a');
+  unlock('resign');
+  state.running = false;
+  renderStats();
+  save();
+  setTimeout(showEnding, 2200);
+}
+
+function showEnding() {
+  const yen = Math.floor(stats.yen).toLocaleString();
+  const name = ($('applicant').value.trim() || '山田').slice(0, 4);
+  const credits = [
+    ['', `${escapeHtml(name)}さん、長い間お疲れさまでした`],
+    ['在籍期間', `${stats.days}営業日`],
+    ['提出した稟議', `${stats.docs}件`],
+    ['差し戻し', `${stats.rejects}件`],
+    ['承認', `${stats.approved}件`],
+    ['押されたハンコ', `${stats.stamps}個`],
+    ['溶かした人件費', `${yen}円`],
+    ['出席した会議', `${stats.meetings || 0}回（決まったこと：0件）`],
+    ['最終役職', rankOf(stats.docs).name],
+    ['', ''],
+    ['企画', '総務部 稟議制度改革準備委員会（準備中）'],
+    ['決裁', APPROVERS.map(a => a.role + ' ' + a.name).join('、')],
+    ['最終決裁', '創業者の銅像（無言）'],
+    ['差し戻し理由提供', '全社員の皆さま'],
+    ['FAX', '1987年製 感熱紙FAX（現役）'],
+    ['社内六曜算出', '総務部 某氏（独学）'],
+    ['朱肉', '開封後13年経過'],
+    ['', ''],
+    ['', 'この物語はフィクションです。'],
+    ['', '実在の会社・ハンコ・会議とは関係ありません。たぶん。'],
+    ['', ''],
+    ['', '〜 完 〜'],
+    ['', '（続編については次回の会議で決めましょう）'],
+  ];
+  $('creditsRoll').innerHTML = credits.map(([k, v]) =>
+    k ? `<div class="cr"><span>${k}</span><b>${v}</b></div>` : `<div class="cr solo">${v || '&nbsp;'}</div>`).join('');
+  $('ending').classList.remove('hidden');
+  const roll = $('creditsRoll');
+  roll.style.animation = 'none';
+  void roll.offsetWidth;
+  roll.style.animation = '';
+}
+
+function newGamePlus() {
+  // 実績と図鑑だけを持って再就職
+  const keep = { achievements: stats.achievements, reasons: stats.reasons, ng: (stats.ng || 0) + 1 };
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(keep)); } catch (e) {}
+  location.reload();
+}
+
 /** 根回しUI */
 function renderNemawashi() {
   $('nemaGrid').innerHTML = '';
@@ -1521,6 +1627,7 @@ function showBanner(text, color) {
 
 function finish() {
   state.running = false;
+  if (stats.rejects >= 20) offerResignation(false);
   const before = stats.rank || '平社員';
   const now = rankOf(stats.docs).name;
   if (now !== before) {
@@ -2297,6 +2404,14 @@ KINDS.forEach(k => {
   $('kind').appendChild(o);
 });
 $('submitBtn').addEventListener('click', submit);
+if (stats.rejects >= 20) offerResignation(true);
+$('ngBtn').addEventListener('click', newGamePlus);
+$('stayBtn').addEventListener('click', () => {
+  $('ending').classList.add('hidden');
+  toast('人事部より', '退職届は「手続き上の不備」により差し戻されました。明日も出社してください');
+  unlock('stay');
+  finish();
+});
 $('retryBtn').addEventListener('click', () => {
   $('formSheet').scrollIntoView({ behavior: 'smooth' });
   submit();
