@@ -171,6 +171,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .stats div { background: #fffdf6; border: 1px solid var(--line); padding: 6px 8px; font-size: .85rem; }
   .stats span { display: block; font-size: .7rem; color: #666; }
   .stats b { font-size: 1.25rem; font-family: monospace; margin-right: 2px; }
+  .achbox summary { cursor: pointer; }
   .ach-title { margin: 18px 0 6px; font-size: 1rem; border-left: 6px solid var(--shu); padding-left: 8px; }
   .ach { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; }
   .ach li { background: #e5ddc9; color: #888; padding: 6px 8px; font-size: .82rem; border: 1px dashed var(--line); }
@@ -197,6 +198,11 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .cell.extra { animation: drop .4s ease-out; }
   @keyframes drop { from { transform: translateY(-30px); opacity: 0; } }
   .zukan { margin-top: 14px; }
+  .rank-row { display: grid; grid-template-columns: 8.5em 1fr 3em; gap: 8px; align-items: center; font-size: .82rem; margin: 3px 0; }
+  .rank-who { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank-bar { background: #e5ddc9; height: 14px; border: 1px solid var(--line); }
+  .rank-bar i { display: block; height: 100%; background: repeating-linear-gradient(45deg, var(--shu) 0 6px, #a81f17 6px 12px); }
+  .rank-n { font-family: monospace; text-align: right; }
   .zukan summary { cursor: pointer; font-weight: bold; border-left: 6px solid var(--shu); padding-left: 8px; }
   .zukan ol { list-style: none; padding: 0; margin: 8px 0 0; max-height: 320px; overflow-y: auto; }
   .zukan li { background: #fffdf6; border: 1px solid var(--line); border-top: none; padding: 5px 8px; font-size: .82rem; display: flex; gap: 8px; align-items: baseline; }
@@ -426,8 +432,12 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   <section class="sheet" id="statsSheet">
     <h2>業務実績報告書</h2>
     <div class="stats" id="stats"></div>
-    <h3 id="achTitle" class="ach-title">実績</h3>
-    <ul class="ach" id="achList"></ul>
+    <details class="achbox">
+      <summary id="achTitle" class="ach-title">実績</summary>
+      <ul class="ach" id="achList"></ul>
+    </details>
+    <h3 class="ach-title">差し戻しランキング（決裁者別）</h3>
+    <div class="rank" id="rankChart"></div>
     <details class="zukan">
       <summary id="zukanTitle">差し戻し理由図鑑</summary>
       <ol id="zukanList"></ol>
@@ -773,6 +783,7 @@ function renderStats() {
       <span>${d ? a.icon : '🔒'}</span>${d ? escapeHtml(a.name) : '？？？'}</li>`;
   }).join('');
   renderZukan();
+  renderRanking();
   if (stats.yen >= 1e6) unlock('million');
   if (stats.days >= 250) unlock('year');
 }
@@ -1385,6 +1396,9 @@ function faxSend() {
 async function reject(ap, reason) {
   log(`${ap.role} ${ap.name} により差し戻されました。理由：${reason}`, 'rej');
   collectReason(reason);
+  stats.byWho = stats.byWho || {};
+  const who = ap.role.replace('（あなた）', '（自分）');
+  stats.byWho[who] = (stats.byWho[who] || 0) + 1;
   sfx.reject();
   stats.rejects++;
   stats.streak++;
@@ -1414,6 +1428,19 @@ function collectReason(reason) {
   const n = Object.keys(stats.reasons).length;
   if (n >= 10) unlock('zukan10');
   if (n >= 30) unlock('zukan30');
+}
+
+function renderRanking() {
+  const e = Object.entries(stats.byWho || {}).sort((a, b) => b[1] - a[1]);
+  if (!e.length) { $('rankChart').innerHTML = '<p class="note">データなし（差し戻されるのを待っています）</p>'; return; }
+  const max = e[0][1];
+  const medal = ['🥇', '🥈', '🥉'];
+  $('rankChart').innerHTML = e.map(([who, n], i) => `
+    <div class="rank-row">
+      <span class="rank-who">${medal[i] || ''}${escapeHtml(who)}</span>
+      <span class="rank-bar"><i style="width:${(n / max * 100).toFixed(1)}%"></i></span>
+      <span class="rank-n">${n}</span>
+    </div>`).join('');
 }
 
 function renderZukan() {
@@ -1668,13 +1695,13 @@ function newGamePlus() {
 // 朱肉切れデッドロック
 // ============================================================
 const INK_KIND = { label: '朱肉の補充（350円）', cost: 350, inkRefill: true };
-function offerInkRefill() {
+function offerInkRefill(silent) {
   if (KINDS.includes(INK_KIND)) return;
   KINDS.push(INK_KIND);
   const o = document.createElement('option');
   o.textContent = INK_KIND.label;
   $('kind').appendChild(o);
-  toast('🟥 朱肉が切れました', '申請種別に「朱肉の補充」が追加されました');
+  if (!silent) toast('🟥 朱肉が切れました', '申請種別に「朱肉の補充」が追加されました');
 }
 function checkInkDeadlock() {
   if (!state.current || !state.current.kind.inkRefill || stats.inkPad > 0) return;
@@ -2746,7 +2773,7 @@ if (!stats.joined) {
     }, 700);
   }, { once: true });
 }
-if (stats.inkPad !== undefined && stats.inkPad <= 0) offerInkRefill();
+if (stats.inkPad !== undefined && stats.inkPad <= 0) offerInkRefill(true);
 // サウンド設定（ブラウザごとの好みなので localStorage）
 (() => {
   let pref = {};
