@@ -45,6 +45,9 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   header h1 { font-size: 1.25rem; margin: 0; letter-spacing: .1em; }
   header h1 small { font-size: .7rem; opacity: .8; display: block; letter-spacing: 0; }
   #clock { font-family: monospace; font-size: .9rem; text-align: right; }
+  .ticker { background: #11182b; color: #e2b007; overflow: hidden; white-space: nowrap; font-size: .8rem; padding: 3px 0; }
+  .ticker-in { display: inline-block; padding-left: 100%; animation: tick 60s linear infinite; }
+  @keyframes tick { to { transform: translateX(-100%); } }
   main {
     max-width: 880px;
     margin: 16px auto;
@@ -189,6 +192,13 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   #faxPaper { width: 100%; max-width: 260px; background: #f7f5ee; box-shadow: inset 0 0 6px rgba(0,0,0,.2); }
   .cell.extra { animation: drop .4s ease-out; }
   @keyframes drop { from { transform: translateY(-30px); opacity: 0; } }
+  .zukan { margin-top: 14px; }
+  .zukan summary { cursor: pointer; font-weight: bold; border-left: 6px solid var(--shu); padding-left: 8px; }
+  .zukan ol { list-style: none; padding: 0; margin: 8px 0 0; max-height: 320px; overflow-y: auto; }
+  .zukan li { background: #fffdf6; border: 1px solid var(--line); border-top: none; padding: 5px 8px; font-size: .82rem; display: flex; gap: 8px; align-items: baseline; }
+  .zukan li:first-child { border-top: 1px solid var(--line); }
+  .zukan .no { font-family: monospace; color: #888; flex: none; }
+  .zukan .cnt { margin-left: auto; font-family: monospace; color: var(--shu); flex: none; }
   .tabs { display: flex; gap: 4px; margin-bottom: -1px; }
   .tab { background: #c9bda0; color: var(--ink); box-shadow: none; letter-spacing: .1em; padding: 8px 16px; border: 1px solid var(--line); border-bottom: none; }
   .tab.on { background: var(--paper); font-weight: bold; }
@@ -259,6 +269,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   <h1>全自動稟議地獄<small>〜何ひとつ承認されないワークフロー〜</small></h1>
   <div id="clock"></div>
 </header>
+<div class="ticker"><div class="ticker-in" id="ticker"></div></div>
 
 <main>
   <nav class="tabs">
@@ -326,6 +337,10 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     <div class="stats" id="stats"></div>
     <h3 id="achTitle" class="ach-title">実績</h3>
     <ul class="ach" id="achList"></ul>
+    <details class="zukan">
+      <summary id="zukanTitle">差し戻し理由図鑑</summary>
+      <ol id="zukanList"></ol>
+    </details>
     <div class="center"><button class="sub" id="resetBtn">人事異動（記録を消去）</button></div>
   </section>
 </main>
@@ -403,6 +418,18 @@ const NEMAWASHI = [
   { act: '飲み会に付き合う',       days: 1, yen: 6800,  eff: 0.4,  line: '「二次会行くぞ」' },
   { act: '週末のゴルフに同行',     days: 2, yen: 28000, eff: 0.25, line: '「ナイスショット！」（100回言った）' },
   { act: '子供の受験の相談に乗る', days: 3, yen: 0,     eff: 0.3,  line: '「君は話がわかるね」' },
+];
+
+const SHAKUN = [
+  '一、前例なきことは行わず、前例あることは二番煎じとして行わず',
+  '一、ハンコは心なり。心はお辞儀なり',
+  '一、報告・連絡・相談・根回し・忖度',
+  '一、急がば回せ（稟議を）',
+  '一、決めないことを決める勇気を持て',
+  '一、会議は踊る、されど進まず',
+  '一、定時とは心の中にあるものなり',
+  '一、紙は神なり',
+  '一、効率化を検討する委員会を検討する',
 ];
 
 const PRE_REASON = '本申請を行うための事前申請が提出されていない';
@@ -520,6 +547,8 @@ const ACHIEVEMENTS = [
   { id: 'akapen',    icon: '🖍️', name: '赤ペン先生',         desc: '課長に申請理由を添削された' },
   { id: 'butsumetsu',icon: '🪦', name: '日が悪い',           desc: '社内六曜の仏滅で差し戻された' },
   { id: 'proxy',     icon: '👥', name: '代理の不在証明',     desc: '代理決裁を理由に差し戻された' },
+  { id: 'zukan10',   icon: '📕', name: '差し戻し評論家',     desc: '10種類の差し戻し理由を集めた' },
+  { id: 'zukan30',   icon: '📚', name: '差し戻し博士',       desc: '30種類の差し戻し理由を集めた' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -565,6 +594,7 @@ function renderStats() {
     return `<li class="${d ? 'got' : ''}" title="${d ? escapeHtml(a.desc) + '（' + d + '）' : '？？？'}">
       <span>${d ? a.icon : '🔒'}</span>${d ? escapeHtml(a.name) : '？？？'}</li>`;
   }).join('');
+  renderZukan();
   if (stats.yen >= 1e6) unlock('million');
   if (stats.days >= 250) unlock('year');
 }
@@ -1157,6 +1187,7 @@ function faxSend() {
 
 async function reject(ap, reason) {
   log(`${ap.role} ${ap.name} により差し戻されました。理由：${reason}`, 'rej');
+  collectReason(reason);
   sfx.reject();
   stats.rejects++;
   stats.streak++;
@@ -1169,6 +1200,32 @@ async function reject(ap, reason) {
   if (k.includes('簡略化')) unlock('kaizen');
   showBanner('差戻');
   finish();
+}
+
+/** 差し戻し理由を図鑑に登録する（数値などは除去して同一視） */
+function collectReason(reason) {
+  const key = reason
+    .replace(/（[^）]*[0-9][^）]*）/g, '')
+    .replace(/[0-9０-９.\-]+(文字|°|%|件)?/g, '◯')
+    .replace(/(係長|課長|次長|部長|本部長|常務|専務|社長)(欄|へ|である|本人)/g, '某$2');
+  stats.reasons = stats.reasons || {};
+  const isNew = !stats.reasons[key];
+  stats.reasons[key] = (stats.reasons[key] || 0) + 1;
+  if (isNew) {
+    log(`📕 差し戻し理由図鑑に新しい理由が登録されました（${Object.keys(stats.reasons).length}種類目）`, 'sys');
+  }
+  const n = Object.keys(stats.reasons).length;
+  if (n >= 10) unlock('zukan10');
+  if (n >= 30) unlock('zukan30');
+}
+
+function renderZukan() {
+  const r = stats.reasons || {};
+  const entries = Object.entries(r).sort((a, b) => b[1] - a[1]);
+  $('zukanTitle').textContent = `差し戻し理由図鑑（${entries.length}種類 収集）`;
+  $('zukanList').innerHTML = entries.length
+    ? entries.map(([k, v], i) => `<li><span class="no">No.${String(i + 1).padStart(3, '0')}</span>${escapeHtml(k)}<span class="cnt">×${v}</span></li>`).join('')
+    : '<li>まだ差し戻されていません（時間の問題です）</li>';
 }
 
 /** 根回しUI */
@@ -1832,6 +1889,7 @@ $('seal').addEventListener('change', renderSealPreview);
 $('applicant').addEventListener('input', renderSealPreview);
 renderSealPreview();
 renderNemawashi();
+$('ticker').textContent = '【本日の社訓】　' + SHAKUN.join('　　　');
 if (stats.date) state.date = new Date(stats.date);
 state.docNo = stats.docNo || 1;
 updateClock();
