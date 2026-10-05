@@ -199,6 +199,12 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .zukan li:first-child { border-top: 1px solid var(--line); }
   .zukan .no { font-family: monospace; color: #888; flex: none; }
   .zukan .cnt { margin-left: auto; font-family: monospace; color: var(--shu); flex: none; }
+  .jirei { border: 6px double var(--ink); position: relative; }
+  .jirei h3 { font-size: 1.8rem; letter-spacing: 1em; margin-right: -1em; }
+  .jirei .j-name { text-align: left; font-size: 1.1rem; margin: 12px 0; }
+  .jirei .j-main { font-size: 1.6rem; font-weight: bold; margin: 16px 0; }
+  .jirei .j-sub { font-size: .85rem; }
+  #jireiStamp { width: 72px; height: 72px; position: absolute; right: 24px; bottom: 132px; opacity: .9; }
   .tabs { display: flex; gap: 4px; margin-bottom: -1px; }
   .tab { background: #c9bda0; color: var(--ink); box-shadow: none; letter-spacing: .1em; padding: 8px 16px; border: 1px solid var(--line); border-bottom: none; }
   .tab.on { background: var(--paper); font-weight: bold; }
@@ -311,6 +317,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     <div id="log"></div>
     <div class="center">
       <button class="sub hidden" id="retryBtn">再申請する</button>
+      <button class="sub hidden" id="frameBtn">額装して保存</button>
     </div>
     <div class="banner" id="banner">差戻</div>
     <div class="bubble" id="bubble"></div>
@@ -346,6 +353,17 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
 </main>
 
 <div id="toasts"></div>
+
+<!-- 辞令モーダル -->
+<div class="modal hidden" id="jireiModal">
+  <div class="modal-box jirei">
+    <h3>辞　令</h3>
+    <div id="jireiBody"></div>
+    <canvas id="jireiStamp" width="120" height="120"></canvas>
+    <p class="note" id="jireiNote"></p>
+    <button id="jireiOk">謹んで拝命いたします</button>
+  </div>
+</div>
 
 <!-- FAXモーダル -->
 <div class="modal hidden" id="faxModal">
@@ -431,6 +449,29 @@ const SHAKUN = [
   '一、紙は神なり',
   '一、効率化を検討する委員会を検討する',
 ];
+
+const RANKS = [
+  { name: '平社員', at: 0 },
+  { name: '主任',   at: 5 },
+  { name: '係長',   at: 12 },
+  { name: '課長',   at: 25 },
+  { name: '部長',   at: 45 },
+  { name: '専務',   at: 70 },
+  { name: '社長',   at: 100 },
+];
+const SELF_REASONS = [
+  '過去の自分が書いた申請理由が稚拙に見えた',
+  '自分の印影の傾きが自分の美学に反する',
+  '申請者（自分）の顔が浮かんで腹が立った',
+  '自分で自分を承認するのは利益相反の疑いがある',
+  '自分の字が汚くて読めない',
+  '昨日の自分と今日の自分は別人なので、本人確認ができない',
+];
+function rankOf(docs) {
+  let r = RANKS[0];
+  for (const x of RANKS) if (docs >= x.at) r = x;
+  return r;
+}
 
 const PRE_REASON = '本申請を行うための事前申請が提出されていない';
 
@@ -549,6 +590,10 @@ const ACHIEVEMENTS = [
   { id: 'proxy',     icon: '👥', name: '代理の不在証明',     desc: '代理決裁を理由に差し戻された' },
   { id: 'zukan10',   icon: '📕', name: '差し戻し評論家',     desc: '10種類の差し戻し理由を集めた' },
   { id: 'zukan30',   icon: '📚', name: '差し戻し博士',       desc: '30種類の差し戻し理由を集めた' },
+  { id: 'promote',   icon: '🎖️', name: '出世',               desc: '辞令を受けた' },
+  { id: 'ceo',       icon: '👑', name: '頂点（でも差し戻される）', desc: '社長に就任した' },
+  { id: 'selfReject',icon: '🪞', name: '己との戦い',         desc: '自分の稟議を自分で差し戻した' },
+  { id: 'frame',     icon: '🖼️', name: '額装',               desc: '差し戻された稟議書を額に入れて保存した' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -620,7 +665,7 @@ function rokuyo(d) {
   return ROKUYO[(d.getFullYear() + d.getMonth() * 7 + d.getDate() * 3) % 6];
 }
 function updateClock() {
-  $('clock').innerHTML = `社内暦: ${fmtDate(state.date)}【${rokuyo(state.date)}】<br>稟議番号: 第${state.docNo}号`;
+  $('clock').innerHTML = `社内暦: ${fmtDate(state.date)}【${rokuyo(state.date)}】<br>${rankOf(stats.docs).name}　稟議番号: 第${state.docNo}号`;
 }
 
 /** 申請理由の添削（課長の趣味） */
@@ -800,7 +845,7 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 function buildRoute(applicant) {
   const route = $('route');
   route.innerHTML = '';
-  const people = [{ role: '申請者', name: applicant }, ...APPROVERS];
+  const people = [{ role: '申請者', name: applicant }, ...state.route];
   people.forEach((p, i) => {
     const cell = document.createElement('div');
     cell.className = 'cell';
@@ -819,6 +864,8 @@ async function submit() {
 
   state.running = true;
   state.current = { kind, reason, applicant, submitted: new Date(state.date) };
+  const myRank = rankOf(stats.docs).name;
+  state.route = APPROVERS.map(a => a.role === myRank ? { ...a, name: applicant, self: true, strict: 0 } : a);
   stats.docs++;
   unlock('first');
   if (stats.docs >= 100) unlock('hundred');
@@ -827,6 +874,7 @@ async function submit() {
   renderNemawashi();
   $('retryBtn').classList.add('hidden');
   $('retryBtn').textContent = '再申請する';
+  $('frameBtn').classList.add('hidden');
   $('banner').className = 'banner';
   $('flowSheet').classList.remove('hidden');
   $('log').innerHTML = '';
@@ -865,7 +913,7 @@ async function submit() {
   }
 
   for (let i = 0; i < APPROVERS.length; i++) {
-    const ap = APPROVERS[i];
+    const ap = state.route[i];
     const cell = cells[i + 1];
     cell.classList.add('active');
     if (ap.role === '社長') unlock('president');
@@ -877,6 +925,16 @@ async function submit() {
     advance(1 + Math.floor(Math.random() * 4));
     cell.classList.remove('active');
 
+    // 出世した自分による自己審査
+    if (ap.self) {
+      say(cell, '（自分の書いた書類を読み返している）');
+      await sleep(800);
+      if (Math.random() < 0.45) {
+        unlock('selfReject');
+        await reject({ role: ap.role + '（あなた）', name: ap.name }, pick(SELF_REASONS));
+        return;
+      }
+    }
     // 前の決裁者が代理決裁だった場合
     if (state.current.proxy && Math.random() < 0.65) {
       const pr = state.current.proxy;
@@ -1228,6 +1286,96 @@ function renderZukan() {
     : '<li>まだ差し戻されていません（時間の問題です）</li>';
 }
 
+/** 辞令を交付する */
+function showJirei(rank) {
+  const r = RANKS.find(x => x.name === rank);
+  const name = ($('applicant').value.trim() || '山田').slice(0, 4);
+  $('jireiBody').innerHTML = `
+    <p class="j-name">${escapeHtml(name)} 殿</p>
+    <p class="j-main">${escapeHtml(rank)}に任ずる</p>
+    <p class="j-sub">稟議提出 累計${stats.docs}件（承認0件）の<br>たゆまぬ努力を評価して</p>
+    <p class="j-sub">${fmtDate(state.date)}<br>代表取締役社長 中村</p>`;
+  const cv = $('jireiStamp');
+  const g = cv.getContext('2d');
+  g.clearRect(0, 0, cv.width, cv.height);
+  drawHanko(g, '株式会社', { shape: 'kaku', angle: 3 });
+  $('jireiNote').textContent = RANKS.indexOf(r) >= 2
+    ? `※ 今後、あなた自身が「${rank}」として自分の稟議の決裁ルートに加わります。`
+    : '※ 昇進に伴う権限・手当の変更はありません。';
+  $('jireiModal').classList.remove('hidden');
+  sfx.stamp();
+  unlock('promote');
+  if (rank === '社長') unlock('ceo');
+}
+
+/** 決裁状況を一枚の画像にして保存する（額装） */
+function saveFramed() {
+  const W = 960, H = 640;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  // 額縁
+  g.fillStyle = '#3b2a1a'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#c9a75a'; g.fillRect(24, 24, W - 48, H - 48);
+  g.fillStyle = '#f6f0e1'; g.fillRect(44, 44, W - 88, H - 88);
+  g.fillStyle = '#2b2620';
+  g.textAlign = 'center';
+  g.font = 'bold 34px "Yu Mincho","Hiragino Mincho ProN",serif';
+  g.fillText('稟　議　書', W / 2, 100);
+  g.fillRect(W / 2 - 160, 112, 320, 3);
+  g.textAlign = 'left';
+  g.font = '18px "Yu Mincho","Hiragino Mincho ProN",serif';
+  const c = state.current;
+  const lines = [
+    `件名：${c.kind.label}`.slice(0, 44),
+    `申請理由：${c.reason}`.slice(0, 44),
+    `申請者：${c.applicant}`,
+    `起案日：${fmtDate(c.submitted)}`,
+  ];
+  lines.forEach((l, i) => g.fillText(l, 90, 160 + i * 32));
+  // 押印欄
+  const cells = [...$('route').children];
+  const size = Math.min(84, (W - 180) / cells.length);
+  const totalW = size * cells.length;
+  const y = 320;
+  cells.forEach((cell, i) => {
+    // route は row-reverse なので見た目通り右から左に並べる
+    const x = W / 2 + totalW / 2 - (i + 1) * size;
+    g.strokeStyle = '#2b2620';
+    g.strokeRect(x, y, size, size + 22);
+    g.font = '12px "Yu Mincho",serif';
+    g.textAlign = 'center';
+    g.fillStyle = '#2b2620';
+    g.fillText(cell.querySelector('.role').textContent.slice(0, 6), x + size / 2, y + 15);
+    g.drawImage(cell.querySelector('canvas'), x + 2, y + 22, size - 4, size - 4);
+  });
+  // 結果の判子
+  const b = $('banner').textContent;
+  g.save();
+  g.translate(W / 2, 520);
+  g.rotate(-0.2);
+  g.strokeStyle = g.fillStyle = '#c8261d';
+  g.globalAlpha = 0.85;
+  g.lineWidth = 6;
+  g.font = 'bold 64px "Yu Mincho",serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  const tw = g.measureText(b).width + 40;
+  g.strokeRect(-tw / 2, -44, tw, 88);
+  g.fillText(b, 0, 2);
+  g.restore();
+  g.fillStyle = '#7a6a4a';
+  g.font = '13px sans-serif';
+  g.textAlign = 'right';
+  g.fillText('全自動稟議地獄', W - 60, H - 58);
+
+  const a = document.createElement('a');
+  a.download = `ringi_${state.docNo - 1}.png`;
+  a.href = cv.toDataURL('image/png');
+  a.click();
+  unlock('frame');
+}
+
 /** 根回しUI */
 function renderNemawashi() {
   $('nemaGrid').innerHTML = '';
@@ -1316,6 +1464,12 @@ function showBanner(text, color) {
 
 function finish() {
   state.running = false;
+  const before = stats.rank || '平社員';
+  const now = rankOf(stats.docs).name;
+  if (now !== before) {
+    stats.rank = now;
+    setTimeout(() => showJirei(now), 1500);
+  }
   // 根回しの効果は1回限り（みんな忘れる）
   if (state.nema.size) log('※ 根回しの効果は本件限りです。決裁者たちはもう忘れました。', 'sys');
   state.nema.clear();
@@ -1326,6 +1480,7 @@ function finish() {
   save();
   $('submitBtn').disabled = false;
   $('retryBtn').classList.remove('hidden');
+  $('frameBtn').classList.remove('hidden');
 }
 
 // ============================================================
@@ -1889,6 +2044,8 @@ $('seal').addEventListener('change', renderSealPreview);
 $('applicant').addEventListener('input', renderSealPreview);
 renderSealPreview();
 renderNemawashi();
+$('frameBtn').addEventListener('click', saveFramed);
+$('jireiOk').addEventListener('click', () => $('jireiModal').classList.add('hidden'));
 $('ticker').textContent = '【本日の社訓】　' + SHAKUN.join('　　　');
 if (stats.date) state.date = new Date(stats.date);
 state.docNo = stats.docNo || 1;
