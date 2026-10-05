@@ -198,6 +198,7 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
   .cell.extra { animation: drop .4s ease-out; }
   @keyframes drop { from { transform: translateY(-30px); opacity: 0; } }
   .zukan { margin-top: 14px; }
+  #weekly { height: 260px; margin-top: 8px; font-size: .82rem; line-height: 1.6; font-family: inherit; }
   .rank-row { display: grid; grid-template-columns: 8.5em 1fr 3em; gap: 8px; align-items: center; font-size: .82rem; margin: 3px 0; }
   .rank-who { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rank-bar { background: #e5ddc9; height: 14px; border: 1px solid var(--line); }
@@ -458,6 +459,11 @@ Implementation Intent: 役に立たないことに全力を注ぐ。単一HTML�
     <details class="zukan">
       <summary id="zukanTitle">差し戻し理由図鑑</summary>
       <ol id="zukanList"></ol>
+    </details>
+    <details class="zukan" id="weeklyBox">
+      <summary>週報を自動作成</summary>
+      <textarea id="weekly" readonly></textarea>
+      <div class="center"><button class="sub" id="weeklyCopy">コピーする</button></div>
     </details>
     <div class="center"><button class="sub" id="resetBtn">人事異動（記録を消去）</button></div>
   </section>
@@ -768,6 +774,7 @@ const ACHIEVEMENTS = [
   { id: 'ignorePhone',icon: '📵', name: '居留守',            desc: '電話に出なかった' },
   { id: 'watched',   icon: '👀', name: '背後の気配',         desc: '部長に背後から見られた' },
   { id: 'rules',     icon: '📖', name: '社内初の読了者',     desc: '稟議規程を最後まで読んだ' },
+  { id: 'weekly',    icon: '📰', name: '作文の達人',         desc: '何もしていない一週間を週報にした' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -1895,6 +1902,44 @@ function renderRules() {
   ).join('') + '<p class="note">附則　この規程は、誰も読まないことを前提として施行する。</p>';
 }
 
+/** 週報：何もしていないことを立派に見せる */
+function makeWeekly() {
+  const nm = ($('applicant').value.trim() || '山田').slice(0, 4);
+  const rank = rankOf(stats.docs).name;
+  const top = Object.entries(stats.byWho || {}).sort((a, b) => b[1] - a[1])[0];
+  const yen = Math.floor(stats.yen).toLocaleString();
+  return [
+    `【週報】稟議推進課 ${rank} ${nm}`,
+    `作成日：${fmtDate(state.date)}`,
+    '',
+    '■ 今週の成果',
+    `・稟議を累計${stats.docs}件起案し、組織の意思決定プロセスに積極的に関与した。`,
+    `・差し戻し${stats.rejects}件を通じて、多様なフィードバックを獲得した（承認${stats.approved}件）。`,
+    `・押印${stats.stamps}回により、ハンコ文化の継承に寄与した。`,
+    `・会議に${stats.meetings || 0}回出席し、結論を次回以降に持ち越すことに成功した。`,
+    stats.deskDocs ? `・決裁者として${stats.deskDocs}件を処理し、後工程への滞留を最適化した。` : '・決裁業務については、引き続き未決の山を維持した。',
+    '',
+    '■ 課題',
+    top ? `・${top[0]}による差し戻し（${top[1]}件）が多い。原因は調査中（調査の稟議を起案予定）。` : '・課題が見当たらないことが課題である。',
+    `・稟議に関連する人件費が累計${yen}円に達しているが、これは投資と捉えている。`,
+    stats.inkPad !== undefined && stats.inkPad < 15 ? `・朱肉の残量が少ない（残${Math.max(0, stats.inkPad)}回）。補充の稟議が必要だが朱肉が必要。` : '・朱肉の残量は十分である。',
+    '',
+    '■ 来週の予定',
+    '・引き続き、前例を踏襲しつつ前例のない稟議に挑戦する。',
+    '・根回しの順番を間違えないよう、根回しの根回しを行う。',
+    '・本週報の提出について、事前申請を行う。',
+    '',
+    '■ 所感',
+    pick([
+      '何も決まらなかったが、決まらなかったことが決まった有意義な一週間であった。',
+      '前進はしていないが、後退もしていない。これを安定と呼ぶ。',
+      '「ハンコは心なり」の社訓を胸に、心を朱肉に浸した一週間であった。',
+    ]),
+    '',
+    '以上',
+  ].join('\n');
+}
+
 /** 根回しUI */
 function renderNemawashi() {
   $('nemaGrid').innerHTML = '';
@@ -2955,6 +3000,18 @@ KINDS.forEach(k => {
   $('kind').appendChild(o);
 });
 $('submitBtn').addEventListener('click', submit);
+$('weeklyBox').addEventListener('toggle', () => {
+  if ($('weeklyBox').open) { $('weekly').value = makeWeekly(); unlock('weekly'); }
+});
+$('weeklyCopy').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($('weekly').value);
+    toast('📋 コピーしました', '提出には稟議が必要です');
+  } catch (e) {
+    $('weekly').select();
+    toast('📋 選択しました', 'Ctrl+Cでコピーしてください');
+  }
+});
 renderRules();
 $('ruleBtn').addEventListener('click', () => { $('ruleModal').classList.remove('hidden'); $('ruleBody').scrollTop = 0; });
 $('ruleClose').addEventListener('click', () => $('ruleModal').classList.add('hidden'));
