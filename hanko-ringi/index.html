@@ -736,6 +736,7 @@ const ACHIEVEMENTS = [
   { id: 'deadlock',  icon: '🔒', name: 'デッドロック',       desc: '朱肉がなくて朱肉の補充を申請できなかった' },
   { id: 'ai',        icon: '🤖', name: '生成AI活用（形だけ）', desc: 'AI稟議アシスタントに申請理由を書かせた' },
   { id: 'shred',     icon: '🗑️', name: '証拠隠滅',           desc: '稟議書をシュレッダーにかけた' },
+  { id: 'season',    icon: '🎏', name: '季節の風物詩',       desc: '社内暦の行事で差し戻された' },
   { id: 'million',   icon: '💸', name: '百万円の沈黙',       desc: '浪費した人件費が100万円を超えた' },
   { id: 'year',      icon: '🎍', name: '一年が過ぎた',       desc: '累計250営業日を稟議に費やした' },
   { id: 'hundred',   icon: '🗄️', name: '書類の山',           desc: '稟議を100件提出した' },
@@ -811,6 +812,29 @@ function rokuyo(d) {
 function updateClock() {
   const ng = stats.ng ? `（再就職${stats.ng}社目）` : '';
   $('clock').innerHTML = `社内暦: ${fmtDate(state.date)}【${rokuyo(state.date)}】<br>${rankOf(stats.docs).name}${ng}　稟議番号: 第${state.docNo}号`;
+}
+
+/** 社内暦の行事による差し戻し（該当しなければ null） */
+function seasonalBlock(d) {
+  const m = d.getMonth() + 1, day = d.getDate();
+  const somu = { role: '総務部', name: '' };
+  if (m === 8 && day >= 10 && day <= 18)
+    return { event: 'お盆期間中です。決裁者は全員帰省しています。', who: somu, reason: 'お盆休み中のため自動差し戻し（決裁者は実家で稟議の夢を見ています）', days: 5 };
+  if ((m === 12 && day >= 26) || (m === 1 && day <= 6))
+    return { event: '年末年始休業期間です。', who: somu, reason: '年末年始休業中。年明けに改めて申請すること（年明けは「年始の挨拶回り」で決裁者不在）', days: 6 };
+  if (m === 3 && day >= 20 && Math.random() < 0.7)
+    return { event: '年度末です。予算はすべて使い切られました（年度末の駆け込み購入により）。', who: { role: '経理部', name: '' }, reason: '今年度の予算残高が0円。来年度4月以降に再申請すること', days: 2 };
+  if (m === 4 && day === 1)
+    return { event: '本日はエイプリルフールです。', who: { role: '社長', name: '中村' }, reason: '「承認します」……と言ったら信じた？（嘘です。差し戻し）' };
+  if (m === 4 && stats.formYear !== d.getFullYear()) {
+    stats.formYear = d.getFullYear();
+    return { event: '新年度です。稟議書の様式が改訂されました。', who: somu, reason: `旧様式（${d.getFullYear() - 1}年度版）での申請は無効。新様式は現在作成中` };
+  }
+  if (m === 6 && Math.random() < 0.15)
+    return { event: '株主総会の準備期間です。', who: { role: '秘書室', name: '' }, reason: '役員が株主総会の想定問答（「稟議が遅い件について」）の作成で多忙' };
+  if (m === 10 && day >= 1 && day <= 7 && Math.random() < 0.3)
+    return { event: '人事異動の時期です。', who: somu, reason: '決裁ルート上の誰かが異動したため、決裁ルートを再設定中（再設定には稟議が必要）' };
+  return null;
 }
 
 /** 申請理由の添削（課長の趣味） */
@@ -1045,6 +1069,18 @@ async function submit() {
 
   // 退職届だけは異様に速い
   if (kind.resign) return resignFlow(cells);
+
+  // 季節の行事
+  const season = seasonalBlock(state.date);
+  if (season) {
+    await sleep(500);
+    log(`📅 ${season.event}`, 'sys');
+    await sleep(600);
+    advance(season.days || 1);
+    unlock('season');
+    await reject(season.who, season.reason);
+    return;
+  }
 
   // 申請者の印影チェック（係長が最初に目を光らせる）
   const myProblem = judgeMyStamp(my);
@@ -1394,7 +1430,7 @@ function faxSend() {
 }
 
 async function reject(ap, reason) {
-  log(`${ap.role} ${ap.name} により差し戻されました。理由：${reason}`, 'rej');
+  log(`${[ap.role, ap.name].filter(Boolean).join(' ')} により差し戻されました。理由：${reason}`, 'rej');
   collectReason(reason);
   stats.byWho = stats.byWho || {};
   const who = ap.role.replace('（あなた）', '（自分）');
