@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<!--
+AI Model: Claude Opus 5.5 (claude-opus-5-5)
+User Prompt: ノーベル化学賞受賞を記念して鏡像異性体を題材としたゲームを作ってください
+  （2026年ノーベル化学賞：硤合憲三氏・アンリ・カガン氏「不斉有機合成における非線形効果と自己触媒の発見」）
+AI Approach:
+  - 左に「お手本」の L-アラニン（S体）、右にランダムな向きの分子を Canvas で 3D 描画（回転行列＋透視投影＋奥行きソート）
+  - 右の分子が「同じもの（L体）」か「鏡像（D体）」かを判定する。ドラッグで両方の分子を自由に回せる
+  - 判定の結果をフラスコ内の「不斉自己触媒反応（硤合反応）」として表示。
+    正解すると L 体の種を少し加え、多数派の鏡像体が自分自身を増やす（生成比 r²:(1-r)² の非線形増幅）
+    誤答すると D 体が混入し、時間経過で触媒なしのラセミ体（1:1）が少しずつ生成されて ee を薄める
+  - 制限時間 90 秒以内に ee（鏡像体過剰率）99% の「ホモキラリティー」を達成すればクリア
+Implementation Intent:
+  - 「重ね合わせられない鏡像」という鏡像異性体の本質を、分子を回して確かめる体験で学べるようにする
+  - わずかな偏り（ee 2%）が自己触媒で一気にほぼ 100% まで増幅される、硤合反応の驚きをゲームとして体感する
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鏡像ラボ</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b24;
+    --panel-2: #1d2430;
+    --line: #2c3545;
+    --text: #e8edf5;
+    --muted: #8d99ab;
+    --l-color: #4da3ff;
+    --d-color: #ff8a3d;
+    --good: #3ddc97;
+    --bad: #ff5a6a;
+    --gold: #f4c95d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(ellipse at top, #18202d 0%, var(--bg) 60%);
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 12px 16px 24px; }
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: 0.05em; }
+  h1 span { color: var(--l-color); }
+  .sub { color: var(--muted); font-size: 12px; }
+
+  #hud { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+  .stat .k { font-size: 11px; color: var(--muted); }
+  .stat .v { font-size: 20px; font-weight: bold; font-variant-numeric: tabular-nums; }
+  #timeV.low { color: var(--bad); }
+
+  #mols { display: grid; grid-template-columns: 1fr 28px 1fr; gap: 0; align-items: stretch; }
+  .panel {
+    background: var(--panel); border: 2px solid var(--line); border-radius: 14px;
+    overflow: hidden; position: relative; transition: border-color .15s, box-shadow .15s;
+  }
+  .panel.ok { border-color: var(--good); box-shadow: 0 0 18px rgba(61,220,151,.45); }
+  .panel.ng { border-color: var(--bad); box-shadow: 0 0 18px rgba(255,90,106,.45); }
+  .ptitle { font-size: 12px; padding: 6px 10px; background: var(--panel-2); color: var(--muted); display: flex; justify-content: space-between; }
+  .ptitle b { color: var(--text); }
+  .panel canvas { display: block; width: 100%; height: 250px; touch-action: none; cursor: grab; }
+  .panel canvas:active { cursor: grabbing; }
+  .mirror { position: relative; display: flex; align-items: center; justify-content: center; }
+  .mirror::before {
+    content: ""; position: absolute; top: 8px; bottom: 8px; left: 50%; width: 2px; transform: translateX(-50%);
+    background: repeating-linear-gradient(to bottom, #9fb3cc 0 6px, transparent 6px 12px); opacity: .5;
+  }
+  .mirror span { position: relative; background: var(--bg); color: var(--muted); font-size: 12px; padding: 4px 0; writing-mode: vertical-rl; }
+
+  #controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 6px; }
+  #controls button {
+    font: inherit; font-size: 17px; font-weight: bold; padding: 14px 8px; border-radius: 12px;
+    border: 2px solid; cursor: pointer; color: var(--text); transition: transform .06s, filter .15s;
+  }
+  #controls button:active { transform: scale(.97); }
+  #controls button small { display: block; font-size: 11px; font-weight: normal; opacity: .8; margin-top: 2px; }
+  #btnSame { background: rgba(77,163,255,.15); border-color: var(--l-color); }
+  #btnMirror { background: rgba(255,138,61,.15); border-color: var(--d-color); }
+  #controls button:hover { filter: brightness(1.25); }
+  #msg { min-height: 22px; text-align: center; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+  #msg.ok { color: var(--good); }
+  #msg.ng { color: var(--bad); }
+
+  .flaskBox { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  #flask { display: block; width: 100%; height: 230px; }
+  .hint { color: var(--muted); font-size: 12px; text-align: center; margin-top: 10px; line-height: 1.6; }
+  kbd { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; font-size: 11px; }
+
+  #overlay {
+    position: fixed; inset: 0; background: rgba(5,8,12,.82); display: flex; align-items: center; justify-content: center;
+    padding: 16px; z-index: 10; backdrop-filter: blur(3px);
+  }
+  #overlay.hidden { display: none; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px 20px;
+    max-width: 560px; width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  }
+  .card h2 { margin: 0 0 4px; font-size: 24px; }
+  .card .nobel { color: var(--gold); font-size: 12px; margin-bottom: 12px; }
+  .card p, .card li { font-size: 14px; line-height: 1.7; }
+  .card ul { padding-left: 1.2em; margin: 8px 0; }
+  .card .note { background: var(--panel-2); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--muted); line-height: 1.7; }
+  .card .big { font-size: 40px; font-weight: bold; text-align: center; margin: 6px 0; }
+  .card .rank { text-align: center; font-size: 18px; color: var(--gold); margin-bottom: 10px; }
+  .card table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 14px; }
+  .card td { padding: 5px 4px; border-bottom: 1px solid var(--line); }
+  .card td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .card .start {
+    display: block; width: 100%; margin-top: 14px; font: inherit; font-size: 18px; font-weight: bold;
+    padding: 14px; border-radius: 12px; border: none; cursor: pointer; color: #08111c;
+    background: linear-gradient(90deg, var(--l-color), #7cc4ff);
+  }
+  .card .start:hover { filter: brightness(1.1); }
+  .l { color: var(--l-color); font-weight: bold; }
+  .d { color: var(--d-color); font-weight: bold; }
+
+  @media (max-width: 560px) {
+    h1 { font-size: 19px; }
+    #hud { grid-template-columns: repeat(2, 1fr); }
+    .stat .v { font-size: 17px; }
+    #mols { grid-template-columns: 1fr 18px 1fr; }
+    .panel canvas { height: 180px; }
+    .ptitle { font-size: 10px; padding: 5px 6px; flex-direction: column; }
+    #controls button { font-size: 15px; padding: 12px 4px; }
+    #flask { height: 200px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>鏡像<span>ラボ</span></h1>
+    <div class="sub">〜 キラル増幅チャレンジ ／ 2026年ノーベル化学賞記念 〜</div>
+  </header>
+
+  <section id="hud">
+    <div class="stat"><div class="k">残り時間</div><div class="v" id="timeV">90.0</div></div>
+    <div class="stat"><div class="k">ee（L体過剰率）</div><div class="v" id="eeV">+2.0%</div></div>
+    <div class="stat"><div class="k">連続正解</div><div class="v" id="streakV">0</div></div>
+    <div class="stat"><div class="k">正解 / 誤答</div><div class="v" id="scoreV">0 / 0</div></div>
+  </section>
+
+  <section id="mols">
+    <div class="panel" id="refPanel">
+      <div class="ptitle"><b>お手本：L-アラニン</b><span>ドラッグで回転</span></div>
+      <canvas id="ref"></canvas>
+    </div>
+    <div class="mirror"><span>鏡</span></div>
+    <div class="panel" id="candPanel">
+      <div class="ptitle"><b id="qTitle">判定する分子 #1</b><span>ドラッグで回転</span></div>
+      <canvas id="cand"></canvas>
+    </div>
+  </section>
+
+  <section id="controls">
+    <button id="btnSame">同じ（L体）<small>重ね合わせられる ／ ← A</small></button>
+    <button id="btnMirror">鏡像（D体）<small>重ね合わせられない ／ → D</small></button>
+  </section>
+  <div id="msg">右の分子を回して、お手本と重なるか確かめよう</div>
+
+  <div class="flaskBox"><canvas id="flask"></canvas></div>
+
+  <div class="hint">
+    正解するとフラスコ内の<b>多数派の鏡像体が自分自身を増やします</b>（不斉自己触媒）。<br>
+    誤答すると <span class="d">D体</span> が混入。放っておくと触媒なしの反応で 1:1 のラセミ体が増えていきます。
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="card" id="card"></div>
+</div>
+
+<script>
+// ===== 分子データ（アラニン：NH2 > COOH > CH3 > H の優先順位） =====
+const SUBS = [
+  { key: 'NH2',  label: 'NH₂',  color: '#3b72e8', r: 0.30, text: '#fff' },
+  { key: 'COOH', label: 'COOH', color: '#e0454f', r: 0.36, text: '#fff' },
+  { key: 'CH3',  label: 'CH₃',  color: '#6b7280', r: 0.32, text: '#fff' },
+  { key: 'H',    label: 'H',    color: '#e9edf2', r: 0.21, text: '#1b1f27' },
+];
+// 正四面体配置。H を奥（-z）に置き、手前の3つを NH2→COOH→CH3 の反時計回りに並べると S 体＝L-アラニン
+const BASE = (() => {
+  const s = Math.sqrt(8) / 3;
+  const a = [90, 210, 330].map(d => d * Math.PI / 180);
+  return [
+    [s * Math.cos(a[0]), s * Math.sin(a[0]), 1 / 3],
+    [s * Math.cos(a[1]), s * Math.sin(a[1]), 1 / 3],
+    [s * Math.cos(a[2]), s * Math.sin(a[2]), 1 / 3],
+    [0, 0, -1],
+  ];
+})();
+const BASE_MIRROR = BASE.map(([x, y, z]) => [-x, y, z]); // 鏡に映す＝x を反転
+
+// ===== 3x3 行列 =====
+function mul(a, b) {
+  const r = new Array(9);
+  for (let i = 0; i < 3; i++)
+    for (let j = 0; j < 3; j++)
+      r[i * 3 + j] = a[i * 3] * b[j] + a[i * 3 + 1] * b[3 + j] + a[i * 3 + 2] * b[6 + j];
+  return r;
+}
+function axisRot(ax, ay, az, t) {
+  const c = Math.cos(t), s = Math.sin(t), C = 1 - c;
+  return [
+    c + ax * ax * C, ax * ay * C - az * s, ax * az * C + ay * s,
+    ay * ax * C + az * s, c + ay * ay * C, ay * az * C - ax * s,
+    az * ax * C - ay * s, az * ay * C + ax * s, c + az * az * C,
+  ];
+}
+function apply(m, v) {
+  return [
+    m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
+    m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
+    m[6] * v[0] + m[7] * v[1] + m[8] * v[2],
+  ];
+}
+// 誤差の蓄積で歪まないよう行ベクトルを直交化
+function ortho(m) {
+  let a = [m[0], m[1], m[2]], b = [m[3], m[4], m[5]];
+  const n = v => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return v.map(x => x / l); };
+  a = n(a);
+  const d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  b = n([b[0] - d * a[0], b[1] - d * a[1], b[2] - d * a[2]]);
+  const c = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  return [...a, ...b, ...c];
+}
+// 一様ランダムな回転（Shoemake の方法）
+function randRot() {
+  const u1 = Math.random(), u2 = Math.random() * 2 * Math.PI, u3 = Math.random() * 2 * Math.PI;
+  const a = Math.sqrt(1 - u1), b = Math.sqrt(u1);
+  const x = a * Math.sin(u2), y = a * Math.cos(u2), z = b * Math.sin(u3), w = b * Math.cos(u3);
+  return [
+    1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w),
+    2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w),
+    2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y),
+  ];
+}
+function randAxis() {
+  const v = [Math.random() - .5, Math.random() - .5, Math.random() - .5];
+  const l = Math.hypot(...v) || 1;
+  return v.map(x => x / l);
+}
+
+// ===== Canvas =====
+const $ = id => document.getElementById(id);
+const refC = $('ref'), candC = $('cand'), flaskC = $('flask');
+const ctxs = new Map();
+function fit(c) {
+  const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  c.width = Math.round(r.width * d);
+  c.height = Math.round(r.height * d);
+  const ctx = c.getContext('2d');
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  c._w = r.width; c._h = r.height;
+  ctxs.set(c, ctx);
+}
+function fitAll() { [refC, candC, flaskC].forEach(fit); }
+window.addEventListener('resize', fitAll);
+
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = v => Math.max(0, Math.min(255, Math.round(v * (1 + amt))));
+  return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+}
+function ball(ctx, x, y, r, col, label, tc) {
+  const g = ctx.createRadialGradient(x - r * .35, y - r * .4, r * .08, x, y, r);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.28, col);
+  g.addColorStop(1, shade(col, -0.5));
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = tc;
+  ctx.font = `bold ${Math.max(9, r * 0.6)}px sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, x, y + 1);
+}
+function drawMol(c, mol) {
+  const ctx = ctxs.get(c), w = c._w, h = c._h;
+  ctx.clearRect(0, 0, w, h);
+  const sc = Math.min(w, h) * 0.30, cx = w / 2, cy = h / 2;
+  // 床の影
+  ctx.fillStyle = 'rgba(0,0,0,.25)';
+  ctx.beginPath(); ctx.ellipse(cx, cy + sc * 1.35, sc * 0.9, sc * 0.16, 0, 0, Math.PI * 2); ctx.fill();
+
+  const base = mol.mirror ? BASE_MIRROR : BASE;
+  const items = base.map((p, i) => {
+    const v = apply(mol.M, p), f = 3.2 / (3.2 - v[2]);
+    return { i, x: cx + v[0] * sc * f, y: cy - v[1] * sc * f, z: v[2], f };
+  });
+  items.push({ i: -1, x: cx, y: cy, z: 0, f: 1 });
+  items.sort((a, b) => a.z - b.z);
+  for (const it of items) {
+    if (it.i < 0) { ball(ctx, cx, cy, sc * 0.22, '#3a404c', 'C', '#fff'); continue; }
+    const s = SUBS[it.i];
+    ctx.strokeStyle = 'rgba(190,198,212,.9)';
+    ctx.lineWidth = sc * 0.1 * it.f; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(it.x, it.y); ctx.stroke();
+    ball(ctx, it.x, it.y, sc * s.r * it.f, s.color, s.label, s.text);
+  }
+}
+
+// ===== 分子オブジェクトとドラッグ回転 =====
+function makeMol(mirror, M) {
+  return { mirror, M, axis: randAxis(), speed: 0.45, drag: false, lastDrag: -1e9, px: 0, py: 0 };
+}
+const refMol = makeMol(false, randRot());
+let candMol = makeMol(false, randRot());
+
+function bindDrag(c, getMol) {
+  c.addEventListener('pointerdown', e => {
+    const m = getMol(); m.drag = true; m.px = e.clientX; m.py = e.clientY;
+    c.setPointerCapture(e.pointerId);
+  });
+  c.addEventListener('pointermove', e => {
+    const m = getMol(); if (!m.drag) return;
+    const dx = e.clientX - m.px, dy = e.clientY - m.py;
+    m.px = e.clientX; m.py = e.clientY;
+    // 右ドラッグで手前が右へ、下ドラッグで上が手前へ
+    const R = mul(axisRot(0, 1, 0, dx * 0.012), axisRot(1, 0, 0, dy * 0.012));
+    m.M = ortho(mul(R, m.M));
+    m.lastDrag = performance.now();
+  });
+  const end = () => { const m = getMol(); m.drag = false; m.lastDrag = performance.now(); };
+  c.addEventListener('pointerup', end);
+  c.addEventListener('pointercancel', end);
+}
+bindDrag(refC, () => refMol);
+bindDrag(candC, () => candMol);
+
+// ===== サウンド =====
+let actx = null;
+function beep(f, d, type = 'sine', v = 0.07) {
+  if (!actx) return;
+  const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
+  o.type = type; o.frequency.value = f;
+  g.gain.setValueAtTime(v, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g).connect(actx.destination);
+  o.start(t); o.stop(t + d);
+}
+
+// ===== ゲーム状態 =====
+const TIME_LIMIT = 90;
+const GOAL_EE = 0.99;
+const RACEMIC_RATE = 0.001;  // 触媒なし反応（ラセミ体）の生成速度：全量に対する割合/秒
+let G = null;
+
+function newGame() {
+  G = {
+    running: true, time: TIME_LIMIT,
+    L: 51, D: 49,           // 最初はわずか ee 2% の偏り
+    streak: 0, maxStreak: 0, correct: 0, wrong: 0, q: 0,
+    eeHistory: [],
+  };
+  nextQuestion();
+  setMsg('右の分子を回して、お手本と重なるか確かめよう', '');
+}
+function ee() { return (G.L - G.D) / (G.L + G.D); }
+
+function nextQuestion() {
+  G.q++;
+  candMol = makeMol(Math.random() < 0.5, randRot());
+  candMol.speed = Math.min(1.4, 0.45 + G.correct * 0.035);
+  $('qTitle').textContent = `判定する分子 #${G.q}`;
+}
+
+function answer(saysSame) {
+  if (!G || !G.running) return;
+  const isSame = !candMol.mirror;
+  const ok = saysSame === isSame;
+  let total = G.L + G.D;
+  if (ok) {
+    G.streak++; G.correct++;
+    G.maxStreak = Math.max(G.maxStreak, G.streak);
+    // 正しく見分けた L 体を「種」として少し加えてから自己触媒反応を進める
+    G.L += total * 0.03;
+    total = G.L + G.D;
+    // 不斉自己触媒：生成物 n を r² : (1-r)² の比で配分（多数派ほど有利＝非線形増幅）
+    const burst = 0.5 + 0.06 * Math.min(G.streak, 8);
+    const r = G.L / total;
+    const share = r * r / (r * r + (1 - r) * (1 - r));
+    G.L += total * burst * share;
+    G.D += total * burst * (1 - share);
+    flashPanel('ok');
+    floatText(`自己触媒！ ×${(1 + burst).toFixed(2)}`, '#3ddc97');
+    setMsg(`正解！ それは ${isSame ? 'L体（お手本と同じ）' : 'D体（鏡像）'} でした`, 'ok');
+    const base = 520 + Math.min(G.streak, 10) * 40;
+    beep(base, .1, 'triangle'); setTimeout(() => beep(base * 1.5, .14, 'triangle'), 60);
+  } else {
+    G.streak = 0; G.wrong++;
+    G.D += total * 0.03;
+    flashPanel('ng');
+    floatText('D体が混入！', '#ff5a6a');
+    setMsg(`残念… それは ${isSame ? 'L体（お手本と同じ）' : 'D体（鏡像）'} でした`, 'ng');
+    beep(150, .3, 'sawtooth', 0.06);
+  }
+  updateHud();
+  if (ee() >= GOAL_EE) { endGame(true); return; }
+  nextQuestion();
+}
+
+function flashPanel(cls) {
+  const p = $('candPanel');
+  p.classList.remove('ok', 'ng'); void p.offsetWidth; p.classList.add(cls);
+  clearTimeout(flashPanel.t);
+  flashPanel.t = setTimeout(() => p.classList.remove('ok', 'ng'), 350);
+}
+function setMsg(t, cls) { const m = $('msg'); m.textContent = t; m.className = cls; }
+
+function updateHud() {
+  const e = ee() * 100;
+  $('timeV').textContent = Math.max(0, G.time).toFixed(1);
+  $('timeV').classList.toggle('low', G.time < 15);
+  $('eeV').textContent = (e >= 0 ? '+' : '') + e.toFixed(1) + '%';
+  $('eeV').style.color = e >= 0 ? 'var(--l-color)' : 'var(--d-color)';
+  $('streakV').textContent = G.streak;
+  $('scoreV').textContent = `${G.correct} / ${G.wrong}`;
+}
+
+// ===== フラスコの粒子 =====
+const N_PART = 240;
+const parts = [];
+for (let i = 0; i < N_PART; i++) {
+  const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * 0.92;
+  parts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, vx: 0, vy: 0, L: i % 2 === 0, glow: 0 });
+}
+const floats = [];
+function floatText(text, color) { floats.length = 0; floats.push({ text, color, life: 1.2, y: 0 }); }
+
+function updateParticles(dt) {
+  for (const p of parts) {
+    p.vx += (Math.random() - .5) * 2.4 * dt; p.vy += (Math.random() - .5) * 2.4 * dt;
+    p.vx *= 0.96; p.vy *= 0.96;
+    p.x += p.vx * dt * 3; p.y += p.vy * dt * 3;
+    const d = Math.hypot(p.x, p.y);
+    if (d > 0.92) { p.x *= 0.92 / d; p.y *= 0.92 / d; p.vx *= -0.5; p.vy *= -0.5; }
+    p.glow = Math.max(0, p.glow - dt * 1.5);
+  }
+  if (!G) return;
+  // 粒子の色を実際の L:D 比に少しずつ近づける（変換アニメーション）
+  const target = Math.round(N_PART * G.L / (G.L + G.D));
+  let nL = parts.reduce((s, p) => s + (p.L ? 1 : 0), 0);
+  let steps = Math.ceil(Math.abs(target - nL) * 0.12);
+  while (steps-- > 0 && nL !== target) {
+    const want = nL < target; // true なら D→L に変換
+    const cands = parts.filter(p => p.L !== want);
+    const p = cands[Math.floor(Math.random() * cands.length)];
+    p.L = want; p.glow = 1; nL += want ? 1 : -1;
+  }
+}
+
+function drawFlask() {
+  const ctx = ctxs.get(flaskC), w = flaskC._w, h = flaskC._h;
+  ctx.clearRect(0, 0, w, h);
+  const R = Math.min(h * 0.36, w * 0.2);
+  const fx = R + 22, fy = h * 0.6;
+
+  // 首
+  const nw = R * 0.42;
+  ctx.fillStyle = 'rgba(160,190,220,.08)';
+  ctx.strokeStyle = 'rgba(180,205,230,.55)'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(fx - nw / 2, fy - R * 0.92); ctx.lineTo(fx - nw / 2, fy - R * 1.5);
+  ctx.moveTo(fx + nw / 2, fy - R * 0.92); ctx.lineTo(fx + nw / 2, fy - R * 1.5);
+  ctx.stroke();
+  // 本体
+  const e = G ? ee() : 0.02;
+  const lg = ctx.createRadialGradient(fx, fy, R * 0.1, fx, fy, R);
+  const tint = e >= 0 ? '77,163,255' : '255,138,61';
+  lg.addColorStop(0, `rgba(${tint},${0.05 + Math.abs(e) * 0.22})`);
+  lg.addColorStop(1, 'rgba(20,30,45,.4)');
+  ctx.fillStyle = lg;
+  ctx.beginPath(); ctx.arc(fx, fy, R, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // 粒子
+  for (const p of parts) {
+    const x = fx + p.x * R, y = fy + p.y * R;
+    const col = p.L ? '#4da3ff' : '#ff8a3d';
+    if (p.glow > 0) {
+      ctx.fillStyle = p.L ? `rgba(77,163,255,${p.glow * 0.5})` : `rgba(255,138,61,${p.glow * 0.5})`;
+      ctx.beginPath(); ctx.arc(x, y, 3 + p.glow * 5, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(x, y, Math.max(2, R * 0.032), 0, Math.PI * 2); ctx.fill();
+  }
+  // ハイライト
+  ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(fx, fy, R * 0.82, Math.PI * 1.1, Math.PI * 1.4); ctx.stroke();
+
+  // 浮かぶテキスト
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const f of floats) {
+    ctx.globalAlpha = Math.min(1, f.life);
+    ctx.fillStyle = f.color;
+    ctx.font = `bold ${Math.max(13, R * 0.2)}px sans-serif`;
+    ctx.fillText(f.text, fx, fy - R * 1.2 - f.y);
+  }
+  ctx.globalAlpha = 1;
+
+  // ===== メーター =====
+  const mx = fx + R + 28, mw = w - mx - 20;
+  if (mw < 80) return;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#8d99ab'; ctx.font = '12px sans-serif';
+  ctx.fillText('鏡像体過剰率 ee', mx, h * 0.17);
+  const eP = e * 100;
+  ctx.fillStyle = e >= 0 ? '#4da3ff' : '#ff8a3d';
+  ctx.font = `bold ${Math.min(38, mw * 0.17)}px sans-serif`;
+  ctx.fillText(`${eP >= 0 ? '+' : ''}${eP.toFixed(1)}%`, mx, h * 0.17 + Math.min(40, mw * 0.18));
+
+  // バー（-100% 〜 +100%）
+  const by = h * 0.52, bh = 16, cxm = mx + mw / 2;
+  ctx.fillStyle = '#1d2430';
+  ctx.fillRect(mx, by, mw, bh);
+  const len = (mw / 2) * Math.abs(e);
+  ctx.fillStyle = e >= 0 ? '#4da3ff' : '#ff8a3d';
+  if (e >= 0) ctx.fillRect(cxm, by, len, bh); else ctx.fillRect(cxm - len, by, len, bh);
+  ctx.fillStyle = '#e8edf5'; ctx.fillRect(cxm - 1, by - 4, 2, bh + 8);
+  const gx = cxm + (mw / 2) * GOAL_EE;
+  ctx.fillStyle = '#f4c95d'; ctx.fillRect(gx - 1, by - 6, 2, bh + 12);
+  ctx.font = '11px sans-serif'; ctx.fillStyle = '#8d99ab';
+  ctx.textAlign = 'left'; ctx.fillText('D体', mx, by + bh + 16);
+  ctx.textAlign = 'center'; ctx.fillText('ラセミ', cxm, by + bh + 16);
+  ctx.textAlign = 'right'; ctx.fillStyle = '#f4c95d'; ctx.fillText('目標99%', mx + mw, by - 10);
+  ctx.fillStyle = '#8d99ab'; ctx.fillText('L体', mx + mw, by + bh + 16);
+
+  // 比率
+  if (G) {
+    const lp = G.L / (G.L + G.D) * 100;
+    ctx.textAlign = 'left'; ctx.font = '13px sans-serif';
+    ctx.fillStyle = '#4da3ff'; ctx.fillText(`● L体 ${lp.toFixed(2)}%`, mx, h * 0.86);
+    ctx.fillStyle = '#ff8a3d'; ctx.fillText(`● D体 ${(100 - lp).toFixed(2)}%`, mx + Math.min(150, mw * 0.5), h * 0.86);
+  }
+}
+
+// ===== 画面（スタート／結果） =====
+function showStart() {
+  $('card').innerHTML = `
+    <h2>鏡像ラボ</h2>
+    <div class="nobel">🏅 2026年ノーベル化学賞 硤合憲三 氏・アンリ・B・カガン 氏<br>「不斉有機合成における非線形効果と自己触媒の発見」受賞記念</div>
+    <p>右手と左手のように、鏡に映すとそっくりなのに<b>どう回しても重ね合わせられない</b>分子のペアを<b>鏡像異性体</b>といいます。
+    生き物のアミノ酸はほぼすべて <span class="l">L体</span>。でも普通に合成すると <span class="l">L</span> と <span class="d">D</span> が 1:1 の「ラセミ体」になってしまいます。</p>
+    <ul>
+      <li>右に出てくる分子が、お手本の <span class="l">L-アラニン</span> と<b>同じ</b>か<b>鏡像</b>かを判定しよう</li>
+      <li>分子は<b>ドラッグで回せます</b>。同じ色の玉が同じ位置にくるよう回せたら「同じ」</li>
+      <li>正解するとフラスコの中で<b>多数派が自分を増やす</b>自己触媒反応が進みます</li>
+      <li>最初の偏りはたったの ee 2%。<b>90秒以内に ee 99%</b> まで増幅できればクリア！</li>
+    </ul>
+    <div class="note">操作：<kbd>←</kbd>/<kbd>A</kbd> 同じ（L体）　<kbd>→</kbd>/<kbd>D</kbd> 鏡像（D体）<br>
+    コツ：一番奥の <b>H</b> を奥に向けたとき、NH₂ → COOH → CH₃ が反時計回りなら L-アラニン（S体）です。</div>
+    <button class="start" id="startBtn">実験開始</button>`;
+  $('overlay').classList.remove('hidden');
+  $('startBtn').onclick = start;
+}
+
+function start() {
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; } }
+  $('overlay').classList.add('hidden');
+  newGame();
+  updateHud();
+}
+
+function endGame(win) {
+  G.running = false;
+  const used = TIME_LIMIT - Math.max(0, G.time);
+  const e = ee() * 100;
+  let best = null;
+  try { best = parseFloat(localStorage.getItem('kyozoLabBest')); } catch (_) {}
+  let newBest = false;
+  if (win && (!best || used < best)) {
+    newBest = true; best = used;
+    try { localStorage.setItem('kyozoLabBest', String(used)); } catch (_) {}
+  }
+  let rank;
+  if (win) {
+    rank = used < 30 ? '🏅 ノーベル賞級の不斉増幅！' : used < 45 ? '🥇 不斉合成マスター' : used < 65 ? '🥈 一人前の研究者' : '🥉 ギリギリ達成！';
+    beep(523, .15); setTimeout(() => beep(659, .15), 120); setTimeout(() => beep(784, .15), 240); setTimeout(() => beep(1047, .3), 360);
+  } else {
+    rank = e > 80 ? 'あと一歩！ホモキラリティー目前' : e > 30 ? 'L体が優勢に…でも時間切れ' : e > 0 ? 'ほぼラセミ体の海…' : 'D体の世界になってしまった！';
+    beep(300, .2, 'triangle'); setTimeout(() => beep(220, .4, 'triangle'), 160);
+  }
+  const acc = G.correct + G.wrong ? Math.round(G.correct / (G.correct + G.wrong) * 100) : 0;
+  $('card').innerHTML = `
+    <h2>${win ? 'ホモキラリティー達成！' : '時間切れ'}</h2>
+    <div class="big" style="color:${win ? 'var(--good)' : 'var(--muted)'}">${win ? used.toFixed(1) + ' 秒' : (e >= 0 ? '+' : '') + e.toFixed(1) + '%'}</div>
+    <div class="rank">${rank}${newBest ? '<br><small>ベスト記録更新！</small>' : ''}</div>
+    <table>
+      <tr><td>最終 ee</td><td>${(e >= 0 ? '+' : '') + e.toFixed(2)}%</td></tr>
+      <tr><td>正解 / 誤答（正答率）</td><td>${G.correct} / ${G.wrong}（${acc}%）</td></tr>
+      <tr><td>最高連続正解</td><td>${G.maxStreak}</td></tr>
+      <tr><td>ベストクリアタイム</td><td>${best ? best.toFixed(1) + ' 秒' : '—'}</td></tr>
+    </table>
+    <div class="note">
+      <b>硤合反応とは？</b><br>
+      1995年に硤合憲三氏が報告した反応では、生成物の分子そのものが「自分と同じ形の分子」を作る触媒になります（不斉自己触媒）。
+      のちに、ee がわずか 0.00005% ほどの偏りからでも、反応を繰り返すと 99.5% 以上まで増幅されることが示されました。
+      カガン氏は、触媒の純度と生成物の純度が比例しない「非線形効果」を発見。
+      ふたりの発見は、生命の分子がなぜ片方の鏡像体だけでできているのか（ホモキラリティーの起源）を考える手がかりになり、医薬品の合成にも役立っています。
+    </div>
+    <button class="start" id="startBtn">もう一度実験する</button>`;
+  $('overlay').classList.remove('hidden');
+  $('startBtn').onclick = start;
+}
+
+// ===== 入力 =====
+$('btnSame').addEventListener('click', () => answer(true));
+$('btnMirror').addEventListener('click', () => answer(false));
+window.addEventListener('keydown', e => {
+  if (!$('overlay').classList.contains('hidden')) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('startBtn')?.click(); }
+    return;
+  }
+  if (e.repeat) return;
+  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') answer(true);
+  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') answer(false);
+});
+
+// ===== メインループ =====
+function spin(mol, dt, now) {
+  if (mol.drag || now - mol.lastDrag < 1800) return;
+  mol.M = ortho(mul(axisRot(...mol.axis, mol.speed * dt), mol.M));
+}
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  spin(refMol, dt, now);
+  spin(candMol, dt, now);
+  if (G && G.running) {
+    G.time -= dt;
+    // 触媒なしの反応：L と D が 1:1 で生成され ee を薄める
+    const add = (G.L + G.D) * RACEMIC_RATE * dt;
+    G.L += add / 2; G.D += add / 2;
+    updateHud();
+    if (G.time <= 0) { G.time = 0; updateHud(); endGame(false); }
+  }
+  for (const f of floats) { f.life -= dt; f.y += dt * 30; }
+  while (floats.length && floats[0].life <= 0) floats.shift();
+  updateParticles(dt);
+  drawMol(refC, refMol);
+  drawMol(candC, candMol);
+  drawFlask();
+  requestAnimationFrame(loop);
+}
+
+fitAll();
+showStart();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
