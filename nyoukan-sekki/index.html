@@ -126,6 +126,9 @@ const W = 420, H = 700;
 const MM = 3;              // 1mm を何pxで描くか
 const GAME_MIN_PER_SEC = 12; // 実時間1秒 = ゲーム内12分
 const TIME_LIMIT_MIN = 72 * 60;
+// 体の図(ワールド座標)を画面左側 290px 幅に収める変換
+const VIEW = { k: 0.8, ox: 145 - 212 * 0.8, oy: 24 };
+const toScreen = (x, y) => [VIEW.ox + x * VIEW.k, VIEW.oy + y * VIEW.k];
 
 function resize() {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -147,14 +150,14 @@ function lerpColor(a, b, t, alpha = 1) {
 const CP = [
   { x: 120, y: 135, w: 16 },                       // 0 腎盂(奥)
   { x: 150, y: 150, w: 13 },                       // 1
-  { x: 178, y: 172, w: 9 },                        // 2
-  { x: 192, y: 198, w: 4.6, name: '腎盂尿管移行部' }, // 3 狭窄①
-  { x: 196, y: 240, w: 6.2 },                      // 4
-  { x: 184, y: 284, w: 6.2 },                      // 5
-  { x: 171, y: 320, w: 4.3, name: '総腸骨動脈交差部' }, // 6 狭窄②
-  { x: 166, y: 370, w: 6.2 },                      // 7
-  { x: 172, y: 420, w: 6.2 },                      // 8
-  { x: 182, y: 462, w: 3.9, name: '尿管膀胱移行部' }, // 9 狭窄③
+  { x: 160, y: 176, w: 9 },                        // 2
+  { x: 168, y: 206, w: 4.6, name: '腎盂尿管移行部' }, // 3 狭窄①
+  { x: 166, y: 248, w: 6.2 },                      // 4
+  { x: 160, y: 292, w: 6.2 },                      // 5
+  { x: 150, y: 341, w: 4.3, name: '総腸骨動脈交差部' }, // 6 狭窄②
+  { x: 152, y: 388, w: 6.2 },                      // 7
+  { x: 162, y: 428, w: 6.2 },                      // 8
+  { x: 178, y: 463, w: 3.9, name: '尿管膀胱移行部' }, // 9 狭窄③
   { x: 194, y: 492, w: 8 },                        // 10 膀胱入口
   { x: 212, y: 530, w: 30 },                       // 11 膀胱内
   { x: 212, y: 556, w: 7 },                        // 12 膀胱頸部
@@ -258,6 +261,7 @@ function reset() {
 
 function log(text) { st.logs.push({ text, t: st.time }); if (st.logs.length > 6) st.logs.shift(); }
 function float(text, x, y, color = '#c0392b', size = 16) { floats.push({ text, x, y, color, size, life: 1.4 }); }
+function wfloat(text, x, y, color, size) { const [sx, sy] = toScreen(x, y); float(text, sx, sy, color, size); }
 
 // ===== アクション =====
 const ACTIONS = {
@@ -347,17 +351,17 @@ function update(dt) {
       if (!n.warned && st.s > n.s - 30) { n.warned = true; log(`⚠ ${n.num}${n.name}(狭い所)に差しかかった！`); }
       if (!n.passed && st.s > n.s + 18) {
         n.passed = true; log(`✨ ${n.num}${n.name}を突破！`);
-        float('突破！', n.x + 10, n.y - 10, '#27ae60', 18); SFX.pass();
+        wfloat('突破！', n.x + 10, n.y - 10, '#27ae60', 18); SFX.pass();
       }
     }
     // 疝痛発作
     if (blk > 0.7 && Math.random() < 0.12 * dt) {
       st.pain += 20; st.shake = 0.6; log('⚡ 疝痛発作！！ 背中から脇腹に激痛が…'); SFX.pain();
-      float('ズキーン!!', 120, 70, '#e74c3c', 20);
+      wfloat('ズキーン!!', 112, 20, '#e74c3c', 20);
     }
     if (st.s >= S_ENTRY) {
       st.phase = 1; log('🎉 膀胱に到着！痛みが引いていく…あとはトイレで押し出そう');
-      float('膀胱に到着！', 212, 470, '#27ae60', 18); SFX.pass();
+      wfloat('膀胱に到着！', 212, 470, '#27ae60', 18); SFX.pass();
     }
   } else {
     st.P = Math.max(0, st.P - 20 * dt);
@@ -380,7 +384,7 @@ function update(dt) {
       if (st.phase === 1 && st.s >= S_NECK) { st.phase = 2; log('石が尿道へ…！あと少し！'); }
       if (st.s >= TOTAL) {
         st.phase = 3; st.s = TOTAL; st.outY = 0; st.outVy = -60; st.endTimer = 2.2;
-        log('🎊 コロン…！ 石が出た！！！'); float('コロン♪', 250, 640, '#27ae60', 22); SFX.win();
+        log('🎊 コロン…！ 石が出た！！！'); wfloat('コロン♪', 260, 640, '#27ae60', 22); SFX.win();
       }
     }
     if (Math.random() < 0.9) uparts.push({ s: S_NECK, o: rand(-1, 1) });
@@ -451,7 +455,7 @@ function updateParticles(dt, U) {
   }
   uparts = uparts.filter(p => !p.dead);
   for (const d of drops) { d.vy += 500 * dt; d.x += d.vx * dt; d.y += d.vy * dt; }
-  drops = drops.filter(d => d.y < H);
+  drops = drops.filter(d => d.y < 820);
   for (const f of floats) { f.life -= dt; f.y -= 22 * dt; }
   floats = floats.filter(f => f.life > 0);
 }
@@ -459,27 +463,99 @@ function updateParticles(dt, U) {
 // ===== 描画 =====
 function urineColor(alpha = 1) { return lerpColor('#fff3a6', '#dc9a1e', 1 - st.H / 100, alpha); }
 
+// 胴体のシルエット(みぞおち〜太もも)。ワールド座標で正中線 x=212、左半分を定義して鏡写し
+const BODY_LEFT = [[40, -40], [44, 150], [58, 300], [36, 480], [40, 600], [64, 800]];
 function drawBody() {
-  ctx.fillStyle = '#f7e4d4'; ctx.strokeStyle = '#e6c8ae'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.roundRect(26, 26, 266, 624, 70); ctx.fill(); ctx.stroke();
-  // 背骨っぽいライン
-  ctx.strokeStyle = 'rgba(200,170,140,.35)'; ctx.lineWidth = 14; ctx.setLineDash([10, 6]);
-  ctx.beginPath(); ctx.moveTo(60, 60); ctx.lineTo(60, 420); ctx.stroke(); ctx.setLineDash([]);
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(BODY_LEFT[0][0], BODY_LEFT[0][1]);
+  for (let i = 1; i < BODY_LEFT.length - 1; i++) {
+    const [x, y] = BODY_LEFT[i], [nx, ny] = BODY_LEFT[i + 1];
+    ctx.quadraticCurveTo(x, y, (x + nx) / 2, (y + ny) / 2);
+  }
+  ctx.lineTo(64, 800); ctx.lineTo(198, 800); ctx.lineTo(204, 672);
+  ctx.quadraticCurveTo(212, 652, 220, 672); ctx.lineTo(226, 800); ctx.lineTo(360, 800);
+  for (let i = BODY_LEFT.length - 2; i > 0; i--) {
+    const [x, y] = BODY_LEFT[i], [px, py] = BODY_LEFT[i - 1];
+    ctx.quadraticCurveTo(424 - x, y, (848 - x - px) / 2, (y + py) / 2);
+  }
+  ctx.lineTo(424 - BODY_LEFT[0][0], BODY_LEFT[0][1]);
+  ctx.closePath();
+  ctx.fillStyle = '#f7e1cf'; ctx.fill();
+  ctx.strokeStyle = '#d9b394'; ctx.lineWidth = 4; ctx.stroke();
+
+  // 骨格の目印(うっすら)
+  ctx.strokeStyle = 'rgba(170,140,110,.35)'; ctx.fillStyle = 'rgba(170,140,110,.12)';
+  // 背骨(腰椎)
+  for (let y = -30; y < 470; y += 34) {
+    ctx.beginPath(); ctx.roundRect(198, y, 28, 26, 6); ctx.fill(); ctx.stroke();
+  }
+  // 肋骨の下縁(腎臓の上半分は肋骨に守られている)
+  ctx.lineWidth = 6;
+  for (const s of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(212 + s * 8, 40); ctx.quadraticCurveTo(212 + s * 110, 70, 212 + s * 160, 175); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(212 + s * 40, -30); ctx.quadraticCurveTo(212 + s * 130, 0, 212 + s * 165, 95); ctx.stroke();
+  }
+  // 骨盤(腸骨・恥骨)
+  ctx.lineWidth = 5;
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(212 + s * 18, 430);
+    ctx.quadraticCurveTo(212 + s * 120, 330, 212 + s * 162, 400);
+    ctx.quadraticCurveTo(212 + s * 150, 470, 212 + s * 120, 530);
+    ctx.quadraticCurveTo(212 + s * 80, 590, 212 + s * 6, 590);
+    ctx.fill(); ctx.stroke();
+  }
+  // へそ
+  ctx.strokeStyle = 'rgba(190,140,110,.7)'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.ellipse(212, 330, 4, 7, 0, 0, Math.PI * 2); ctx.stroke();
+
+  ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(150,115,90,.8)';
+  ctx.fillText('肋骨', 342, 40);
+  ctx.fillText('背骨', 262, -12);
+  ctx.fillText('へそ', 236, 352);
+  ctx.fillText('骨盤', 352, 470);
+  ctx.fillText('太もも', 130, 760);
 }
 
 function drawVessels() {
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = '#d64545'; ctx.lineWidth = 11;
-  ctx.beginPath(); ctx.moveTo(120, 300); ctx.quadraticCurveTo(200, 330, 282, 372); ctx.stroke();
-  ctx.strokeStyle = '#4a6fc9'; ctx.lineWidth = 9;
-  ctx.beginPath(); ctx.moveTo(116, 318); ctx.quadraticCurveTo(196, 348, 282, 392); ctx.stroke();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  // 下大静脈 → 総腸骨静脈
+  ctx.strokeStyle = 'rgba(74,111,201,.8)'; ctx.lineWidth = 10;
+  ctx.beginPath(); ctx.moveTo(228, -40); ctx.lineTo(228, 296);
+  ctx.lineTo(146, 376); ctx.lineTo(128, 430);
+  ctx.moveTo(228, 296); ctx.lineTo(310, 376); ctx.lineTo(326, 430); ctx.stroke();
+  // 腹部大動脈 → 総腸骨動脈 (左の尿管と(150,341)付近で交差)
+  ctx.strokeStyle = 'rgba(214,69,69,.9)'; ctx.lineWidth = 12;
+  ctx.beginPath(); ctx.moveTo(206, -40); ctx.lineTo(212, 282);
+  ctx.lineTo(130, 360); ctx.lineTo(112, 420);
+  ctx.moveTo(212, 282); ctx.lineTo(294, 360); ctx.lineTo(312, 420); ctx.stroke();
 }
 
-function drawKidney() {
-  const sc = 1 + st.P / 350;
+// 反対側(石のない方)の腎臓と尿管。左右対称に薄く描く
+function drawOtherSide() {
+  ctx.save();
+  ctx.globalAlpha = 0.45;
+  ctx.translate(424, 0); ctx.scale(-1, 1);
+  drawKidney(0);
+  drawCalyces('#fff3c8', 0);
+  ctx.lineCap = 'round';
+  for (let pass = 0; pass < 2; pass++) {
+    ctx.strokeStyle = pass === 0 ? '#c97878' : '#fff3c8';
+    for (let i = 0; i < cpIdx[10]; i++) {
+      const a = PATH[i], b = PATH[i + 1];
+      ctx.lineWidth = pass === 0 ? a.w * MM + 7 : a.w * MM;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawKidney(P = st.P) {
+  const sc = 1 + P / 350;
   ctx.save();
   ctx.translate(112, 140); ctx.rotate(-0.15); ctx.scale(sc, sc);
-  ctx.fillStyle = lerpColor('#b85a4e', '#e8322a', st.P / 100);
+  ctx.fillStyle = lerpColor('#b85a4e', '#e8322a', P / 100);
   ctx.strokeStyle = '#7a3028'; ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(0, -80);
@@ -513,8 +589,8 @@ function drawTube(i0, i1, lumen, upstreamDilate) {
   }
 }
 
-function drawCalyces(lumen) {
-  const dil = 1 + (st.phase === 0 ? st.P / 150 : 0);
+function drawCalyces(lumen, P = st.phase === 0 ? st.P : 0) {
+  const dil = 1 + P / 150;
   const cups = [[92, 88], [80, 140], [95, 192]];
   for (let pass = 0; pass < 2; pass++) {
     ctx.strokeStyle = pass === 0 ? '#c97878' : lumen;
@@ -582,38 +658,38 @@ function drawStone() {
 function drawPainEffects() {
   if (st.felt < 40) return;
   const n = Math.floor((st.felt - 40) / 12) + 1;
-  ctx.font = '20px sans-serif'; ctx.textAlign = 'center';
+  ctx.font = '24px sans-serif'; ctx.textAlign = 'center';
   for (let i = 0; i < n; i++) {
     const a = st.time * 2 + i * 2.1;
     const x = 112 + Math.cos(a) * (70 + rand(-4, 4)), y = 140 + Math.sin(a) * (90 + rand(-4, 4));
     ctx.fillText('⚡', x, y);
   }
   if (st.felt > 70) {
-    ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = '#c0392b';
+    ctx.font = 'bold 19px sans-serif'; ctx.fillStyle = '#c0392b';
     ctx.fillText(st.felt > 88 ? 'ぐあああ!!' : 'いたたた…', 112 + rand(-2, 2), 42 + rand(-2, 2));
   }
 }
 
 function drawLabels(bl) {
-  ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#7a4a3a';
-  ctx.fillText('腎臓', 60, 236);
-  ctx.fillText('尿管', 150, 262);
+  ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#7a4a3a';
+  ctx.fillText('腎臓', 84, 266);
+  ctx.fillText('尿管', 128, 300);
   ctx.fillText('膀胱', 132, 548);
   ctx.fillText('尿道', 246, 612);
-  ctx.font = '10px sans-serif'; ctx.fillStyle = '#b03a3a';
-  ctx.fillText('総腸骨動脈', 112, 296);
+  ctx.font = '12px sans-serif'; ctx.fillStyle = '#b03a3a';
+  ctx.fillText('総腸骨動脈', 96, 440);
   // 狭窄部マーカー
   for (const n of st.narrows) {
     ctx.fillStyle = n.passed ? '#27ae60' : '#d35400';
-    ctx.font = 'bold 15px sans-serif';
-    ctx.fillText(n.num, n.x + 24, n.y + 5);
+    ctx.font = 'bold 19px sans-serif';
+    ctx.fillText(n.num, n.x + 28, n.y + 6);
   }
 }
 
 function drawToilet() {
   if (st.peeT > 0 || st.phase === 3) {
-    ctx.font = '30px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('🚽', 212, 690);
+    ctx.font = '40px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('🚽', 212, 790);
   }
 }
 
@@ -695,9 +771,11 @@ function render() {
   ctx.save();
   ctx.beginPath(); ctx.rect(0, 0, 290, 652); ctx.clip();
   ctx.translate(rand(-sh, sh), jy + rand(-sh, sh));
+  ctx.translate(VIEW.ox, VIEW.oy); ctx.scale(VIEW.k, VIEW.k);
 
   drawBody();
   drawVessels();
+  drawOtherSide();
   drawKidney();
   const lumen = urineColor(1);
   drawCalyces(lumen);
@@ -711,8 +789,12 @@ function render() {
   ctx.restore();
 
   // 体の外(排出後・トイレ)は揺らさない
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, 290, 652); ctx.clip();
+  ctx.translate(VIEW.ox, VIEW.oy); ctx.scale(VIEW.k, VIEW.k);
   drawToilet();
   if (st.phase === 3) drawStone();
+  ctx.restore();
   for (const f of floats) {
     ctx.globalAlpha = clamp(f.life, 0, 1);
     ctx.fillStyle = f.color; ctx.font = `bold ${f.size}px sans-serif`; ctx.textAlign = 'center';
