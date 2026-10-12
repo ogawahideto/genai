@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<!--
+AI Model: Claude Opus 5.5
+User Prompt: 人体を右斜め前から見た立体描画バージョンも欲しい
+  (元の依頼: 腎臓から尿管、膀胱、尿道を通して結石を流すゲーム。水・薬・ジャンプで流しやすくし、
+  時間とともに腎臓に尿がたまって激痛、石の成長、状態が悪いと破砕やステント手術に)
+AI Approach: 外部ライブラリなしの生WebGLで人体を3Dメッシュ化し、右斜め前(患者の右前方)からのカメラで描画。
+  - ゲームロジックは nyoukan-sekki と共通。尿路の各制御点に奥行き(Z)を与え、2Dの経路長はそのまま表示だけ立体化
+    (腎盂は後方、尿管は大腰筋の前を下り総腸骨動脈の前を横切り、膀胱・前立腺・陰茎へと前方へ向かう)
+  - 管(血管・尿管・肋骨・筋)は平行移動フレームで断面リングを押し出して生成、腎臓は球を変形したそら豆形、
+    腸骨は2本の曲線間を張った曲面、結石はトゲを持つ変形球
+  - フラグメントシェーダーで拡散+鏡面+リムライト、値ノイズによる骨・臓器の質感、筋線維の縞
+  - 皮膚・尿路・膀胱はフレネル付き半透明で、内部の尿の流れと結石が透けて見える
+  - 不透明→半透明(奥から手前)の順で描画。HUD・ラベル・疝痛エフェクトは2Dオーバーレイに投影して描画
+  - ドラッグ/矢印キーで視点回転、ダブルクリック/Rで右斜め前に戻す
+Implementation Intent: 腎臓・尿管・膀胱・尿道の前後関係(後腹膜の腎臓から前方の膀胱・陰茎へ)を立体的に理解しながら
+  遊べる教育的ゲーム。※ゲームであり医療アドバイスではありません。
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>尿管結石 排石大作戦 -3D-</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #05070a;
+  color: #e8f0f8;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", sans-serif;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+}
+#wrap { width: 100%; max-width: 460px; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+canvas {
+  width: 100%; height: auto; display: block;
+  border-radius: 10px; background: #0c0d12;
+  box-shadow: 0 0 0 1px #1e2a38, 0 8px 30px rgba(0,0,0,.7);
+}
+#controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.btn {
+  position: relative; overflow: hidden; border: 1px solid #263445; border-radius: 8px;
+  padding: 9px 4px 7px; font-size: 14px; font-weight: bold; color: #e8f0f8;
+  cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  background: linear-gradient(#18222e, #0f161f); font-family: inherit;
+  border-top: 3px solid var(--c);
+}
+.btn:active { transform: translateY(1px); filter: brightness(1.2); }
+.btn small { display: block; font-size: 10px; font-weight: normal; color: #8fa0b4; margin-top: 2px; }
+.btn .cd { position: absolute; left: 0; top: 0; height: 100%; width: 0; background: rgba(0,0,0,.6); pointer-events: none; }
+.b-water { --c: #4aa8ff; } .b-jump { --c: #3ddc84; } .b-toilet { --c: #f2c94c; }
+.b-pk { --c: #ff6a7a; } .b-alpha { --c: #a98bff; } .b-cit { --c: #ffa040; }
+#topbar { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 13px; color: #9fb0c4; }
+#topbar .title { font-weight: bold; color: #e8f0f8; letter-spacing: .05em; }
+#topbar .title b { color: #ff6a5a; }
+.tbtn { background: #111a24; border: 1px solid #2a3a4c; color: #cfe0f0; border-radius: 6px; padding: 3px 8px; cursor: pointer; font-size: 12px; font-family: inherit; }
+#overlay {
+  position: fixed; inset: 0; background: rgba(2,4,8,.88);
+  display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10;
+}
+.card {
+  background: linear-gradient(#121a24, #0b1017); border: 1px solid #22303f; border-radius: 12px; padding: 20px 18px;
+  max-width: 420px; width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,.7); line-height: 1.6;
+}
+.card h1 { font-size: 21px; text-align: center; margin-bottom: 8px; }
+.card h1 b { color: #ff6a5a; }
+.card h2 { font-size: 19px; text-align: center; margin-bottom: 8px; }
+.card .big { font-size: 52px; text-align: center; }
+.card p { font-size: 13.5px; margin: 6px 0; color: #cfdae6; }
+.card ul { font-size: 13px; margin: 6px 0 6px 18px; color: #cfdae6; }
+.card li { margin: 3px 0; }
+.card .note { font-size: 11.5px; color: #7f90a4; border-top: 1px solid #22303f; padding-top: 8px; margin-top: 10px; }
+.card .stats { background: #070b10; border: 1px solid #1c2633; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin: 8px 0; font-family: ui-monospace, Consolas, monospace; }
+.card .rank { text-align: center; font-size: 17px; color: #5ee39a; font-weight: bold; }
+.startBtn {
+  display: block; margin: 14px auto 4px; padding: 11px 32px; font-size: 16px; font-weight: bold;
+  border: 1px solid #ff8a7a; border-radius: 8px; background: linear-gradient(#d8443a, #9a2018); color: #fff;
+  cursor: pointer; font-family: inherit; letter-spacing: .05em;
+}
+#stage { position: relative; }
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 10px; }
+#game { position: relative; background: transparent !important; }
+#noGL { position: absolute; left: 10%; right: 40%; top: 40%; color: #ffb3a8; font-size: 13px; text-align: center; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="topbar">
+    <span class="title">尿管結石 排石大作戦 <b>-3D-</b></span>
+    <span>
+      <button class="tbtn" id="camBtn">↺ 視点</button>
+      <button class="tbtn" id="labelBtn">🏷 ラベルON</button>
+      <button class="tbtn" id="soundBtn">🔊 ON</button>
+    </span>
+  </div>
+  <div id="stage">
+    <canvas id="gl" width="420" height="740"></canvas>
+    <canvas id="game" width="420" height="740"></canvas>
+    <div id="noGL" class="hidden">この端末/ブラウザでは WebGL が使えないため、3D表示できません。</div>
+  </div>
+  <div id="controls">
+    <button class="btn b-water" data-act="water">💧 水を飲む<small>[W] 尿量を増やす</small><span class="cd"></span></button>
+    <button class="btn b-jump" data-act="jump">🦘 ジャンプ<small>[Space] 振動で排石</small><span class="cd"></span></button>
+    <button class="btn b-toilet" data-act="toilet">🚽 排尿<small>[T] 膀胱を空に</small><span class="cd"></span></button>
+    <button class="btn b-pk" data-act="pk">💊 NSAIDs<small>[1] 鎮痛</small><span class="cd"></span></button>
+    <button class="btn b-alpha" data-act="alpha">🌿 α1遮断薬<small>[2] 尿管弛緩</small><span class="cd"></span></button>
+    <button class="btn b-cit" data-act="cit">🍋 クエン酸製剤<small>[3] 結石の成長抑制</small><span class="cd"></span></button>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="card" id="startCard">
+    <h1>尿管結石 排石大作戦 <b>-3D-</b></h1>
+    <p>右の腎盂にできた結石(シュウ酸カルシウム)を、<b>腎盂 → 尿管 → 膀胱 → 尿道</b>と進めて体外へ排出しよう。</p>
+    <ul>
+      <li>💧 <b>水を飲む</b>:尿量が増えて石を押し流す。ただし閉塞中は腎盂内圧が上がり、激しい疝痛に…</li>
+      <li>🦘 <b>ジャンプ</b>:振動で石を動かし、狭い所を突破する。体力を消費</li>
+      <li>🚽 <b>排尿</b>:石が膀胱に落ちたら、<b>尿をためて勢いよく</b>押し出そう(男性の尿道は長い)</li>
+      <li>💊 <b>NSAIDs</b>:鎮痛 / 🌿 <b>α1遮断薬</b>:尿管平滑筋を弛緩 / 🍋 <b>クエン酸製剤</b>:結石の成長を抑制</li>
+    </ul>
+    <p>尿管には3つの<b>生理的狭窄部</b>(①腎盂尿管移行部 ②総腸骨動脈交差部 ③尿管膀胱移行部)があります。</p>
+    <p>⚠ 脱水で結石は成長します。水腎症が続くと発熱・<b>尿管ステント留置</b>、10mm超で<b>ESWL</b>、3日で出なければ<b>TUL</b>に。</p>
+    <p>🧍 人体を<b>右斜め前</b>から立体表示。<b>ドラッグ / ← →</b> で視点を回転、<b>ダブルクリック / [R]</b> で元に戻す。<b>[L]</b> でラベル表示切替。皮膚や尿路は半透明なので、石や尿の流れが透けて見えます。</p>
+    <button class="startBtn" id="startBtn">排石開始</button>
+    <p class="note">※これはゲームです。実際の症状・治療は必ず医師の指示に従ってください。発熱を伴う痛みや、我慢できない痛みはすぐに医療機関を受診してください。</p>
+  </div>
+  <div class="card hidden" id="endCard">
+    <div class="big" id="endEmoji"></div>
+    <h2 id="endTitle"></h2>
+    <p id="endText"></p>
+    <div class="rank" id="endRank"></div>
+    <div class="stats" id="endStats"></div>
+    <button class="startBtn" id="retryBtn">もう一度</button>
+    <p class="note">※これはゲームです。実際の症状・治療は必ず医師の指示に従ってください。</p>
+  </div>
+</div>
+
+<script>
+// ===== 基本設定 =====
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+const W = 420, H = 740;
+const SCENE_H = H - 44; // 体の図を描く高さ(下はログ欄)
+const MM = 3;              // 1mm を何pxで描くか
+const GAME_MIN_PER_SEC = 12; // 実時間1秒 = ゲーム内12分
+const TIME_LIMIT_MIN = 72 * 60;
+// 体の図(ワールド座標)を画面左側 290px 幅に収める変換
+const VIEW = { k: 0.95, ox: -21, oy: -9 }; // 石のある左半分＋右側を少し
+const toScreen = (x, y) => projectScreen(to3(x, y)); // 3D版: 尿路の奥行きを使って投影
+
+function resize() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = W * dpr; cv.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rand = (a, b) => a + Math.random() * (b - a);
+function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function lerpColor(a, b, t, alpha = 1) {
+  const A = hexToRgb(a), B = hexToRgb(b); t = clamp(t, 0, 1);
+  return `rgba(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')},${alpha})`;
+}
+
+// ===== 尿路の経路 (w = 内径mm) =====
+const CP = [
+  { x: 120, y: 135, w: 16 },                       // 0 腎盂(奥)
+  { x: 150, y: 150, w: 13 },                       // 1
+  { x: 160, y: 176, w: 9 },                        // 2
+  { x: 168, y: 206, w: 4.6, name: '腎盂尿管移行部' }, // 3 狭窄①
+  { x: 166, y: 248, w: 6.2 },                      // 4
+  { x: 160, y: 292, w: 6.2 },                      // 5
+  { x: 150, y: 341, w: 4.3, name: '総腸骨動脈交差部' }, // 6 狭窄②
+  { x: 152, y: 388, w: 6.2 },                      // 7
+  { x: 162, y: 428, w: 6.2 },                      // 8
+  { x: 178, y: 463, w: 3.9, name: '尿管膀胱移行部' }, // 9 狭窄③
+  { x: 194, y: 492, w: 8 },                        // 10 膀胱入口
+  { x: 212, y: 530, w: 30 },                       // 11 膀胱内
+  { x: 212, y: 556, w: 7 },                        // 12 膀胱頸部
+  { x: 212, y: 592, w: 6 },                        // 13 尿道(前立腺部)
+  { x: 212, y: 625, w: 6 },                        // 14 陰茎の付け根
+  { x: 212, y: 690, w: 6 },                        // 15 陰茎部
+  { x: 212, y: 722, w: 5.5 },                      // 16 外尿道口
+];
+const PATH = [], cpIdx = [];
+function catmull(a, b, c, d, t) {
+  const t2 = t * t, t3 = t2 * t;
+  return 0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+}
+(function buildPath() {
+  const n = CP.length;
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = CP[Math.max(0, i - 1)], p1 = CP[i], p2 = CP[i + 1], p3 = CP[Math.min(n - 1, i + 2)];
+    cpIdx[i] = PATH.length;
+    for (let k = 0; k < 16; k++) {
+      const t = k / 16;
+      PATH.push({
+        x: catmull(p0.x, p1.x, p2.x, p3.x, t),
+        y: catmull(p0.y, p1.y, p2.y, p3.y, t),
+        w: p1.w + (p2.w - p1.w) * t
+      });
+    }
+  }
+  PATH.push({ x: CP[n - 1].x, y: CP[n - 1].y, w: CP[n - 1].w });
+  cpIdx[n - 1] = PATH.length - 1;
+  PATH[0].s = 0;
+  for (let i = 1; i < PATH.length; i++) {
+    PATH[i].s = PATH[i - 1].s + Math.hypot(PATH[i].x - PATH[i - 1].x, PATH[i].y - PATH[i - 1].y);
+  }
+})();
+const TOTAL = PATH[PATH.length - 1].s;
+const cpS = cpIdx.map(i => PATH[i].s);
+const S_ENTRY = cpS[10], S_NECK = cpS[12];
+
+function sample(s) {
+  s = clamp(s, 0, TOTAL - 0.001);
+  let lo = 0, hi = PATH.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (PATH[m].s <= s) lo = m; else hi = m; }
+  const a = PATH[lo], b = PATH[hi], t = (s - a.s) / ((b.s - a.s) || 1);
+  return {
+    x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t,
+    w: a.w + (b.w - a.w) * t, ang: Math.atan2(b.y - a.y, b.x - a.x)
+  };
+}
+
+// ===== サウンド =====
+let AC = null, soundOn = true;
+function tone(f, d, type = 'sine', v = 0.08, f2 = null, delay = 0) {
+  if (!soundOn) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const t = AC.currentTime + delay;
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + d + 0.02);
+  } catch (e) { }
+}
+const SFX = {
+  water() { tone(500, 0.08, 'sine', 0.1, 250); tone(420, 0.08, 'sine', 0.1, 200, 0.1); },
+  jump() { tone(260, 0.2, 'square', 0.05, 620); },
+  pain() { tone(110, 0.35, 'sawtooth', 0.06, 70); },
+  pill() { tone(880, 0.06, 'triangle', 0.08); tone(1320, 0.08, 'triangle', 0.06, null, 0.07); },
+  pass() { [523, 659, 784].forEach((f, i) => tone(f, 0.15, 'triangle', 0.08, null, i * 0.09)); },
+  pee() { tone(900, 0.6, 'sine', 0.025, 600); },
+  win() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', 0.09, null, i * 0.12)); },
+  bad() { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.3, 'sawtooth', 0.05, null, i * 0.2)); },
+  no() { tone(180, 0.12, 'square', 0.04); }
+};
+
+// ===== ゲーム状態 =====
+const COOLDOWN = { water: 1.8, jump: 0.45, toilet: 0, pk: 50, alpha: 60, cit: 60 };
+let st, parts, uparts, drops, floats, running = false;
+
+function reset() {
+  st = {
+    time: 0, gmin: 8 * 60,
+    s: 8, d: rand(4.8, 6.0), rot: 0,
+    shape: Array.from({ length: 10 }, () => rand(0.72, 1.05)),
+    phase: 0, // 0:腎臓・尿管 1:膀胱 2:尿道 3:排出
+    H: 55, P: 0, pain: 0, felt: 0, B: 20, stamina: 100, danger: 0, U: 1,
+    blk: 0, moving: false,
+    pkT: 0, alphaT: 0, citT: 0, jumpT: 0, jumpAnim: 1,
+    peeT: 0, peeRate: 0, peePower: 0,
+    cd: { water: 0, jump: 0, toilet: 0, pk: 0, alpha: 0, cit: 0 },
+    shake: 0, outY: 0, outVy: 0, endTimer: 0,
+    logs: [], warnP: false, warnD: false, warnB: false,
+    narrows: [3, 6, 9].map((i, k) => ({ s: cpS[i], x: CP[i].x, y: CP[i].y, name: CP[i].name, num: '①②③'[k], warned: false, passed: false })),
+    stats: { water: 0, jump: 0, meds: 0, pee: 0, maxPain: 0, maxD: 0, maxDanger: 0 }
+  };
+  st.nextGrow = Math.ceil(st.d * 2) / 2 + 0.5;
+  st.stats.maxD = st.d;
+  parts = Array.from({ length: 45 }, () => ({ s: Math.random() * S_ENTRY, o: rand(-1, 1) }));
+  uparts = []; drops = []; floats = [];
+  log(`石(${st.d.toFixed(1)}mm)が腎盂から動き出した…！`);
+  log('💧水で尿を増やし、🦘ジャンプで石を揺らそう');
+}
+
+function log(text) { st.logs.push({ text, t: st.time }); if (st.logs.length > 6) st.logs.shift(); }
+function float(text, x, y, color = '#c0392b', size = 16) { floats.push({ text, x, y, color, size, life: 1.4 }); }
+function wfloat(text, x, y, color, size) { const [sx, sy] = toScreen(x, y); float(text, sx, sy, color, size); }
+
+// ===== アクション =====
+const ACTIONS = {
+  water() {
+    if (st.H >= 95) { log('もう飲めない…お腹がタプタプ'); st.B += 4; }
+    st.H = Math.min(100, st.H + 22);
+    st.stats.water++;
+    float('💧+', 270, 120, '#6ab8ff');
+    SFX.water();
+    return true;
+  },
+  jump() {
+    if (st.stamina < 14) { log('ヘトヘト…少し休もう'); SFX.no(); return false; }
+    st.stamina -= 14; st.jumpT = 0.5; st.jumpAnim = 0; st.stats.jump++;
+    if (st.phase === 0 && st.blk > 0.5) { st.pain += 6; st.shake = Math.max(st.shake, 0.3); }
+    SFX.jump();
+    return true;
+  },
+  toilet() {
+    if (st.peeT > 0) return false;
+    if (st.B < 25) { log('🚽 …まだ出そうにない'); SFX.no(); return false; }
+    const b0 = st.B;
+    st.peeT = 0.6 + b0 / 40; st.peeRate = b0 / st.peeT; st.stats.pee++;
+    if (st.phase === 1) {
+      if (b0 < 40) { st.peePower = 0; log('勢いが足りず石は動かない…膀胱にためてから！'); }
+      else { st.peePower = 25 + b0 * 0.5; log(b0 > 80 ? '🚽 満タンの勢いで一気に！' : '🚽 えいっ…！'); }
+    } else if (st.phase === 2) {
+      st.peePower = 25 + b0 * 0.5;
+    } else st.peePower = 0;
+    SFX.pee();
+    return true;
+  },
+  pk() { st.pkT = 30; st.stats.meds++; log('💊 鎮痛剤(NSAIDs)を飲んだ。痛みが和らぐ…'); SFX.pill(); return true; },
+  alpha() { st.alphaT = 40; st.stats.meds++; log('🌿 α遮断薬で尿管がゆるんだ！石が通りやすい'); SFX.pill(); return true; },
+  cit() { st.citT = 40; st.stats.meds++; log('🍋 クエン酸製剤で石の成長をストップ！'); SFX.pill(); return true; }
+};
+function act(name) {
+  if (!running || st.phase === 3) return;
+  if (st.cd[name] > 0) { SFX.no(); return; }
+  if (ACTIONS[name]()) st.cd[name] = COOLDOWN[name];
+}
+
+// ===== 更新 =====
+function update(dt) {
+  st.time += dt;
+  st.gmin += dt * GAME_MIN_PER_SEC;
+  for (const k in st.cd) st.cd[k] = Math.max(0, st.cd[k] - dt);
+  st.pkT = Math.max(0, st.pkT - dt);
+  st.alphaT = Math.max(0, st.alphaT - dt);
+  st.citT = Math.max(0, st.citT - dt);
+  st.jumpT = Math.max(0, st.jumpT - dt);
+  if (st.jumpAnim < 1) st.jumpAnim = Math.min(1, st.jumpAnim + dt / 0.5);
+  st.shake = Math.max(0, st.shake - dt);
+  st.stamina = clamp(st.stamina + (7 - st.felt * 0.04) * dt, 0, 100);
+  st.H = Math.max(0, st.H - 0.9 * dt);
+  const U = st.U = 0.25 + st.H / 100 * 1.5;
+
+  // 排出後の演出
+  if (st.phase === 3) {
+    st.outVy += 600 * dt; st.outY += st.outVy * dt;
+    st.endTimer -= dt;
+    updateParticles(dt, U);
+    if (st.endTimer <= 0) endGame('win');
+    return;
+  }
+
+  let blk = 0, moving = false;
+  if (st.phase === 0) {
+    // 腎臓・尿管
+    const wave = 1 + 0.06 * Math.sin(st.time * 3.2); // 蠕動運動
+    const w = sample(st.s).w * (st.alphaT > 0 ? 1.18 : 1) * wave;
+    const gap = st.d - w;
+    blk = clamp((st.d - w * 0.8) / (w * 0.4), 0, 1);
+    let force = U + st.P * 0.02 + (st.jumpT > 0 ? 2.6 : 0);
+    if (st.B > 90) force *= 0.6; // 膀胱パンパンで逆流気味
+    const res = gap > 0 ? gap * 3.0 : 0;
+    const net = force - res;
+    if (net > 0) {
+      const v = Math.min(30, net * 5.5 * (gap > 0 ? 0.5 : 1));
+      st.s += v * dt; st.rot += v * dt * 0.08;
+      moving = gap > -0.4;
+    }
+    st.P = clamp(st.P + (U * blk * 11 - (1 - blk) * 14 - 1) * dt, 0, 100);
+    st.B += U * 1.4 * (1 - blk * 0.85) * dt;
+
+    for (const n of st.narrows) {
+      if (!n.warned && st.s > n.s - 30) { n.warned = true; log(`⚠ ${n.num}${n.name}(狭い所)に差しかかった！`); }
+      if (!n.passed && st.s > n.s + 18) {
+        n.passed = true; log(`✨ ${n.num}${n.name}を突破！`);
+        wfloat('突破！', n.x + 10, n.y - 10, '#27ae60', 18); SFX.pass();
+      }
+    }
+    // 疝痛発作
+    if (blk > 0.7 && Math.random() < 0.12 * dt) {
+      st.pain += 20; st.shake = 0.6; log('⚡ 疝痛発作！！ 背中から脇腹に激痛が…'); SFX.pain();
+      wfloat('ズキーン!!', 150, 60, '#e74c3c', 20);
+    }
+    if (st.s >= S_ENTRY) {
+      st.phase = 1; log('🎉 膀胱に到着！痛みが引いていく…あとはトイレで押し出そう');
+      wfloat('膀胱に到着！', 212, 470, '#27ae60', 18); SFX.pass();
+    }
+  } else {
+    st.P = Math.max(0, st.P - 20 * dt);
+    st.B += U * 1.4 * dt;
+    if (st.phase === 1 && st.s < S_NECK - 2) { st.s = Math.min(S_NECK - 2, st.s + 30 * dt); st.rot += dt; }
+  }
+  st.blk = blk; st.moving = moving;
+
+  // 排尿
+  if (st.peeT > 0) {
+    st.peeT -= dt;
+    st.B = Math.max(0, st.B - st.peeRate * dt);
+    if (st.phase >= 1 && st.s >= S_NECK - 3 && st.peePower > 0) {
+      let v = st.peePower;
+      if (st.phase === 2) {
+        const g = st.d - sample(st.s).w;
+        if (g > 0) { v *= Math.max(0.2, 1 - g * 0.5); st.moving = true; }
+      }
+      st.s += v * dt; st.rot += v * dt * 0.1;
+      if (st.phase === 1 && st.s >= S_NECK) { st.phase = 2; log('石が尿道へ…！あと少し！'); }
+      if (st.s >= TOTAL) {
+        st.phase = 3; st.s = TOTAL; st.outY = 0; st.outVy = -60; st.endTimer = 2.2;
+        log('🎊 コロン…！ 石が出た！！！'); wfloat('コロン♪', 255, 715, '#27ae60', 22); SFX.win();
+      }
+    }
+    if (Math.random() < 0.9) uparts.push({ s: S_NECK, o: rand(-1, 1) });
+  }
+  if (st.B >= 100) {
+    st.B = 100;
+    if (!st.warnB) { st.warnB = true; log('🚽 膀胱がパンパン！トイレに行こう'); }
+  } else if (st.B < 85) st.warnB = false;
+
+  // 石の成長
+  let g = 0.0015;
+  if (st.H < 30) g += 0.02 * (30 - st.H) / 30;
+  if (st.citT > 0) g = -0.006;
+  st.d = Math.max(2.5, st.d + g * dt);
+  st.stats.maxD = Math.max(st.stats.maxD, st.d);
+  if (st.d >= st.nextGrow) {
+    st.nextGrow += 0.5; log(`😨 水分不足で石が成長…(${st.d.toFixed(1)}mm)`);
+    float('石が成長…', 260, 100, '#8e5a2b', 15);
+  }
+  if (st.H < 15 && Math.random() < 0.05 * dt) log('🥵 のどがカラカラ…尿が濃くなっている');
+
+  // 痛み
+  let target;
+  if (st.phase === 0) target = st.P * 0.8 + (moving ? 16 : 0) + (blk > 0.5 ? 8 * (1 + Math.sin(st.time * 1.7)) : 0);
+  else if (st.phase === 1) target = 8;
+  else target = 22 + (st.peeT > 0 ? 25 : 0);
+  if (st.B > 92) target += 15;
+  st.pain = clamp(st.pain + (target - st.pain) * Math.min(1, dt * 1.5), 0, 100);
+  st.felt = clamp(st.pain * (st.pkT > 0 ? 0.45 : 1), 0, 100);
+  st.stats.maxPain = Math.max(st.stats.maxPain, st.felt);
+
+  // 危険度
+  let dd = 0;
+  if (st.P > 70) dd += (st.P - 70) * 0.1;
+  if (st.felt > 85) dd += 1.2;
+  if (dd > 0) st.danger += dd * dt;
+  else if (st.P < 40) st.danger -= 0.4 * dt;
+  st.danger = clamp(st.danger, 0, 100);
+  st.stats.maxDanger = Math.max(st.stats.maxDanger, st.danger);
+
+  if (st.P > 70 && !st.warnP) { st.warnP = true; log('🔥 腎臓に尿がたまってパンパン！(水腎症)'); SFX.pain(); }
+  if (st.P < 50) st.warnP = false;
+  if (st.danger > 70 && !st.warnD) { st.warnD = true; log('🚨 このままだと緊急処置に…！鎮痛剤やα遮断薬を！'); }
+  if (st.danger < 55) st.warnD = false;
+
+  updateParticles(dt, U);
+
+  // 終了判定
+  if (st.danger >= 100) endGame('stent');
+  else if (st.d >= 10) endGame('eswl');
+  else if (st.gmin - 8 * 60 >= TIME_LIMIT_MIN) endGame('tul');
+}
+
+function updateParticles(dt, U) {
+  const R = st.d * MM / 2 + 3;
+  for (const p of parts) {
+    const prev = p.s;
+    p.s += U * 30 * dt;
+    if (st.phase === 0 && st.blk > 0.6 && prev < st.s && p.s >= st.s - R) p.s = st.s - R - Math.random() * 10;
+    if (p.s > S_ENTRY) { p.s = 0; p.o = rand(-1, 1); }
+  }
+  for (const p of uparts) {
+    p.s += 140 * dt;
+    if (p.s >= TOTAL) {
+      p.dead = true;
+      drops.push({ x: 212 + rand(-2, 2), y: CP[CP.length - 1].y + 2, vx: rand(-25, 25), vy: rand(40, 90) });
+    }
+  }
+  uparts = uparts.filter(p => !p.dead);
+  for (const d of drops) { d.vy += 500 * dt; d.x += d.vx * dt; d.y += d.vy * dt; }
+  drops = drops.filter(d => d.y < 820);
+  for (const f of floats) { f.life -= dt; f.y -= 22 * dt; }
+  floats = floats.filter(f => f.life > 0);
+}
+
+// ===== 3D描画 (WebGL・右斜め前から見た人体) =====
+let viewMode = 'anat';
+let showLabels = true;
+const SCENE_W = 290;
+
+// 尿路の奥行き(Z: 前方が+)。ゲームロジックは2Dの経路長のまま、表示だけ立体にする
+const CPZ = [-45, -40, -38, -38, -36, -30, -16, -18, -20, -5, 10, 22, 18, 30, 62, 76, 78];
+(function addDepth() {
+  for (let i = 0; i < CP.length - 1; i++) {
+    const z0 = CPZ[Math.max(0, i - 1)], z1 = CPZ[i], z2 = CPZ[i + 1], z3 = CPZ[Math.min(CP.length - 1, i + 2)];
+    for (let k = 0; k < 16; k++) PATH[cpIdx[i] + k].z = catmull(z0, z1, z2, z3, k / 16);
+  }
+  PATH[PATH.length - 1].z = CPZ[CPZ.length - 1];
+})();
+const P3 = p => [p.x - 212, -p.y, p.z];
+function sample3(s) {
+  s = clamp(s, 0, TOTAL - 0.001);
+  let lo = 0, hi = PATH.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (PATH[m].s <= s) lo = m; else hi = m; }
+  const a = PATH[lo], b = PATH[hi], t = (s - a.s) / ((b.s - a.s) || 1);
+  return [a.x + (b.x - a.x) * t - 212, -(a.y + (b.y - a.y) * t), a.z + (b.z - a.z) * t];
+}
+// 2D座標(ロジック側)→3D。近くの尿路の奥行きを借りる
+function to3(x, y) {
+  let best = null, bd = 900;
+  for (const p of PATH) { const d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < bd) { bd = d; best = p; } }
+  return [x - 212, -y, best ? best.z : 0];
+}
+
+// ---- ベクトル・行列 ----
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const scl = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const M4 = {
+  ident() { return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]); },
+  mul(a, b) {
+    const o = new Float32Array(16);
+    for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) {
+      let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k]; o[c * 4 + r] = s;
+    }
+    return o;
+  },
+  persp(fovy, asp, n, f) {
+    const t = 1 / Math.tan(fovy / 2);
+    return new Float32Array([t / asp, 0, 0, 0, 0, t, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0]);
+  },
+  lookAt(e, c, u) {
+    const z = norm(sub(e, c)), x = norm(cross(u, z)), y = cross(z, x);
+    return new Float32Array([x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -dot(x, e), -dot(y, e), -dot(z, e), 1]);
+  },
+  rx(a) { const c = Math.cos(a), s = Math.sin(a); return new Float32Array([1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1]); },
+  ry(a) { const c = Math.cos(a), s = Math.sin(a); return new Float32Array([c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]); },
+  rz(a) { const c = Math.cos(a), s = Math.sin(a); return new Float32Array([c, s, 0, 0, -s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]); },
+  // 拡大 → Z回転 → X回転 → Y回転 → 平行移動
+  model(t = [0, 0, 0], sc = [1, 1, 1], r = [0, 0, 0]) {
+    const T = M4.ident(); T[12] = t[0]; T[13] = t[1]; T[14] = t[2];
+    const S = M4.ident(); S[0] = sc[0]; S[5] = sc[1]; S[10] = sc[2];
+    return M4.mul(T, M4.mul(M4.ry(r[1]), M4.mul(M4.rx(r[0]), M4.mul(M4.rz(r[2]), S))));
+  },
+  // 法線行列(左上3x3の逆転置)
+  normalMat(m) {
+    const a = m[0], b = m[1], c = m[2], d = m[4], e = m[5], f = m[6], g = m[8], h = m[9], i = m[10];
+    const A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g;
+    const D = -(b * i - c * h), E = a * i - c * g, F = -(a * h - b * g);
+    const G = b * f - c * e, H = -(a * f - c * d), I = a * e - b * d;
+    const det = a * A + b * B + c * C || 1;
+    return new Float32Array([A / det, B / det, C / det, D / det, E / det, F / det, G / det, H / det, I / det]);
+  }
+};
+
+// ---- ジオメトリ生成 ----
+function newGeom() { return { pos: [], nor: [], uv: [], idx: [] }; }
+function sphereGeom(lat = 18, lon = 28, deform) {
+  const g = newGeom();
+  for (let i = 0; i <= lat; i++) {
+    const th = i / lat * Math.PI;
+    for (let j = 0; j <= lon; j++) {
+      const ph = j / lon * Math.PI * 2;
+      let p = [Math.sin(th) * Math.cos(ph), Math.cos(th), Math.sin(th) * Math.sin(ph)];
+      const n = p;
+      if (deform) p = deform(p);
+      g.pos.push(...p); g.nor.push(...n); g.uv.push(j / lon, i / lat);
+    }
+  }
+  for (let i = 0; i < lat; i++) for (let j = 0; j < lon; j++) {
+    const a = i * (lon + 1) + j, b = a + lon + 1;
+    g.idx.push(a, b, a + 1, b, b + 1, a + 1);
+  }
+  if (deform) computeNormals(g);
+  return g;
+}
+function computeNormals(g) {
+  const n = new Array(g.pos.length).fill(0);
+  for (let k = 0; k < g.idx.length; k += 3) {
+    const [i, j, l] = [g.idx[k] * 3, g.idx[k + 1] * 3, g.idx[k + 2] * 3];
+    const a = g.pos.slice(i, i + 3), b = g.pos.slice(j, j + 3), c = g.pos.slice(l, l + 3);
+    const fn = cross(sub(b, a), sub(c, a));
+    for (const v of [i, j, l]) { n[v] += fn[0]; n[v + 1] += fn[1]; n[v + 2] += fn[2]; }
+  }
+  for (let v = 0; v < n.length; v += 3) {
+    let nn = norm([n[v], n[v + 1], n[v + 2]]);
+    if (dot(nn, [g.pos[v], g.pos[v + 1], g.pos[v + 2]]) < 0) nn = scl(nn, -1); // 外向きにそろえる
+    g.nor[v] = nn[0]; g.nor[v + 1] = nn[1]; g.nor[v + 2] = nn[2];
+  }
+}
+// 管: pts[i]=[x,y,z]、rad[i]=半径 または [横半径, 縦半径]
+function tubeGeom(pts, rad, seg = 12, g = newGeom()) {
+  const base = g.pos.length / 3, n = pts.length;
+  let N = null;
+  let len = 0;
+  for (let i = 0; i < n; i++) {
+    const T = norm(sub(pts[Math.min(n - 1, i + 1)], pts[Math.max(0, i - 1)]));
+    if (!N) {
+      const ref = Math.abs(T[0]) < 0.9 ? [1, 0, 0] : [0, 0, 1];
+      N = norm(sub(ref, scl(T, dot(ref, T))));
+    } else N = norm(sub(N, scl(T, dot(N, T))));
+    const B = cross(T, N);
+    const r = rad[i], ra = Array.isArray(r) ? r[0] : r, rb = Array.isArray(r) ? r[1] : r;
+    if (i > 0) len += Math.hypot(...sub(pts[i], pts[i - 1]));
+    for (let j = 0; j <= seg; j++) {
+      const a = j / seg * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+      g.pos.push(...add(pts[i], add(scl(N, c * ra), scl(B, s * rb))));
+      g.nor.push(...norm(add(scl(N, c / ra), scl(B, s / rb))));
+      g.uv.push(j / seg, len);
+    }
+  }
+  for (let i = 0; i < n - 1; i++) for (let j = 0; j < seg; j++) {
+    const a = base + i * (seg + 1) + j, b = a + seg + 1;
+    g.idx.push(a, b, a + 1, b, b + 1, a + 1);
+  }
+  return g;
+}
+// 制御点を Catmull-Rom で細かくする (pts: [x,y,z,r])
+function smooth3(pts, seg = 8) {
+  const out = [], n = pts.length;
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(n - 1, i + 2)];
+    for (let k = 0; k < seg; k++) {
+      const t = k / seg;
+      out.push(p1.map((_, d) => d < 3 ? catmull(p0[d], p1[d], p2[d], p3[d], t) : p1[d] + (p2[d] - p1[d]) * t));
+    }
+  }
+  out.push(pts[n - 1]);
+  return out;
+}
+function tubeFrom(pts, seg = 12, g) {
+  const d = smooth3(pts);
+  return tubeGeom(d.map(p => p.slice(0, 3)), d.map(p => p.length > 4 ? [p[3], p[4]] : p[3]), seg, g);
+}
+function surfaceGeom(fn, nu, nv) {
+  const g = newGeom();
+  for (let i = 0; i <= nu; i++) for (let j = 0; j <= nv; j++) {
+    g.pos.push(...fn(i / nu, j / nv)); g.nor.push(0, 0, 1); g.uv.push(i / nu, j / nv);
+  }
+  for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
+    const a = i * (nv + 1) + j, b = a + nv + 1;
+    g.idx.push(a, b, a + 1, b, b + 1, a + 1);
+  }
+  // 面法線(向きはシェーダーで視線側に反転)
+  const n = new Array(g.pos.length).fill(0);
+  for (let k = 0; k < g.idx.length; k += 3) {
+    const [i, j, l] = [g.idx[k] * 3, g.idx[k + 1] * 3, g.idx[k + 2] * 3];
+    const fn2 = cross(sub(g.pos.slice(j, j + 3), g.pos.slice(i, i + 3)), sub(g.pos.slice(l, l + 3), g.pos.slice(i, i + 3)));
+    for (const v of [i, j, l]) { n[v] += fn2[0]; n[v + 1] += fn2[1]; n[v + 2] += fn2[2]; }
+  }
+  for (let v = 0; v < n.length; v += 3) { const nn = norm([n[v], n[v + 1], n[v + 2]]); g.nor[v] = nn[0]; g.nor[v + 1] = nn[1]; g.nor[v + 2] = nn[2]; }
+  return g;
+}
+function catmullPts(pts, t) {
+  const n = pts.length - 1, f = clamp(t, 0, 0.9999) * n, i = Math.floor(f), u = f - i;
+  const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(n, i + 2)];
+  return [0, 1, 2].map(d => catmull(p0[d], p1[d], p2[d], p3[d], u));
+}
+
+// ---- WebGL ----
+const glc = document.getElementById('gl');
+const gl = glc.getContext('webgl', { antialias: true, premultipliedAlpha: false });
+const VS = `
+attribute vec3 aPos; attribute vec3 aNor; attribute vec2 aUV;
+uniform mat4 uVP, uModel; uniform mat3 uNMat;
+varying vec3 vW; varying vec3 vN; varying vec2 vUV;
+void main(){ vec4 w = uModel * vec4(aPos, 1.0); vW = w.xyz; vN = uNMat * aNor; vUV = aUV; gl_Position = uVP * w; }`;
+const FS = `
+precision mediump float;
+varying vec3 vW; varying vec3 vN; varying vec2 vUV;
+uniform vec3 uColor, uEye, uEmis;
+uniform float uAlpha, uFres, uStripe, uNoise, uSpec, uShin, uBack;
+float hash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float vnoise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z); }
+void main(){
+  vec3 V = normalize(uEye - vW);
+  vec3 N = normalize(vN);
+  if (uBack > 0.5 && dot(N, V) < 0.0) discard;
+  if (dot(N, V) < 0.0) N = -N;
+  vec3 L1 = normalize(vec3(-0.45, 0.7, 0.55)), L2 = normalize(vec3(0.7, 0.1, 0.35));
+  float d1 = max(dot(N, L1), 0.0), d2 = max(dot(N, L2), 0.0);
+  vec3 base = uColor;
+  if (uNoise > 0.0) { float n = vnoise(vW * 0.12) * 0.55 + vnoise(vW * 0.5) * 0.45; base *= 1.0 - uNoise + uNoise * 1.5 * n; }
+  if (uStripe > 0.0) base *= 1.0 - uStripe * (0.5 + 0.5 * sin(vUV.x * 140.0 + vnoise(vW * 0.2) * 3.0));
+  vec3 H = normalize(L1 + V);
+  float sp = pow(max(dot(N, H), 0.0), uShin) * uSpec;
+  float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0);
+  vec3 col = base * (0.30 + 0.80 * d1 + 0.30 * d2) + vec3(sp) + uEmis + rim * 0.25 * base;
+  float a = uAlpha;
+  if (uFres > 0.0) a = clamp(uAlpha + uFres * rim, 0.0, 1.0);
+  gl_FragColor = vec4(col, a);
+}`;
+let prog, U = {}, A = {};
+function initGL() {
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+  gl.linkProgram(prog); gl.useProgram(prog);
+  for (const n of ['uVP', 'uModel', 'uNMat', 'uColor', 'uEye', 'uEmis', 'uAlpha', 'uFres', 'uStripe', 'uNoise', 'uSpec', 'uShin', 'uBack']) U[n] = gl.getUniformLocation(prog, n);
+  for (const n of ['aPos', 'aNor', 'aUV']) { A[n] = gl.getAttribLocation(prog, n); gl.enableVertexAttribArray(A[n]); }
+  gl.enable(gl.DEPTH_TEST);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+}
+function makeMesh(g, dynamic = false) {
+  const m = { dynamic, pb: gl.createBuffer(), nb: gl.createBuffer(), ub: gl.createBuffer(), ib: gl.createBuffer() };
+  uploadMesh(m, g);
+  return m;
+}
+function uploadMesh(m, g) {
+  const u = m.dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW;
+  gl.bindBuffer(gl.ARRAY_BUFFER, m.pb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(g.pos), u);
+  gl.bindBuffer(gl.ARRAY_BUFFER, m.nb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(g.nor), u);
+  gl.bindBuffer(gl.ARRAY_BUFFER, m.ub); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(g.uv), u);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(g.idx), u);
+  m.count = g.idx.length;
+}
+const MAT = (o) => Object.assign({ color: [1, 1, 1], alpha: 1, fres: 0, stripe: 0, noise: 0, spec: 0.25, shin: 24, emis: [0, 0, 0], back: 0 }, o);
+function drawMesh(m, mat, model = M4.ident()) {
+  gl.uniformMatrix4fv(U.uModel, false, model);
+  gl.uniformMatrix3fv(U.uNMat, false, M4.normalMat(model));
+  gl.uniform3fv(U.uColor, mat.color); gl.uniform3fv(U.uEmis, mat.emis);
+  gl.uniform1f(U.uAlpha, mat.alpha); gl.uniform1f(U.uFres, mat.fres); gl.uniform1f(U.uStripe, mat.stripe);
+  gl.uniform1f(U.uNoise, mat.noise); gl.uniform1f(U.uSpec, mat.spec); gl.uniform1f(U.uShin, mat.shin); gl.uniform1f(U.uBack, mat.back);
+  gl.bindBuffer(gl.ARRAY_BUFFER, m.pb); gl.vertexAttribPointer(A.aPos, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, m.nb); gl.vertexAttribPointer(A.aNor, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, m.ub); gl.vertexAttribPointer(A.aUV, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.ib);
+  gl.drawElements(gl.TRIANGLES, m.count, gl.UNSIGNED_SHORT, 0);
+}
+
+// ---- 材質 ----
+const C = {
+  bone: MAT({ color: [0.9, 0.85, 0.72], noise: 0.35, spec: 0.25, shin: 18 }),
+  disc: MAT({ color: [0.72, 0.8, 0.86], spec: 0.4, shin: 30 }),
+  muscle: MAT({ color: [0.62, 0.17, 0.13], stripe: 0.35, noise: 0.2, spec: 0.3, shin: 20 }),
+  artery: MAT({ color: [0.78, 0.12, 0.1], spec: 0.6, shin: 40 }),
+  vein: MAT({ color: [0.2, 0.3, 0.66], spec: 0.6, shin: 40 }),
+  kidney: MAT({ color: [0.6, 0.2, 0.15], noise: 0.25, spec: 0.7, shin: 50 }),
+  adrenal: MAT({ color: [0.88, 0.62, 0.22], noise: 0.4, spec: 0.3 }),
+  ureterOther: MAT({ color: [1.0, 0.86, 0.8], alpha: 0.85, spec: 0.5, shin: 40, emis: [0.12, 0.08, 0.06] }),
+  wall: MAT({ color: [1.0, 0.8, 0.76], alpha: 0.14, fres: 0.45, spec: 0.8, shin: 60, back: 1 }),
+  prostate: MAT({ color: [0.72, 0.42, 0.36], alpha: 0.55, noise: 0.35, spec: 0.3 }),
+  bladder: MAT({ color: [1.0, 0.66, 0.6], alpha: 0.16, fres: 0.55, spec: 0.8, shin: 60, back: 1, emis: [0.08, 0.03, 0.03] }),
+  penis: MAT({ color: [0.92, 0.7, 0.58], alpha: 0.18, fres: 0.6, spec: 0.3, back: 1 }),
+  glans: MAT({ color: [0.85, 0.48, 0.45], alpha: 0.3, fres: 0.5, spec: 0.5, back: 1 }),
+  skin: MAT({ color: [1.0, 0.82, 0.68], alpha: 0.035, fres: 0.85, spec: 0.25, back: 1, emis: [0.05, 0.03, 0.02] }),
+  stone: MAT({ color: [0.66, 0.5, 0.27], noise: 0.55, spec: 0.8, shin: 40 })
+};
+
+// ---- 解剖の静的メッシュ ----
+const opaque = [], glassy = [];
+function S(list, g, mat, model) { list.push({ m: makeMesh(g), mat, model: model || M4.ident() }); }
+function buildAnatomy3D() {
+  const sph = sphereGeom();
+  // 腰椎・椎間板・突起
+  for (let i = 0; i < 6; i++) {
+    const yc = -(-36 + i * 78 + 31), w = 25 + i * 1.6, z = -72 + 6 * Math.sin(i / 5 * Math.PI);
+    S(opaque, sph, C.bone, M4.model([0, yc, z], [w, 30, 21]));
+    if (i < 5) S(opaque, sph, C.disc, M4.model([0, yc - 39, z], [w, 7, 20]));
+    for (const s of [-1, 1]) S(opaque, tubeFrom([[s * 20, yc + 6, z - 12, 5], [s * 42, yc + 6, z - 16, 4.5], [s * 62, yc + 4, z - 18, 3]], 8), C.bone);
+    S(opaque, tubeFrom([[0, yc + 4, z - 18, 7], [0, yc - 2, z - 40, 6], [0, yc - 10, z - 52, 5]], 8), C.bone);
+  }
+  // 肋骨(10〜12番)
+  for (const s of [-1, 1]) for (const [y0, aEnd] of [[-80, 0.45], [-30, 0.2], [20, -0.35], [62, -0.75]]) {
+    const pts = [];
+    for (let k = 0; k <= 10; k++) {
+      const a = -1.48 + (aEnd + 1.48) * k / 10;
+      pts.push([s * 150 * Math.cos(a), -(y0 + 125 * k / 10), 95 * Math.sin(a) - 8, 5.5]);
+    }
+    S(opaque, tubeFrom(pts, 8), C.bone);
+  }
+  // 仙骨
+  S(opaque, tubeFrom([[0, -455, -84, 38, 14], [0, -500, -92, 28, 13], [0, -540, -100, 16, 10], [0, -565, -104, 7, 6]], 14), C.bone);
+  // 腸骨(翼状の面)・恥骨・坐骨・大腿骨
+  for (const s of [-1, 1]) {
+    const crest = [[s * 40, -370, -95], [s * 105, -342, -82], [s * 152, -362, -35], [s * 142, -432, 26]];
+    const brim = [[s * 30, -470, -86], [s * 58, -482, -62], [s * 82, -508, -22], [s * 96, -558, 8]];
+    S(opaque, surfaceGeom((u, v) => {
+      const c = catmullPts(crest, u), b = catmullPts(brim, u);
+      const p = lerp3(b, c, v);
+      return [p[0] + s * Math.sin(v * Math.PI) * 10, p[1], p[2]];
+    }, 18, 8), C.bone);
+    S(opaque, tubeFrom([[s * 30, -470, -86, 8], [s * 58, -482, -62, 7], [s * 82, -508, -22, 7], [s * 96, -558, 8, 9]], 10), C.bone);
+    S(opaque, tubeFrom([[s * 96, -560, 8, 8], [s * 52, -586, 40, 7], [s * 8, -600, 58, 7]], 10), C.bone);
+    S(opaque, tubeFrom([[s * 8, -606, 56, 7], [s * 30, -640, 34, 7], [s * 66, -642, -6, 8], [s * 96, -578, -6, 9]], 10), C.bone);
+    S(opaque, sph, C.bone, M4.model([s * 108, -565, 6], [21, 21, 21]));
+    S(opaque, tubeFrom([[s * 108, -565, 6, 11], [s * 140, -600, 0, 12], [s * 135, -700, 3, 12], [s * 124, -820, 6, 12]], 12), C.bone);
+  }
+  // 大腰筋
+  const PSOAS3 = [[192, 20, -62, 7], [182, 140, -62, 20], [168, 290, -58, 30], [150, 410, -50, 31], [126, 520, -32, 25], [112, 640, -15, 20]];
+  for (const s of [-1, 1]) {
+    S(opaque, tubeFrom(PSOAS3.map(([x, y, z, w]) => [s < 0 ? x - 212 : 212 - x, -y, z, w * 0.8, w * 0.62]), 16), C.muscle);
+  }
+  // 血管
+  const v2 = (pts, zs, rs, mirror = false) => pts.map(([x, y], i) => [mirror ? 212 - x : x - 212, -y, zs[i], rs[i]]);
+  const CIA = [[214, 282], [170, 320], [130, 360], [112, 420], [102, 520]], CIAz = [-38, -33, -28, -20, -5], CIAr = [7, 7, 6.5, 6, 5.5];
+  const CIV = [[202, 298], [160, 346], [128, 386], [110, 440], [100, 530]], CIVz = [-44, -38, -33, -26, -12], CIVr = [7.5, 7.5, 7, 6.5, 6];
+  S(opaque, tubeFrom([[6, -150, -46, 3.8], [-30, -138, -50, 3.8], [-62, -130, -48, 3.4]], 8), C.artery);
+  S(opaque, tubeFrom([[-14, 60, -38, 12], [-16, -150, -38, 12], [-10, -298, -42, 11]], 14), C.vein);
+  S(opaque, tubeFrom(v2(CIV, CIVz, CIVr), 10), C.vein);
+  S(opaque, tubeFrom(v2(CIV, CIVz, CIVr, true).map(p => [p[0] - 10, p[1], p[2], p[3]]), 10), C.vein);
+  S(opaque, tubeFrom([[10, 60, -42, 11], [8, -150, -42, 11], [2, -282, -38, 10]], 14), C.artery);
+  S(opaque, tubeFrom(v2(CIA, CIAz, CIAr), 10), C.artery);
+  S(opaque, tubeFrom(v2(CIA, CIAz, CIAr, true), 10), C.artery);
+  S(opaque, tubeFrom([[12, -140, -46, 3.8], [40, -125, -50, 3.8], [62, -118, -48, 3.4]], 8), C.artery);
+  S(opaque, tubeFrom([[-14, -168, -30, 5], [20, -160, -27, 5], [62, -132, -40, 4.5]], 8), C.vein);
+  S(opaque, tubeFrom([[-16, -158, -34, 5], [-40, -146, -38, 5], [-62, -144, -40, 4.5]], 8), C.vein);
+  // 左腎(石なし)・副腎・左尿管
+  S(opaque, beanGeom(true), C.kidney, M4.model([100, -128, -62], [48, 80, 28], [0, 0.5, -0.15]));
+  S(opaque, sph, C.adrenal, M4.model([88, -52, -58], [22, 9, 12], [0, 0, 0.4]));
+  S(opaque, sph, C.adrenal, M4.model([-88, -62, -58], [22, 9, 12], [0, 0, -0.4]));
+  const lu = [];
+  for (let i = 0; i <= cpIdx[10]; i += 2) { const p = PATH[i]; lu.push([212 - p.x, -p.y + (i < cpIdx[9] ? 12 * (1 - i / cpIdx[9]) : 0), p.z, p.w * MM / 2 + 2.5]); }
+  glassy.push({ m: makeMesh(tubeGeom(lu.map(p => p.slice(0, 3)), lu.map(p => p[3]), 10)), mat: C.ureterOther, model: M4.ident(), order: 0 });
+  // 陰茎・陰嚢・皮膚
+  glassy.push({ m: makeMesh(tubeFrom([[0, -598, 58, 20], [0, -650, 72, 21], [0, -700, 78, 21]], 18)), mat: C.penis, model: M4.ident(), order: 8 });
+  glassy.push({ m: makeMesh(sph), mat: C.glans, model: M4.model([0, -712, 79], [23, 20, 22]), order: 8 });
+  for (const s of [-1, 1]) glassy.push({ m: makeMesh(sph), mat: C.penis, model: M4.model([s * 17, -652, 46], [22, 27, 22]), order: 8 });
+  const torso = [];
+  const HW = [[-60, 172], [150, 168], [300, 154], [480, 176], [560, 170]], HD = [[-60, 104], [150, 98], [300, 92], [480, 98], [560, 88]];
+  const at = (tbl, y) => { for (let i = 0; i < tbl.length - 1; i++) if (y <= tbl[i + 1][0]) { const t = (y - tbl[i][0]) / (tbl[i + 1][0] - tbl[i][0]); return tbl[i][1] + (tbl[i + 1][1] - tbl[i][1]) * t; } return tbl[tbl.length - 1][1]; };
+  for (let y = -60; y <= 560; y += 20) torso.push([0, -y, -6, at(HW, y), at(HD, y)]);
+  glassy.push({ m: makeMesh(tubeGeom(torso.map(p => p.slice(0, 3)), torso.map(p => [p[3], p[4]]), 40)), mat: C.skin, model: M4.ident(), order: 9 });
+  for (const s of [-1, 1]) glassy.push({ m: makeMesh(tubeFrom([[s * 92, -540, -6, 84, 86], [s * 88, -660, -6, 76, 74], [s * 80, -840, -6, 62, 60]], 32)), mat: C.skin, model: M4.ident(), order: 9 });
+}
+// そら豆形の腎臓(内側=+X がくぼむ)
+function beanGeom(mirror) {
+  return sphereGeom(18, 28, ([x, y, z]) => {
+    const dent = 0.55 * Math.max(0, x) * Math.exp(-(y * y) / 0.14);
+    const px = x - dent;
+    return [mirror ? -px : px, y, z];
+  });
+}
+
+// ---- 動的メッシュ ----
+let dyn = {};
+function buildDynamic3D() {
+  dyn.kidney = makeMesh(beanGeom(false));
+  dyn.sphere = makeMesh(sphereGeom());
+  const spikes = Array.from({ length: 16 }, () => norm([rand(-1, 1), rand(-1, 1), rand(-1, 1)]));
+  dyn.stone = makeMesh(sphereGeom(14, 20, p => {
+    let r = 0.85 + 0.12 * Math.sin(p[0] * 7) * Math.cos(p[1] * 6) * Math.sin(p[2] * 5);
+    for (const d of spikes) r += 0.55 * Math.pow(Math.max(0, dot(p, d)), 60);
+    return scl(p, r);
+  }));
+  dyn.upperLumen = makeMesh(newGeom(), true); dyn.upperWall = makeMesh(newGeom(), true);
+  dyn.lowerLumen = makeMesh(newGeom(), true); dyn.lowerWall = makeMesh(newGeom(), true);
+  dyn.calyx = makeMesh(newGeom(), true);
+}
+const KID_C = [-100, -140, -62];
+function kidneyModel(sc) { return M4.model(KID_C, [48 * sc, 80 * sc, 28 * sc], [0, -0.5, 0.15]); }
+function urinaryGeoms(i0, i1, upstream) {
+  const pts = [], rl = [], rw = [];
+  for (let i = i0; i <= i1; i++) {
+    const a = PATH[i];
+    let w = a.w * (1 + 0.06 * Math.sin(a.s * 0.08 - st.time * 4));
+    if (upstream && st.phase === 0 && a.s < st.s) w *= 1 + st.P / 150;
+    if (st.alphaT > 0 && a.w < 10) w *= 1.12;
+    pts.push(P3(a)); rl.push(w * MM / 2); rw.push(w * MM / 2 + 3);
+  }
+  return [tubeGeom(pts, rl, 12), tubeGeom(pts, rw, 14)];
+}
+function updateDynamic3D() {
+  let [l, w] = urinaryGeoms(0, cpIdx[10], true);
+  uploadMesh(dyn.upperLumen, l); uploadMesh(dyn.upperWall, w);
+  [l, w] = urinaryGeoms(cpIdx[12], PATH.length - 1, false);
+  uploadMesh(dyn.lowerLumen, l); uploadMesh(dyn.lowerWall, w);
+  // 腎杯(水腎症で拡張)
+  const sc = 1 + st.P / 350, dil = 1 + (st.phase === 0 ? st.P / 120 : 0), g = newGeom();
+  const start = P3(PATH[0]);
+  for (const [cx, cy] of [[92, 88], [80, 140], [95, 192], [84, 116], [86, 168]]) {
+    const c = [cx - 212, -cy, -62];
+    const e = add(KID_C, scl(sub(c, KID_C), sc));
+    tubeFrom([[...start, 7 * dil], [...lerp3(start, e, 0.6), 4.5 * dil], [...e, 6 * dil]], 10, g);
+  }
+  uploadMesh(dyn.calyx, g);
+}
+
+// ---- カメラ ----
+const CAM0 = { yaw: -0.82, pitch: 0.1 };
+const cam = { yaw: CAM0.yaw, pitch: CAM0.pitch, dist: 1480, target: [-28, -372, -6] };
+let VP = M4.ident(), EYE = [0, 0, 1];
+function updateCamera(jumpY, shake) {
+  const cp = Math.cos(cam.pitch);
+  const t = [cam.target[0] + rand(-shake, shake), cam.target[1] - jumpY + rand(-shake, shake), cam.target[2]];
+  EYE = [t[0] + cam.dist * Math.sin(cam.yaw) * cp, t[1] + cam.dist * Math.sin(cam.pitch), t[2] + cam.dist * Math.cos(cam.yaw) * cp];
+  VP = M4.mul(M4.persp(0.52, SCENE_W / SCENE_H, 400, 3000), M4.lookAt(EYE, t, [0, 1, 0]));
+}
+function projectScreen(p) {
+  const m = VP, x = p[0], y = p[1], z = p[2];
+  const cx = m[0] * x + m[4] * y + m[8] * z + m[12], cy = m[1] * x + m[5] * y + m[9] * z + m[13], cw = m[3] * x + m[7] * y + m[11] * z + m[15];
+  return [(cx / cw * 0.5 + 0.5) * SCENE_W, (1 - (cy / cw * 0.5 + 0.5)) * SCENE_H];
+}
+// 視点のドラッグ操作
+(function setupDrag() {
+  let drag = null;
+  cv.style.touchAction = 'none';
+  cv.addEventListener('pointerdown', e => {
+    const r = cv.getBoundingClientRect();
+    if ((e.clientX - r.left) / r.width * W > SCENE_W) return;
+    drag = { x: e.clientX, y: e.clientY, yaw: cam.yaw, pitch: cam.pitch };
+    cv.setPointerCapture(e.pointerId);
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!drag) return;
+    cam.yaw = clamp(drag.yaw - (e.clientX - drag.x) * 0.008, -2.4, 2.4);
+    cam.pitch = clamp(drag.pitch + (e.clientY - drag.y) * 0.005, -0.5, 0.8);
+  });
+  const end = () => { drag = null; };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  cv.addEventListener('dblclick', () => resetCamera());
+})();
+function resetCamera() { cam.yaw = CAM0.yaw; cam.pitch = CAM0.pitch; }
+
+let glReady = false;
+function resizeGL() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  glc.width = W * dpr; glc.height = H * dpr;
+}
+function setupGL() {
+  if (!gl) { document.getElementById('noGL').classList.remove('hidden'); return; }
+  try {
+    initGL(); resizeGL(); buildAnatomy3D(); buildDynamic3D(); glReady = true;
+  } catch (e) {
+    console.error(e);
+    document.getElementById('noGL').classList.remove('hidden');
+  }
+  window.addEventListener('resize', resizeGL);
+}
+
+function renderGL(jumpY, shake) {
+  const dpr = glc.width / W;
+  gl.viewport(0, 0, glc.width, glc.height);
+  gl.clearColor(0.035, 0.04, 0.06, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.viewport(0, (H - SCENE_H) * dpr, SCENE_W * dpr, SCENE_H * dpr);
+  gl.enable(gl.SCISSOR_TEST); gl.scissor(0, (H - SCENE_H) * dpr, SCENE_W * dpr, SCENE_H * dpr);
+  gl.clearColor(0.06, 0.07, 0.1, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.disable(gl.SCISSOR_TEST);
+  updateCamera(jumpY, shake);
+  updateDynamic3D();
+  gl.useProgram(prog);
+  gl.uniformMatrix4fv(U.uVP, false, VP); gl.uniform3fv(U.uEye, EYE);
+
+  // 不透明
+  gl.disable(gl.BLEND); gl.depthMask(true);
+  for (const o of opaque) drawMesh(o.m, o.mat, o.model);
+  // 結石
+  let sp;
+  if (st.phase === 3) sp = [0, -(CP[CP.length - 1].y + st.outY), CPZ[CPZ.length - 1]];
+  else sp = sample3(st.s);
+  if (st.phase === 0 && st.blk > 0.5) sp = add(sp, [rand(-0.8, 0.8), rand(-0.8, 0.8), 0]);
+  const r = st.d * MM / 2 + 0.5;
+  drawMesh(dyn.stone, C.stone, M4.model(sp, [r, r, r], [st.rot, st.rot * 0.7, st.rot * 0.3]));
+
+  // 半透明(奥から手前の順に)
+  gl.enable(gl.BLEND); gl.depthMask(false);
+  for (const o of glassy) if (o.order === 0) drawMesh(o.m, o.mat, o.model);
+  const P = st.P, sc = 1 + P / 350, pulse = P > 20 ? (P - 20) / 80 * (0.6 + 0.4 * Math.sin(st.time * 5)) : 0;
+  const kidMat = MAT({ color: [0.62 + P / 400, 0.2 - P / 800, 0.15], alpha: 0.62, noise: 0.25, spec: 0.7, shin: 50, emis: [0.45 * pulse, 0.03 * pulse, 0], fres: 0.2 });
+  drawMesh(dyn.kidney, kidMat, kidneyModel(sc));
+  const u = urineColor3();
+  const ue = scl(u, 0.35);
+  drawMesh(dyn.calyx, MAT({ color: u, alpha: 0.75, spec: 0.6, shin: 50, emis: ue }));
+  drawMesh(dyn.upperLumen, MAT({ color: u, alpha: 0.78, spec: 0.9, shin: 70, emis: ue }));
+  drawMesh(dyn.upperWall, C.wall);
+  drawMesh(dyn.sphere, C.prostate, M4.model([0, -576, 22], [24, 17, 18]));
+  const ry = 30 + st.B * 0.28, rx = 36 + st.B * 0.3;
+  const bm = M4.model([0, -(556 - ry), 22], [rx, ry, rx * 0.85]);
+  drawMesh(dyn.sphere, MAT({ color: u, alpha: 0.4 + st.B / 300, spec: 0.6, shin: 50, emis: ue, back: 1 }), M4.model([0, -(556 - ry), 22], [rx * 0.9, ry * 0.9, rx * 0.76]));
+  drawMesh(dyn.sphere, C.bladder, bm);
+  drawMesh(dyn.lowerLumen, MAT({ color: st.peeT > 0 ? u : [0.9, 0.45, 0.45], alpha: 0.7, spec: 0.6, shin: 50, emis: st.peeT > 0 ? ue : [0.1, 0.03, 0.03] }));
+  drawMesh(dyn.lowerWall, C.wall);
+  for (const o of glassy) if (o.order === 8) drawMesh(o.m, o.mat, o.model);
+  for (const o of glassy) if (o.order === 9) drawMesh(o.m, o.mat, o.model);
+  gl.depthMask(true); gl.disable(gl.BLEND);
+}
+function urineColor3() { const t = 1 - st.H / 100; return [1, 0.95 - t * 0.38, 0.62 - t * 0.55]; }
+function urineColor(alpha = 1) { return lerpColor('#fff1a0', '#d48f14', 1 - st.H / 100, alpha); }
+
+// ---- 2Dオーバーレイ ----
+function tag(text, tx, ty, ax, ay) {
+  ctx.font = '600 12px "Hiragino Kaku Gothic ProN","Yu Gothic UI",sans-serif';
+  const w = ctx.measureText(text).width + 10;
+  ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(ax, ay); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ax, ay, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(8,10,16,.75)';
+  ctx.beginPath(); ctx.roundRect(tx - w / 2, ty - 9, w, 18, 9); ctx.fill();
+  ctx.fillStyle = '#f4ece6'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, tx, ty + 0.5); ctx.textBaseline = 'alphabetic';
+}
+function labels3D() {
+  const ry = 30 + st.B * 0.28;
+  const L = [
+    ['右腎', [-140, -170, -50], -24, -40],
+    ['左腎', [130, -110, -60], 26, -46],
+    ['副腎', [-88, -56, -58], 20, -26],
+    ['尿管', sample3(cpS[5]), -52, 4],
+    ['大腰筋', [-60, -380, -40], -58, 30],
+    ['腰椎', [0, -250, -60], 40, -10],
+    ['腹部大動脈', [8, -60, -32], 52, -16],
+    ['下大静脈', [-16, -40, -28], -50, -10],
+    ['総腸骨動脈', [-48, -372, -24], -58, 34],
+    ['腸骨', [-150, -380, -30], -14, -40],
+    ['膀胱', [-30, -(556 - ry), 40], -56, 0],
+    ['前立腺', [-20, -578, 30], -56, 14],
+    ['大腿骨', [-130, -660, 3], -10, 34],
+    ['陰茎', [-10, -690, 92], -40, 20]
+  ];
+  for (const [t, p, dx, dy] of L) {
+    const [x, y] = projectScreen(p);
+    tag(t, clamp(x + dx, 30, SCENE_W - 30), clamp(y + dy, 12, SCENE_H - 12), x, y);
+  }
+}
+function drawOverlay3D() {
+  const [sx, sy] = st.phase === 3 ? projectScreen([0, -(CP[CP.length - 1].y + st.outY), CPZ[CPZ.length - 1]]) : projectScreen(sample3(st.s));
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, SCENE_W, SCENE_H); ctx.clip();
+  // 尿の流れ
+  for (const p of parts) {
+    const [x, y] = projectScreen(sample3(p.s));
+    ctx.fillStyle = `rgba(255,250,210,${0.35 + 0.3 * Math.sin(st.time * 6 + p.o * 9)})`;
+    ctx.beginPath(); ctx.arc(x + p.o * 3, y, 1.3, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(255,250,210,.7)';
+  for (const p of uparts) { const [x, y] = projectScreen(sample3(p.s)); ctx.beginPath(); ctx.arc(x + p.o * 2, y, 1.3, 0, Math.PI * 2); ctx.fill(); }
+  for (const d of drops) {
+    const [x, y] = projectScreen([d.x - 212, -d.y, CPZ[CPZ.length - 1] + (d.x - 212) * 0.5]);
+    ctx.fillStyle = urineColor(0.85); ctx.beginPath(); ctx.ellipse(x, y, 1.8, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // 結石のハロー(組織越しでも位置がわかるように)
+  const halo = ctx.createRadialGradient(sx, sy, 2, sx, sy, 18);
+  halo.addColorStop(0, `rgba(255,236,190,${0.4 + 0.15 * Math.sin(st.time * 4)})`); halo.addColorStop(1, 'rgba(255,236,190,0)');
+  ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(sx, sy, 18, 0, Math.PI * 2); ctx.fill();
+  // 生理的狭窄部
+  for (const n of st.narrows) {
+    const [x, y] = projectScreen(sample3(n.s));
+    const near = !n.passed && Math.abs(st.s - n.s) < 40 && st.phase === 0;
+    const pulse = near ? 1 + 0.25 * Math.sin(st.time * 8) : 1;
+    ctx.strokeStyle = n.passed ? 'rgba(80,220,140,.8)' : near ? 'rgba(255,170,60,.95)' : 'rgba(255,200,120,.55)';
+    ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 13 * pulse, 0, Math.PI * 2); ctx.stroke();
+    ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.strokeText(n.num, x + 24, y + 6);
+    ctx.fillStyle = n.passed ? '#5ee39a' : '#ffb347'; ctx.fillText(n.num, x + 24, y + 6);
+  }
+  if (showLabels) labels3D();
+  // 放散痛(脇腹→鼠径部・陰嚢)
+  if (st.felt >= 45 && Math.random() < st.felt / 100) {
+    const [ax, ay] = projectScreen([-125, -200, -50]), [bx, by] = projectScreen([-12, -650, 50]);
+    const pts = [[ax, ay]];
+    for (let i = 1; i <= 9; i++) { const t = i / 9; pts.push([ax + (bx - ax) * t + rand(-10, 10) - Math.sin(t * Math.PI) * 30, ay + (by - ay) * t + rand(-6, 6)]); }
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [lw, c] of [[7, 'rgba(255,40,30,.35)'], [3, 'rgba(255,120,90,.7)'], [1.2, 'rgba(255,240,230,.95)']]) {
+      ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  if (st.felt > 55) {
+    const v = ctx.createRadialGradient(SCENE_W / 2, SCENE_H / 2, SCENE_H * 0.3, SCENE_W / 2, SCENE_H / 2, SCENE_H * 0.75);
+    v.addColorStop(0, 'rgba(120,0,0,0)'); v.addColorStop(1, `rgba(150,0,0,${(st.felt - 55) / 90 * (0.8 + 0.2 * Math.sin(st.time * 6))})`);
+    ctx.fillStyle = v; ctx.fillRect(0, 0, SCENE_W, SCENE_H);
+  }
+  ctx.font = '10px ui-monospace,Consolas,monospace'; ctx.fillStyle = 'rgba(200,220,240,.55)'; ctx.textAlign = 'left';
+  ctx.fillText('ドラッグで回転 / ダブルクリックで戻す', 8, SCENE_H - 8);
+  ctx.restore();
+}
+
+// ---- HUD (バイタルモニター風) ----
+const ecg = new Array(118).fill(0);
+let ecgPhase = 0, lastRender = performance.now();
+function ecgWave(t) {
+  const g = (c, w, h) => h * Math.exp(-((t - c) * (t - c)) / (2 * w * w));
+  return g(0.18, 0.025, 0.12) - g(0.29, 0.008, 0.15) + g(0.31, 0.01, 1) - g(0.335, 0.01, 0.3) + g(0.55, 0.045, 0.25);
+}
+function vitals() {
+  const hr = Math.round(68 + st.felt * 0.55 + st.danger * 0.15 + (st.jumpAnim < 1 ? 12 : 0));
+  const temp = 36.5 + Math.max(0, st.danger - 30) / 70 * 2.4;
+  return { hr, temp };
+}
+function hbar(label, val, max, unit, y, color, warn) {
+  const x = 300, w = 106, r = clamp(val / max, 0, 1);
+  ctx.textAlign = 'left'; ctx.font = '600 11px sans-serif'; ctx.fillStyle = '#9fb0c4'; ctx.fillText(label, x, y);
+  ctx.textAlign = 'right'; ctx.font = 'bold 11px ui-monospace,Consolas,monospace';
+  const hot = warn !== undefined && val >= warn;
+  ctx.fillStyle = hot ? '#ff6a6a' : '#e8f0f8'; ctx.fillText(`${Math.round(val)}${unit}`, x + w, y);
+  ctx.fillStyle = '#1c2633'; ctx.beginPath(); ctx.roundRect(x, y + 4, w, 8, 4); ctx.fill();
+  const blink = hot && Math.floor(st.time * 4) % 2;
+  ctx.fillStyle = blink ? '#ff2d2d' : color;
+  ctx.shadowColor = color; ctx.shadowBlur = 6;
+  ctx.beginPath(); ctx.roundRect(x, y + 4, Math.max(0.01, w * r), 8, 4); ctx.fill();
+  ctx.shadowBlur = 0;
+}
+function drawHUDReal(dt) {
+  ctx.fillStyle = '#0b1017'; ctx.fillRect(SCENE_W, 0, W - SCENE_W, SCENE_H);
+  ctx.strokeStyle = '#1e2a38'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(SCENE_W + 0.5, 0); ctx.lineTo(SCENE_W + 0.5, SCENE_H); ctx.stroke();
+  const { hr, temp } = vitals();
+  // 心電図
+  if (running) {
+    const steps = 2;
+    for (let i = 0; i < steps; i++) { ecgPhase = (ecgPhase + dt * hr / 60 / steps) % 1; ecg.shift(); ecg.push(ecgWave(ecgPhase) + rand(-0.02, 0.02)); }
+  }
+  ctx.fillStyle = '#05080c'; ctx.beginPath(); ctx.roundRect(296, 6, 118, 54, 6); ctx.fill();
+  ctx.strokeStyle = '#3cff8a'; ctx.lineWidth = 1.4; ctx.shadowColor = '#3cff8a'; ctx.shadowBlur = 5;
+  ctx.beginPath(); ecg.forEach((v, i) => { const x = 297 + i, y = 46 - v * 30; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.textAlign = 'left'; ctx.font = 'bold 10px ui-monospace,Consolas,monospace'; ctx.fillStyle = '#3cff8a';
+  ctx.fillText(`HR ${hr}`, 300, 18);
+  ctx.textAlign = 'right'; ctx.fillStyle = temp >= 37.5 ? '#ff8a5a' : '#8fd3ff';
+  ctx.fillText(`${temp.toFixed(1)}℃`, 406, 18);
+
+  // 疼痛スケール
+  const nrs = Math.round(st.felt / 10);
+  ctx.textAlign = 'left'; ctx.font = '600 11px sans-serif'; ctx.fillStyle = '#9fb0c4'; ctx.fillText('疼痛 NRS', 300, 80);
+  ctx.textAlign = 'right'; ctx.font = 'bold 19px ui-monospace,Consolas,monospace';
+  ctx.fillStyle = lerpColor('#5ee39a', '#ff3b3b', st.felt / 100);
+  ctx.fillText(`${nrs}/10`, 406 + (st.felt > 80 ? rand(-1, 1) : 0), 86);
+
+  const elapsed = st.gmin - 8 * 60;
+  const day = Math.floor(st.gmin / 1440) + 1, hh = Math.floor(st.gmin % 1440 / 60), mm = Math.floor(st.gmin % 60);
+  ctx.textAlign = 'left'; ctx.font = 'bold 12px ui-monospace,Consolas,monospace'; ctx.fillStyle = '#e8f0f8';
+  ctx.fillText(`DAY${day} ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`, 300, 108);
+  ctx.font = '10.5px sans-serif'; ctx.fillStyle = '#7f90a4';
+  ctx.fillText(`手術まで残り ${Math.max(0, Math.ceil((TIME_LIMIT_MIN - elapsed) / 60))}時間`, 300, 124);
+
+  const loc = st.phase === 3 ? '体外' : st.s < cpS[3] - 12 ? '腎盂' : st.phase === 0 ? '尿管' : st.phase === 1 ? '膀胱' : '尿道';
+  ctx.font = 'bold 12px sans-serif'; ctx.fillStyle = st.d >= 8 ? '#ff6a6a' : '#f2d49a';
+  ctx.fillText(`結石 ${st.d.toFixed(1)}mm`, 300, 146);
+  ctx.fillStyle = '#e8f0f8'; ctx.fillText(`位置 ${loc}`, 300, 163);
+
+  let y = 186;
+  hbar('痛み', st.felt, 100, '', y, '#ff4d5e', 85); y += 32;
+  hbar('腎盂内圧', 8 + st.P * 0.42, 50, 'cmH₂O', y, '#ff9a3c', 37); y += 32;
+  hbar('水分', st.H, 100, '%', y, '#4aa8ff'); y += 32;
+  hbar('膀胱容量', st.B * 4, 400, 'mL', y, '#f2c94c', 368); y += 32;
+  hbar('体力', st.stamina, 100, '%', y, '#3ddc84'); y += 32;
+  hbar('危険度', st.danger, 100, '%', y, '#b47cff', 70); y += 30;
+
+  ctx.textAlign = 'left'; ctx.font = '11px sans-serif';
+  const buffs = [];
+  if (st.pkT > 0) buffs.push(['NSAIDs', st.pkT, '#ff8a9a']);
+  if (st.alphaT > 0) buffs.push(['α1遮断薬', st.alphaT, '#b9a4ff']);
+  if (st.citT > 0) buffs.push(['クエン酸製剤', st.citT, '#ffb066']);
+  buffs.forEach(([t, v, c], i) => { ctx.fillStyle = c; ctx.fillText(`● ${t} ${Math.ceil(v)}s`, 300, y + 4 + i * 15); });
+
+  let yy = 474;
+  ctx.fillStyle = '#9fb0c4'; ctx.font = '600 11px sans-serif'; ctx.fillText('生理的狭窄部', 300, yy);
+  ctx.font = '10.5px sans-serif';
+  st.narrows.forEach((n, i) => {
+    ctx.fillStyle = n.passed ? '#5ee39a' : '#5a6a7e';
+    ctx.fillText(`${n.num}${n.name}${n.passed ? ' ✓' : ''}`, 300, yy + 17 + i * 15);
+  });
+  yy += 70;
+  ctx.fillStyle = st.phase >= 1 ? '#5ee39a' : '#5a6a7e'; ctx.fillText(`膀胱到着${st.phase >= 1 ? ' ✓' : ''}`, 300, yy);
+  ctx.fillStyle = st.phase >= 3 ? '#5ee39a' : '#5a6a7e'; ctx.fillText(`尿道通過${st.phase >= 3 ? ' ✓' : ''}`, 300, yy + 15);
+  ctx.fillStyle = '#5a6a7e'; ctx.font = '10px sans-serif';
+  ctx.fillText('視点: 右斜め前', 300, yy + 44);
+
+  // ログ
+  ctx.fillStyle = '#0b1017'; ctx.fillRect(0, SCENE_H, W, H - SCENE_H);
+  ctx.textAlign = 'left'; ctx.font = '12px sans-serif';
+  const last = st.logs.slice(-2);
+  last.forEach((l, i) => {
+    ctx.fillStyle = i === last.length - 1 ? '#e8f0f8' : '#6a7a8e';
+    ctx.fillText(l.text, 12, SCENE_H + 17 + i * 17);
+  });
+}
+
+function render() {
+  const now = performance.now(), rdt = Math.min(0.05, (now - lastRender) / 1000); lastRender = now;
+  const jumpY = st.jumpAnim < 1 ? Math.sin(Math.PI * st.jumpAnim) * 18 : 0;
+  if (glReady) renderGL(jumpY, st.shake * 5);
+  ctx.clearRect(0, 0, W, H);
+  if (glReady) drawOverlay3D();
+  for (const f of floats) {
+    ctx.globalAlpha = clamp(f.life, 0, 1);
+    ctx.font = `bold ${f.size}px sans-serif`; ctx.textAlign = 'center';
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.strokeText(f.text, f.x, f.y);
+    ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+  drawHUDReal(rdt);
+}
+
+// ===== ボタン =====
+const btns = [...document.querySelectorAll('.btn')];
+btns.forEach(b => b.addEventListener('click', () => act(b.dataset.act)));
+function updateButtons() {
+  for (const b of btns) {
+    const k = b.dataset.act, max = COOLDOWN[k];
+    b.querySelector('.cd').style.width = max ? (st.cd[k] / max * 100) + '%' : '0';
+  }
+}
+const KEYMAP = { KeyW: 'water', Space: 'jump', KeyJ: 'jump', KeyT: 'toilet', Digit1: 'pk', Digit2: 'alpha', Digit3: 'cit' };
+window.addEventListener('keydown', e => {
+  const a = KEYMAP[e.code];
+  if (a) { e.preventDefault(); if (!e.repeat) act(a); }
+  if (e.code === 'KeyL' && !e.repeat) toggleLabels();
+  if (e.code === 'KeyR' && !e.repeat) resetCamera();
+  if (e.code === 'ArrowLeft') { e.preventDefault(); cam.yaw = clamp(cam.yaw + 0.08, -2.4, 2.4); }
+  if (e.code === 'ArrowRight') { e.preventDefault(); cam.yaw = clamp(cam.yaw - 0.08, -2.4, 2.4); }
+});
+const labelBtn = document.getElementById('labelBtn');
+function toggleLabels() {
+  showLabels = !showLabels;
+  labelBtn.textContent = showLabels ? '🏷 ラベルON' : '🏷 ラベルOFF';
+}
+labelBtn.addEventListener('click', toggleLabels);
+document.getElementById('camBtn').addEventListener('click', resetCamera);
+document.getElementById('soundBtn').addEventListener('click', e => {
+  soundOn = !soundOn; e.target.textContent = soundOn ? '🔊 ON' : '🔇 OFF';
+});
+
+// ===== 開始・終了 =====
+const overlay = document.getElementById('overlay');
+function start() {
+  reset();
+  running = true;
+  overlay.classList.add('hidden');
+  document.getElementById('startCard').classList.add('hidden');
+  document.getElementById('endCard').classList.add('hidden');
+  tone(1, 0.01, 'sine', 0.001); // オーディオ有効化
+}
+document.getElementById('startBtn').addEventListener('click', start);
+document.getElementById('retryBtn').addEventListener('click', start);
+
+const ENDINGS = {
+  win: {
+    emoji: '🎉', title: '排石成功！！',
+    text: '石が無事に体の外へ出ました！おつかれさまでした。実際には、出た石は捨てずに病院へ持っていくと、成分分析で再発予防に役立ちます。再発しやすい病気なので、普段から水分をしっかりとりましょう。'
+  },
+  stent: {
+    emoji: '🩺', title: '緊急処置：尿管ステント留置',
+    text: '腎臓に尿がたまり続け（水腎症）、痛みも限界に…。腎臓を守るため、尿管に細い管（ステント）を入れて尿の通り道を確保することになりました。石そのものの治療は後日あらためて行います。'
+  },
+  eswl: {
+    emoji: '💥', title: '体外衝撃波結石破砕術（ESWL）',
+    text: '石が10mmを超えてしまい、自然に出るのは難しいサイズに。体の外から衝撃波を当てて石を細かく砕き、砂のようにして流し出す治療になりました。水分不足が石を育ててしまったようです。'
+  },
+  tul: {
+    emoji: '🔬', title: '経尿道的尿管結石砕石術（TUL）',
+    text: '3日たっても石が出てきませんでした。尿道から細い内視鏡を入れ、レーザーで石を砕いて取り出す手術になりました。'
+  }
+};
+function endGame(kind) {
+  if (!running) return;
+  running = false;
+  const e = ENDINGS[kind];
+  const elapsed = st.gmin - 8 * 60;
+  const h = Math.floor(elapsed / 60), m = Math.floor(elapsed % 60);
+  document.getElementById('endEmoji').textContent = e.emoji;
+  document.getElementById('endTitle').textContent = e.title;
+  document.getElementById('endText').textContent = e.text;
+  let rank = '';
+  if (kind === 'win') {
+    rank = h < 18 && st.stats.maxDanger < 40 ? 'ランク S：スピード排石の達人！'
+      : h < 36 ? 'ランク A：上手に流せました！'
+      : 'ランク B：粘り勝ち！';
+  }
+  document.getElementById('endRank').textContent = rank;
+  const s = st.stats;
+  document.getElementById('endStats').innerHTML =
+    `⏱ 経過時間：${h}時間${m}分<br>🪨 石の最大サイズ：${s.maxD.toFixed(1)}mm<br>` +
+    `💧 飲んだ水：${s.water}杯　🦘 ジャンプ：${s.jump}回<br>💊 薬：${s.meds}回　🚽 トイレ：${s.pee}回<br>` +
+    `😱 最大の痛み：${Math.round(s.maxPain)}　🚨 最大危険度：${Math.round(s.maxDanger)}`;
+  kind === 'win' ? null : SFX.bad();
+  setTimeout(() => {
+    overlay.classList.remove('hidden');
+    document.getElementById('endCard').classList.remove('hidden');
+  }, kind === 'win' ? 200 : 900);
+}
+
+// ===== メインループ =====
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (running) update(dt);
+  render();
+  updateButtons();
+  requestAnimationFrame(loop);
+}
+reset();
+setupGL();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
