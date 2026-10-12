@@ -13,6 +13,9 @@ AI Approach: 外部ライブラリなしの生WebGLで人体を3Dメッシュ化
   - 皮膚・尿路・膀胱はフレネル付き半透明で、内部の尿の流れと結石が透けて見える
   - 不透明→半透明(奥から手前)の順で描画。HUD・ラベル・疝痛エフェクトは2Dオーバーレイに投影して描画
   - ドラッグ/矢印キーで視点回転、ダブルクリック/Rで右斜め前に戻す
+  - 追加依頼「3D版は人体模型を拡大・回転できるようにしてはどうか」:
+    ホイール/ピンチ/±で拡大縮小(near面も距離に追従)、360°回転、右ドラッグ/Shift+ドラッグ/2本指で平行移動、
+    石の自動追尾、一時停止、皮膚・骨・筋肉・血管のレイヤー表示切替、ゲームを始めずに観察できる人体模型モード
 Implementation Intent: 腎臓・尿管・膀胱・尿道の前後関係(後腹膜の腎臓から前方の膀胱・陰茎へ)を立体的に理解しながら
   遊べる教育的ゲーム。※ゲームであり医療アドバイスではありません。
 -->
@@ -81,6 +84,12 @@ canvas {
 #gl { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 10px; }
 #game { position: relative; background: transparent !important; }
 #noGL { position: absolute; left: 10%; right: 40%; top: 40%; color: #ffb3a8; font-size: 13px; text-align: center; }
+#viewbar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 12px; color: #7f90a4; }
+#viewbar .sep { margin-left: 4px; }
+#viewbar .tbtn { padding: 3px 7px; }
+#viewbar .layer.on { border-color: #4a7aa8; color: #e8f4ff; }
+#viewbar .layer:not(.on) { opacity: .5; text-decoration: line-through; }
+.obsBtn { display: block; margin: 6px auto 0; padding: 6px 16px; font-size: 13px; }
 .hidden { display: none !important; }
 </style>
 </head>
@@ -93,6 +102,17 @@ canvas {
       <button class="tbtn" id="labelBtn">🏷 ラベルON</button>
       <button class="tbtn" id="soundBtn">🔊 ON</button>
     </span>
+  </div>
+  <div id="viewbar">
+    <button class="tbtn" id="zoomOut" title="縮小 [-]">－</button>
+    <button class="tbtn" id="zoomIn" title="拡大 [+]">＋</button>
+    <button class="tbtn" id="followBtn" title="[F]">🎯 石を追尾</button>
+    <button class="tbtn" id="pauseBtn" title="[P]">⏸ 一時停止</button>
+    <span class="sep">表示:</span>
+    <button class="tbtn layer on" data-layer="skin">皮膚</button>
+    <button class="tbtn layer on" data-layer="bone">骨</button>
+    <button class="tbtn layer on" data-layer="muscle">筋肉</button>
+    <button class="tbtn layer on" data-layer="vessel">血管</button>
   </div>
   <div id="stage">
     <canvas id="gl" width="420" height="740"></canvas>
@@ -121,8 +141,9 @@ canvas {
     </ul>
     <p>尿管には3つの<b>生理的狭窄部</b>(①腎盂尿管移行部 ②総腸骨動脈交差部 ③尿管膀胱移行部)があります。</p>
     <p>⚠ 脱水で結石は成長します。水腎症が続くと発熱・<b>尿管ステント留置</b>、10mm超で<b>ESWL</b>、3日で出なければ<b>TUL</b>に。</p>
-    <p>🧍 人体を<b>右斜め前</b>から立体表示。<b>ドラッグ / ← →</b> で視点を回転、<b>ダブルクリック / [R]</b> で元に戻す。<b>[L]</b> でラベル表示切替。皮膚や尿路は半透明なので、石や尿の流れが透けて見えます。</p>
+    <p>🧍 人体模型のように自由に動かせます。<b>ドラッグ / 矢印キー</b>で回転、<b>ホイール / ピンチ / ±</b>で拡大縮小、<b>右ドラッグ / Shift+ドラッグ / 2本指</b>で移動、<b>ダブルクリック / [R]</b>で元に戻す。<b>[F]</b> 石を追尾、<b>[P]</b> 一時停止、<b>[L]</b> ラベル。皮膚・骨・筋肉・血管は上のボタンで表示を切り替えられます。</p>
     <button class="startBtn" id="startBtn">排石開始</button>
+    <button class="tbtn obsBtn">🔍 ゲームを始めずに人体模型を見る</button>
     <p class="note">※これはゲームです。実際の症状・治療は必ず医師の指示に従ってください。発熱を伴う痛みや、我慢できない痛みはすぐに医療機関を受診してください。</p>
   </div>
   <div class="card hidden" id="endCard">
@@ -132,6 +153,7 @@ canvas {
     <div class="rank" id="endRank"></div>
     <div class="stats" id="endStats"></div>
     <button class="startBtn" id="retryBtn">もう一度</button>
+    <button class="tbtn obsBtn">🔍 人体模型を見る</button>
     <p class="note">※これはゲームです。実際の症状・治療は必ず医師の指示に従ってください。</p>
   </div>
 </div>
@@ -753,9 +775,12 @@ const C = {
 
 // ---- 解剖の静的メッシュ ----
 const opaque = [], glassy = [];
-function S(list, g, mat, model) { list.push({ m: makeMesh(g), mat, model: model || M4.ident() }); }
+const layerOn = { skin: true, bone: true, muscle: true, vessel: true, organ: true };
+let curLayer = 'organ';
+function S(list, g, mat, model) { list.push({ m: makeMesh(g), mat, model: model || M4.ident(), layer: curLayer }); }
 function buildAnatomy3D() {
   const sph = sphereGeom();
+  curLayer = 'bone';
   // 腰椎・椎間板・突起
   for (let i = 0; i < 6; i++) {
     const yc = -(-36 + i * 78 + 31), w = 25 + i * 1.6, z = -72 + 6 * Math.sin(i / 5 * Math.PI);
@@ -790,11 +815,13 @@ function buildAnatomy3D() {
     S(opaque, sph, C.bone, M4.model([s * 108, -565, 6], [21, 21, 21]));
     S(opaque, tubeFrom([[s * 108, -565, 6, 11], [s * 140, -600, 0, 12], [s * 135, -700, 3, 12], [s * 124, -820, 6, 12]], 12), C.bone);
   }
+  curLayer = 'muscle';
   // 大腰筋
   const PSOAS3 = [[192, 20, -62, 7], [182, 140, -62, 20], [168, 290, -58, 30], [150, 410, -50, 31], [126, 520, -32, 25], [112, 640, -15, 20]];
   for (const s of [-1, 1]) {
     S(opaque, tubeFrom(PSOAS3.map(([x, y, z, w]) => [s < 0 ? x - 212 : 212 - x, -y, z, w * 0.8, w * 0.62]), 16), C.muscle);
   }
+  curLayer = 'vessel';
   // 血管
   const v2 = (pts, zs, rs, mirror = false) => pts.map(([x, y], i) => [mirror ? 212 - x : x - 212, -y, zs[i], rs[i]]);
   const CIA = [[214, 282], [170, 320], [130, 360], [112, 420], [102, 520]], CIAz = [-38, -33, -28, -20, -5], CIAr = [7, 7, 6.5, 6, 5.5];
@@ -809,23 +836,24 @@ function buildAnatomy3D() {
   S(opaque, tubeFrom([[12, -140, -46, 3.8], [40, -125, -50, 3.8], [62, -118, -48, 3.4]], 8), C.artery);
   S(opaque, tubeFrom([[-14, -168, -30, 5], [20, -160, -27, 5], [62, -132, -40, 4.5]], 8), C.vein);
   S(opaque, tubeFrom([[-16, -158, -34, 5], [-40, -146, -38, 5], [-62, -144, -40, 4.5]], 8), C.vein);
+  curLayer = 'organ';
   // 左腎(石なし)・副腎・左尿管
   S(opaque, beanGeom(true), C.kidney, M4.model([100, -128, -62], [48, 80, 28], [0, 0.5, -0.15]));
   S(opaque, sph, C.adrenal, M4.model([88, -52, -58], [22, 9, 12], [0, 0, 0.4]));
   S(opaque, sph, C.adrenal, M4.model([-88, -62, -58], [22, 9, 12], [0, 0, -0.4]));
   const lu = [];
   for (let i = 0; i <= cpIdx[10]; i += 2) { const p = PATH[i]; lu.push([212 - p.x, -p.y + (i < cpIdx[9] ? 12 * (1 - i / cpIdx[9]) : 0), p.z, p.w * MM / 2 + 2.5]); }
-  glassy.push({ m: makeMesh(tubeGeom(lu.map(p => p.slice(0, 3)), lu.map(p => p[3]), 10)), mat: C.ureterOther, model: M4.ident(), order: 0 });
+  glassy.push({ m: makeMesh(tubeGeom(lu.map(p => p.slice(0, 3)), lu.map(p => p[3]), 10)), mat: C.ureterOther, model: M4.ident(), order: 0, layer: 'organ' });
   // 陰茎・陰嚢・皮膚
-  glassy.push({ m: makeMesh(tubeFrom([[0, -598, 58, 20], [0, -650, 72, 21], [0, -700, 78, 21]], 18)), mat: C.penis, model: M4.ident(), order: 8 });
-  glassy.push({ m: makeMesh(sph), mat: C.glans, model: M4.model([0, -712, 79], [23, 20, 22]), order: 8 });
-  for (const s of [-1, 1]) glassy.push({ m: makeMesh(sph), mat: C.penis, model: M4.model([s * 17, -652, 46], [22, 27, 22]), order: 8 });
+  glassy.push({ m: makeMesh(tubeFrom([[0, -598, 58, 20], [0, -650, 72, 21], [0, -700, 78, 21]], 18)), mat: C.penis, model: M4.ident(), order: 8, layer: 'organ' });
+  glassy.push({ m: makeMesh(sph), mat: C.glans, model: M4.model([0, -712, 79], [23, 20, 22]), order: 8, layer: 'organ' });
+  for (const s of [-1, 1]) glassy.push({ m: makeMesh(sph), mat: C.penis, model: M4.model([s * 17, -652, 46], [22, 27, 22]), order: 8, layer: 'organ' });
   const torso = [];
   const HW = [[-60, 172], [150, 168], [300, 154], [480, 176], [560, 170]], HD = [[-60, 104], [150, 98], [300, 92], [480, 98], [560, 88]];
   const at = (tbl, y) => { for (let i = 0; i < tbl.length - 1; i++) if (y <= tbl[i + 1][0]) { const t = (y - tbl[i][0]) / (tbl[i + 1][0] - tbl[i][0]); return tbl[i][1] + (tbl[i + 1][1] - tbl[i][1]) * t; } return tbl[tbl.length - 1][1]; };
   for (let y = -60; y <= 560; y += 20) torso.push([0, -y, -6, at(HW, y), at(HD, y)]);
-  glassy.push({ m: makeMesh(tubeGeom(torso.map(p => p.slice(0, 3)), torso.map(p => [p[3], p[4]]), 40)), mat: C.skin, model: M4.ident(), order: 9 });
-  for (const s of [-1, 1]) glassy.push({ m: makeMesh(tubeFrom([[s * 92, -540, -6, 84, 86], [s * 88, -660, -6, 76, 74], [s * 80, -840, -6, 62, 60]], 32)), mat: C.skin, model: M4.ident(), order: 9 });
+  glassy.push({ m: makeMesh(tubeGeom(torso.map(p => p.slice(0, 3)), torso.map(p => [p[3], p[4]]), 40)), mat: C.skin, model: M4.ident(), order: 9, layer: 'skin' });
+  for (const s of [-1, 1]) glassy.push({ m: makeMesh(tubeFrom([[s * 92, -540, -6, 84, 86], [s * 88, -660, -6, 76, 74], [s * 80, -840, -6, 62, 60]], 32)), mat: C.skin, model: M4.ident(), order: 9, layer: 'skin' });
 }
 // そら豆形の腎臓(内側=+X がくぼむ)
 function beanGeom(mirror) {
@@ -881,40 +909,93 @@ function updateDynamic3D() {
 }
 
 // ---- カメラ ----
-const CAM0 = { yaw: -0.82, pitch: 0.1 };
-const cam = { yaw: CAM0.yaw, pitch: CAM0.pitch, dist: 1480, target: [-28, -372, -6] };
+const CAM0 = { yaw: -0.82, pitch: 0.1, dist: 1480, target: [-28, -372, -6] };
+const FOV = 0.52, DIST_MIN = 240, DIST_MAX = 2800;
+const cam = { yaw: CAM0.yaw, pitch: CAM0.pitch, dist: CAM0.dist, target: [...CAM0.target], follow: false };
 let VP = M4.ident(), EYE = [0, 0, 1];
+const zoomK = () => CAM0.dist / cam.dist;
+function stonePos3() {
+  return st.phase === 3 ? [0, -(CP[CP.length - 1].y + st.outY), CPZ[CPZ.length - 1]] : sample3(st.s);
+}
 function updateCamera(jumpY, shake) {
+  if (cam.follow) cam.target = lerp3(cam.target, stonePos3(), 0.12);
   const cp = Math.cos(cam.pitch);
   const t = [cam.target[0] + rand(-shake, shake), cam.target[1] - jumpY + rand(-shake, shake), cam.target[2]];
   EYE = [t[0] + cam.dist * Math.sin(cam.yaw) * cp, t[1] + cam.dist * Math.sin(cam.pitch), t[2] + cam.dist * Math.cos(cam.yaw) * cp];
-  VP = M4.mul(M4.persp(0.52, SCENE_W / SCENE_H, 400, 3000), M4.lookAt(EYE, t, [0, 1, 0]));
+  // 近づくほど near 面を手前に(拡大時に体内へ入り込んで切断面のように見える)
+  VP = M4.mul(M4.persp(FOV, SCENE_W / SCENE_H, Math.max(12, cam.dist * 0.27), cam.dist + 1700), M4.lookAt(EYE, t, [0, 1, 0]));
 }
 function projectScreen(p) {
   const m = VP, x = p[0], y = p[1], z = p[2];
   const cx = m[0] * x + m[4] * y + m[8] * z + m[12], cy = m[1] * x + m[5] * y + m[9] * z + m[13], cw = m[3] * x + m[7] * y + m[11] * z + m[15];
+  if (cw < 1) return [-9999, -9999]; // カメラの後ろ
   return [(cx / cw * 0.5 + 0.5) * SCENE_W, (1 - (cy / cw * 0.5 + 0.5)) * SCENE_H];
 }
-// 視点のドラッグ操作
+const onScene = (x, y) => x >= 0 && x <= SCENE_W && y >= 0 && y <= SCENE_H;
+function zoomBy(f) { cam.dist = clamp(cam.dist * f, DIST_MIN, DIST_MAX); }
+function rotateBy(dyaw, dpitch) { cam.yaw += dyaw; cam.pitch = clamp(cam.pitch + dpitch, -1.45, 1.45); }
+// 画面上のドラッグ量(シーン座標px)だけ注視点を平行移動
+function panBy(dx, dy, base = cam.target) {
+  const wpp = 2 * cam.dist * Math.tan(FOV / 2) / SCENE_H;
+  const sy = Math.sin(cam.yaw), cy = Math.cos(cam.yaw), sp = Math.sin(cam.pitch), cp = Math.cos(cam.pitch);
+  const right = [cy, 0, -sy], up = [-sp * sy, cp, -sp * cy];
+  cam.target = add(base, add(scl(right, -dx * wpp), scl(up, dy * wpp)));
+  if (cam.follow) setFollow(false);
+}
+// 視点操作: 1本指/左ドラッグ=回転、右/中ドラッグ・Shift+ドラッグ=平行移動、2本指=ピンチ拡大+移動、ホイール=拡大
 (function setupDrag() {
-  let drag = null;
+  const ptrs = new Map();
+  let g = null;
   cv.style.touchAction = 'none';
+  const toScene = () => W / cv.getBoundingClientRect().width;
+  function begin(e) {
+    const p = [...ptrs.values()];
+    if (p.length >= 2) {
+      g = { mode: 'pinch', d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) || 1, cx: (p[0].x + p[1].x) / 2, cy: (p[0].y + p[1].y) / 2, dist: cam.dist, target: cam.target };
+    } else if (p.length === 1) {
+      const pan = e && (e.button === 1 || e.button === 2 || e.shiftKey);
+      g = { mode: pan ? 'pan' : 'rot', x: p[0].x, y: p[0].y, yaw: cam.yaw, pitch: cam.pitch, target: cam.target };
+    } else g = null;
+  }
   cv.addEventListener('pointerdown', e => {
     const r = cv.getBoundingClientRect();
-    if ((e.clientX - r.left) / r.width * W > SCENE_W) return;
-    drag = { x: e.clientX, y: e.clientY, yaw: cam.yaw, pitch: cam.pitch };
+    if ((e.clientX - r.left) / r.width * W > SCENE_W || (e.clientY - r.top) / r.height * H > SCENE_H) return;
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     cv.setPointerCapture(e.pointerId);
+    begin(e);
   });
   cv.addEventListener('pointermove', e => {
-    if (!drag) return;
-    cam.yaw = clamp(drag.yaw - (e.clientX - drag.x) * 0.008, -2.4, 2.4);
-    cam.pitch = clamp(drag.pitch + (e.clientY - drag.y) * 0.005, -0.5, 0.8);
+    if (!g || !ptrs.has(e.pointerId)) return;
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const k = toScene(), p = [...ptrs.values()];
+    if (g.mode === 'rot') {
+      cam.yaw = g.yaw - (p[0].x - g.x) * k * 0.009;
+      cam.pitch = clamp(g.pitch + (p[0].y - g.y) * k * 0.006, -1.45, 1.45);
+    } else if (g.mode === 'pan') {
+      panBy((p[0].x - g.x) * k, (p[0].y - g.y) * k, g.target);
+    } else if (p.length >= 2) {
+      const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) || 1;
+      cam.dist = clamp(g.dist * g.d / d, DIST_MIN, DIST_MAX);
+      panBy(((p[0].x + p[1].x) / 2 - g.cx) * k, ((p[0].y + p[1].y) / 2 - g.cy) * k, g.target);
+    }
   });
-  const end = () => { drag = null; };
+  const end = e => { ptrs.delete(e.pointerId); begin(null); };
   cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  cv.addEventListener('contextmenu', e => e.preventDefault());
+  cv.addEventListener('wheel', e => { e.preventDefault(); zoomBy(Math.exp(clamp(e.deltaY, -200, 200) * 0.0015)); }, { passive: false });
   cv.addEventListener('dblclick', () => resetCamera());
 })();
-function resetCamera() { cam.yaw = CAM0.yaw; cam.pitch = CAM0.pitch; }
+function resetCamera() {
+  cam.yaw = CAM0.yaw; cam.pitch = CAM0.pitch; cam.dist = CAM0.dist; cam.target = [...CAM0.target];
+  setFollow(false);
+}
+function setFollow(on) {
+  cam.follow = on;
+  if (on) cam.dist = Math.min(cam.dist, 620);
+  const b = document.getElementById('followBtn');
+  b.textContent = on ? '🎯 追尾中' : '🎯 石を追尾';
+  b.style.borderColor = on ? '#ffb347' : '';
+}
 
 let glReady = false;
 function resizeGL() {
@@ -947,18 +1028,16 @@ function renderGL(jumpY, shake) {
 
   // 不透明
   gl.disable(gl.BLEND); gl.depthMask(true);
-  for (const o of opaque) drawMesh(o.m, o.mat, o.model);
+  for (const o of opaque) if (layerOn[o.layer]) drawMesh(o.m, o.mat, o.model);
   // 結石
-  let sp;
-  if (st.phase === 3) sp = [0, -(CP[CP.length - 1].y + st.outY), CPZ[CPZ.length - 1]];
-  else sp = sample3(st.s);
+  let sp = stonePos3();
   if (st.phase === 0 && st.blk > 0.5) sp = add(sp, [rand(-0.8, 0.8), rand(-0.8, 0.8), 0]);
   const r = st.d * MM / 2 + 0.5;
   drawMesh(dyn.stone, C.stone, M4.model(sp, [r, r, r], [st.rot, st.rot * 0.7, st.rot * 0.3]));
 
   // 半透明(奥から手前の順に)
   gl.enable(gl.BLEND); gl.depthMask(false);
-  for (const o of glassy) if (o.order === 0) drawMesh(o.m, o.mat, o.model);
+  for (const o of glassy) if (o.order === 0 && layerOn[o.layer]) drawMesh(o.m, o.mat, o.model);
   const P = st.P, sc = 1 + P / 350, pulse = P > 20 ? (P - 20) / 80 * (0.6 + 0.4 * Math.sin(st.time * 5)) : 0;
   const kidMat = MAT({ color: [0.62 + P / 400, 0.2 - P / 800, 0.15], alpha: 0.62, noise: 0.25, spec: 0.7, shin: 50, emis: [0.45 * pulse, 0.03 * pulse, 0], fres: 0.2 });
   drawMesh(dyn.kidney, kidMat, kidneyModel(sc));
@@ -974,8 +1053,8 @@ function renderGL(jumpY, shake) {
   drawMesh(dyn.sphere, C.bladder, bm);
   drawMesh(dyn.lowerLumen, MAT({ color: st.peeT > 0 ? u : [0.9, 0.45, 0.45], alpha: 0.7, spec: 0.6, shin: 50, emis: st.peeT > 0 ? ue : [0.1, 0.03, 0.03] }));
   drawMesh(dyn.lowerWall, C.wall);
-  for (const o of glassy) if (o.order === 8) drawMesh(o.m, o.mat, o.model);
-  for (const o of glassy) if (o.order === 9) drawMesh(o.m, o.mat, o.model);
+  for (const o of glassy) if (o.order === 8 && layerOn[o.layer]) drawMesh(o.m, o.mat, o.model);
+  for (const o of glassy) if (o.order === 9 && layerOn[o.layer]) drawMesh(o.m, o.mat, o.model);
   gl.depthMask(true); gl.disable(gl.BLEND);
 }
 function urineColor3() { const t = 1 - st.H / 100; return [1, 0.95 - t * 0.38, 0.62 - t * 0.55]; }
@@ -1000,24 +1079,27 @@ function labels3D() {
     ['左腎', [130, -110, -60], 26, -46],
     ['副腎', [-88, -56, -58], 20, -26],
     ['尿管', sample3(cpS[5]), -52, 4],
-    ['大腰筋', [-60, -380, -40], -58, 30],
-    ['腰椎', [0, -250, -60], 40, -10],
-    ['腹部大動脈', [8, -60, -32], 52, -16],
-    ['下大静脈', [-16, -40, -28], -50, -10],
-    ['総腸骨動脈', [-48, -372, -24], -58, 34],
-    ['腸骨', [-150, -380, -30], -14, -40],
+    ['大腰筋', [-60, -380, -40], -58, 30, 'muscle'],
+    ['腰椎', [0, -250, -60], 40, -10, 'bone'],
+    ['腹部大動脈', [8, -60, -32], 52, -16, 'vessel'],
+    ['下大静脈', [-16, -40, -28], -50, -10, 'vessel'],
+    ['総腸骨動脈', [-48, -372, -24], -58, 34, 'vessel'],
+    ['腸骨', [-150, -380, -30], -14, -40, 'bone'],
     ['膀胱', [-30, -(556 - ry), 40], -56, 0],
     ['前立腺', [-20, -578, 30], -56, 14],
-    ['大腿骨', [-130, -660, 3], -10, 34],
+    ['大腿骨', [-130, -660, 3], -10, 34, 'bone'],
     ['陰茎', [-10, -690, 92], -40, 20]
   ];
-  for (const [t, p, dx, dy] of L) {
+  for (const [t, p, dx, dy, layer = 'organ'] of L) {
+    if (!layerOn[layer]) continue;
     const [x, y] = projectScreen(p);
+    if (!onScene(x, y)) continue;
     tag(t, clamp(x + dx, 30, SCENE_W - 30), clamp(y + dy, 12, SCENE_H - 12), x, y);
   }
 }
 function drawOverlay3D() {
-  const [sx, sy] = st.phase === 3 ? projectScreen([0, -(CP[CP.length - 1].y + st.outY), CPZ[CPZ.length - 1]]) : projectScreen(sample3(st.s));
+  const [sx, sy] = projectScreen(stonePos3());
+  const zk = clamp(zoomK(), 1, 3.5);
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, SCENE_W, SCENE_H); ctx.clip();
   // 尿の流れ
   for (const p of parts) {
@@ -1032,21 +1114,30 @@ function drawOverlay3D() {
     ctx.fillStyle = urineColor(0.85); ctx.beginPath(); ctx.ellipse(x, y, 1.8, 2.6, 0, 0, Math.PI * 2); ctx.fill();
   }
   // 結石のハロー(組織越しでも位置がわかるように)
-  const halo = ctx.createRadialGradient(sx, sy, 2, sx, sy, 18);
+  const halo = ctx.createRadialGradient(sx, sy, 2, sx, sy, 18 * zk);
   halo.addColorStop(0, `rgba(255,236,190,${0.4 + 0.15 * Math.sin(st.time * 4)})`); halo.addColorStop(1, 'rgba(255,236,190,0)');
-  ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(sx, sy, 18, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(sx, sy, 18 * zk, 0, Math.PI * 2); ctx.fill();
   // 生理的狭窄部
   for (const n of st.narrows) {
     const [x, y] = projectScreen(sample3(n.s));
     const near = !n.passed && Math.abs(st.s - n.s) < 40 && st.phase === 0;
     const pulse = near ? 1 + 0.25 * Math.sin(st.time * 8) : 1;
     ctx.strokeStyle = n.passed ? 'rgba(80,220,140,.8)' : near ? 'rgba(255,170,60,.95)' : 'rgba(255,200,120,.55)';
-    ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 13 * pulse, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 13 * zk * pulse, 0, Math.PI * 2); ctx.stroke();
     ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
-    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.strokeText(n.num, x + 24, y + 6);
-    ctx.fillStyle = n.passed ? '#5ee39a' : '#ffb347'; ctx.fillText(n.num, x + 24, y + 6);
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.strokeText(n.num, x + 11 + 13 * zk, y + 6);
+    ctx.fillStyle = n.passed ? '#5ee39a' : '#ffb347'; ctx.fillText(n.num, x + 11 + 13 * zk, y + 6);
   }
   if (showLabels) labels3D();
+  if (paused && running) {
+    ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(8,10,16,.7)'; ctx.beginPath(); ctx.roundRect(SCENE_W / 2 - 62, 10, 124, 26, 13); ctx.fill();
+    ctx.fillStyle = '#ffd27a'; ctx.fillText('⏸ 一時停止中', SCENE_W / 2, 28);
+  } else if (!running && overlay.classList.contains('hidden')) {
+    ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(8,10,16,.7)'; ctx.beginPath(); ctx.roundRect(SCENE_W / 2 - 70, 10, 140, 24, 12); ctx.fill();
+    ctx.fillStyle = '#9fd8ff'; ctx.fillText('🔍 人体模型モード', SCENE_W / 2, 27);
+  }
   // 放散痛(脇腹→鼠径部・陰嚢)
   if (st.felt >= 45 && Math.random() < st.felt / 100) {
     const [ax, ay] = projectScreen([-125, -200, -50]), [bx, by] = projectScreen([-12, -650, 50]);
@@ -1064,7 +1155,7 @@ function drawOverlay3D() {
     ctx.fillStyle = v; ctx.fillRect(0, 0, SCENE_W, SCENE_H);
   }
   ctx.font = '10px ui-monospace,Consolas,monospace'; ctx.fillStyle = 'rgba(200,220,240,.55)'; ctx.textAlign = 'left';
-  ctx.fillText('ドラッグで回転 / ダブルクリックで戻す', 8, SCENE_H - 8);
+  ctx.fillText('ドラッグ:回転  ホイール/ピンチ:拡大  右ドラッグ:移動', 8, SCENE_H - 8);
   ctx.restore();
 }
 
@@ -1156,7 +1247,7 @@ function drawHUDReal(dt) {
   ctx.fillStyle = st.phase >= 1 ? '#5ee39a' : '#5a6a7e'; ctx.fillText(`膀胱到着${st.phase >= 1 ? ' ✓' : ''}`, 300, yy);
   ctx.fillStyle = st.phase >= 3 ? '#5ee39a' : '#5a6a7e'; ctx.fillText(`尿道通過${st.phase >= 3 ? ' ✓' : ''}`, 300, yy + 15);
   ctx.fillStyle = '#5a6a7e'; ctx.font = '10px sans-serif';
-  ctx.fillText('視点: 右斜め前', 300, yy + 44);
+  ctx.fillText(`視点 ×${zoomK().toFixed(1)}${cam.follow ? ' 追尾' : ''}`, 300, yy + 44);
 
   // ログ
   ctx.fillStyle = '#0b1017'; ctx.fillRect(0, SCENE_H, W, H - SCENE_H);
@@ -1186,7 +1277,7 @@ function render() {
 
 // ===== ボタン =====
 const btns = [...document.querySelectorAll('.btn')];
-btns.forEach(b => b.addEventListener('click', () => act(b.dataset.act)));
+btns.forEach(b => b.addEventListener('click', () => { if (!paused) act(b.dataset.act); }));
 function updateButtons() {
   for (const b of btns) {
     const k = b.dataset.act, max = COOLDOWN[k];
@@ -1196,12 +1287,42 @@ function updateButtons() {
 const KEYMAP = { KeyW: 'water', Space: 'jump', KeyJ: 'jump', KeyT: 'toilet', Digit1: 'pk', Digit2: 'alpha', Digit3: 'cit' };
 window.addEventListener('keydown', e => {
   const a = KEYMAP[e.code];
-  if (a) { e.preventDefault(); if (!e.repeat) act(a); }
+  if (a) { e.preventDefault(); if (!e.repeat && !paused) act(a); }
   if (e.code === 'KeyL' && !e.repeat) toggleLabels();
   if (e.code === 'KeyR' && !e.repeat) resetCamera();
-  if (e.code === 'ArrowLeft') { e.preventDefault(); cam.yaw = clamp(cam.yaw + 0.08, -2.4, 2.4); }
-  if (e.code === 'ArrowRight') { e.preventDefault(); cam.yaw = clamp(cam.yaw - 0.08, -2.4, 2.4); }
+  if (e.code === 'KeyF' && !e.repeat) setFollow(!cam.follow);
+  if (e.code === 'KeyP' && !e.repeat) togglePause();
+  if (e.code === 'ArrowLeft') { e.preventDefault(); rotateBy(0.08, 0); }
+  if (e.code === 'ArrowRight') { e.preventDefault(); rotateBy(-0.08, 0); }
+  if (e.code === 'ArrowUp') { e.preventDefault(); rotateBy(0, 0.06); }
+  if (e.code === 'ArrowDown') { e.preventDefault(); rotateBy(0, -0.06); }
+  if (e.code === 'Equal' || e.code === 'NumpadAdd' || e.code === 'Semicolon') { e.preventDefault(); zoomBy(0.85); }
+  if (e.code === 'Minus' || e.code === 'NumpadSubtract') { e.preventDefault(); zoomBy(1 / 0.85); }
 });
+// 一時停止 / 人体模型モード
+let paused = false;
+const pauseBtn = document.getElementById('pauseBtn');
+function togglePause() {
+  if (!running) { // 人体模型モード中はメニューへ戻る
+    if (overlay.classList.contains('hidden')) overlay.classList.remove('hidden');
+    return;
+  }
+  paused = !paused;
+}
+function updateViewBar() {
+  const label = !running ? '🎮 メニュー' : paused ? '▶ 再開' : '⏸ 一時停止';
+  if (pauseBtn.textContent !== label) pauseBtn.textContent = label;
+}
+pauseBtn.addEventListener('click', togglePause);
+document.getElementById('zoomIn').addEventListener('click', () => zoomBy(0.8));
+document.getElementById('zoomOut').addEventListener('click', () => zoomBy(1.25));
+document.getElementById('followBtn').addEventListener('click', () => setFollow(!cam.follow));
+document.querySelectorAll('.layer').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.layer;
+  layerOn[k] = !layerOn[k];
+  b.classList.toggle('on', layerOn[k]);
+}));
+document.querySelectorAll('.obsBtn').forEach(b => b.addEventListener('click', () => overlay.classList.add('hidden')));
 const labelBtn = document.getElementById('labelBtn');
 function toggleLabels() {
   showLabels = !showLabels;
@@ -1217,7 +1338,7 @@ document.getElementById('soundBtn').addEventListener('click', e => {
 const overlay = document.getElementById('overlay');
 function start() {
   reset();
-  running = true;
+  running = true; paused = false;
   overlay.classList.add('hidden');
   document.getElementById('startCard').classList.add('hidden');
   document.getElementById('endCard').classList.add('hidden');
@@ -1277,9 +1398,10 @@ let last = performance.now();
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
-  if (running) update(dt);
+  if (running && !paused) update(dt);
   render();
   updateButtons();
+  updateViewBar();
   requestAnimationFrame(loop);
 }
 reset();
