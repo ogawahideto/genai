@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<!--
+AI Model: Claude Opus 5.5
+User Prompt: 尿管結石の排石ゲーム(nyoukan-sekki)はそのままにして、別にリアル描画バージョンを作ってください。
+  (元の依頼: 腎臓から尿管、膀胱、尿道を通して結石を流すゲーム。水・薬・ジャンプで流しやすくし、
+  時間とともに腎臓に尿がたまって激痛、石の成長、状態が悪いと破砕やステント手術に)
+AI Approach: ゲームロジック(経路・狭窄部・腎内圧・成長・エンディング)は nyoukan-sekki と共通のまま、描画を全面的に作り直した。
+  - 解剖アトラス風: 腹壁を切り開いた窓(皮膚・皮下脂肪・筋層の断面)から後腹壁を見せ、大腰筋・腰方形筋の筋線維、
+    腰椎・肋骨・腸骨・仙骨、腹部大動脈・下大静脈・腎動静脈・総腸骨動静脈を立体的な管として描画
+  - 石のある右腎は冠状断(皮質・腎錐体・腎洞脂肪・腎杯・腎盂)で、水腎症で拡張・腫大・炎症の赤み
+  - 中心線から帯状パスを生成し、光源側にずらしたハイライトを重ねる手法で管の立体感を表現。ノイズパターンで質感付け
+  - 静的な解剖はオフスクリーンキャンバスに一度だけ描画してキャッシュ
+  - 腹部X線(KUB)表示モード: 骨は白く、腸管ガスは黒く、石(シュウ酸カルシウム)は白く写る
+  - 疝痛は脇腹から鼠径部・陰嚢へ放散する稲妻、心電図・心拍・体温・NRS のバイタルモニター
+Implementation Intent: 尿路結石が体のどこを通り、どこで詰まり、なぜ痛むのかを、実際の解剖や画像診断に近い見た目で
+  理解できる教育的ゲーム。※ゲームであり医療アドバイスではありません。
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>尿管結石 排石大作戦 -REAL-</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #05070a;
+  color: #e8f0f8;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", sans-serif;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+}
+#wrap { width: 100%; max-width: 460px; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+canvas {
+  width: 100%; height: auto; display: block;
+  border-radius: 10px; background: #0c0d12;
+  box-shadow: 0 0 0 1px #1e2a38, 0 8px 30px rgba(0,0,0,.7);
+}
+#controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.btn {
+  position: relative; overflow: hidden; border: 1px solid #263445; border-radius: 8px;
+  padding: 9px 4px 7px; font-size: 14px; font-weight: bold; color: #e8f0f8;
+  cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  background: linear-gradient(#18222e, #0f161f); font-family: inherit;
+  border-top: 3px solid var(--c);
+}
+.btn:active { transform: translateY(1px); filter: brightness(1.2); }
+.btn small { display: block; font-size: 10px; font-weight: normal; color: #8fa0b4; margin-top: 2px; }
+.btn .cd { position: absolute; left: 0; top: 0; height: 100%; width: 0; background: rgba(0,0,0,.6); pointer-events: none; }
+.b-water { --c: #4aa8ff; } .b-jump { --c: #3ddc84; } .b-toilet { --c: #f2c94c; }
+.b-pk { --c: #ff6a7a; } .b-alpha { --c: #a98bff; } .b-cit { --c: #ffa040; }
+#topbar { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 13px; color: #9fb0c4; }
+#topbar .title { font-weight: bold; color: #e8f0f8; letter-spacing: .05em; }
+#topbar .title b { color: #ff6a5a; }
+.tbtn { background: #111a24; border: 1px solid #2a3a4c; color: #cfe0f0; border-radius: 6px; padding: 3px 8px; cursor: pointer; font-size: 12px; font-family: inherit; }
+#overlay {
+  position: fixed; inset: 0; background: rgba(2,4,8,.88);
+  display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10;
+}
+.card {
+  background: linear-gradient(#121a24, #0b1017); border: 1px solid #22303f; border-radius: 12px; padding: 20px 18px;
+  max-width: 420px; width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,.7); line-height: 1.6;
+}
+.card h1 { font-size: 21px; text-align: center; margin-bottom: 8px; }
+.card h1 b { color: #ff6a5a; }
+.card h2 { font-size: 19px; text-align: center; margin-bottom: 8px; }
+.card .big { font-size: 52px; text-align: center; }
+.card p { font-size: 13.5px; margin: 6px 0; color: #cfdae6; }
+.card ul { font-size: 13px; margin: 6px 0 6px 18px; color: #cfdae6; }
+.card li { margin: 3px 0; }
+.card .note { font-size: 11.5px; color: #7f90a4; border-top: 1px solid #22303f; padding-top: 8px; margin-top: 10px; }
+.card .stats { background: #070b10; border: 1px solid #1c2633; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin: 8px 0; font-family: ui-monospace, Consolas, monospace; }
+.card .rank { text-align: center; font-size: 17px; color: #5ee39a; font-weight: bold; }
+.startBtn {
+  display: block; margin: 14px auto 4px; padding: 11px 32px; font-size: 16px; font-weight: bold;
+  border: 1px solid #ff8a7a; border-radius: 8px; background: linear-gradient(#d8443a, #9a2018); color: #fff;
+  cursor: pointer; font-family: inherit; letter-spacing: .05em;
+}
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="topbar">
+    <span class="title">尿管結石 排石大作戦 <b>-REAL-</b></span>
+    <span>
+      <button class="tbtn" id="viewBtn">🩻 X線</button>
+      <button class="tbtn" id="labelBtn">🏷 ラベルON</button>
+      <button class="tbtn" id="soundBtn">🔊 ON</button>
+    </span>
+  </div>
+  <canvas id="game" width="420" height="740"></canvas>
+  <div id="controls">
+    <button class="btn b-water" data-act="water">💧 水を飲む<small>[W] 尿量を増やす</small><span class="cd"></span></button>
+    <button class="btn b-jump" data-act="jump">🦘 ジャンプ<small>[Space] 振動で排石</small><span class="cd"></span></button>
+    <button class="btn b-toilet" data-act="toilet">🚽 排尿<small>[T] 膀胱を空に</small><span class="cd"></span></button>
+    <button class="btn b-pk" data-act="pk">💊 NSAIDs<small>[1] 鎮痛</small><span class="cd"></span></button>
+    <button class="btn b-alpha" data-act="alpha">🌿 α1遮断薬<small>[2] 尿管弛緩</small><span class="cd"></span></button>
+    <button class="btn b-cit" data-act="cit">🍋 クエン酸製剤<small>[3] 結石の成長抑制</small><span class="cd"></span></button>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="card" id="startCard">
+    <h1>尿管結石 排石大作戦 <b>-REAL-</b></h1>
+    <p>右の腎盂にできた結石(シュウ酸カルシウム)を、<b>腎盂 → 尿管 → 膀胱 → 尿道</b>と進めて体外へ排出しよう。</p>
+    <ul>
+      <li>💧 <b>水を飲む</b>:尿量が増えて石を押し流す。ただし閉塞中は腎盂内圧が上がり、激しい疝痛に…</li>
+      <li>🦘 <b>ジャンプ</b>:振動で石を動かし、狭い所を突破する。体力を消費</li>
+      <li>🚽 <b>排尿</b>:石が膀胱に落ちたら、<b>尿をためて勢いよく</b>押し出そう(男性の尿道は長い)</li>
+      <li>💊 <b>NSAIDs</b>:鎮痛 / 🌿 <b>α1遮断薬</b>:尿管平滑筋を弛緩 / 🍋 <b>クエン酸製剤</b>:結石の成長を抑制</li>
+    </ul>
+    <p>尿管には3つの<b>生理的狭窄部</b>(①腎盂尿管移行部 ②総腸骨動脈交差部 ③尿管膀胱移行部)があります。</p>
+    <p>⚠ 脱水で結石は成長します。水腎症が続くと発熱・<b>尿管ステント留置</b>、10mm超で<b>ESWL</b>、3日で出なければ<b>TUL</b>に。</p>
+    <p>🩻 <b>[V]</b> で腹部X線(KUB)表示に切り替え。結石は白く写ります。<b>[L]</b> でラベル表示切替。</p>
+    <button class="startBtn" id="startBtn">排石開始</button>
+    <p class="note">※これはゲームです。実際の症状・治療は必ず医師の指示に従ってください。発熱を伴う痛みや、我慢できない痛みはすぐに医療機関を受診してください。</p>
+  </div>
+  <div class="card hidden" id="endCard">
+    <div class="big" id="endEmoji"></div>
+    <h2 id="endTitle"></h2>
+    <p id="endText"></p>
+    <div class="rank" id="endRank"></div>
+    <div class="stats" id="endStats"></div>
+    <button class="startBtn" id="retryBtn">もう一度</button>
+    <p class="note">※これはゲームです。実際の症状・治療は必ず医師の指示に従ってください。</p>
+  </div>
+</div>
+
+<script>
+// ===== 基本設定 =====
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+const W = 420, H = 740;
+const SCENE_H = H - 44; // 体の図を描く高さ(下はログ欄)
+const MM = 3;              // 1mm を何pxで描くか
+const GAME_MIN_PER_SEC = 12; // 実時間1秒 = ゲーム内12分
+const TIME_LIMIT_MIN = 72 * 60;
+// 体の図(ワールド座標)を画面左側 290px 幅に収める変換
+const VIEW = { k: 0.95, ox: -21, oy: -9 }; // 石のある左半分＋右側を少し
+const toScreen = (x, y) => [VIEW.ox + x * VIEW.k, VIEW.oy + y * VIEW.k];
+
+function resize() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = W * dpr; cv.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (typeof staticLayers !== 'undefined') for (const k in staticLayers) delete staticLayers[k];
+}
+resize();
+window.addEventListener('resize', resize);
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rand = (a, b) => a + Math.random() * (b - a);
+function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function lerpColor(a, b, t, alpha = 1) {
+  const A = hexToRgb(a), B = hexToRgb(b); t = clamp(t, 0, 1);
+  return `rgba(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')},${alpha})`;
+}
+
+// ===== 尿路の経路 (w = 内径mm) =====
+const CP = [
+  { x: 120, y: 135, w: 16 },                       // 0 腎盂(奥)
+  { x: 150, y: 150, w: 13 },                       // 1
+  { x: 160, y: 176, w: 9 },                        // 2
+  { x: 168, y: 206, w: 4.6, name: '腎盂尿管移行部' }, // 3 狭窄①
+  { x: 166, y: 248, w: 6.2 },                      // 4
+  { x: 160, y: 292, w: 6.2 },                      // 5
+  { x: 150, y: 341, w: 4.3, name: '総腸骨動脈交差部' }, // 6 狭窄②
+  { x: 152, y: 388, w: 6.2 },                      // 7
+  { x: 162, y: 428, w: 6.2 },                      // 8
+  { x: 178, y: 463, w: 3.9, name: '尿管膀胱移行部' }, // 9 狭窄③
+  { x: 194, y: 492, w: 8 },                        // 10 膀胱入口
+  { x: 212, y: 530, w: 30 },                       // 11 膀胱内
+  { x: 212, y: 556, w: 7 },                        // 12 膀胱頸部
+  { x: 212, y: 592, w: 6 },                        // 13 尿道(前立腺部)
+  { x: 212, y: 625, w: 6 },                        // 14 陰茎の付け根
+  { x: 212, y: 690, w: 6 },                        // 15 陰茎部
+  { x: 212, y: 722, w: 5.5 },                      // 16 外尿道口
+];
+const PATH = [], cpIdx = [];
+function catmull(a, b, c, d, t) {
+  const t2 = t * t, t3 = t2 * t;
+  return 0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+}
+(function buildPath() {
+  const n = CP.length;
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = CP[Math.max(0, i - 1)], p1 = CP[i], p2 = CP[i + 1], p3 = CP[Math.min(n - 1, i + 2)];
+    cpIdx[i] = PATH.length;
+    for (let k = 0; k < 16; k++) {
+      const t = k / 16;
+      PATH.push({
+        x: catmull(p0.x, p1.x, p2.x, p3.x, t),
+        y: catmull(p0.y, p1.y, p2.y, p3.y, t),
+        w: p1.w + (p2.w - p1.w) * t
+      });
+    }
+  }
+  PATH.push({ x: CP[n - 1].x, y: CP[n - 1].y, w: CP[n - 1].w });
+  cpIdx[n - 1] = PATH.length - 1;
+  PATH[0].s = 0;
+  for (let i = 1; i < PATH.length; i++) {
+    PATH[i].s = PATH[i - 1].s + Math.hypot(PATH[i].x - PATH[i - 1].x, PATH[i].y - PATH[i - 1].y);
+  }
+})();
+const TOTAL = PATH[PATH.length - 1].s;
+const cpS = cpIdx.map(i => PATH[i].s);
+const S_ENTRY = cpS[10], S_NECK = cpS[12];
+
+function sample(s) {
+  s = clamp(s, 0, TOTAL - 0.001);
+  let lo = 0, hi = PATH.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (PATH[m].s <= s) lo = m; else hi = m; }
+  const a = PATH[lo], b = PATH[hi], t = (s - a.s) / ((b.s - a.s) || 1);
+  return {
+    x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t,
+    w: a.w + (b.w - a.w) * t, ang: Math.atan2(b.y - a.y, b.x - a.x)
+  };
+}
+
+// ===== サウンド =====
+let AC = null, soundOn = true;
+function tone(f, d, type = 'sine', v = 0.08, f2 = null, delay = 0) {
+  if (!soundOn) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const t = AC.currentTime + delay;
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + d + 0.02);
+  } catch (e) { }
+}
+const SFX = {
+  water() { tone(500, 0.08, 'sine', 0.1, 250); tone(420, 0.08, 'sine', 0.1, 200, 0.1); },
+  jump() { tone(260, 0.2, 'square', 0.05, 620); },
+  pain() { tone(110, 0.35, 'sawtooth', 0.06, 70); },
+  pill() { tone(880, 0.06, 'triangle', 0.08); tone(1320, 0.08, 'triangle', 0.06, null, 0.07); },
+  pass() { [523, 659, 784].forEach((f, i) => tone(f, 0.15, 'triangle', 0.08, null, i * 0.09)); },
+  pee() { tone(900, 0.6, 'sine', 0.025, 600); },
+  win() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', 0.09, null, i * 0.12)); },
+  bad() { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.3, 'sawtooth', 0.05, null, i * 0.2)); },
+  no() { tone(180, 0.12, 'square', 0.04); }
+};
+
+// ===== ゲーム状態 =====
+const COOLDOWN = { water: 1.8, jump: 0.45, toilet: 0, pk: 50, alpha: 60, cit: 60 };
+let st, parts, uparts, drops, floats, running = false;
+
+function reset() {
+  st = {
+    time: 0, gmin: 8 * 60,
+    s: 8, d: rand(4.8, 6.0), rot: 0,
+    shape: Array.from({ length: 10 }, () => rand(0.72, 1.05)),
+    phase: 0, // 0:腎臓・尿管 1:膀胱 2:尿道 3:排出
+    H: 55, P: 0, pain: 0, felt: 0, B: 20, stamina: 100, danger: 0, U: 1,
+    blk: 0, moving: false,
+    pkT: 0, alphaT: 0, citT: 0, jumpT: 0, jumpAnim: 1,
+    peeT: 0, peeRate: 0, peePower: 0,
+    cd: { water: 0, jump: 0, toilet: 0, pk: 0, alpha: 0, cit: 0 },
+    shake: 0, outY: 0, outVy: 0, endTimer: 0,
+    logs: [], warnP: false, warnD: false, warnB: false,
+    narrows: [3, 6, 9].map((i, k) => ({ s: cpS[i], x: CP[i].x, y: CP[i].y, name: CP[i].name, num: '①②③'[k], warned: false, passed: false })),
+    stats: { water: 0, jump: 0, meds: 0, pee: 0, maxPain: 0, maxD: 0, maxDanger: 0 }
+  };
+  st.nextGrow = Math.ceil(st.d * 2) / 2 + 0.5;
+  st.stats.maxD = st.d;
+  parts = Array.from({ length: 45 }, () => ({ s: Math.random() * S_ENTRY, o: rand(-1, 1) }));
+  uparts = []; drops = []; floats = [];
+  log(`石(${st.d.toFixed(1)}mm)が腎盂から動き出した…！`);
+  log('💧水で尿を増やし、🦘ジャンプで石を揺らそう');
+}
+
+function log(text) { st.logs.push({ text, t: st.time }); if (st.logs.length > 6) st.logs.shift(); }
+function float(text, x, y, color = '#c0392b', size = 16) { floats.push({ text, x, y, color, size, life: 1.4 }); }
+function wfloat(text, x, y, color, size) { const [sx, sy] = toScreen(x, y); float(text, sx, sy, color, size); }
+
+// ===== アクション =====
+const ACTIONS = {
+  water() {
+    if (st.H >= 95) { log('もう飲めない…お腹がタプタプ'); st.B += 4; }
+    st.H = Math.min(100, st.H + 22);
+    st.stats.water++;
+    float('💧+', 270, 120, '#6ab8ff');
+    SFX.water();
+    return true;
+  },
+  jump() {
+    if (st.stamina < 14) { log('ヘトヘト…少し休もう'); SFX.no(); return false; }
+    st.stamina -= 14; st.jumpT = 0.5; st.jumpAnim = 0; st.stats.jump++;
+    if (st.phase === 0 && st.blk > 0.5) { st.pain += 6; st.shake = Math.max(st.shake, 0.3); }
+    SFX.jump();
+    return true;
+  },
+  toilet() {
+    if (st.peeT > 0) return false;
+    if (st.B < 25) { log('🚽 …まだ出そうにない'); SFX.no(); return false; }
+    const b0 = st.B;
+    st.peeT = 0.6 + b0 / 40; st.peeRate = b0 / st.peeT; st.stats.pee++;
+    if (st.phase === 1) {
+      if (b0 < 40) { st.peePower = 0; log('勢いが足りず石は動かない…膀胱にためてから！'); }
+      else { st.peePower = 25 + b0 * 0.5; log(b0 > 80 ? '🚽 満タンの勢いで一気に！' : '🚽 えいっ…！'); }
+    } else if (st.phase === 2) {
+      st.peePower = 25 + b0 * 0.5;
+    } else st.peePower = 0;
+    SFX.pee();
+    return true;
+  },
+  pk() { st.pkT = 30; st.stats.meds++; log('💊 鎮痛剤(NSAIDs)を飲んだ。痛みが和らぐ…'); SFX.pill(); return true; },
+  alpha() { st.alphaT = 40; st.stats.meds++; log('🌿 α遮断薬で尿管がゆるんだ！石が通りやすい'); SFX.pill(); return true; },
+  cit() { st.citT = 40; st.stats.meds++; log('🍋 クエン酸製剤で石の成長をストップ！'); SFX.pill(); return true; }
+};
+function act(name) {
+  if (!running || st.phase === 3) return;
+  if (st.cd[name] > 0) { SFX.no(); return; }
+  if (ACTIONS[name]()) st.cd[name] = COOLDOWN[name];
+}
+
+// ===== 更新 =====
+function update(dt) {
+  st.time += dt;
+  st.gmin += dt * GAME_MIN_PER_SEC;
+  for (const k in st.cd) st.cd[k] = Math.max(0, st.cd[k] - dt);
+  st.pkT = Math.max(0, st.pkT - dt);
+  st.alphaT = Math.max(0, st.alphaT - dt);
+  st.citT = Math.max(0, st.citT - dt);
+  st.jumpT = Math.max(0, st.jumpT - dt);
+  if (st.jumpAnim < 1) st.jumpAnim = Math.min(1, st.jumpAnim + dt / 0.5);
+  st.shake = Math.max(0, st.shake - dt);
+  st.stamina = clamp(st.stamina + (7 - st.felt * 0.04) * dt, 0, 100);
+  st.H = Math.max(0, st.H - 0.9 * dt);
+  const U = st.U = 0.25 + st.H / 100 * 1.5;
+
+  // 排出後の演出
+  if (st.phase === 3) {
+    st.outVy += 600 * dt; st.outY += st.outVy * dt;
+    st.endTimer -= dt;
+    updateParticles(dt, U);
+    if (st.endTimer <= 0) endGame('win');
+    return;
+  }
+
+  let blk = 0, moving = false;
+  if (st.phase === 0) {
+    // 腎臓・尿管
+    const wave = 1 + 0.06 * Math.sin(st.time * 3.2); // 蠕動運動
+    const w = sample(st.s).w * (st.alphaT > 0 ? 1.18 : 1) * wave;
+    const gap = st.d - w;
+    blk = clamp((st.d - w * 0.8) / (w * 0.4), 0, 1);
+    let force = U + st.P * 0.02 + (st.jumpT > 0 ? 2.6 : 0);
+    if (st.B > 90) force *= 0.6; // 膀胱パンパンで逆流気味
+    const res = gap > 0 ? gap * 3.0 : 0;
+    const net = force - res;
+    if (net > 0) {
+      const v = Math.min(30, net * 5.5 * (gap > 0 ? 0.5 : 1));
+      st.s += v * dt; st.rot += v * dt * 0.08;
+      moving = gap > -0.4;
+    }
+    st.P = clamp(st.P + (U * blk * 11 - (1 - blk) * 14 - 1) * dt, 0, 100);
+    st.B += U * 1.4 * (1 - blk * 0.85) * dt;
+
+    for (const n of st.narrows) {
+      if (!n.warned && st.s > n.s - 30) { n.warned = true; log(`⚠ ${n.num}${n.name}(狭い所)に差しかかった！`); }
+      if (!n.passed && st.s > n.s + 18) {
+        n.passed = true; log(`✨ ${n.num}${n.name}を突破！`);
+        wfloat('突破！', n.x + 10, n.y - 10, '#27ae60', 18); SFX.pass();
+      }
+    }
+    // 疝痛発作
+    if (blk > 0.7 && Math.random() < 0.12 * dt) {
+      st.pain += 20; st.shake = 0.6; log('⚡ 疝痛発作！！ 背中から脇腹に激痛が…'); SFX.pain();
+      wfloat('ズキーン!!', 150, 60, '#e74c3c', 20);
+    }
+    if (st.s >= S_ENTRY) {
+      st.phase = 1; log('🎉 膀胱に到着！痛みが引いていく…あとはトイレで押し出そう');
+      wfloat('膀胱に到着！', 212, 470, '#27ae60', 18); SFX.pass();
+    }
+  } else {
+    st.P = Math.max(0, st.P - 20 * dt);
+    st.B += U * 1.4 * dt;
+    if (st.phase === 1 && st.s < S_NECK - 2) { st.s = Math.min(S_NECK - 2, st.s + 30 * dt); st.rot += dt; }
+  }
+  st.blk = blk; st.moving = moving;
+
+  // 排尿
+  if (st.peeT > 0) {
+    st.peeT -= dt;
+    st.B = Math.max(0, st.B - st.peeRate * dt);
+    if (st.phase >= 1 && st.s >= S_NECK - 3 && st.peePower > 0) {
+      let v = st.peePower;
+      if (st.phase === 2) {
+        const g = st.d - sample(st.s).w;
+        if (g > 0) { v *= Math.max(0.2, 1 - g * 0.5); st.moving = true; }
+      }
+      st.s += v * dt; st.rot += v * dt * 0.1;
+      if (st.phase === 1 && st.s >= S_NECK) { st.phase = 2; log('石が尿道へ…！あと少し！'); }
+      if (st.s >= TOTAL) {
+        st.phase = 3; st.s = TOTAL; st.outY = 0; st.outVy = -60; st.endTimer = 2.2;
+        log('🎊 コロン…！ 石が出た！！！'); wfloat('コロン♪', 255, 715, '#27ae60', 22); SFX.win();
+      }
+    }
+    if (Math.random() < 0.9) uparts.push({ s: S_NECK, o: rand(-1, 1) });
+  }
+  if (st.B >= 100) {
+    st.B = 100;
+    if (!st.warnB) { st.warnB = true; log('🚽 膀胱がパンパン！トイレに行こう'); }
+  } else if (st.B < 85) st.warnB = false;
+
+  // 石の成長
+  let g = 0.0015;
+  if (st.H < 30) g += 0.02 * (30 - st.H) / 30;
+  if (st.citT > 0) g = -0.006;
+  st.d = Math.max(2.5, st.d + g * dt);
+  st.stats.maxD = Math.max(st.stats.maxD, st.d);
+  if (st.d >= st.nextGrow) {
+    st.nextGrow += 0.5; log(`😨 水分不足で石が成長…(${st.d.toFixed(1)}mm)`);
+    float('石が成長…', 260, 100, '#8e5a2b', 15);
+  }
+  if (st.H < 15 && Math.random() < 0.05 * dt) log('🥵 のどがカラカラ…尿が濃くなっている');
+
+  // 痛み
+  let target;
+  if (st.phase === 0) target = st.P * 0.8 + (moving ? 16 : 0) + (blk > 0.5 ? 8 * (1 + Math.sin(st.time * 1.7)) : 0);
+  else if (st.phase === 1) target = 8;
+  else target = 22 + (st.peeT > 0 ? 25 : 0);
+  if (st.B > 92) target += 15;
+  st.pain = clamp(st.pain + (target - st.pain) * Math.min(1, dt * 1.5), 0, 100);
+  st.felt = clamp(st.pain * (st.pkT > 0 ? 0.45 : 1), 0, 100);
+  st.stats.maxPain = Math.max(st.stats.maxPain, st.felt);
+
+  // 危険度
+  let dd = 0;
+  if (st.P > 70) dd += (st.P - 70) * 0.1;
+  if (st.felt > 85) dd += 1.2;
+  if (dd > 0) st.danger += dd * dt;
+  else if (st.P < 40) st.danger -= 0.4 * dt;
+  st.danger = clamp(st.danger, 0, 100);
+  st.stats.maxDanger = Math.max(st.stats.maxDanger, st.danger);
+
+  if (st.P > 70 && !st.warnP) { st.warnP = true; log('🔥 腎臓に尿がたまってパンパン！(水腎症)'); SFX.pain(); }
+  if (st.P < 50) st.warnP = false;
+  if (st.danger > 70 && !st.warnD) { st.warnD = true; log('🚨 このままだと緊急処置に…！鎮痛剤やα遮断薬を！'); }
+  if (st.danger < 55) st.warnD = false;
+
+  updateParticles(dt, U);
+
+  // 終了判定
+  if (st.danger >= 100) endGame('stent');
+  else if (st.d >= 10) endGame('eswl');
+  else if (st.gmin - 8 * 60 >= TIME_LIMIT_MIN) endGame('tul');
+}
+
+function updateParticles(dt, U) {
+  const R = st.d * MM / 2 + 3;
+  for (const p of parts) {
+    const prev = p.s;
+    p.s += U * 30 * dt;
+    if (st.phase === 0 && st.blk > 0.6 && prev < st.s && p.s >= st.s - R) p.s = st.s - R - Math.random() * 10;
+    if (p.s > S_ENTRY) { p.s = 0; p.o = rand(-1, 1); }
+  }
+  for (const p of uparts) {
+    p.s += 140 * dt;
+    if (p.s >= TOTAL) {
+      p.dead = true;
+      drops.push({ x: 212 + rand(-2, 2), y: CP[CP.length - 1].y + 2, vx: rand(-25, 25), vy: rand(40, 90) });
+    }
+  }
+  uparts = uparts.filter(p => !p.dead);
+  for (const d of drops) { d.vy += 500 * dt; d.x += d.vx * dt; d.y += d.vy * dt; }
+  drops = drops.filter(d => d.y < 820);
+  for (const f of floats) { f.life -= dt; f.y -= 22 * dt; }
+  floats = floats.filter(f => f.life > 0);
+}
+
+// ===== 描画(リアル版) =====
+let viewMode = 'anat';   // 'anat' 解剖図 / 'xray' レントゲン(KUB)
+let showLabels = true;
+const SCENE_W = 290;
+const MARGIN = 30;       // ジャンプ・揺れでも端が切れないよう静的レイヤーに余白
+const LIGHT = [-0.6, -0.8]; // 光源方向(左上)
+
+function urineColor(alpha = 1) { return lerpColor('#fff1a0', '#d48f14', 1 - st.H / 100, alpha); }
+
+// シード固定乱数(静的レイヤーを毎回同じ見た目に)
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+let srand = mulberry32(7);
+const sr = (a, b) => a + srand() * (b - a);
+
+// ノイズテクスチャ
+const grainCanvas = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'), img = g.createImageData(128, 128);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = Math.random() * 255;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return c;
+})();
+const patternCache = new Map();
+function grainPattern(g) {
+  if (!patternCache.has(g)) patternCache.set(g, g.createPattern(grainCanvas, 'repeat'));
+  return patternCache.get(g);
+}
+function grainFill(g, path, alpha, mode = 'overlay') {
+  g.save(); g.globalAlpha = alpha; g.globalCompositeOperation = mode;
+  g.fillStyle = grainPattern(g); g.fill(path); g.restore();
+}
+
+// ---- 形状ユーティリティ ----
+// [x, y, 半幅] の列を Catmull-Rom で細かくする
+function densify(pts, seg = 10) {
+  const n = pts.length, out = [];
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(n - 1, i + 2)];
+    for (let k = 0; k < seg; k++) {
+      const t = k / seg;
+      out.push([catmull(p0[0], p1[0], p2[0], p3[0], t), catmull(p0[1], p1[1], p2[1], p3[1], t), p1[2] + (p2[2] - p1[2]) * t]);
+    }
+  }
+  out.push(pts[n - 1]);
+  return out;
+}
+// 中心線から帯状のパスを作る。scale=幅の倍率、shift=光源側へのずらし量(半幅比)
+function ribbonPath(d, scale = 1, shift = 0) {
+  const L = [], R = [];
+  for (let i = 0; i < d.length; i++) {
+    const a = d[Math.max(0, i - 1)], b = d[Math.min(d.length - 1, i + 1)];
+    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    const nx = -Math.sin(ang), ny = Math.cos(ang);
+    const sgn = (nx * LIGHT[0] + ny * LIGHT[1]) > 0 ? 1 : -1;
+    const [x, y, hw] = d[i];
+    const cx = x + nx * hw * shift * sgn, cy = y + ny * hw * shift * sgn, h = hw * scale;
+    L.push([cx + nx * h, cy + ny * h]); R.push([cx - nx * h, cy - ny * h]);
+  }
+  const p = new Path2D();
+  p.moveTo(L[0][0], L[0][1]);
+  for (let i = 1; i < L.length; i++) p.lineTo(L[i][0], L[i][1]);
+  for (let i = R.length - 1; i >= 0; i--) p.lineTo(R[i][0], R[i][1]);
+  p.closePath();
+  return p;
+}
+// 立体的な管(血管・骨など)
+function shadedTube(g, d, [dark, mid, light], hi = 0.6) {
+  g.fillStyle = dark; g.fill(ribbonPath(d, 1, 0));
+  g.fillStyle = mid; g.fill(ribbonPath(d, 0.76, 0.14));
+  g.save(); g.globalAlpha = hi; g.fillStyle = light; g.fill(ribbonPath(d, 0.22, 0.48)); g.restore();
+}
+// 筋線維
+function muscleFibers(g, d, path, n = 14) {
+  g.save(); g.clip(path);
+  for (let k = 0; k < n; k++) {
+    const t = -0.95 + 1.9 * k / (n - 1) + sr(-0.04, 0.04);
+    g.strokeStyle = k % 3 === 0 ? 'rgba(255,190,170,.18)' : 'rgba(40,0,0,.28)';
+    g.lineWidth = sr(0.8, 1.8);
+    g.beginPath();
+    for (let i = 0; i < d.length; i++) {
+      const a = d[Math.max(0, i - 1)], b = d[Math.min(d.length - 1, i + 1)];
+      const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      const x = d[i][0] - Math.sin(ang) * d[i][2] * t, y = d[i][1] + Math.cos(ang) * d[i][2] * t;
+      i ? g.lineTo(x, y) : g.moveTo(x, y);
+    }
+    g.stroke();
+  }
+  g.restore();
+}
+function mirrorPts(pts, dy = 0) { return pts.map(([x, y, w]) => [424 - x, y + dy, w]); }
+
+// 腎臓のそら豆形 (cx,cy 中心、rot 回転、mirror で左右反転、sc 拡大)
+function beanPath(cx, cy, rot, mirror, sc = 1, shrink = 1) {
+  const c = Math.cos(rot), s = Math.sin(rot), m = mirror ? -1 : 1;
+  const P = (x, y) => {
+    const xx = x * sc * shrink, yy = y * sc * shrink;
+    const rx = xx * c - yy * s, ry = xx * s + yy * c;
+    return [cx + rx * m, cy + ry];
+  };
+  const p = new Path2D();
+  const seg = [
+    [[55, -82], [62, -30], [40, -14]],
+    [[28, -4], [28, 8], [40, 18]],
+    [[62, 34], [55, 82], [0, 80]],
+    [[-62, 78], [-62, -78], [0, -80]]
+  ];
+  p.moveTo(...P(0, -80));
+  for (const [a, b, e] of seg) p.bezierCurveTo(...P(...a), ...P(...b), ...P(...e));
+  p.closePath();
+  return p;
+}
+
+// 体のシルエット
+const BODY_LEFT = [[40, -60], [44, 150], [58, 300], [36, 480], [40, 600], [64, 800]];
+function bodyPath() {
+  const p = new Path2D();
+  p.moveTo(BODY_LEFT[0][0], BODY_LEFT[0][1]);
+  for (let i = 1; i < BODY_LEFT.length - 1; i++) {
+    const [x, y] = BODY_LEFT[i], [nx, ny] = BODY_LEFT[i + 1];
+    p.quadraticCurveTo(x, y, (x + nx) / 2, (y + ny) / 2);
+  }
+  p.lineTo(64, 800); p.lineTo(198, 800); p.lineTo(204, 672);
+  p.quadraticCurveTo(212, 652, 220, 672); p.lineTo(226, 800); p.lineTo(360, 800);
+  for (let i = BODY_LEFT.length - 2; i > 0; i--) {
+    const [x, y] = BODY_LEFT[i], [px, py] = BODY_LEFT[i - 1];
+    p.quadraticCurveTo(424 - x, y, (848 - x - px) / 2, (y + py) / 2);
+  }
+  p.lineTo(424 - BODY_LEFT[0][0], BODY_LEFT[0][1]);
+  p.closePath();
+  return p;
+}
+// 腹壁を切り開いた窓
+function windowPath() {
+  const p = new Path2D();
+  p.moveTo(50, -80);
+  p.quadraticCurveTo(50, 150, 68, 300);
+  p.quadraticCurveTo(50, 450, 58, 540);
+  p.quadraticCurveTo(130, 606, 212, 612);
+  p.quadraticCurveTo(294, 606, 366, 540);
+  p.quadraticCurveTo(374, 450, 356, 300);
+  p.quadraticCurveTo(374, 150, 374, -80);
+  p.closePath();
+  return p;
+}
+
+// ---- 解剖構造の定義 ----
+const PSOAS = [[192, 20, 7], [182, 140, 20], [168, 290, 30], [150, 410, 31], [126, 520, 25], [112, 640, 20]];
+const QL = [[150, 80, 18], [132, 230, 32], [116, 370, 26]];
+const RIBS = [
+  [[200, -70, 7], [150, -50, 8], [90, -10, 8], [50, 40, 7]],
+  [[200, -20, 7], [150, 0, 8], [95, 50, 8], [62, 110, 6]],
+  [[202, 30, 6], [160, 60, 7], [118, 120, 6], [96, 168, 4]]
+];
+const AORTA = [[222, -60, 11], [220, 150, 11], [214, 282, 10]];
+const IVC = [[198, -60, 12], [196, 150, 12], [202, 298, 11]];
+const R_CIA = [[214, 282, 7], [170, 320, 7], [130, 360, 6.5], [112, 420, 6], [102, 520, 5.5]];
+const R_CIV = [[202, 298, 7.5], [160, 346, 7.5], [128, 386, 7], [110, 440, 6.5], [100, 530, 6]];
+const OTHER_DY = -12; // 左腎は右腎より少し高い位置にある
+
+function boneColors(x) { return x ? ['#cfcfcf', '#e8e8e8', '#ffffff'] : ['#8c7a5a', '#dacdaf', '#fbf4e2']; }
+
+// 骨(腰椎・仙骨・腸骨・肋骨)を描く。xray=true でレントゲン調
+function drawBones(g, xray) {
+  const bc = boneColors(xray);
+  // 肋骨
+  for (const side of [0, 1]) for (const r of RIBS) {
+    const pts = side ? mirrorPts(r) : r;
+    if (xray) { g.save(); g.globalAlpha = 0.75; shadedTube(g, densify(pts), ['#9a9a9a', '#7c7c7c', '#c8c8c8'], 0.5); g.restore(); }
+    else shadedTube(g, densify(pts), bc);
+  }
+  // 腸骨・仙骨
+  for (const s of [-1, 1]) {
+    const p = new Path2D();
+    p.moveTo(212 + s * 30, 452);
+    p.quadraticCurveTo(212 + s * 90, 340, 212 + s * 150, 360);
+    p.quadraticCurveTo(212 + s * 185, 380, 212 + s * 172, 440);
+    p.quadraticCurveTo(212 + s * 160, 500, 212 + s * 128, 540);
+    p.quadraticCurveTo(212 + s * 110, 560, 212 + s * 100, 580);
+    p.quadraticCurveTo(212 + s * 60, 608, 212 + s * 4, 604);
+    p.lineTo(212 + s * 4, 584);
+    p.quadraticCurveTo(212 + s * 60, 588, 212 + s * 88, 540);
+    p.quadraticCurveTo(212 + s * 70, 500, 212 + s * 34, 520);
+    p.closePath();
+    const gr = g.createRadialGradient(212 + s * 120, 420, 10, 212 + s * 120, 430, 110);
+    if (xray) { gr.addColorStop(0, 'rgba(150,150,150,.75)'); gr.addColorStop(1, 'rgba(205,205,205,.9)'); }
+    else { gr.addColorStop(0, '#b9a580'); gr.addColorStop(0.6, '#e2d5b8'); gr.addColorStop(1, '#f4ecd8'); }
+    g.fillStyle = gr; g.fill(p);
+    g.strokeStyle = xray ? 'rgba(240,240,240,.9)' : '#8c7a5a'; g.lineWidth = xray ? 3 : 2; g.stroke(p);
+    if (!xray) grainFill(g, p, 0.18);
+    // 腸骨窩の陰影
+    g.save(); g.clip(p);
+    const fg = g.createRadialGradient(212 + s * 110, 430, 4, 212 + s * 110, 430, 60);
+    fg.addColorStop(0, xray ? 'rgba(0,0,0,.25)' : 'rgba(90,70,40,.35)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = fg; g.fillRect(0, 300, 424, 300);
+    g.restore();
+  }
+  // 仙骨
+  const sac = new Path2D();
+  sac.moveTo(176, 452); sac.lineTo(248, 452); sac.quadraticCurveTo(244, 520, 212, 566); sac.quadraticCurveTo(180, 520, 176, 452);
+  g.fillStyle = xray ? 'rgba(190,190,190,.85)' : '#d8caa9'; g.fill(sac);
+  g.strokeStyle = xray ? '#eee' : '#8c7a5a'; g.lineWidth = 2; g.stroke(sac);
+  g.fillStyle = xray ? 'rgba(40,40,40,.6)' : 'rgba(80,60,35,.55)';
+  for (let i = 0; i < 4; i++) for (const s of [-1, 1]) {
+    g.beginPath(); g.ellipse(212 + s * (17 - i * 2.5), 470 + i * 21, 4.5 - i * 0.6, 3.5, 0, 0, Math.PI * 2); g.fill();
+  }
+  // 横突起
+  for (let i = 0; i < 6; i++) {
+    const y = -10 + i * 78, hw = 23 + i * 1.5;
+    for (const s of [-1, 1]) {
+      const d = densify([[212 + s * hw, y + 6, 6], [212 + s * (hw + 22), y + 4, 5], [212 + s * (hw + 40), y + 8, 3.5]]);
+      if (xray) { g.save(); g.globalAlpha = 0.8; shadedTube(g, d, ['#a8a8a8', '#8a8a8a', '#d0d0d0'], 0.5); g.restore(); }
+      else shadedTube(g, d, bc);
+    }
+  }
+}
+
+// 椎体(腰椎)。大腰筋より手前に少しはみ出す
+function drawVertebrae(g, xray) {
+  for (let i = 0; i < 6; i++) {
+    const y = -36 + i * 78, hw = 24 + i * 1.6, h = 62;
+    const p = new Path2D();
+    p.moveTo(212 - hw, y); p.lineTo(212 + hw, y);
+    p.quadraticCurveTo(212 + hw - 6, y + h / 2, 212 + hw, y + h);
+    p.lineTo(212 - hw, y + h);
+    p.quadraticCurveTo(212 - hw + 6, y + h / 2, 212 - hw, y);
+    p.closePath();
+    const gr = g.createLinearGradient(212 - hw, 0, 212 + hw, 0);
+    if (xray) { gr.addColorStop(0, '#d8d8d8'); gr.addColorStop(0.5, '#9c9c9c'); gr.addColorStop(1, '#d8d8d8'); }
+    else { gr.addColorStop(0, '#a8946c'); gr.addColorStop(0.35, '#f3ead4'); gr.addColorStop(1, '#bba882'); }
+    g.fillStyle = gr; g.fill(p);
+    g.strokeStyle = xray ? '#f2f2f2' : '#7d6b4c'; g.lineWidth = xray ? 2.5 : 1.5; g.stroke(p);
+    if (!xray) grainFill(g, p, 0.22);
+    if (xray) { // 椎弓根の「目」
+      g.strokeStyle = 'rgba(250,250,250,.8)'; g.lineWidth = 2.5;
+      for (const s of [-1, 1]) { g.beginPath(); g.ellipse(212 + s * hw * 0.62, y + 16, 6, 9, 0, 0, Math.PI * 2); g.stroke(); }
+      g.beginPath(); g.ellipse(212, y + 32, 4, 9, 0, 0, Math.PI * 2); g.stroke();
+    }
+    // 椎間板
+    if (i < 5) {
+      const dg = g.createLinearGradient(0, y + h, 0, y + 78);
+      dg.addColorStop(0, xray ? '#333' : '#b8c6d0'); dg.addColorStop(0.5, xray ? '#3a3a3a' : '#e4ecf0'); dg.addColorStop(1, xray ? '#333' : '#b8c6d0');
+      g.fillStyle = dg;
+      g.beginPath(); g.roundRect(212 - hw - 1, y + h + 1, hw * 2 + 3, 14, 5); g.fill();
+    }
+  }
+}
+
+function drawMuscles(g) {
+  for (const side of [0, 1]) {
+    // 腰方形筋
+    const qd = densify(side ? mirrorPts(QL) : QL), qp = ribbonPath(qd);
+    let gr = g.createLinearGradient(side ? 330 : 90, 0, side ? 260 : 160, 0);
+    gr.addColorStop(0, '#5e1c16'); gr.addColorStop(1, '#8a2f24');
+    g.fillStyle = gr; g.fill(qp); muscleFibers(g, qd, qp, 12); grainFill(g, qp, 0.2);
+  }
+}
+function drawPsoas(g) {
+  for (const side of [0, 1]) {
+    const pd = densify(side ? mirrorPts(PSOAS) : PSOAS), pp = ribbonPath(pd);
+    const gr = g.createLinearGradient(side ? 290 : 134, 0, side ? 222 : 202, 0);
+    gr.addColorStop(0, '#7e2a22'); gr.addColorStop(0.45, '#b4463a'); gr.addColorStop(1, '#6a1f19');
+    g.fillStyle = gr; g.fill(pp);
+    muscleFibers(g, pd, pp, 18); grainFill(g, pp, 0.22);
+    g.strokeStyle = 'rgba(40,5,5,.6)'; g.lineWidth = 1.5; g.stroke(pp);
+  }
+}
+
+const ART = ['#5e0c0c', '#c02a24', '#ff9a88'], VEN = ['#14214a', '#34509c', '#9ab4f0'];
+function drawVesselsReal(g) {
+  const k = densify;
+  // 右腎動脈(下大静脈の後ろ)
+  shadedTube(g, k([[218, 150, 4], [190, 134, 4], [150, 128, 3.5]]), ART);
+  // 下大静脈・総腸骨静脈
+  shadedTube(g, k(R_CIV), VEN); shadedTube(g, k(mirrorPts(R_CIV, 0).map(([x, y, w]) => [x - 10, y, w])), VEN);
+  shadedTube(g, k(IVC), VEN);
+  // 腹部大動脈・総腸骨動脈
+  shadedTube(g, k(mirrorPts(R_CIA)), ART);
+  shadedTube(g, k(R_CIA), ART);
+  shadedTube(g, k(AORTA), ART);
+  // 左腎動脈・静脈(左腎静脈は大動脈の前を横切る)
+  shadedTube(g, k([[222, 140, 4], [250, 122, 4], [274, 118, 3.5]]), ART);
+  shadedTube(g, k([[198, 168, 5], [240, 150, 5], [274, 132, 4.5]]), VEN);
+  // 右腎静脈
+  shadedTube(g, k([[198, 158, 5], [172, 146, 5], [150, 144, 4.5]]), VEN);
+  // 性腺静脈(細い)
+  g.save(); g.globalAlpha = 0.8;
+  shadedTube(g, k([[198, 230, 2], [176, 330, 2], [150, 460, 2], [140, 560, 2]]), VEN, 0.4);
+  g.restore();
+}
+
+// 反対側(左腎・石なし)の外観
+function drawOtherKidney(g) {
+  g.save(); g.translate(0, OTHER_DY);
+  // 腎盂と尿管
+  const ud = PATH.slice(0, cpIdx[10] + 1).filter((_, i) => i % 2 === 0).map(p => [424 - p.x, p.y, p.w * MM / 2 + 3]);
+  ud[ud.length - 1][1] -= OTHER_DY;
+  shadedTube(g, ud, ['#8a5a4c', '#e2bfae', '#fff4ec'], 0.55);
+  const bp = beanPath(312, 140, -0.15, true);
+  const gr = g.createRadialGradient(290, 100, 8, 312, 140, 100);
+  gr.addColorStop(0, '#d8796a'); gr.addColorStop(0.45, '#a8443a'); gr.addColorStop(1, '#5a1610');
+  g.fillStyle = gr; g.fill(bp); grainFill(g, bp, 0.25);
+  g.strokeStyle = '#4a120e'; g.lineWidth = 2; g.stroke(bp);
+  g.save(); g.clip(bp); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 5;
+  g.beginPath(); g.arc(318, 120, 62, Math.PI * 1.1, Math.PI * 1.45); g.stroke(); g.restore();
+  drawAdrenal(g, 300, 62, true);
+  g.restore();
+}
+function drawAdrenal(g, x, y, mirror) {
+  const m = mirror ? -1 : 1;
+  const p = new Path2D();
+  p.moveTo(x - 26 * m, y + 12); p.quadraticCurveTo(x - 10 * m, y - 22, x + 18 * m, y - 8);
+  p.quadraticCurveTo(x + 24 * m, y + 6, x + 14 * m, y + 16); p.quadraticCurveTo(x - 4 * m, y + 6, x - 26 * m, y + 12);
+  const gr = g.createLinearGradient(x, y - 20, x, y + 16);
+  gr.addColorStop(0, '#f2c766'); gr.addColorStop(1, '#a8701e');
+  g.fillStyle = gr; g.fill(p); grainFill(g, p, 0.3);
+  g.strokeStyle = '#7a4e14'; g.lineWidth = 1.2; g.stroke(p);
+}
+
+// 陰茎・陰嚢(外観)と尿道海綿体の切断面
+function drawGenitalsReal(g) {
+  // 陰嚢
+  for (const s of [-1, 1]) {
+    const p = new Path2D(); p.ellipse(212 + s * 18, 654, 24, 29, s * 0.15, 0, Math.PI * 2);
+    const gr = g.createRadialGradient(212 + s * 18 - 8, 640, 4, 212 + s * 18, 654, 32);
+    gr.addColorStop(0, '#d9a48c'); gr.addColorStop(1, '#8a5644');
+    g.fillStyle = gr; g.fill(p); grainFill(g, p, 0.3);
+    g.save(); g.clip(p); g.strokeStyle = 'rgba(90,40,30,.35)'; g.lineWidth = 1;
+    for (let i = 0; i < 9; i++) {
+      g.beginPath(); const yy = 632 + i * 6;
+      for (let x = 186; x <= 240; x += 6) g.lineTo(x, yy + Math.sin(x * 0.5 + i) * 2);
+      g.stroke();
+    }
+    g.restore();
+  }
+  // 陰茎体
+  const shaft = new Path2D();
+  shaft.moveTo(192, 604); shaft.quadraticCurveTo(189, 650, 190, 698); shaft.lineTo(234, 698);
+  shaft.quadraticCurveTo(235, 650, 232, 604); shaft.closePath();
+  const sg = g.createLinearGradient(190, 0, 234, 0);
+  sg.addColorStop(0, '#9a6650'); sg.addColorStop(0.3, '#ebc2a6'); sg.addColorStop(0.7, '#d8a88c'); sg.addColorStop(1, '#8a5844');
+  g.fillStyle = sg; g.fill(shaft); grainFill(g, shaft, 0.2);
+  g.strokeStyle = '#6e4232'; g.lineWidth = 1.5; g.stroke(shaft);
+  // 亀頭
+  const gl = new Path2D();
+  gl.moveTo(187, 694); gl.quadraticCurveTo(212, 686, 237, 694);
+  gl.quadraticCurveTo(241, 728, 212, 731); gl.quadraticCurveTo(183, 728, 187, 694);
+  const gg = g.createRadialGradient(204, 702, 3, 212, 710, 30);
+  gg.addColorStop(0, '#e8a49a'); gg.addColorStop(1, '#934640');
+  g.fillStyle = gg; g.fill(gl); grainFill(g, gl, 0.15);
+  g.strokeStyle = '#6e2e2a'; g.lineWidth = 1.5; g.stroke(gl);
+  // 尿道海綿体の切断面(中を通る尿道が見えるように)
+  const cut = new Path2D(); cut.roundRect(201, 606, 22, 112, 10);
+  const cg = g.createLinearGradient(201, 0, 223, 0);
+  cg.addColorStop(0, '#7a2a2a'); cg.addColorStop(0.5, '#c45e5a'); cg.addColorStop(1, '#7a2a2a');
+  g.fillStyle = cg; g.fill(cut); grainFill(g, cut, 0.35);
+}
+
+// ---- 静的レイヤー(背景の解剖)を事前描画 ----
+function buildStatic(mode) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const c = document.createElement('canvas');
+  c.width = (SCENE_W + MARGIN * 2) * dpr; c.height = (SCENE_H + MARGIN * 2) * dpr;
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.translate(MARGIN, MARGIN);
+  g.translate(VIEW.ox, VIEW.oy); g.scale(VIEW.k, VIEW.k);
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  srand = mulberry32(7);
+  mode === 'xray' ? buildXray(g) : buildAnatomy(g);
+  return c;
+}
+
+function buildAnatomy(g) {
+  // 背景
+  g.fillStyle = '#0c0d12'; g.fillRect(-100, -100, 700, 1000);
+  const body = bodyPath(), win = windowPath();
+  // 皮膚
+  const sk = g.createLinearGradient(30, 0, 394, 0);
+  sk.addColorStop(0, '#8a5a44'); sk.addColorStop(0.12, '#e3b598'); sk.addColorStop(0.5, '#f0c8ac'); sk.addColorStop(0.88, '#d9a98c'); sk.addColorStop(1, '#7e5040');
+  g.fillStyle = sk; g.fill(body); grainFill(g, body, 0.12);
+  // 切断面(皮膚→皮下脂肪→筋層)
+  g.save();
+  const outside = new Path2D(); outside.addPath(body); outside.addPath(win);
+  g.clip(outside, 'evenodd');
+  g.strokeStyle = '#f1d27e'; g.lineWidth = 30; g.stroke(win);
+  g.strokeStyle = '#a8382c'; g.lineWidth = 14; g.stroke(win);
+  g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = 2; g.stroke(win);
+  g.restore();
+  // 腹腔(後腹壁)
+  g.save(); g.clip(win);
+  const cav = g.createRadialGradient(212, 300, 40, 212, 300, 380);
+  cav.addColorStop(0, '#5a2018'); cav.addColorStop(1, '#250b08');
+  g.fillStyle = cav; g.fillRect(0, -100, 424, 800); grainFill(g, win, 0.25);
+  // 後腹膜脂肪(黄色っぽいもや)
+  for (let i = 0; i < 26; i++) {
+    const x = sr(70, 360), y = sr(-40, 560), r = sr(14, 34);
+    const fg = g.createRadialGradient(x, y, 1, x, y, r);
+    fg.addColorStop(0, 'rgba(230,190,100,.28)'); fg.addColorStop(1, 'rgba(230,190,100,0)');
+    g.fillStyle = fg; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  drawMuscles(g);
+  drawBones(g, false);
+  drawVertebrae(g, false);
+  drawPsoas(g);
+  drawVesselsReal(g);
+  drawOtherKidney(g);
+  // 窓の縁に落ちる影
+  g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 16; g.filter = 'blur(6px)'; g.stroke(win); g.filter = 'none';
+  g.restore();
+  drawGenitalsReal(g);
+}
+
+function buildXray(g) {
+  g.fillStyle = '#050505'; g.fillRect(-100, -100, 700, 1000);
+  const body = bodyPath();
+  // 軟部組織
+  const sk = g.createLinearGradient(30, 0, 394, 0);
+  sk.addColorStop(0, '#202020'); sk.addColorStop(0.15, '#3c3c3c'); sk.addColorStop(0.5, '#4a4a4a'); sk.addColorStop(0.85, '#3c3c3c'); sk.addColorStop(1, '#202020');
+  g.fillStyle = sk; g.fill(body);
+  g.save(); g.clip(body);
+  g.filter = 'blur(3px)';
+  // 側腹線(脂肪層は黒っぽく写る)
+  g.strokeStyle = 'rgba(15,15,15,.6)'; g.lineWidth = 6;
+  g.beginPath(); g.moveTo(58, -60); g.quadraticCurveTo(62, 200, 76, 330); g.stroke();
+  g.beginPath(); g.moveTo(366, -60); g.quadraticCurveTo(362, 200, 348, 330); g.stroke();
+  // 大腰筋の影
+  for (const side of [0, 1]) {
+    g.fillStyle = 'rgba(110,110,110,.35)';
+    g.fill(ribbonPath(densify(side ? mirrorPts(PSOAS) : PSOAS)));
+  }
+  // 腎臓の影
+  g.fillStyle = 'rgba(115,115,115,.6)';
+  g.fill(beanPath(112, 140, -0.15, false));
+  g.save(); g.translate(0, OTHER_DY); g.fill(beanPath(312, 140, -0.15, true)); g.restore();
+  // 腸管ガス(黒く写る)
+  for (let i = 0; i < 46; i++) {
+    const x = sr(80, 345), y = sr(160, 520), r = sr(6, 18);
+    g.fillStyle = `rgba(8,8,8,${sr(0.4, 0.75)})`;
+    g.beginPath(); g.ellipse(x, y, r, r * sr(0.6, 1), sr(0, 3), 0, Math.PI * 2); g.fill();
+  }
+  // 結腸(上行・下行)のガス
+  for (const s of [-1, 1]) for (let y = 60; y < 420; y += 22) {
+    g.fillStyle = 'rgba(10,10,10,.4)';
+    g.beginPath(); g.ellipse(212 + s * sr(128, 140), y, sr(14, 20), 10, 0, 0, Math.PI * 2); g.fill();
+  }
+  g.filter = 'none';
+  g.restore();
+  g.filter = 'blur(1.3px)';
+  drawBones(g, true);
+  drawVertebrae(g, true);
+  g.filter = 'none';
+  // 陰茎・陰嚢の軟部影
+  g.fillStyle = 'rgba(90,90,90,.5)';
+  for (const s of [-1, 1]) { g.beginPath(); g.ellipse(212 + s * 18, 654, 24, 29, 0, 0, Math.PI * 2); g.fill(); }
+  g.beginPath(); g.roundRect(190, 604, 46, 126, 18); g.fill();
+}
+
+function getStatic() {
+  const key = viewMode + (window.devicePixelRatio || 1);
+  if (!staticLayers[key]) staticLayers[key] = buildStatic(viewMode);
+  return staticLayers[key];
+}
+var staticLayers = {}; // resize() から先に参照されるため var
+
+// ---- 動的な描画(解剖図) ----
+// 右腎の断面(皮質・髄質・腎錐体・腎洞脂肪)
+const PYRAMIDS = [[100, 90], [84, 116], [78, 144], [84, 172], [98, 197]];
+const KIDNEY_C = [112, 140], HILUM = [140, 140];
+function drawKidneySection() {
+  const P = st.P, sc = 1 + P / 350;
+  const bean = beanPath(112, 140, -0.15, false, sc);
+  // 炎症の赤いにじみ
+  if (P > 20) {
+    const a = (P - 20) / 80 * (0.45 + 0.15 * Math.sin(st.time * 5));
+    const gl = ctx.createRadialGradient(112, 140, 40, 112, 140, 130);
+    gl.addColorStop(0, `rgba(255,40,20,${a})`); gl.addColorStop(1, 'rgba(255,40,20,0)');
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(112, 140, 130, 0, Math.PI * 2); ctx.fill();
+  }
+  // 皮質
+  const gr = ctx.createRadialGradient(90, 100, 6, 112, 140, 95 * sc);
+  gr.addColorStop(0, lerpColor('#c8604f', '#ff5a40', P / 100)); gr.addColorStop(0.6, lerpColor('#9a3a2e', '#d02a1c', P / 100)); gr.addColorStop(1, '#4e120c');
+  ctx.fillStyle = gr; ctx.fill(bean); grainFill(ctx, bean, 0.25);
+  ctx.save(); ctx.clip(bean);
+  // 腎錐体(髄質)
+  const s = (x, y) => [KIDNEY_C[0] + (x - KIDNEY_C[0]) * sc, KIDNEY_C[1] + (y - KIDNEY_C[1]) * sc];
+  for (const [ax, ay] of PYRAMIDS) {
+    const [x, y] = s(ax, ay);
+    const ang = Math.atan2(y - HILUM[1], x - HILUM[0]);
+    const bx = x + Math.cos(ang) * 30 * sc, by = y + Math.sin(ang) * 30 * sc;
+    const nx = -Math.sin(ang) * 14 * sc, ny = Math.cos(ang) * 14 * sc;
+    const p = new Path2D();
+    p.moveTo(x + nx * 0.25, y + ny * 0.25); p.quadraticCurveTo(bx + nx * 1.2, by + ny * 1.2, bx + nx, by + ny);
+    p.quadraticCurveTo(bx + Math.cos(ang) * 4, by + Math.sin(ang) * 4, bx - nx, by - ny);
+    p.quadraticCurveTo(bx - nx * 1.2, by - ny * 1.2, x - nx * 0.25, y - ny * 0.25); p.closePath();
+    const pg = ctx.createLinearGradient(x, y, bx, by);
+    pg.addColorStop(0, '#c87a6a'); pg.addColorStop(1, '#5a1610');
+    ctx.fillStyle = pg; ctx.fill(p);
+    ctx.strokeStyle = 'rgba(40,5,5,.35)'; ctx.lineWidth = 0.8;
+    for (let k = -3; k <= 3; k++) {
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(bx + nx * k / 3.5, by + ny * k / 3.5); ctx.stroke();
+    }
+  }
+  // 腎洞脂肪
+  const fat = new Path2D(); fat.ellipse(140, 142, 24 * sc, 54 * sc, 0.1, 0, Math.PI * 2);
+  const fg = ctx.createRadialGradient(134, 128, 4, 140, 142, 54 * sc);
+  fg.addColorStop(0, '#f6dd8a'); fg.addColorStop(1, '#b9902e');
+  ctx.fillStyle = fg; ctx.fill(fat); grainFill(ctx, fat, 0.35);
+  ctx.restore();
+  // 被膜
+  ctx.strokeStyle = '#3a0c08'; ctx.lineWidth = 2.2; ctx.stroke(bean);
+  ctx.save(); ctx.clip(bean);
+  ctx.strokeStyle = 'rgba(255,255,255,.3)'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(118, 128, 76 * sc, Math.PI * 1.05, Math.PI * 1.4); ctx.stroke();
+  ctx.restore();
+}
+
+// 腎杯(尿の通り道。水腎症で拡張)
+function drawCalycesReal(lumen) {
+  const dil = 1 + (st.phase === 0 ? st.P / 120 : 0), sc = 1 + st.P / 350;
+  for (let pass = 0; pass < 2; pass++) {
+    for (const [ax, ay] of PYRAMIDS) {
+      const x = KIDNEY_C[0] + (ax - KIDNEY_C[0]) * sc, y = KIDNEY_C[1] + (ay - KIDNEY_C[1]) * sc;
+      ctx.strokeStyle = pass ? lumen : '#e9cbbd';
+      ctx.lineWidth = (pass ? 4 : 7.5) * dil;
+      ctx.beginPath(); ctx.moveTo(124, 138); ctx.quadraticCurveTo((x + 124) / 2 + 6, (y + 138) / 2, x, y); ctx.stroke();
+      // 杯状の先端
+      const ang = Math.atan2(y - HILUM[1], x - HILUM[0]);
+      ctx.beginPath(); ctx.arc(x - Math.cos(ang) * 2, y - Math.sin(ang) * 2, (pass ? 3.5 : 5.5) * dil, ang - 1.3, ang + 1.3); ctx.stroke();
+    }
+  }
+}
+
+// 尿路(腎盂〜尿管、尿道)を立体的な半透明の管として描く
+function urinaryDense(i0, i1, upstreamDilate) {
+  const d = [];
+  for (let i = i0; i <= i1; i++) {
+    const a = PATH[i];
+    let w = a.w * (1 + 0.06 * Math.sin(a.s * 0.08 - st.time * 4));
+    if (upstreamDilate && st.phase === 0 && a.s < st.s) w *= 1 + st.P / 150;
+    if (st.alphaT > 0 && a.w < 10) w *= 1.12;
+    d.push([a.x, a.y, w * MM / 2]);
+  }
+  return d;
+}
+function drawUrinaryTube(i0, i1, lumen, upstreamDilate, wall = ['#7a4a3e', '#e3c0b0', '#fff6ee']) {
+  const d = urinaryDense(i0, i1, upstreamDilate);
+  const outer = d.map(([x, y, h]) => [x, y, h + 4]);
+  ctx.fillStyle = wall[0]; ctx.fill(ribbonPath(outer, 1, 0));
+  ctx.fillStyle = wall[1]; ctx.fill(ribbonPath(outer, 0.86, 0.06));
+  // 内腔
+  ctx.fillStyle = lumen; ctx.fill(ribbonPath(d, 1, 0));
+  ctx.save(); ctx.globalAlpha = 0.35; ctx.fillStyle = '#000'; ctx.fill(ribbonPath(d, 0.35, -0.6)); ctx.restore();
+  // 管壁のツヤ
+  ctx.save(); ctx.globalAlpha = 0.45; ctx.fillStyle = wall[2]; ctx.fill(ribbonPath(outer, 0.16, 0.6)); ctx.restore();
+  // 端の丸め
+  const [x0, y0, h0] = outer[0];
+  ctx.fillStyle = wall[1]; ctx.beginPath(); ctx.arc(x0, y0, h0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = lumen; ctx.beginPath(); ctx.arc(x0, y0, d[0][2], 0, Math.PI * 2); ctx.fill();
+}
+
+function drawBladderReal() {
+  const ry = 30 + st.B * 0.28, rx = 36 + st.B * 0.3, cy = 556 - ry;
+  const sac = new Path2D(); sac.ellipse(212, cy, rx, ry, 0, 0, Math.PI * 2);
+  const gr = ctx.createRadialGradient(196, cy - ry * 0.4, 4, 212, cy, Math.max(rx, ry) * 1.1);
+  gr.addColorStop(0, '#f0c4b4'); gr.addColorStop(0.55, '#c27a6a'); gr.addColorStop(1, '#6e322a');
+  ctx.fillStyle = gr; ctx.fill(sac); grainFill(ctx, sac, 0.2);
+  // 排尿筋の線維
+  ctx.save(); ctx.clip(sac);
+  ctx.strokeStyle = 'rgba(90,30,25,.28)'; ctx.lineWidth = 1.2;
+  for (let k = -4; k <= 4; k++) {
+    ctx.beginPath(); ctx.ellipse(212 + k * rx * 0.2, cy, rx * 0.25, ry * 1.1, k * 0.12, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+  // 前壁を切った窓から尿が見える
+  const inner = new Path2D(); inner.ellipse(212, cy + 3, rx - 9, ry - 9, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#a24c48'; ctx.fill(inner);
+  ctx.save(); ctx.clip(inner);
+  // 粘膜のひだ(尿が少ないほどはっきり)
+  ctx.strokeStyle = `rgba(70,15,15,${0.45 - st.B / 300})`; ctx.lineWidth = 1.5;
+  for (let i = 0; i < 6; i++) {
+    ctx.beginPath();
+    for (let x = 212 - rx; x <= 212 + rx; x += 5) ctx.lineTo(x, cy - ry + (i + 1) * ry / 3.5 + Math.sin(x * 0.25 + i) * 3);
+    ctx.stroke();
+  }
+  // 尿
+  const ug = ctx.createLinearGradient(0, cy - ry, 0, cy + ry);
+  ug.addColorStop(0, urineColor(0.55)); ug.addColorStop(1, urineColor(0.85));
+  ctx.fillStyle = ug; ctx.fill(inner);
+  // 膀胱三角部
+  ctx.fillStyle = 'rgba(200,90,90,.5)';
+  ctx.beginPath(); ctx.moveTo(196, 536); ctx.lineTo(228, 536); ctx.lineTo(212, 552); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1.5; ctx.stroke(inner);
+  ctx.strokeStyle = '#4e1e18'; ctx.lineWidth = 2; ctx.stroke(sac);
+  ctx.save(); ctx.clip(sac); ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.ellipse(204, cy - 2, rx - 4, ry - 4, 0, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke(); ctx.restore();
+  return { cy, ry, rx };
+}
+
+function drawProstate() {
+  const p = new Path2D();
+  p.moveTo(212, 556); p.bezierCurveTo(246, 554, 244, 586, 212, 598); p.bezierCurveTo(180, 586, 178, 554, 212, 556);
+  const gr = ctx.createRadialGradient(204, 568, 2, 212, 576, 30);
+  gr.addColorStop(0, '#dca090'); gr.addColorStop(1, '#7a3e34');
+  ctx.fillStyle = gr; ctx.fill(p); grainFill(ctx, p, 0.35);
+  ctx.strokeStyle = '#5a2620'; ctx.lineWidth = 1.5; ctx.stroke(p);
+}
+
+function drawUrineParticles() {
+  for (const p of parts) {
+    const q = sample(p.s);
+    const nx = -Math.sin(q.ang), ny = Math.cos(q.ang), off = p.o * q.w * MM * 0.32;
+    ctx.fillStyle = `rgba(255,255,230,${0.35 + 0.3 * Math.sin(st.time * 6 + p.o * 9)})`;
+    ctx.beginPath(); ctx.arc(q.x + nx * off, q.y + ny * off, 1.4, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// シュウ酸カルシウム結石(トゲのある結晶)
+function stonePos() {
+  let x, y;
+  if (st.phase === 3) { x = 212; y = CP[CP.length - 1].y + st.outY; }
+  else { const q = sample(st.s); x = q.x; y = q.y; }
+  if (st.phase === 0 && st.blk > 0.5) { x += rand(-0.8, 0.8); y += rand(-0.8, 0.8); }
+  return [x, y];
+}
+function drawStoneReal() {
+  if (!st.spk) st.spk = Array.from({ length: 14 }, () => ({ a: rand(0, Math.PI * 2), l: rand(0.25, 0.6), w: rand(0.12, 0.22) }));
+  const [x, y] = stonePos();
+  const r = st.d * MM / 2 + 0.5;
+  const halo = ctx.createRadialGradient(x, y, r, x, y, r * 3.2);
+  halo.addColorStop(0, `rgba(255,240,200,${0.35 + 0.15 * Math.sin(st.time * 4)})`); halo.addColorStop(1, 'rgba(255,240,200,0)');
+  ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(x, y, r * 3.2, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.translate(x, y); ctx.rotate(st.rot);
+  ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1.5;
+  // 結晶のトゲ
+  for (const s of st.spk) {
+    const ca = Math.cos(s.a), sa = Math.sin(s.a);
+    ctx.fillStyle = '#d9c08a';
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(s.a - s.w) * r * 0.8, Math.sin(s.a - s.w) * r * 0.8);
+    ctx.lineTo(ca * r * (1 + s.l), sa * r * (1 + s.l));
+    ctx.lineTo(Math.cos(s.a + s.w) * r * 0.8, Math.sin(s.a + s.w) * r * 0.8);
+    ctx.closePath(); ctx.fill();
+  }
+  // 本体
+  const body = new Path2D();
+  st.shape.forEach((k, i) => {
+    const a = i / st.shape.length * Math.PI * 2, rr = r * k;
+    i ? body.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : body.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  });
+  body.closePath();
+  const gr = ctx.createRadialGradient(-r * 0.35, -r * 0.4, 0.5, 0, 0, r * 1.1);
+  gr.addColorStop(0, '#f4e2b0'); gr.addColorStop(0.45, '#a8803e'); gr.addColorStop(1, '#4a3014');
+  ctx.fillStyle = gr; ctx.fill(body);
+  ctx.shadowColor = 'transparent';
+  ctx.fillStyle = 'rgba(60,35,10,.5)';
+  for (let i = 0; i < 7; i++) { const a = i * 2.3, rr = r * 0.5 * ((i * 37 % 10) / 10); ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, r * 0.09, 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = '#3a240c'; ctx.lineWidth = 0.8; ctx.stroke(body);
+  ctx.fillStyle = 'rgba(255,255,240,.85)';
+  ctx.beginPath(); ctx.ellipse(-r * 0.35, -r * 0.4, r * 0.22, r * 0.12, -0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+function drawStoneXray() {
+  const [x, y] = stonePos();
+  const r = st.d * MM / 2 + 0.5;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(st.rot);
+  ctx.shadowColor = 'rgba(255,255,255,.9)'; ctx.shadowBlur = 6;
+  ctx.fillStyle = '#f8f8f8';
+  ctx.beginPath();
+  st.shape.forEach((k, i) => {
+    const a = i / st.shape.length * Math.PI * 2, rr = r * k;
+    i ? ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  });
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// 疝痛:脇腹から鼠径部・陰嚢へ放散する痛みを稲妻で表現
+function drawPainReal() {
+  const f = st.felt;
+  if (f < 45) return;
+  const n = Math.random() < f / 100 ? 1 + Math.floor((f - 45) / 20) : 0;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (let b = 0; b < n; b++) {
+    const pts = [[rand(70, 100), rand(150, 210)]];
+    const tx = rand(170, 205), ty = rand(600, 650);
+    for (let i = 1; i <= 9; i++) {
+      const t = i / 9;
+      pts.push([pts[0][0] + (tx - pts[0][0]) * t + rand(-14, 14) - Math.sin(t * Math.PI) * 40, pts[0][1] + (ty - pts[0][1]) * t + rand(-8, 8)]);
+    }
+    for (const [w, c] of [[7, 'rgba(255,40,30,.35)'], [3, 'rgba(255,120,90,.7)'], [1.2, 'rgba(255,240,230,.95)']]) {
+      ctx.strokeStyle = c; ctx.lineWidth = w; ctx.beginPath();
+      pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+// アトラス風ラベル
+function tag(text, tx, ty, ax, ay, color = '#f4ece6') {
+  ctx.font = '600 12.5px "Hiragino Kaku Gothic ProN","Yu Gothic UI",sans-serif';
+  const w = ctx.measureText(text).width + 10;
+  if (ax !== undefined) {
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(ax, ay); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ax, ay, 2.2, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(10,12,18,.72)';
+  ctx.beginPath(); ctx.roundRect(tx - w / 2, ty - 9, w, 18, 9); ctx.fill();
+  ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, tx, ty + 0.5);
+  ctx.textBaseline = 'alphabetic';
+}
+function drawLabelsReal(bl) {
+  if (showLabels) {
+    if (viewMode === 'anat') {
+      tag('副腎', 152, 36, 112, 62);
+      tag('右腎(断面)', 74, 268, 92, 212);
+      tag('腎洞脂肪', 150, 98, 140, 120);
+      tag('尿管', 100, 316, 160, 296);
+      tag('大腰筋', 116, 470);
+      tag('腹部大動脈', 268, 236, 218, 236);
+      tag('下大静脈', 252, 200, 199, 210);
+      tag('総腸骨動脈', 70, 404, 116, 392);
+      tag('腸骨', 286, 420);
+      tag('膀胱', 108, 540, bl.cx - bl.rx + 4, 540);
+      tag('前立腺', 270, 584, 236, 578);
+      tag('尿道', 266, 640, 214, 640);
+      tag('陰茎', 266, 700, 236, 700);
+      tag('左腎', 300, 250, 300, 190);
+    } else {
+      // レントゲンでは尿路は写らないので、うっすら経路ガイド
+      ctx.save(); ctx.setLineDash([4, 6]); ctx.strokeStyle = 'rgba(120,200,255,.28)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); PATH.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); ctx.restore();
+    }
+  }
+  // 生理的狭窄部マーカー
+  for (const n of st.narrows) {
+    const near = !n.passed && Math.abs(st.s - n.s) < 40 && st.phase === 0;
+    const pulse = near ? 1 + 0.25 * Math.sin(st.time * 8) : 1;
+    ctx.strokeStyle = n.passed ? 'rgba(80,220,140,.8)' : near ? 'rgba(255,170,60,.95)' : 'rgba(255,200,120,.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(n.x, n.y, 16 * pulse, 0, Math.PI * 2); ctx.stroke();
+    ctx.font = 'bold 17px sans-serif'; ctx.textAlign = 'center';
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.strokeText(n.num, n.x + 30, n.y + 6);
+    ctx.fillStyle = n.passed ? '#5ee39a' : '#ffb347'; ctx.fillText(n.num, n.x + 30, n.y + 6);
+  }
+}
+
+// ---- HUD (バイタルモニター風) ----
+const ecg = new Array(118).fill(0);
+let ecgPhase = 0, lastRender = performance.now();
+function ecgWave(t) {
+  const g = (c, w, h) => h * Math.exp(-((t - c) * (t - c)) / (2 * w * w));
+  return g(0.18, 0.025, 0.12) - g(0.29, 0.008, 0.15) + g(0.31, 0.01, 1) - g(0.335, 0.01, 0.3) + g(0.55, 0.045, 0.25);
+}
+function vitals() {
+  const hr = Math.round(68 + st.felt * 0.55 + st.danger * 0.15 + (st.jumpAnim < 1 ? 12 : 0));
+  const temp = 36.5 + Math.max(0, st.danger - 30) / 70 * 2.4;
+  return { hr, temp };
+}
+function hbar(label, val, max, unit, y, color, warn) {
+  const x = 300, w = 106, r = clamp(val / max, 0, 1);
+  ctx.textAlign = 'left'; ctx.font = '600 11px sans-serif'; ctx.fillStyle = '#9fb0c4'; ctx.fillText(label, x, y);
+  ctx.textAlign = 'right'; ctx.font = 'bold 11px ui-monospace,Consolas,monospace';
+  const hot = warn !== undefined && val >= warn;
+  ctx.fillStyle = hot ? '#ff6a6a' : '#e8f0f8'; ctx.fillText(`${Math.round(val)}${unit}`, x + w, y);
+  ctx.fillStyle = '#1c2633'; ctx.beginPath(); ctx.roundRect(x, y + 4, w, 8, 4); ctx.fill();
+  const blink = hot && Math.floor(st.time * 4) % 2;
+  ctx.fillStyle = blink ? '#ff2d2d' : color;
+  ctx.shadowColor = color; ctx.shadowBlur = 6;
+  ctx.beginPath(); ctx.roundRect(x, y + 4, Math.max(0.01, w * r), 8, 4); ctx.fill();
+  ctx.shadowBlur = 0;
+}
+function drawHUDReal(dt) {
+  ctx.fillStyle = '#0b1017'; ctx.fillRect(SCENE_W, 0, W - SCENE_W, SCENE_H);
+  ctx.strokeStyle = '#1e2a38'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(SCENE_W + 0.5, 0); ctx.lineTo(SCENE_W + 0.5, SCENE_H); ctx.stroke();
+  const { hr, temp } = vitals();
+  // 心電図
+  if (running) {
+    const steps = 2;
+    for (let i = 0; i < steps; i++) { ecgPhase = (ecgPhase + dt * hr / 60 / steps) % 1; ecg.shift(); ecg.push(ecgWave(ecgPhase) + rand(-0.02, 0.02)); }
+  }
+  ctx.fillStyle = '#05080c'; ctx.beginPath(); ctx.roundRect(296, 6, 118, 54, 6); ctx.fill();
+  ctx.strokeStyle = '#3cff8a'; ctx.lineWidth = 1.4; ctx.shadowColor = '#3cff8a'; ctx.shadowBlur = 5;
+  ctx.beginPath(); ecg.forEach((v, i) => { const x = 297 + i, y = 46 - v * 30; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.textAlign = 'left'; ctx.font = 'bold 10px ui-monospace,Consolas,monospace'; ctx.fillStyle = '#3cff8a';
+  ctx.fillText(`HR ${hr}`, 300, 18);
+  ctx.textAlign = 'right'; ctx.fillStyle = temp >= 37.5 ? '#ff8a5a' : '#8fd3ff';
+  ctx.fillText(`${temp.toFixed(1)}℃`, 406, 18);
+
+  // 疼痛スケール
+  const nrs = Math.round(st.felt / 10);
+  ctx.textAlign = 'left'; ctx.font = '600 11px sans-serif'; ctx.fillStyle = '#9fb0c4'; ctx.fillText('疼痛 NRS', 300, 80);
+  ctx.textAlign = 'right'; ctx.font = 'bold 19px ui-monospace,Consolas,monospace';
+  ctx.fillStyle = lerpColor('#5ee39a', '#ff3b3b', st.felt / 100);
+  ctx.fillText(`${nrs}/10`, 406 + (st.felt > 80 ? rand(-1, 1) : 0), 86);
+
+  const elapsed = st.gmin - 8 * 60;
+  const day = Math.floor(st.gmin / 1440) + 1, hh = Math.floor(st.gmin % 1440 / 60), mm = Math.floor(st.gmin % 60);
+  ctx.textAlign = 'left'; ctx.font = 'bold 12px ui-monospace,Consolas,monospace'; ctx.fillStyle = '#e8f0f8';
+  ctx.fillText(`DAY${day} ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`, 300, 108);
+  ctx.font = '10.5px sans-serif'; ctx.fillStyle = '#7f90a4';
+  ctx.fillText(`手術まで残り ${Math.max(0, Math.ceil((TIME_LIMIT_MIN - elapsed) / 60))}時間`, 300, 124);
+
+  const loc = st.phase === 3 ? '体外' : st.s < cpS[3] - 12 ? '腎盂' : st.phase === 0 ? '尿管' : st.phase === 1 ? '膀胱' : '尿道';
+  ctx.font = 'bold 12px sans-serif'; ctx.fillStyle = st.d >= 8 ? '#ff6a6a' : '#f2d49a';
+  ctx.fillText(`結石 ${st.d.toFixed(1)}mm`, 300, 146);
+  ctx.fillStyle = '#e8f0f8'; ctx.fillText(`位置 ${loc}`, 300, 163);
+
+  let y = 186;
+  hbar('痛み', st.felt, 100, '', y, '#ff4d5e', 85); y += 32;
+  hbar('腎盂内圧', 8 + st.P * 0.42, 50, 'cmH₂O', y, '#ff9a3c', 37); y += 32;
+  hbar('水分', st.H, 100, '%', y, '#4aa8ff'); y += 32;
+  hbar('膀胱容量', st.B * 4, 400, 'mL', y, '#f2c94c', 368); y += 32;
+  hbar('体力', st.stamina, 100, '%', y, '#3ddc84'); y += 32;
+  hbar('危険度', st.danger, 100, '%', y, '#b47cff', 70); y += 30;
+
+  ctx.textAlign = 'left'; ctx.font = '11px sans-serif';
+  const buffs = [];
+  if (st.pkT > 0) buffs.push(['NSAIDs', st.pkT, '#ff8a9a']);
+  if (st.alphaT > 0) buffs.push(['α1遮断薬', st.alphaT, '#b9a4ff']);
+  if (st.citT > 0) buffs.push(['クエン酸製剤', st.citT, '#ffb066']);
+  buffs.forEach(([t, v, c], i) => { ctx.fillStyle = c; ctx.fillText(`● ${t} ${Math.ceil(v)}s`, 300, y + 4 + i * 15); });
+
+  let yy = 474;
+  ctx.fillStyle = '#9fb0c4'; ctx.font = '600 11px sans-serif'; ctx.fillText('生理的狭窄部', 300, yy);
+  ctx.font = '10.5px sans-serif';
+  st.narrows.forEach((n, i) => {
+    ctx.fillStyle = n.passed ? '#5ee39a' : '#5a6a7e';
+    ctx.fillText(`${n.num}${n.name}${n.passed ? ' ✓' : ''}`, 300, yy + 17 + i * 15);
+  });
+  yy += 70;
+  ctx.fillStyle = st.phase >= 1 ? '#5ee39a' : '#5a6a7e'; ctx.fillText(`膀胱到着${st.phase >= 1 ? ' ✓' : ''}`, 300, yy);
+  ctx.fillStyle = st.phase >= 3 ? '#5ee39a' : '#5a6a7e'; ctx.fillText(`尿道通過${st.phase >= 3 ? ' ✓' : ''}`, 300, yy + 15);
+  ctx.fillStyle = '#5a6a7e'; ctx.font = '10px sans-serif';
+  ctx.fillText(viewMode === 'xray' ? '表示: 腹部X線(KUB)' : '表示: 解剖図', 300, yy + 44);
+
+  // ログ
+  ctx.fillStyle = '#0b1017'; ctx.fillRect(0, SCENE_H, W, H - SCENE_H);
+  ctx.textAlign = 'left'; ctx.font = '12px sans-serif';
+  const last = st.logs.slice(-2);
+  last.forEach((l, i) => {
+    ctx.fillStyle = i === last.length - 1 ? '#e8f0f8' : '#6a7a8e';
+    ctx.fillText(l.text, 12, SCENE_H + 17 + i * 17);
+  });
+}
+
+function render() {
+  const now = performance.now(), rdt = Math.min(0.05, (now - lastRender) / 1000); lastRender = now;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0c0d12'; ctx.fillRect(0, 0, W, H);
+  const xray = viewMode === 'xray';
+  const jy = st.jumpAnim < 1 ? -Math.sin(Math.PI * st.jumpAnim) * 18 : 0;
+  const sh = st.shake * 6, dx = rand(-sh, sh), dy = jy + rand(-sh, sh);
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, SCENE_W, SCENE_H); ctx.clip();
+  ctx.drawImage(getStatic(), dx - MARGIN, dy - MARGIN, SCENE_W + MARGIN * 2, SCENE_H + MARGIN * 2);
+  ctx.translate(dx, dy);
+  ctx.translate(VIEW.ox, VIEW.oy); ctx.scale(VIEW.k, VIEW.k);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  let bl;
+  if (!xray) {
+    drawKidneySection();
+    const lumen = urineColor(0.92);
+    drawCalycesReal(lumen);
+    drawUrinaryTube(0, cpIdx[10], lumen, true);
+    drawUrineParticles();
+    drawProstate();
+    bl = drawBladderReal();
+    drawUrinaryTube(cpIdx[12], PATH.length - 1, st.peeT > 0 ? lumen : 'rgba(150,60,60,.9)', false, ['#5a2420', '#b45a54', '#ffd8d0']);
+    for (const p of uparts) { const q = sample(p.s); ctx.fillStyle = 'rgba(255,255,220,.6)'; ctx.beginPath(); ctx.arc(q.x + p.o * 4, q.y, 1.4, 0, Math.PI * 2); ctx.fill(); }
+    if (st.phase !== 3) drawStoneReal();
+    drawPainReal();
+  } else {
+    const ry = 30 + st.B * 0.28, rx = 36 + st.B * 0.3, cy = 556 - ry;
+    bl = { cy, ry, rx };
+    ctx.save(); ctx.filter = 'blur(4px)'; ctx.fillStyle = `rgba(120,120,120,${0.25 + st.B / 400})`;
+    ctx.beginPath(); ctx.ellipse(212, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    if (st.phase !== 3) drawStoneXray();
+  }
+  bl.cx = 212;
+  drawLabelsReal(bl);
+  ctx.restore();
+
+  // 体の外(揺らさない)
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, SCENE_W, SCENE_H); ctx.clip();
+  ctx.translate(VIEW.ox, VIEW.oy); ctx.scale(VIEW.k, VIEW.k);
+  if (!xray) for (const d of drops) {
+    ctx.fillStyle = urineColor(0.85); ctx.beginPath(); ctx.ellipse(d.x, d.y, 2.2, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  if (st.phase === 3) xray ? drawStoneXray() : drawStoneReal();
+  ctx.restore();
+
+  // 画面効果
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, SCENE_W, SCENE_H); ctx.clip();
+  if (xray) {
+    ctx.save();
+    ctx.globalAlpha = 0.08; ctx.fillStyle = grainPattern(ctx);
+    ctx.translate(rand(-128, 0), rand(-128, 0)); ctx.fillRect(0, 0, SCENE_W + 256, SCENE_H + 256);
+    ctx.restore();
+    ctx.font = 'bold 22px Arial'; ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.textAlign = 'left';
+    ctx.fillText('R', 12, 30);
+    ctx.font = '10px ui-monospace,Consolas,monospace'; ctx.fillStyle = 'rgba(255,255,255,.6)';
+    ctx.fillText('KUB  AP  STANDING', 12, SCENE_H - 10);
+  }
+  if (st.felt > 55) {
+    const v = ctx.createRadialGradient(SCENE_W / 2, SCENE_H / 2, SCENE_H * 0.3, SCENE_W / 2, SCENE_H / 2, SCENE_H * 0.75);
+    v.addColorStop(0, 'rgba(120,0,0,0)'); v.addColorStop(1, `rgba(150,0,0,${(st.felt - 55) / 90 * (0.8 + 0.2 * Math.sin(st.time * 6))})`);
+    ctx.fillStyle = v; ctx.fillRect(0, 0, SCENE_W, SCENE_H);
+  }
+  ctx.restore();
+
+  for (const f of floats) {
+    ctx.globalAlpha = clamp(f.life, 0, 1);
+    ctx.font = `bold ${f.size}px sans-serif`; ctx.textAlign = 'center';
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.strokeText(f.text, f.x, f.y);
+    ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+  drawHUDReal(rdt);
+}
+
+// ===== ボタン =====
+const btns = [...document.querySelectorAll('.btn')];
+btns.forEach(b => b.addEventListener('click', () => act(b.dataset.act)));
+function updateButtons() {
+  for (const b of btns) {
+    const k = b.dataset.act, max = COOLDOWN[k];
+    b.querySelector('.cd').style.width = max ? (st.cd[k] / max * 100) + '%' : '0';
+  }
+}
+const KEYMAP = { KeyW: 'water', Space: 'jump', KeyJ: 'jump', KeyT: 'toilet', Digit1: 'pk', Digit2: 'alpha', Digit3: 'cit' };
+window.addEventListener('keydown', e => {
+  const a = KEYMAP[e.code];
+  if (a) { e.preventDefault(); if (!e.repeat) act(a); }
+  if (e.code === 'KeyV' && !e.repeat) toggleView();
+  if (e.code === 'KeyL' && !e.repeat) toggleLabels();
+});
+const viewBtn = document.getElementById('viewBtn'), labelBtn = document.getElementById('labelBtn');
+function toggleView() {
+  viewMode = viewMode === 'anat' ? 'xray' : 'anat';
+  viewBtn.textContent = viewMode === 'xray' ? '🫀 解剖図' : '🩻 X線';
+}
+function toggleLabels() {
+  showLabels = !showLabels;
+  labelBtn.textContent = showLabels ? '🏷 ラベルON' : '🏷 ラベルOFF';
+}
+viewBtn.addEventListener('click', toggleView);
+labelBtn.addEventListener('click', toggleLabels);
+document.getElementById('soundBtn').addEventListener('click', e => {
+  soundOn = !soundOn; e.target.textContent = soundOn ? '🔊 ON' : '🔇 OFF';
+});
+
+// ===== 開始・終了 =====
+const overlay = document.getElementById('overlay');
+function start() {
+  reset();
+  running = true;
+  overlay.classList.add('hidden');
+  document.getElementById('startCard').classList.add('hidden');
+  document.getElementById('endCard').classList.add('hidden');
+  tone(1, 0.01, 'sine', 0.001); // オーディオ有効化
+}
+document.getElementById('startBtn').addEventListener('click', start);
+document.getElementById('retryBtn').addEventListener('click', start);
+
+const ENDINGS = {
+  win: {
+    emoji: '🎉', title: '排石成功！！',
+    text: '石が無事に体の外へ出ました！おつかれさまでした。実際には、出た石は捨てずに病院へ持っていくと、成分分析で再発予防に役立ちます。再発しやすい病気なので、普段から水分をしっかりとりましょう。'
+  },
+  stent: {
+    emoji: '🩺', title: '緊急処置：尿管ステント留置',
+    text: '腎臓に尿がたまり続け（水腎症）、痛みも限界に…。腎臓を守るため、尿管に細い管（ステント）を入れて尿の通り道を確保することになりました。石そのものの治療は後日あらためて行います。'
+  },
+  eswl: {
+    emoji: '💥', title: '体外衝撃波結石破砕術（ESWL）',
+    text: '石が10mmを超えてしまい、自然に出るのは難しいサイズに。体の外から衝撃波を当てて石を細かく砕き、砂のようにして流し出す治療になりました。水分不足が石を育ててしまったようです。'
+  },
+  tul: {
+    emoji: '🔬', title: '経尿道的尿管結石砕石術（TUL）',
+    text: '3日たっても石が出てきませんでした。尿道から細い内視鏡を入れ、レーザーで石を砕いて取り出す手術になりました。'
+  }
+};
+function endGame(kind) {
+  if (!running) return;
+  running = false;
+  const e = ENDINGS[kind];
+  const elapsed = st.gmin - 8 * 60;
+  const h = Math.floor(elapsed / 60), m = Math.floor(elapsed % 60);
+  document.getElementById('endEmoji').textContent = e.emoji;
+  document.getElementById('endTitle').textContent = e.title;
+  document.getElementById('endText').textContent = e.text;
+  let rank = '';
+  if (kind === 'win') {
+    rank = h < 18 && st.stats.maxDanger < 40 ? 'ランク S：スピード排石の達人！'
+      : h < 36 ? 'ランク A：上手に流せました！'
+      : 'ランク B：粘り勝ち！';
+  }
+  document.getElementById('endRank').textContent = rank;
+  const s = st.stats;
+  document.getElementById('endStats').innerHTML =
+    `⏱ 経過時間：${h}時間${m}分<br>🪨 石の最大サイズ：${s.maxD.toFixed(1)}mm<br>` +
+    `💧 飲んだ水：${s.water}杯　🦘 ジャンプ：${s.jump}回<br>💊 薬：${s.meds}回　🚽 トイレ：${s.pee}回<br>` +
+    `😱 最大の痛み：${Math.round(s.maxPain)}　🚨 最大危険度：${Math.round(s.maxDanger)}`;
+  kind === 'win' ? null : SFX.bad();
+  setTimeout(() => {
+    overlay.classList.remove('hidden');
+    document.getElementById('endCard').classList.remove('hidden');
+  }, kind === 'win' ? 200 : 900);
+}
+
+// ===== メインループ =====
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (running) update(dt);
+  render();
+  updateButtons();
+  requestAnimationFrame(loop);
+}
+reset();
+getStatic();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
