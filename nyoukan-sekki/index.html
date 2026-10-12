@@ -79,7 +79,7 @@ canvas {
     <span>🪨 尿管結石 排石大作戦</span>
     <button id="soundBtn">🔊 ON</button>
   </div>
-  <canvas id="game" width="420" height="700"></canvas>
+  <canvas id="game" width="420" height="740"></canvas>
   <div id="controls">
     <button class="btn b-water" data-act="water">💧 水を飲む<small>[W] 尿を増やす</small><span class="cd"></span></button>
     <button class="btn b-jump" data-act="jump">🦘 ジャンプ<small>[Space] 石を揺らす</small><span class="cd"></span></button>
@@ -122,12 +122,13 @@ canvas {
 // ===== 基本設定 =====
 const cv = document.getElementById('game');
 const ctx = cv.getContext('2d');
-const W = 420, H = 700;
+const W = 420, H = 740;
+const SCENE_H = H - 44; // 体の図を描く高さ(下はログ欄)
 const MM = 3;              // 1mm を何pxで描くか
 const GAME_MIN_PER_SEC = 12; // 実時間1秒 = ゲーム内12分
 const TIME_LIMIT_MIN = 72 * 60;
 // 体の図(ワールド座標)を画面左側 290px 幅に収める変換
-const VIEW = { k: 0.8, ox: 145 - 212 * 0.8, oy: 24 };
+const VIEW = { k: 0.95, ox: -21, oy: -9 }; // 石のある左半分＋右側を少し
 const toScreen = (x, y) => [VIEW.ox + x * VIEW.k, VIEW.oy + y * VIEW.k];
 
 function resize() {
@@ -161,8 +162,10 @@ const CP = [
   { x: 194, y: 492, w: 8 },                        // 10 膀胱入口
   { x: 212, y: 530, w: 30 },                       // 11 膀胱内
   { x: 212, y: 556, w: 7 },                        // 12 膀胱頸部
-  { x: 212, y: 600, w: 6 },                        // 13 尿道
-  { x: 212, y: 640, w: 5.5 },                      // 14 外尿道口
+  { x: 212, y: 592, w: 6 },                        // 13 尿道(前立腺部)
+  { x: 212, y: 625, w: 6 },                        // 14 陰茎の付け根
+  { x: 212, y: 690, w: 6 },                        // 15 陰茎部
+  { x: 212, y: 722, w: 5.5 },                      // 16 外尿道口
 ];
 const PATH = [], cpIdx = [];
 function catmull(a, b, c, d, t) {
@@ -357,7 +360,7 @@ function update(dt) {
     // 疝痛発作
     if (blk > 0.7 && Math.random() < 0.12 * dt) {
       st.pain += 20; st.shake = 0.6; log('⚡ 疝痛発作！！ 背中から脇腹に激痛が…'); SFX.pain();
-      wfloat('ズキーン!!', 112, 20, '#e74c3c', 20);
+      wfloat('ズキーン!!', 150, 60, '#e74c3c', 20);
     }
     if (st.s >= S_ENTRY) {
       st.phase = 1; log('🎉 膀胱に到着！痛みが引いていく…あとはトイレで押し出そう');
@@ -384,7 +387,7 @@ function update(dt) {
       if (st.phase === 1 && st.s >= S_NECK) { st.phase = 2; log('石が尿道へ…！あと少し！'); }
       if (st.s >= TOTAL) {
         st.phase = 3; st.s = TOTAL; st.outY = 0; st.outVy = -60; st.endTimer = 2.2;
-        log('🎊 コロン…！ 石が出た！！！'); wfloat('コロン♪', 260, 640, '#27ae60', 22); SFX.win();
+        log('🎊 コロン…！ 石が出た！！！'); wfloat('コロン♪', 255, 715, '#27ae60', 22); SFX.win();
       }
     }
     if (Math.random() < 0.9) uparts.push({ s: S_NECK, o: rand(-1, 1) });
@@ -450,7 +453,7 @@ function updateParticles(dt, U) {
     p.s += 140 * dt;
     if (p.s >= TOTAL) {
       p.dead = true;
-      drops.push({ x: 212 + rand(-2, 2), y: 642, vx: rand(-25, 25), vy: rand(40, 90) });
+      drops.push({ x: 212 + rand(-2, 2), y: CP[CP.length - 1].y + 2, vx: rand(-25, 25), vy: rand(40, 90) });
     }
   }
   uparts = uparts.filter(p => !p.dead);
@@ -511,11 +514,11 @@ function drawBody() {
   ctx.beginPath(); ctx.ellipse(212, 330, 4, 7, 0, 0, Math.PI * 2); ctx.stroke();
 
   ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(150,115,90,.8)';
-  ctx.fillText('肋骨', 342, 40);
-  ctx.fillText('背骨', 262, -12);
+  ctx.fillText('肋骨', 178, 30);
+  ctx.fillText('背骨', 252, 56);
   ctx.fillText('へそ', 236, 352);
-  ctx.fillText('骨盤', 352, 470);
-  ctx.fillText('太もも', 130, 760);
+  ctx.fillText('骨盤', 100, 500);
+  ctx.fillText('太もも', 110, 712);
 }
 
 function drawVessels() {
@@ -530,6 +533,31 @@ function drawVessels() {
   ctx.beginPath(); ctx.moveTo(206, -40); ctx.lineTo(212, 282);
   ctx.lineTo(130, 360); ctx.lineTo(112, 420);
   ctx.moveTo(212, 282); ctx.lineTo(294, 360); ctx.lineTo(312, 420); ctx.stroke();
+}
+
+// 男性の外陰部と前立腺(尿道はこの中を通る)
+function drawGenitals() {
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#c99c80'; ctx.lineWidth = 3;
+  // 陰嚢
+  ctx.fillStyle = '#ecc8ae';
+  for (const s of [-1, 1]) {
+    ctx.beginPath(); ctx.ellipse(212 + s * 17, 652, 23, 27, s * 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  // 陰茎(体幹部)
+  ctx.fillStyle = '#f0d0b8';
+  ctx.beginPath();
+  ctx.moveTo(192, 606); ctx.lineTo(190, 696); ctx.lineTo(234, 696); ctx.lineTo(232, 606); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  // 亀頭
+  ctx.fillStyle = '#e6aa9c';
+  ctx.beginPath();
+  ctx.moveTo(187, 694); ctx.quadraticCurveTo(212, 688, 237, 694);
+  ctx.quadraticCurveTo(240, 728, 212, 730); ctx.quadraticCurveTo(184, 728, 187, 694);
+  ctx.fill(); ctx.stroke();
+  // 前立腺
+  ctx.fillStyle = '#d7a3a0'; ctx.strokeStyle = '#a86a6a';
+  ctx.beginPath(); ctx.ellipse(212, 576, 24, 17, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 }
 
 // 反対側(石のない方)の腎臓と尿管。左右対称に薄く描く
@@ -631,7 +659,7 @@ function drawParticles() {
 
 function drawStone() {
   let x, y;
-  if (st.phase === 3) { x = 212; y = 640 + st.outY; }
+  if (st.phase === 3) { x = 212; y = CP[CP.length - 1].y + st.outY; }
   else { const q = sample(st.s); x = q.x; y = q.y; }
   if (st.phase === 0 && st.blk > 0.5) { x += rand(-1, 1); y += rand(-1, 1); }
   const r = st.d * MM / 2 + 1;
@@ -666,7 +694,9 @@ function drawPainEffects() {
   }
   if (st.felt > 70) {
     ctx.font = 'bold 19px sans-serif'; ctx.fillStyle = '#c0392b';
-    ctx.fillText(st.felt > 88 ? 'ぐあああ!!' : 'いたたた…', 112 + rand(-2, 2), 42 + rand(-2, 2));
+    const tx = 112 + rand(-2, 2), ty = 54 + rand(-2, 2), txt = st.felt > 88 ? 'ぐあああ!!' : 'いたたた…';
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.strokeText(txt, tx, ty);
+    ctx.fillText(txt, tx, ty);
   }
 }
 
@@ -675,9 +705,12 @@ function drawLabels(bl) {
   ctx.fillText('腎臓', 84, 266);
   ctx.fillText('尿管', 128, 300);
   ctx.fillText('膀胱', 132, 548);
-  ctx.fillText('尿道', 246, 612);
+  ctx.fillText('尿道', 262, 655);
+  ctx.fillText('陰茎', 262, 700);
+  ctx.font = '12px sans-serif';
+  ctx.fillText('前立腺', 266, 584);
   ctx.font = '12px sans-serif'; ctx.fillStyle = '#b03a3a';
-  ctx.fillText('総腸骨動脈', 96, 440);
+  ctx.fillText('総腸骨動脈', 72, 412);
   // 狭窄部マーカー
   for (const n of st.narrows) {
     ctx.fillStyle = n.passed ? '#27ae60' : '#d35400';
@@ -688,8 +721,8 @@ function drawLabels(bl) {
 
 function drawToilet() {
   if (st.peeT > 0 || st.phase === 3) {
-    ctx.font = '40px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('🚽', 212, 790);
+    ctx.font = '36px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('🚽', 276, 722);
   }
 }
 
@@ -753,12 +786,12 @@ function drawHUD() {
 
   // ログ
   ctx.fillStyle = 'rgba(255,255,255,.85)';
-  ctx.beginPath(); ctx.roundRect(6, 654, W - 12, 40, 8); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(6, H - 40, W - 12, 36, 8); ctx.fill();
   ctx.textAlign = 'left'; ctx.font = '12px sans-serif';
   const last = st.logs.slice(-2);
   last.forEach((l, i) => {
     ctx.fillStyle = i === last.length - 1 ? '#2a1a30' : '#8a7a90';
-    ctx.fillText(l.text, 14, 670 + i * 17 - (last.length === 1 ? 0 : 0));
+    ctx.fillText(l.text, 14, H - 26 + i * 16);
   });
 }
 
@@ -769,12 +802,13 @@ function render() {
   const jy = st.jumpAnim < 1 ? -Math.sin(Math.PI * st.jumpAnim) * 18 : 0;
   const sh = st.shake * 6;
   ctx.save();
-  ctx.beginPath(); ctx.rect(0, 0, 290, 652); ctx.clip();
+  ctx.beginPath(); ctx.rect(0, 0, 290, SCENE_H); ctx.clip();
   ctx.translate(rand(-sh, sh), jy + rand(-sh, sh));
   ctx.translate(VIEW.ox, VIEW.oy); ctx.scale(VIEW.k, VIEW.k);
 
   drawBody();
   drawVessels();
+  drawGenitals();
   drawOtherSide();
   drawKidney();
   const lumen = urineColor(1);
@@ -790,7 +824,7 @@ function render() {
 
   // 体の外(排出後・トイレ)は揺らさない
   ctx.save();
-  ctx.beginPath(); ctx.rect(0, 0, 290, 652); ctx.clip();
+  ctx.beginPath(); ctx.rect(0, 0, 290, SCENE_H); ctx.clip();
   ctx.translate(VIEW.ox, VIEW.oy); ctx.scale(VIEW.k, VIEW.k);
   drawToilet();
   if (st.phase === 3) drawStone();
