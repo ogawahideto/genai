@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<!--
+AI Model: Claude Opus 5.5
+User Prompt: 精神的に無理な時に見るサイトを作ってください。簡単に理解を示したら請けいられるとか、安易なやさしい言葉はやめてください。限界なんです。
+AI Approach: 励ましや共感の言葉を並べず、「次の数分をやり過ごす」ための具体的な操作だけを置く。
+  選択肢は4つまでに絞り、文字は少なく、決断や入力を求めない。呼吸ペーサー、保存されない書き捨て欄、
+  体への具体的な指示、経過を見るだけのタイマー、相談先を常時表示。外部依存なし・データ送信なし・保存なし。
+Implementation Intent: 限界のときに開いて、考えずに使える道具。気分を良くすることは目的にしない。
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>限界のとき</title>
+<style>
+  :root {
+    --bg: #15171a;
+    --fg: #c9ccd1;
+    --dim: #7c8189;
+    --line: #2a2e34;
+    --btn: #1e2126;
+    --accent: #8fa3b8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--fg); }
+  body {
+    font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+    font-size: 18px;
+    line-height: 1.9;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  main {
+    flex: 1;
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 48px 20px 32px;
+  }
+  section { display: none; animation: fade .6s ease; }
+  section.active { display: block; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+  h1 { font-size: 20px; font-weight: normal; margin-bottom: 28px; }
+  p { margin-bottom: 18px; }
+  .dim { color: var(--dim); font-size: 15px; }
+
+  .choices { display: flex; flex-direction: column; gap: 12px; margin-top: 32px; }
+  button {
+    font: inherit;
+    color: var(--fg);
+    background: var(--btn);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 16px 18px;
+    text-align: left;
+    cursor: pointer;
+    width: 100%;
+  }
+  button:hover, button:focus-visible { border-color: var(--accent); outline: none; }
+  button small { display: block; color: var(--dim); font-size: 14px; }
+  .back {
+    background: none; border: none; color: var(--dim);
+    padding: 0; margin-top: 40px; width: auto; font-size: 15px;
+  }
+
+  /* 呼吸 */
+  .breath-wrap { display: flex; flex-direction: column; align-items: center; margin: 40px 0; }
+  .circle {
+    width: 90px; height: 90px; border-radius: 50%;
+    background: radial-gradient(circle, #3a4756 0%, #232a33 70%);
+    transform: scale(1);
+  }
+  .breath-label { margin-top: 48px; color: var(--dim); min-height: 1.9em; }
+
+  /* 書き捨て */
+  textarea {
+    width: 100%; min-height: 260px;
+    font: inherit; font-size: 17px;
+    color: var(--fg); background: var(--btn);
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 14px; resize: vertical;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .row { display: flex; gap: 12px; margin-top: 12px; }
+  .row button { text-align: center; }
+
+  /* 体 */
+  ol.body { list-style: none; counter-reset: n; }
+  ol.body li {
+    counter-increment: n;
+    border-top: 1px solid var(--line);
+    padding: 16px 0 16px 36px;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+  }
+  ol.body li::before {
+    content: counter(n);
+    position: absolute; left: 4px; top: 16px;
+    color: var(--dim);
+  }
+  ol.body li.done { color: var(--dim); text-decoration: line-through; }
+  ol.body li small { display: block; color: var(--dim); font-size: 14px; text-decoration: none; }
+
+  /* タイマー */
+  .clock { font-size: 56px; font-variant-numeric: tabular-nums; text-align: center; margin: 48px 0 12px; letter-spacing: 2px; }
+  .bar { height: 2px; background: var(--line); margin-bottom: 40px; }
+  .bar div { height: 100%; width: 0; background: var(--accent); transition: width 1s linear; }
+
+  /* 相談先 */
+  .help dt { margin-top: 20px; }
+  .help dd { color: var(--dim); font-size: 15px; }
+  .help a { color: var(--accent); font-size: 22px; text-decoration: none; letter-spacing: 1px; }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 16px 20px 24px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--dim);
+  }
+  footer button {
+    display: inline; width: auto; padding: 0; border: none; background: none;
+    color: var(--dim); text-decoration: underline; font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <!-- 入口 -->
+  <section id="top" class="active">
+    <h1>ここは気分を良くするための場所ではない。</h1>
+    <p>次の数分をやり過ごすためだけの場所。<br>読まなくていい。選ぶだけ。</p>
+    <div class="choices">
+      <button data-go="breath">何も考えられない<small>画面の丸を見ているだけ</small></button>
+      <button data-go="write">頭の中がうるさい<small>書いて、消す。どこにも残らない</small></button>
+      <button data-go="body">体がしんどい<small>体にだけ手を入れる</small></button>
+      <button data-go="timer">とにかく時間が過ぎてほしい<small>10分を数えるだけ</small></button>
+      <button data-go="help">消えたい / 死にたい<small>人の声が要る段階かもしれない</small></button>
+    </div>
+  </section>
+
+  <!-- 呼吸 -->
+  <section id="breath">
+    <p class="dim">数えなくていい。合わせなくてもいい。見ているだけでいい。</p>
+    <div class="breath-wrap">
+      <div class="circle" id="circle"></div>
+      <div class="breath-label" id="breathLabel"></div>
+    </div>
+    <button class="back" data-go="top">← 戻る</button>
+  </section>
+
+  <!-- 書き捨て -->
+  <section id="write">
+    <p class="dim">誰にも見せない。保存もしない。ページを閉じれば消える。<br>文章になっていなくていい。同じ言葉を繰り返してもいい。</p>
+    <textarea id="dump" spellcheck="false" autocomplete="off"></textarea>
+    <div class="row">
+      <button id="clearDump">消す</button>
+    </div>
+    <button class="back" data-go="top">← 戻る</button>
+  </section>
+
+  <!-- 体 -->
+  <section id="body">
+    <p class="dim">気持ちには直接触れない。体のほうから少しだけ変える。<br>できるものだけ。できなかったら飛ばす。触ると線が引かれる。</p>
+    <ol class="body">
+      <li>水を一口飲む<small>コップ一杯でなくていい。一口</small></li>
+      <li>冷たいものを手に持つ<small>保冷剤、冷えた缶、氷、水で濡らしたタオル。顔に当ててもいい</small></li>
+      <li>息を長く吐く<small>吸うほうは気にしない。吐くほうだけ、いつもより長く</small></li>
+      <li>部屋を暗くするか、明るくする<small>今と逆にする</small></li>
+      <li>横になる。床でもいい<small>背中を何かにつける</small></li>
+      <li>足の裏に意識を置く<small>床か布団に触れている感じだけ</small></li>
+      <li>何か口に入れる<small>最後に食べたのがいつか思い出せないなら特に。飴一つでいい</small></li>
+      <li>スマホの通知を切る<small>この画面以外は閉じる</small></li>
+    </ol>
+    <button class="back" data-go="top">← 戻る</button>
+  </section>
+
+  <!-- タイマー -->
+  <section id="timer">
+    <p class="dim">何かをする必要はない。この数字が進むのを見ているだけでいい。<br>10分経ったら、そこで一度だけ次をどうするか考える。それまでは考えない。</p>
+    <div class="clock" id="clock">10:00</div>
+    <div class="bar"><div id="barFill"></div></div>
+    <p class="dim" id="timerNote"></p>
+    <button class="back" data-go="top">← 戻る</button>
+  </section>
+
+  <!-- 相談先 -->
+  <section id="help">
+    <h1>ここから先は、画面では足りない。</h1>
+    <p>このページにできるのは数分を稼ぐことまで。<br>消えたい気持ちが具体的になってきているなら、人につなぐ段階。<br>うまく話せなくていい。「限界です」の一言でいい。</p>
+    <dl class="help">
+      <dt>今すぐ危ない（手段が手元にある・もう動きかけている）</dt>
+      <dd><a href="tel:119">119</a><br>救急。ためらう理由にはならない。</dd>
+
+      <dt>よりそいホットライン（24時間・無料）</dt>
+      <dd><a href="tel:0120279338">0120-279-338</a></dd>
+
+      <dt>#いのちSOS（無料）</dt>
+      <dd><a href="tel:0120061338">0120-061-338</a></dd>
+
+      <dt>いのちの電話（ナビダイヤル）</dt>
+      <dd><a href="tel:0570783556">0570-783-556</a></dd>
+
+      <dt>こころの健康相談統一ダイヤル</dt>
+      <dd><a href="tel:0570064556">0570-064-556</a><br>住んでいる地域の窓口につながる。</dd>
+
+      <dt>電話が無理なら</dt>
+      <dd>「あなたのいばしょ」「生きづらびっと」などでチャット・LINE相談ができる。</dd>
+    </dl>
+    <p class="dim" style="margin-top:28px">つながらなかったら、別の番号にかける。混んでいるだけで、断られたわけではない。<br>手段になりそうな物が近くにあるなら、別の部屋に移すか、自分が別の部屋に移る。</p>
+    <button class="back" data-go="top">← 戻る</button>
+  </section>
+
+</main>
+<footer>
+  死にたい気持ちが強いとき → <button data-go="help">相談先</button>
+</footer>
+
+<script>
+  const sections = document.querySelectorAll('section');
+  let breathTimer = null;
+  let countTimer = null;
+
+  function go(id) {
+    sections.forEach(s => s.classList.toggle('active', s.id === id));
+    window.scrollTo(0, 0);
+    stopBreath();
+    stopTimer();
+    if (id === 'breath') startBreath();
+    if (id === 'timer') startTimer();
+  }
+
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-go]');
+    if (t) go(t.dataset.go);
+  });
+
+  // 呼吸：吸う4秒・吐く6秒。吐くほうを長くする
+  const circle = document.getElementById('circle');
+  const breathLabel = document.getElementById('breathLabel');
+  function startBreath() {
+    const cycle = () => {
+      breathLabel.textContent = '吸う';
+      circle.style.transition = 'transform 4s ease-in-out';
+      circle.style.transform = 'scale(2.2)';
+      breathTimer = setTimeout(() => {
+        breathLabel.textContent = '吐く';
+        circle.style.transition = 'transform 6s ease-in-out';
+        circle.style.transform = 'scale(1)';
+        breathTimer = setTimeout(cycle, 6000);
+      }, 4000);
+    };
+    cycle();
+  }
+  function stopBreath() {
+    clearTimeout(breathTimer);
+    circle.style.transition = 'none';
+    circle.style.transform = 'scale(1)';
+    breathLabel.textContent = '';
+  }
+
+  // 書き捨て：保存しない
+  const dump = document.getElementById('dump');
+  document.getElementById('clearDump').addEventListener('click', () => {
+    dump.style.transition = 'opacity .8s';
+    dump.style.opacity = '0';
+    setTimeout(() => { dump.value = ''; dump.style.opacity = '1'; }, 800);
+  });
+
+  // 体：触ったものに線を引く
+  document.querySelectorAll('ol.body li').forEach(li =>
+    li.addEventListener('click', () => li.classList.toggle('done'))
+  );
+
+  // タイマー：10分
+  const clock = document.getElementById('clock');
+  const barFill = document.getElementById('barFill');
+  const timerNote = document.getElementById('timerNote');
+  const TOTAL = 600;
+  function startTimer() {
+    const start = Date.now();
+    timerNote.textContent = '';
+    barFill.style.width = '0';
+    const tick = () => {
+      const passed = Math.min(TOTAL, Math.floor((Date.now() - start) / 1000));
+      const left = TOTAL - passed;
+      clock.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+      barFill.style.width = (passed / TOTAL * 100) + '%';
+      if (left === 0) {
+        clearInterval(countTimer);
+        timerNote.innerHTML = '10分経った。<br>まだ同じなら、もう10分。それか、体のほうを一つだけ。<br>ひどくなっているなら、相談先へ。';
+      }
+    };
+    tick();
+    countTimer = setInterval(tick, 1000);
+  }
+  function stopTimer() { clearInterval(countTimer); }
+</script>
+</body>
+</html>
