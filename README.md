@@ -343,6 +343,9 @@ AI・チャットアプリケーション
 #### [Advanced Gastroscopy Simulator v6.1 (Fixed Tracker)](gastroscopy-simulator-real/) (2026-04-05)
 実験的アプリケーション
 
+#### [限界のとき](genkai/) (2026-10-25)
+実験的アプリケーション
+
 #### [花見 〜 Hanami](hanami/) (2026-04-05)
 実験的アプリケーション
 
